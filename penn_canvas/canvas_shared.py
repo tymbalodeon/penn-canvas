@@ -47,10 +47,10 @@ def check_config(config):
 
 
 def get_canvas(test):
-    prod_key, test_key = check_config(CONFIG_PATH)
+    production, test = check_config(CONFIG_PATH)
     return Canvas(
         CANVAS_URL_TEST if test else CANVAS_URL_PROD,
-        test_key if test else prod_key,
+        test if test else production,
     )
 
 
