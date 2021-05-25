@@ -1,0 +1,6 @@
+[[rules]]
+    description = "'API' and 'KEY' should be allowed in variable names"
+    regex = '''\W*((?i)api(?-i))\W*|\W*((?i)key(?-i))\W*'''
+    [rules.allowlist]
+                description = "'API' and 'KEY' should be allowed in variable names"
+                regexes = ['''\W*((?i)api(?-i))\W*|\W*((?i)key(?-i))\W*''']
