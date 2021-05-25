@@ -1,10 +1,20 @@
-# Canvas Scripts
+# Penn Canvas
 
-A collection of helpful python scripts for working with UPenn Canvas.
+A command line tool for working with Penn Canvas
 
 ## Installation & Setup
 
-To install dependencies, run `pip install -r requirements.txt` from within your [virtual environment](https://docs.python.org/3/tutorial/venv.html) for this project.
+NOTE: This project is intended to be developed and built using [poetry](https://python-poetry.org/).
+
+1. `poetry install`
+2. `poetry build`
+3. `pip install --user <path-to-.whl-file-in-this-project's-dist-folder>`
+
+The `penn-canvas` command will then be globally available in your shell.
+
+### Non-Poetry
+
+A "requirements.txt" file is also included for non-Poetry installation. Instructions for developing without Poetry are not currently available.
 
 ### Access Tokens
 
@@ -12,17 +22,25 @@ Access Tokens are required to connect to Canvas. You will need a separate one fo
 
 To generate tokens, login to your Canvas account, go to Account > Settings, and click the "New Access Token" button under the "Approved Integrations" heading.
 
-In order to use these tokens with the scripts, you will need to create a file named ".env" in the root directory of this project and add your keys using the following format:
+#### CLI config generator
+
+A config file containing your Access Tokens can be generated for you by Penn-Canvas by calling `penn-canvas configure`. You will be prompted to input your production and test region Access Tokens. (If you try to run another command without a config file, you will also be prompted to generate one before proceeding.)
+
+#### Manual config creation
+
+You may also create your config file manually. Penn-Canvas expects the location to be "$HOME/.config/penn-canvas.txt" and the contents to be:
 
 > CANVAS_KEY_PROD=your-canvas-prod-key-here  
 > CANVAS_KEY_TEST=your-canvas-test-key-here
 
+Prepending the keys with "[KEY_NAME]=" is optional, but each token must be on its own line, with the production token first.
+
 ## Usage
 
-Basic format: `python main.py [OPTIONS] COMMAND [ARGS]`
+Basic format: `penn-canvas[OPTIONS] COMMAND [ARGS]`
 
 Documentation is provided in the CLI itself.
 
-To see available commands: `python main.py --help`
+To see available commands: `penn-canvas --help` or simply `penn-canvas`
 
-To see detailed information for a particular command: `python main.py COMMAND --help`
+To see detailed information for a particular command: `penn-canvas COMMAND --help`

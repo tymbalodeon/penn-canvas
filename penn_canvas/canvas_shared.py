@@ -43,7 +43,7 @@ def check_config(config):
             lines = config.read().splitlines()
             production = lines[0].replace("CANVAS_KEY_PROD=", "")
             development = lines[1].replace("CANVAS_KEY_DEV=", "")
-        return production, test
+        return production, development
 
 
 def get_canvas(test):

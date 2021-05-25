@@ -1,6 +1,7 @@
 import typer
 
 from penn_canvas.course_storage_quota import storage_main
+from penn_canvas.canvas_shared import make_config
 
 # import email_confirmation
 # import module_progression_lock
@@ -14,6 +15,14 @@ MAIN_HELP = """
     Welcome to the Penn-Canvas -- working with Canvas has never been easier!
 """
 app = typer.Typer(help=MAIN_HELP)
+
+
+@app.command()
+def configure():
+    """
+    Automatically generate a config file for Penn-Canvas
+    """
+    make_config()
 
 
 @app.command()
