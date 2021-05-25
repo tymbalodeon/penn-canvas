@@ -37,7 +37,7 @@ Prepending the keys with "[KEY_NAME]=" is optional, but each token must be on it
 
 ## Usage
 
-Basic format: `penn-canvas[OPTIONS] COMMAND [ARGS]`
+Basic format: `penn-canvas [OPTIONS] COMMAND [ARGS]`
 
 Documentation is provided in the CLI itself.
 
