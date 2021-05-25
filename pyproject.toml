@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "penn-canvas"
+version = "0.1.0"
+description = "A collection of scripts for interacting with Penn Canvas"
+authors = ["Ben Rosen <benrosen@upenn.edu>"]
+readme = "README.md"
+
+[tool.poetry.scripts]
+penn-canvas = "penn_canvas.main:app"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+typer = {extras = ["all"], version = "^0.3.2"}
+canvasapi = "^2.2.0"
+requests = "^2.25.1"
+pandas = "^1.2.4"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
