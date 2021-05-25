@@ -14,12 +14,12 @@ def make_config():
     production = typer.prompt(
         "Please enter your Access Token for the PRODUCTION instance of Penn Canvas"
     )
-    test = typer.prompt(
+    development = typer.prompt(
         "Please enter your Access Token for the TEST instance of Penn Canvas"
     )
     with open(CONFIG_PATH, "w+") as config:
         config.write(f"CANVAS_KEY_PROD={production}")
-        config.write(f"\nCANVAS_KEY_TEST={test}")
+        config.write(f"\nCANVAS_KEY_DEV={development}")
 
 
 def check_config(config):
@@ -34,7 +34,7 @@ def check_config(config):
                 "\tPlace your Canvas Access Tokens in this file using the following format:"
             )
             typer.echo("\t\tCANVAS_KEY_PROD=your-canvas-prod-key-here")
-            typer.echo("\t\tCANVAS_KEY_TEST=your-canvas-test-key-here")
+            typer.echo("\t\tCANVAS_KEY_DEV=your-canvas-test-key-here")
             raise typer.Abort()
         else:
             make_config()
@@ -42,15 +42,15 @@ def check_config(config):
         with open(CONFIG_PATH, "r") as config:
             lines = config.read().splitlines()
             production = lines[0].replace("CANVAS_KEY_PROD=", "")
-            test = lines[1].replace("CANVAS_KEY_TEST=", "")
+            development = lines[1].replace("CANVAS_KEY_DEV=", "")
         return production, test
 
 
 def get_canvas(test):
-    production, test = check_config(CONFIG_PATH)
+    production, development = check_config(CONFIG_PATH)
     return Canvas(
         CANVAS_URL_TEST if test else CANVAS_URL_PROD,
-        test if test else production,
+        development if test else production,
     )
 
 
