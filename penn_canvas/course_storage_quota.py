@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas
 import typer
 
-from penn_canvas.canvas_shared import code_to_sis, get_canvas
+from .canvas_shared import code_to_sis, get_canvas
 
 TODAY = datetime.now().strftime("%d_%b_%Y")
 STORAGE = Path.home() / "penn-canvas/storage"

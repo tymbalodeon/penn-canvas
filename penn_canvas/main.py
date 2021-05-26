@@ -1,7 +1,7 @@
 import typer
 
-from penn_canvas.canvas_shared import make_config
-from penn_canvas.course_storage_quota import storage_main
+from .canvas_shared import make_config
+from .course_storage_quota import storage_main
 
 # import email_confirmation
 # import module_progression_lock
