@@ -1,8 +1,10 @@
 from datetime import datetime
 from pathlib import Path
-import typer
+
 import pandas
-from penn_canvas.canvas_shared import get_canvas, code_to_sis
+import typer
+
+from penn_canvas.canvas_shared import code_to_sis, get_canvas
 
 TODAY = datetime.now().strftime("%d_%b_%Y")
 STORAGE = Path.home() / "penn-canvas/storage"

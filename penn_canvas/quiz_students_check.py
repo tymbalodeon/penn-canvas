@@ -1,6 +1,7 @@
-import requests
 import csv
 import json
+
+import requests
 from canvas_shared import *
 
 TESTING = False

@@ -4,8 +4,9 @@
 
 import os
 import sys
-from canvasapi import Canvas
+
 from canvas_shared import *
+from canvasapi import Canvas
 
 API_URL = "https://canvas.upenn.edu/"
 

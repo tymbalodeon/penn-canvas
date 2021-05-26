@@ -1,7 +1,8 @@
-import requests
 import csv
 import json
-from canvas_shared import get_canvas, API_KEY_PROD
+
+import requests
+from canvas_shared import API_KEY_PROD, get_canvas
 
 # baowei@upenn.edu
 # 1/20/2021: check the page views of three students (5608161, 5484129, 5608478) between 9/1/2020 and 12/23/2020

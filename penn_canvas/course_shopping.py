@@ -14,8 +14,9 @@ get a provisioning report of all courses
 """
 
 from datetime import datetime
-from canvas_shared import find_accounts_subaccounts, get_canvas
+
 import typer
+from canvas_shared import find_accounts_subaccounts, get_canvas
 
 TESTING = False
 TERM = "2021A"

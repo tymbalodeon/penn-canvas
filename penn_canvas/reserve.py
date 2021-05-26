@@ -1,7 +1,6 @@
-import typer
-
 import enable_reserve
 import reserve_report
+import typer
 
 app = typer.Typer()
 app.add_typer(enable_reserve.app, name="enable")

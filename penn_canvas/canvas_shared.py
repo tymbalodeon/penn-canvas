@@ -1,6 +1,7 @@
-from canvasapi import Canvas
 from pathlib import Path
+
 import typer
+from canvasapi import Canvas
 
 CANVAS_URL_PROD = "https://canvas.upenn.edu/"
 CANVAS_URL_TEST = "https://upenn.test.instructure.com/"
