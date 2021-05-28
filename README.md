@@ -12,6 +12,13 @@ NOTE: This project is intended to be developed and built using [poetry](https://
 
 The `penn-canvas` command will then be globally available in your shell.
 
+### Development
+
+To see changes avialable immediately without having to build:
+
+1. `poetry shell`
+2. `poetry run penn-canvas [OPTIONS] COMMAND [ARGS]`
+
 ### Non-Poetry
 
 A "requirements.txt" file is also included for non-Poetry installation. Instructions for developing without Poetry are not currently available.

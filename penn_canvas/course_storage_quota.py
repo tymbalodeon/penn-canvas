@@ -37,9 +37,9 @@ def find_todays_report():
     if not REPORTS.exists():
         Path.mkdir(REPORTS, parents=True)
         typer.echo(
-            f"Canvas storage reports directory not found. Creating one for you at: {REPORTS}\n"
-            "\nPlease add a Canvas storage report matching today's date to this directory and then run this script again.\n"
-            "\n(If you need instructions for generating a Canvas storage report, run this command with the '--help' flag.)"
+            f"\tCanvas storage reports directory not found. Creating one for you at: {REPORTS} "
+            "Please add a Canvas storage report matching today's date to this directory and then run this script again. "
+            "(If you need instructions for generating a Canvas storage report, run this command with the '--help' flag.)"
         )
         raise typer.Exit(1)
     else:
@@ -52,9 +52,9 @@ def find_todays_report():
 
         if TODAYS_REPORT == "":
             typer.echo(
-                "A Canvas storage report matching today's date was not found.\n"
-                f"\nPlease add a Canvas storage report matching today's date to the following directory: {REPORTS}\n"
-                "\n(If you need instructions for generating a Canvas storage report, run this command with the '--help' flag.)"
+                "\tA Canvas storage report matching today's date was not found. "
+                f"Please add a Canvas storage report matching today's date to the following directory: {REPORTS} "
+                "(If you need instructions for generating a Canvas storage report, run this command with the '--help' flag.)"
             )
             raise typer.Exit(1)
         else:
@@ -63,7 +63,13 @@ def find_todays_report():
 
 def cleanup_report(report):
     typer.echo(") Removing unused columns...")
-    UNUSED_COLUMNS = ["short name", "name", "account sis id", "account name"]
+    UNUSED_COLUMNS = [
+        "short name",
+        "name",
+        "account sis id",
+        "account name",
+        "sum of all files in MB",
+    ]
     DATA = pandas.read_csv(report)
 
     for column in UNUSED_COLUMNS:
@@ -89,7 +95,7 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
     ROWS = data.itertuples(index=False)
 
     def check_percentages(row):
-        canvas_id, sis_id, account_id, storage_used, all_used = row
+        canvas_id, sis_id, account_id, storage_used = row
 
         if account_id in SUB_ACCOUNTS:
             try:
@@ -98,26 +104,29 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
                     int(canvas_course.storage_quota_mb)
                 )
                 if verbose:
-                    typer.echo(
-                        f"\nCanvas ID: {canvas_id}, Storage used: {storage_used}, Storage Quota (MB): {canvas_course.storage_quota_mb}"
+                    percentage_display = typer.style(
+                        f"{int(percentage_used * 100)}%",
+                        fg=typer.colors.MAGENTA,
                     )
-                    typer.echo(f"\tPercentage used: {int(percentage_used * 100)}%")
+                    typer.echo(
+                        f"- Canvas ID: {canvas_id} | SIS_ID: {sis_id} | Storage used: {storage_used} | Storage Quota (MB): {canvas_course.storage_quota_mb} | Percentage used: {percentage_display}"
+                    )
 
                 if percentage_used >= 0.79:
-                    if sis_id:
+                    if pandas.isna(sis_id):
                         if verbose:
                             typer.echo(
-                                f"\n\t- Storage for course with SIS ID {sis_id} needs to be increased\n"
+                                f"\t* Storage for course with Canvas ID {canvas_id} needs to be increased. (NO SIS ID!)"
+                            )
+                    elif sis_id:
+                        if verbose:
+                            typer.echo(
+                                f"\t* Storage for course with SIS ID {sis_id} needs to be increased"
                             )
                         COURSES_TO_RAISE.append(sis_id)
-                    else:
-                        if verbose:
-                            typer.echo(
-                                f"\n\tStorage for course with Canvas ID {canvas_id} needs to be increased. (NO SIS ID!)\n"
-                            )
             except:
                 if verbose:
-                    typer.echo(f"\n\t- Couldn't find course with SIS ID: {sis_id}")
+                    typer.echo(f"\t* Couldn't find course with SIS ID: {sis_id}")
 
     if verbose:
         for row in ROWS:
@@ -132,7 +141,7 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
 
 def raise_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
     typer.echo(
-        ") Raising course storage quotas for courses using more than 79% of their storage...\n"
+        ") Raising course storage quotas for courses using 80% or more of their storage...\n"
     )
 
     if not RESULTS.exists():
