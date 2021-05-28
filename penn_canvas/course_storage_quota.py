@@ -90,7 +90,7 @@ def cleanup_report(report):
 
 def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id=False):
     typer.echo(") Checking percentage of storage used for each course...")
-    COURSES_TO_RAISE = list()
+    COURSES_TO_INCREASE = list()
 
     ROWS = data.itertuples(index=False)
 
@@ -113,20 +113,19 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
                     )
 
                 if percentage_used >= 0.79:
+                    if verbose:
+                        typer.secho(f"\t* Increase required", fg=typer.colors.YELLOW)
                     if pandas.isna(sis_id):
                         if verbose:
-                            typer.echo(
-                                f"\t* Storage for course with Canvas ID {canvas_id} needs to be increased. (NO SIS ID!)"
+                            typer.secho(
+                                f"\t* ACTION REQUIRED: A SIS_ID must be added for this course.",
+                                fg=typer.colors.YELLOW,
                             )
                     elif sis_id:
-                        if verbose:
-                            typer.echo(
-                                f"\t* Storage for course with SIS ID {sis_id} needs to be increased"
-                            )
-                        COURSES_TO_RAISE.append(sis_id)
+                        COURSES_TO_INCREASE.append(sis_id)
             except:
                 if verbose:
-                    typer.echo(f"\t* Couldn't find course with SIS ID: {sis_id}")
+                    typer.secho(f"\t* Couldn't find course", fg=typer.colors.YELLOW)
 
     if verbose:
         for row in ROWS:
@@ -136,10 +135,10 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
             for row in progress:
                 check_percentages(row)
 
-    return pandas.DataFrame({"sis_id": COURSES_TO_RAISE})
+    return pandas.DataFrame({"sis_id": COURSES_TO_INCREASE})
 
 
-def raise_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
+def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
     typer.echo(
         ") Raising course storage quotas for courses using 80% or more of their storage...\n"
     )
@@ -154,7 +153,7 @@ def raise_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
 
     ROWS = data["sis_id"].tolist()
 
-    def raise_course_quota(sis_id):
+    def increase_course_quota(sis_id):
         if use_sis_id and sis_id[:4] != "SRS_":
             sis_id = code_to_sis(sis_id)
 
@@ -176,11 +175,15 @@ def raise_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
 
             try:
                 canvas_course.update(course={"storage_quota_mb": new_quota})
-                typer.echo(f"\nCourse ID {sis_id} old quota: {old_quota}\n")
-                typer.echo(f"Course ID {sis_id} new quota: {new_quota}\n")
+                typer.echo(
+                    f"\t- {sis_id} | Old Quota: {old_quota} | New Quota: {new_quota}"
+                )
             except:
                 new_quota = "ERROR"
-                typer.echo(f"\tFailed to raise quota for Canvas course ID: {sis_id}")
+                typer.secho(
+                    f"\t* Failed to increase quota for Canvas course ID: {sis_id}",
+                    fg=typer.colors.YELLOW,
+                )
 
             OLD_QUOTA.append(old_quota)
             NEW_QUOTA.append(new_quota)
@@ -191,11 +194,11 @@ def raise_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
 
     if verbose:
         for sis_id in ROWS:
-            raise_course_quota(sis_id)
+            increase_course_quota(sis_id)
     else:
         with typer.progressbar(ROWS, length=len(data.index)) as progress:
             for sis_id in progress:
-                raise_course_quota(sis_id)
+                increase_course_quota(sis_id)
 
     ROWS = list(zip(SUBACCOUNT, COURSE_ID, OLD_QUOTA, NEW_QUOTA))
     RESULT = pandas.DataFrame(
@@ -208,6 +211,6 @@ def storage_main(test, verbose):
     REPORT = find_todays_report()
     CANVAS = get_canvas(test)
     CLEAN_REPORT = cleanup_report(REPORT)
-    COURSES_TO_RAISE = check_percent_storage(CLEAN_REPORT, CANVAS, verbose)
-    raise_quota(COURSES_TO_RAISE, CANVAS, verbose)
+    COURSES_TO_INCREASE = check_percent_storage(CLEAN_REPORT, CANVAS, verbose)
+    increase_quota(COURSES_TO_INCREASE, CANVAS, verbose)
     typer.echo("FINISHED")
