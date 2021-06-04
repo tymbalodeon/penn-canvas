@@ -140,7 +140,7 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
 
 def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
     typer.echo(
-        ") Raising course storage quotas for courses using 80% or more of their storage..."
+        ") Increasing course storage quotas for courses using 80% or more of their storage..."
     )
 
     if not RESULTS.exists():
