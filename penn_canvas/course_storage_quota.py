@@ -37,9 +37,11 @@ def find_todays_report():
     if not REPORTS.exists():
         Path.mkdir(REPORTS, parents=True)
         typer.echo(
-            f"\tCanvas storage reports directory not found. Creating one for you at: {REPORTS}"
-            "\n\tPlease add a Canvas storage report matching today's date to this directory and then run this script again."
-            "\n\t(If you need instructions for generating a Canvas storage report, run this command with the '--help' flag.)"
+            "\tCanvas storage reports directory not found. Creating one for you at:"
+            f" {REPORTS}\n\tPlease add a Canvas storage report matching today's date to"
+            " this directory and then run this script again.\n\t(If you need"
+            " instructions for generating a Canvas storage report, run this command"
+            " with the '--help' flag.)"
         )
         raise typer.Exit(1)
     else:
@@ -52,9 +54,11 @@ def find_todays_report():
 
         if TODAYS_REPORT == "":
             typer.echo(
-                "\tA Canvas storage report matching today's date was not found."
-                f"\n\tPlease add a Canvas storage report matching today's date to the following directory: {REPORTS}"
-                "\n\t(If you need instructions for generating a Canvas storage report, run this command with the '--help' flag.)"
+                "\tA Canvas storage report matching today's date was not"
+                " found.\n\tPlease add a Canvas storage report matching today's date"
+                f" to the following directory: {REPORTS}\n\t(If you need instructions"
+                " for generating a Canvas storage report, run this command with the"
+                " '--help' flag.)"
             )
             raise typer.Exit(1)
         else:
@@ -109,7 +113,10 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
                         fg=typer.colors.MAGENTA,
                     )
                     typer.echo(
-                        f"- Canvas ID: {canvas_id} | SIS_ID: {sis_id} | Storage used: {storage_used} | Storage Quota (MB): {canvas_course.storage_quota_mb} | Percentage used: {percentage_display}"
+                        f"- Canvas ID: {canvas_id} | SIS_ID: {sis_id} | Storage used:"
+                        f" {storage_used} | Storage Quota (MB):"
+                        f" {canvas_course.storage_quota_mb} | Percentage used:"
+                        f" {percentage_display}"
                     )
 
                 if percentage_used >= 0.79:
@@ -118,7 +125,8 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
                     if pandas.isna(sis_id):
                         if verbose:
                             typer.secho(
-                                f"\t* ACTION REQUIRED: A SIS_ID must be added for this course.",
+                                f"\t* ACTION REQUIRED: A SIS_ID must be added for this"
+                                f" course.",
                                 fg=typer.colors.YELLOW,
                             )
                     elif sis_id:
@@ -140,7 +148,8 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
 
 def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
     typer.echo(
-        ") Increasing course storage quotas for courses using 80% or more of their storage..."
+        ") Increasing course storage quotas for courses using 80% or more of their"
+        " storage..."
     )
 
     if not RESULTS.exists():

@@ -1,10 +1,5 @@
-from canvas_shared import *
+from canvas_shared import find_accounts_subaccounts, get_canvas
 
-# baowei@upenn.edu
-# 1/13/2021:
-#   1. added the definition of input, result, remedy and errors files
-# 1/5/2021:
-#   1. changed to call get_canvas() to create the Canvas object
 
 TERM = "2021A"
 ENROLLED = "data/" + TERM + "_Enrolled.csv"
@@ -16,13 +11,16 @@ TESTING = False
 
 """
     ~~~~ THE STEPS IN RUNNING THE UNCONFIRMED EMAILS ~~~~
-0. Run Provisioning Report ___ and delete all columns but the canvas_user_id, save as ENROLLED
+0. Run Provisioning Report ___ and delete all columns but the canvas_user_id,
+    save as ENROLLED
 1. find_unconfirmed_emails(), save result as UNCONFIRMED
 2. unconfirmed_email_check_school(), save result into REMEDY
-3. Create a new file from the output of 2 and filter to the schools we can remediate
+3. Create a new file from the output of 2 and filter to the schools we can
+    remediate
 4. Run verify_email_list(), save errors into ERRORS
 5. Check errors from output
-6. Check the schools we can't remediate (from 3.) by hand to confirm we cant remediate. send list to the schools
+6. Check the schools we can't remediate (from 3.) by hand to confirm we cant
+    remediate. send list to the schools
 """
 
 
@@ -70,10 +68,11 @@ def find_unconfirmed_emails(inputfile=ENROLLED, outputfile=UNCONFIRMED):
 
 
 def unconfirmed_email_check_school(inputfile=UNCONFIRMED, outputfile=REMEDY):
-    # given the unconfirmed emails list, checks in the original file if they have multiple enrollments
-    # if they have multiple enrollments, check if any all of the enrollments are in schools we do not support
-    # if this is the case, write this user down in a separate file
-    # otherwise, write them in a file that will then be remediated.
+    # given the unconfirmed emails list, checks in the original file if they
+    # have multiple enrollments if they have multiple enrollments, check if any
+    # all of the enrollments are in schools we do not support if this is the
+    # case, write this user down in a separate file otherwise, write them in a
+    # file that will then be remediated.
 
     canvas = get_canvas(TESTING)
 
@@ -234,7 +233,7 @@ def verify_first_email(user_id):
             email = comm_channel.address
             # print(comm_channel.to_json())
             comm_channel.delete()
-            new_channel = user.create_communication_channel(
+            user.create_communication_channel(
                 communication_channel={"address": email, "type": "email"},
                 skip_confirmation=True,
             )
