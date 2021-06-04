@@ -52,7 +52,7 @@ def find_todays_report():
             if TODAY in report.name:
                 TODAYS_REPORT = report
 
-        if TODAYS_REPORT == "":
+        if not TODAYS_REPORT:
             typer.echo(
                 "\tA Canvas storage report matching today's date was not"
                 " found.\n\tPlease add a Canvas storage report matching today's date"

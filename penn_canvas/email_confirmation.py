@@ -1,18 +1,7 @@
-from canvas_shared import find_accounts_subaccounts, get_canvas
-
-
-TERM = "2021A"
-ENROLLED = "data/" + TERM + "_Enrolled.csv"
-UNCONFIRMED = "data/" + TERM + "_Unconfirmed.csv"
-REMEDY = "data/" + TERM + "_Remedy.csv"
-ERRORS = "data/Errors_Emails.csv"
-
-TESTING = False
-
 """
     ~~~~ THE STEPS IN RUNNING THE UNCONFIRMED EMAILS ~~~~
-0. Run Provisioning Report ___ and delete all columns but the canvas_user_id,
-    save as ENROLLED
+0. Run Provisioning Report (with "users.csv" checked) and delete all columns but
+    the canvas_user_id, save as ENROLLED
 1. find_unconfirmed_emails(), save result as UNCONFIRMED
 2. unconfirmed_email_check_school(), save result into REMEDY
 3. Create a new file from the output of 2 and filter to the schools we can
@@ -22,6 +11,57 @@ TESTING = False
 6. Check the schools we can't remediate (from 3.) by hand to confirm we cant
     remediate. send list to the schools
 """
+
+from pathlib import Path
+
+from canvas_shared import find_accounts_subaccounts, get_canvas
+
+TERM = "2021A"
+ENROLLED = "data/" + TERM + "_Enrolled.csv"
+UNCONFIRMED = "data/" + TERM + "_Unconfirmed.csv"
+REMEDY = "data/" + TERM + "_Remedy.csv"
+ERRORS = "data/Errors_Emails.csv"
+TESTING = False
+
+EMAIL = Path.home() / "penn-canvas/email"
+REPORTS = EMAIL / "reports"
+
+
+def find_users_report():
+    typer.echo(") Finding users report...")
+
+    if not REPORTS.exists():
+        Path.mkdir(REPORTS, parents=True)
+        typer.echo(
+            "\tCanvas email reports directory not found. Creating one for you at:"
+            f" {REPORTS}\n\tPlease add a Canvas Users Provisioning report to this"
+            " directory and then run this script again.\n\t(If you need instructions"
+            " for generating a Canvas Provisioning report, run this command with the"
+            " '--help' flag.)"
+        )
+        raise typer.Exit(1)
+    else:
+        USERS_REPORT = REPORTS / "users.csv"
+
+        if not USERS_REPORT:
+            typer.echo(
+                "\tA Canvas Users Provisioning report  was not found.\n\tPlease add a"
+                " Canvas Users Provisioning report to this directory and then run this"
+                " script again.\n\t(If you need instructions for generating a Canvas"
+                " Provisioning report, run this command with the '--help' flag.)"
+            )
+            raise typer.Exit(1)
+        else:
+            return USERS_REPORT
+
+
+def cleanup_report(report):
+    typer.echo(") Removing unused columns...")
+    DATA = pandas.read_csv(report)
+    DATA = DATA[["canvas_user_id"]]
+    # DATA = DATA.astype("string", copy=False, errors="ignore")
+
+    return DATA
 
 
 def find_unconfirmed_emails(inputfile=ENROLLED, outputfile=UNCONFIRMED):
