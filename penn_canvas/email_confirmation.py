@@ -17,14 +17,13 @@ from pathlib import Path
 import pandas
 import typer
 
-from .canvas_shared import find_accounts_subaccounts, get_canvas
+from .canvas_shared import find_sub_accounts, get_canvas
 
 # TERM = "2021A"
 # ENROLLED = "data/" + TERM + "_Enrolled.csv"
 # UNCONFIRMED = "data/" + TERM + "_Unconfirmed.csv"
 # REMEDY = "data/" + TERM + "_Remedy.csv"
 # ERRORS = "data/Errors_Emails.csv"
-# TESTING = False
 
 EMAIL = Path.home() / "penn-canvas/email"
 REPORTS = EMAIL / "reports"
@@ -60,108 +59,83 @@ def find_users_report():
 
 def cleanup_report(report):
     typer.echo(") Removing unused columns...")
-    DATA = pandas.read_csv(report)
-    DATA = DATA[["canvas_user_id"]]
+    data = pandas.read_csv(report)
+    data = data[["canvas_user_id"]]
+    data.drop_duplicates(inplace=True)
+    data = data.astype("string", copy=False)
+    return data
 
-    return DATA
 
+def find_unconfirmed_emails(data, canvas):
+    typer.echo(") Finding unconfirmed emails...")
+    USERS = data.itertuples(index=False)
 
-def find_unconfirmed_emails(inputfile=ENROLLED, outputfile=UNCONFIRMED):
-    canvas = get_canvas(TESTING)
+    UNCONFIRMED = list()
 
-    dataFile = open(inputfile, "r")
-    dataFile.readline()  # THIS SKIPS THE FIRST LINE
-
-    # first, identify the unique values
-    ids = []
-
-    for line in dataFile:
-        canvas_user_id = line.replace("\n", "")
-
-        if canvas_user_id not in ids:
-            ids.append(canvas_user_id)
-
-    dataFile.close()
-
-    total = len(ids)
-
-    outFile = open(outputfile, "a")
-    outFile.write("%s,%s\n" % ("canvas_user_id", "email_status"))
-
-    count = 0
-    for canvas_user_id in ids:
-        count += 1
-        if count % 25 == 0:
-            print("%s / %s complete" % (count, total))
-
-        user = canvas.get_user(canvas_user_id)
-
-        email_status = "NONE"
+    for user in USERS:
+        user_id = user.canvas_user_id
+        user = canvas.get_user(user_id)
         communication_channels = user.get_communication_channels()
+        try:
+            email_status = communication_channels[0].workflow_state
+            print(f"- Email status is {email_status} for {user_id}")
+        except:
+            print(f"- Error occured for {user_id}")
+            UNCONFIRMED.append([user_id, "ERROR"])
 
-        for c in communication_channels:  # only need the first one
-            email_status = c.workflow_state
-            break
+        if email_status == "unconfirmed":
+            print(user_id, email_status)
+            UNCONFIRMED.append([user_id, email_status])
 
-        if email_status == "NONE" or email_status == "unconfirmed":
-            outFile.write("%s,%s\n" % (canvas_user_id, email_status))
-
-    outFile.close()
+    return pandas.DataFrame(UNCONFIRMED, columns=["canvas user id", "email status"])
 
 
-# def unconfirmed_email_check_school(inputfile=UNCONFIRMED, outputfile=REMEDY):
-#     # given the unconfirmed emails list, checks in the original file if they
-#     # have multiple enrollments if they have multiple enrollments, check if any
-#     # all of the enrollments are in schools we do not support if this is the
-#     # case, write this user down in a separate file otherwise, write them in a
-#     # file that will then be remediated.
+def check_school(data, canvas):
+    # given the unconfirmed emails list, checks in the original file if they
+    # have multiple enrollments if they have multiple enrollments, check if any
+    # all of the enrollments are in schools we do not support if this is the
+    # case, write this user down in a separate file otherwise, write them in a
+    # file that will then be remediated.
 
-#     canvas = get_canvas(TESTING)
+    ACCOUNTS = [
+        "99243",
+        "99237",
+        "128877",
+        "99241",
+        "99244",
+        "99238",
+        "99239",
+        "131428",
+        "99240",
+        "132153",
+        "82192",
+    ]
+    SUB_ACCOUNTS = []
 
-#     SUB_ACCOUNTS = []
-#     ACCOUNTS = [
-#         "99243",
-#         "99237",
-#         "128877",
-#         "99241",
-#         "99244",
-#         "99238",
-#         "99239",
-#         "131428",
-#         "99240",
-#         "132153",
-#         "82192",
-#     ]
-#     for a in ACCOUNTS:
-#         SUB_ACCOUNTS += find_accounts_subaccounts(canvas, int(a))
-#     print(SUB_ACCOUNTS)
+    for account in ACCOUNTS:
+        SUB_ACCOUNTS += find_accounts_subaccounts(canvas, account)
 
-#     dataFile = open(inputfile, "r")
-#     dataFile.readline()  # THIS SKIPS THE FIRST LINE
+    outFile.write("%s,%s,%s\n" % ("canvas_user_id", "email_status", "can_remediate"))
 
-#     outFile = open(outputfile, "w+")
-#     outFile.write("%s,%s,%s\n" % ("canvas_user_id", "email_status", "can_remediate"))
+    ROWS = data.itertuples(index=False)
 
-#     for line in dataFile:
-#         canvas_user_id, email_status = line.replace("\n", "").split(",")
-#         user = canvas.get_user(canvas_user_id)
-#         user_enrollments = user.get_courses()  # should we limit by term?
-#         can_fix = False
-#         for course in user_enrollments:
-#             try:
-#                 if str(course.account_id) in SUB_ACCOUNTS:
-#                     can_fix = True
-#                     break  # will this stop from iterating through the rest of the list?
-#             except Exception as ex:
-#                 print("\t error with user %s: %s" % (canvas_user_id, ex))
-#             # check if the account id is in the list of sub accounts
-#             # if it is not_supported_school = False
+    for row in ROWS:
+        canvas_user_id, email_status = row
+        user = canvas.get_user(canvas_user_id)
+        user_enrollments = user.get_courses()
+        can_fix = False
+        for course in user_enrollments:
+            try:
+                if str(course.account_id) in SUB_ACCOUNTS:
+                    can_fix = True
+                    break
+            except Exception as ex:
+                print("\t error with user %s: %s" % (canvas_user_id, ex))
+            # check if the account id is in the list of sub accounts
+            # if it is not_supported_school = False
 
-#         # we can remediate this user's account if the final column is False!
-#         outFile.write("%s,%s,%s\n" % (canvas_user_id, email_status, can_fix))
-
-#     dataFile.close()
-#     outFile.close()
+        # we can remediate this user's account if the final column is False!
+        outFile.write("%s,%s,%s\n" % (canvas_user_id, email_status, can_fix))
 
 
 # # red the enrollment file and verify the emails of all
@@ -305,8 +279,10 @@ def find_unconfirmed_emails(inputfile=ENROLLED, outputfile=UNCONFIRMED):
 # verify_email_list()
 
 
-def email_main(test, verbose):
-    print(test, verbose)
+def email_main(test):
     report = find_users_report()
     report = cleanup_report(report)
+    CANVAS = get_canvas(test)
+    UNCONFIRMED = find_unconfirmed_emails(report, CANVAS)
+    check_school(UNCONFIRMED, CANVAS)
     typer.echo("FINISHED")

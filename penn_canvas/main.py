@@ -69,12 +69,12 @@ def email(
         "--test",
         help="Use the Canvas test instance (https://upenn.test.instructure.com/) instead of production",
     ),
-    verbose: bool = typer.Option(False, "--verbose"),
+    # verbose: bool = typer.Option(False, "--verbose"),
 ):
     """
     Email confirmation
     """
-    email_main(test, verbose)
+    email_main(test)
 
 
 @app.command()

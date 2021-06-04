@@ -55,14 +55,15 @@ def get_canvas(test):
     )
 
 
-def find_accounts_subaccounts(canvas, account_id):
-    subs_list = [account_id]
-    account = canvas.get_account(account_id)
-    subs = account.get_subaccounts(recursive=True)
+def find_sub_accounts(canvas, account_id):
+    ACCOUNT = canvas.get_account(account_id)
+    sub_accounts = ACCOUNT.get_subaccounts(recursive=True)
+    ACCOUNTS = [account_id]
 
-    for sub in subs:
-        subs_list += [sub.id]
-    return subs_list
+    for account in sub_accounts:
+        ACCOUNTS.append(sub.id)
+
+    return ACCOUNTS
 
 
 def code_to_sis(course_code):

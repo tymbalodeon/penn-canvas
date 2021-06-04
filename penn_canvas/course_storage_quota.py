@@ -67,15 +67,15 @@ def find_todays_report():
 
 def cleanup_report(report):
     typer.echo(") Removing unused columns...")
-    DATA = pandas.read_csv(report)
-    DATA = DATA[["id", "sis id", "account id", "storage used in MB"]]
+    data = pandas.read_csv(report)
+    data = data[["id", "sis id", "account id", "storage used in MB"]]
 
     typer.echo(") Removing courses with 0 storage...")
-    DATA.drop(DATA[DATA["storage used in MB"] == 0].index, inplace=True)
-    DATA.sort_values(by=["storage used in MB"], inplace=True)
-    DATA = DATA.astype("string", copy=False, errors="ignore")
+    data.drop(data[data["storage used in MB"] == 0].index, inplace=True)
+    data.sort_values(by=["storage used in MB"], inplace=True)
+    data = data.astype("string", copy=False, errors="ignore")
 
-    return DATA
+    return data
 
 
 def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id=False):
