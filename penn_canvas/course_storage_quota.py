@@ -37,9 +37,9 @@ def find_todays_report():
     if not REPORTS.exists():
         Path.mkdir(REPORTS, parents=True)
         typer.echo(
-            f"\tCanvas storage reports directory not found. Creating one for you at: {REPORTS} "
-            "Please add a Canvas storage report matching today's date to this directory and then run this script again. "
-            "(If you need instructions for generating a Canvas storage report, run this command with the '--help' flag.)"
+            f"\tCanvas storage reports directory not found. Creating one for you at: {REPORTS}"
+            "\n\tPlease add a Canvas storage report matching today's date to this directory and then run this script again."
+            "\n\t(If you need instructions for generating a Canvas storage report, run this command with the '--help' flag.)"
         )
         raise typer.Exit(1)
     else:
@@ -52,9 +52,9 @@ def find_todays_report():
 
         if TODAYS_REPORT == "":
             typer.echo(
-                "\tA Canvas storage report matching today's date was not found. "
-                f"Please add a Canvas storage report matching today's date to the following directory: {REPORTS} "
-                "(If you need instructions for generating a Canvas storage report, run this command with the '--help' flag.)"
+                "\tA Canvas storage report matching today's date was not found."
+                f"\n\tPlease add a Canvas storage report matching today's date to the following directory: {REPORTS}"
+                "\n\t(If you need instructions for generating a Canvas storage report, run this command with the '--help' flag.)"
             )
             raise typer.Exit(1)
         else:
