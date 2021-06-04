@@ -2,6 +2,7 @@ import typer
 
 from .canvas_shared import make_config
 from .course_storage_quota import storage_main
+from .email_confirmation import email_main
 
 # import email_confirmation
 # import module_progression_lock
@@ -62,11 +63,18 @@ def storage(
 
 
 @app.command()
-def email():
+def email(
+    test: bool = typer.Option(
+        False,
+        "--test",
+        help="Use the Canvas test instance (https://upenn.test.instructure.com/) instead of production",
+    ),
+    verbose: bool = typer.Option(False, "--verbose"),
+):
     """
     Email confirmation
     """
-    typer.echo("email")
+    email_main(test, verbose)
 
 
 @app.command()

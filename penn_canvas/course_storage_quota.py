@@ -67,22 +67,8 @@ def find_todays_report():
 
 def cleanup_report(report):
     typer.echo(") Removing unused columns...")
-    UNUSED_COLUMNS = [
-        "short name",
-        "name",
-        "account sis id",
-        "account name",
-        "sum of all files in MB",
-    ]
     DATA = pandas.read_csv(report)
-
-    for column in UNUSED_COLUMNS:
-        if column in DATA:
-            DATA.drop(
-                [column],
-                axis=1,
-                inplace=True,
-            )
+    DATA = DATA[["id", "sis id", "account id", "storage used in MB"]]
 
     typer.echo(") Removing courses with 0 storage...")
     DATA.drop(DATA[DATA["storage used in MB"] == 0].index, inplace=True)
@@ -217,9 +203,9 @@ def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
 
 
 def storage_main(test, verbose):
-    REPORT = find_todays_report()
+    report = find_todays_report()
+    report = cleanup_report(report)
     CANVAS = get_canvas(test)
-    CLEAN_REPORT = cleanup_report(REPORT)
-    COURSES_TO_INCREASE = check_percent_storage(CLEAN_REPORT, CANVAS, verbose)
+    COURSES_TO_INCREASE = check_percent_storage(report, CANVAS, verbose)
     increase_quota(COURSES_TO_INCREASE, CANVAS, verbose)
     typer.echo("FINISHED")
