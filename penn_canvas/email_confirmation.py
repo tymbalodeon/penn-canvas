@@ -66,25 +66,31 @@ def cleanup_report(report):
     return data
 
 
-def find_unconfirmed_emails(data, canvas):
+def find_unconfirmed_emails(data, canvas, verbose):
     typer.echo(") Finding unconfirmed emails...")
     USERS = data.itertuples(index=False)
-
     UNCONFIRMED = list()
 
     for user in USERS:
         user_id = user.canvas_user_id
         user = canvas.get_user(user_id)
         communication_channels = user.get_communication_channels()
+
         try:
             email_status = communication_channels[0].workflow_state
-            print(f"- Email status is {email_status} for {user_id}")
+            if verbose:
+                status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
+                typer.echo(f"- Email status is {status} for user: {user_id}")
         except:
-            print(f"- Error occured for {user_id}")
+            if verbose:
+                error = typer.style("Error occured for user:", fg=typer.colors.YELLOW)
+                typer.echo(f"- {error} {user_id}")
             UNCONFIRMED.append([user_id, "ERROR"])
 
         if email_status == "unconfirmed":
-            print(user_id, email_status)
+            if verbose:
+                status = typer.style(f"{email_status}", fg=typer.colors.YELLOW)
+                typer.echo(f"- Email status is {status} for {user_id}")
             UNCONFIRMED.append([user_id, email_status])
 
     return pandas.DataFrame(UNCONFIRMED, columns=["canvas user id", "email status"])
@@ -113,7 +119,7 @@ def check_school(data, canvas):
     SUB_ACCOUNTS = []
 
     for account in ACCOUNTS:
-        SUB_ACCOUNTS += find_accounts_subaccounts(canvas, account)
+        SUB_ACCOUNTS += find_subaccounts(canvas, account)
 
     outFile.write("%s,%s,%s\n" % ("canvas_user_id", "email_status", "can_remediate"))
 
@@ -279,10 +285,10 @@ def check_school(data, canvas):
 # verify_email_list()
 
 
-def email_main(test):
+def email_main(test, verbose):
     report = find_users_report()
     report = cleanup_report(report)
     CANVAS = get_canvas(test)
-    UNCONFIRMED = find_unconfirmed_emails(report, CANVAS)
-    check_school(UNCONFIRMED, CANVAS)
+    UNCONFIRMED = find_unconfirmed_emails(report, CANVAS, verbose)
+    # check_school(UNCONFIRMED, CANVAS)
     typer.echo("FINISHED")
