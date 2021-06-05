@@ -61,7 +61,7 @@ def find_sub_accounts(canvas, account_id):
     ACCOUNTS = [account_id]
 
     for account in sub_accounts:
-        ACCOUNTS.append(sub.id)
+        ACCOUNTS.append(account.id)
 
     return ACCOUNTS
 

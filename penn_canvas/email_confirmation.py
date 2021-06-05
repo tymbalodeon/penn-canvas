@@ -27,6 +27,19 @@ from .canvas_shared import find_sub_accounts, get_canvas
 
 EMAIL = Path.home() / "penn-canvas/email"
 REPORTS = EMAIL / "reports"
+ACCOUNTS = [
+    "99243",
+    "99237",
+    "128877",
+    "99241",
+    "99244",
+    "99238",
+    "99239",
+    "131428",
+    "99240",
+    "132153",
+    "82192",
+]
 
 
 def find_users_report():
@@ -78,9 +91,6 @@ def find_unconfirmed_emails(data, canvas, verbose):
 
         try:
             email_status = communication_channels[0].workflow_state
-            if verbose:
-                status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
-                typer.echo(f"- Email status is {status} for user: {user_id}")
         except:
             if verbose:
                 error = typer.style("Error occured for user:", fg=typer.colors.YELLOW)
@@ -92,36 +102,21 @@ def find_unconfirmed_emails(data, canvas, verbose):
                 status = typer.style(f"{email_status}", fg=typer.colors.YELLOW)
                 typer.echo(f"- Email status is {status} for {user_id}")
             UNCONFIRMED.append([user_id, email_status])
+        elif verbose:
+            status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
+            typer.echo(f"- Email status is {status} for user: {user_id}")
 
     return pandas.DataFrame(UNCONFIRMED, columns=["canvas user id", "email status"])
 
 
 def check_school(data, canvas):
-    # given the unconfirmed emails list, checks in the original file if they
-    # have multiple enrollments if they have multiple enrollments, check if any
-    # all of the enrollments are in schools we do not support if this is the
-    # case, write this user down in a separate file otherwise, write them in a
-    # file that will then be remediated.
-
-    ACCOUNTS = [
-        "99243",
-        "99237",
-        "128877",
-        "99241",
-        "99244",
-        "99238",
-        "99239",
-        "131428",
-        "99240",
-        "132153",
-        "82192",
-    ]
+    typer.echo(") Checking enrollments for users with unconfirmed emails...")
     SUB_ACCOUNTS = []
 
     for account in ACCOUNTS:
-        SUB_ACCOUNTS += find_subaccounts(canvas, account)
+        SUB_ACCOUNTS += find_sub_accounts(canvas, account)
 
-    outFile.write("%s,%s,%s\n" % ("canvas_user_id", "email_status", "can_remediate"))
+    # outFile.write("%s,%s,%s\n" % ("canvas_user_id", "email_status", "can_remediate"))
 
     ROWS = data.itertuples(index=False)
 
@@ -129,19 +124,24 @@ def check_school(data, canvas):
         canvas_user_id, email_status = row
         user = canvas.get_user(canvas_user_id)
         user_enrollments = user.get_courses()
-        can_fix = False
-        for course in user_enrollments:
+        account_ids = map(lambda x: x.account_id, user_enrollments)
+        # can_fix = False
+
+        for account_id in account_ids:
             try:
-                if str(course.account_id) in SUB_ACCOUNTS:
-                    can_fix = True
+                if str(account_id) in SUB_ACCOUNTS:
+                    print(account_id)
+                    # can_fix = True
+                    print("CAN FIX")
                     break
-            except Exception as ex:
-                print("\t error with user %s: %s" % (canvas_user_id, ex))
+            except Exception as error:
+                print("- Error encountered for user: {canvas_user_id}")
+                print("\t ERROR: {error}")
             # check if the account id is in the list of sub accounts
             # if it is not_supported_school = False
 
         # we can remediate this user's account if the final column is False!
-        outFile.write("%s,%s,%s\n" % (canvas_user_id, email_status, can_fix))
+        # outFile.write("%s,%s,%s\n" % (canvas_user_id, email_status, can_fix))
 
 
 # # red the enrollment file and verify the emails of all
@@ -290,5 +290,5 @@ def email_main(test, verbose):
     report = cleanup_report(report)
     CANVAS = get_canvas(test)
     UNCONFIRMED = find_unconfirmed_emails(report, CANVAS, verbose)
-    # check_school(UNCONFIRMED, CANVAS)
+    check_school(UNCONFIRMED, CANVAS)
     typer.echo("FINISHED")
