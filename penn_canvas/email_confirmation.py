@@ -137,7 +137,9 @@ def check_school(data, canvas, verbose):
                 typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
             USERS.append([canvas_user_id, email_status, "N"])
 
-    return pandas.DataFrame(data, columns=["canvas user id", "email status", "fixable"])
+    return pandas.DataFrame(
+        USERS, columns=["canvas user id", "email status", "fixable"]
+    )
 
 
 # # red the enrollment file and verify the emails of all
