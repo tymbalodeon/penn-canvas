@@ -21,7 +21,7 @@ app = typer.Typer(help=MAIN_HELP)
 @app.command()
 def configure():
     """
-    Automatically generate a config file for Penn-Canvas
+    Automatically generate a config file for Penn-Canvas.
     """
     make_config()
 
