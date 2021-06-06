@@ -128,12 +128,12 @@ def check_school(data, canvas, verbose):
 
         if fixable_id:
             if verbose:
-                fixable = typer.styler("fixable", fg=typer.colors.GREEN)
+                fixable = typer.style("fixable", fg=typer.colors.GREEN)
                 typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
             USERS.append([canvas_user_id, email_status, "Y"])
         else:
             if verbose:
-                fixable = typer.styler("NOT fixable", fg=typer.colors.YELLOW)
+                fixable = typer.style("NOT fixable", fg=typer.colors.YELLOW)
                 typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
             USERS.append([canvas_user_id, email_status, "N"])
 
