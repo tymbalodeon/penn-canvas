@@ -109,14 +109,13 @@ def find_unconfirmed_emails(data, canvas, verbose):
     return pandas.DataFrame(UNCONFIRMED, columns=["canvas user id", "email status"])
 
 
-def check_school(data, canvas):
+def check_school(data, canvas, verbose):
     typer.echo(") Checking enrollments for users with unconfirmed emails...")
-    SUB_ACCOUNTS = []
+    SUB_ACCOUNTS = list()
+    USERS = list()
 
     for account in ACCOUNTS:
         SUB_ACCOUNTS += find_sub_accounts(canvas, account)
-
-    # outFile.write("%s,%s,%s\n" % ("canvas_user_id", "email_status", "can_remediate"))
 
     ROWS = data.itertuples(index=False)
 
@@ -125,23 +124,20 @@ def check_school(data, canvas):
         user = canvas.get_user(canvas_user_id)
         user_enrollments = user.get_courses()
         account_ids = map(lambda x: x.account_id, user_enrollments)
-        # can_fix = False
+        fixable_id = next(filter(lambda x: x in SUB_ACCOUNTS, account_ids), None)
 
-        for account_id in account_ids:
-            try:
-                if str(account_id) in SUB_ACCOUNTS:
-                    print(account_id)
-                    # can_fix = True
-                    print("CAN FIX")
-                    break
-            except Exception as error:
-                print("- Error encountered for user: {canvas_user_id}")
-                print("\t ERROR: {error}")
-            # check if the account id is in the list of sub accounts
-            # if it is not_supported_school = False
+        if fixable_id:
+            if verbose:
+                fixable = typer.styler("fixable", fg=typer.colors.GREEN)
+                typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
+            USERS.append([canvas_user_id, email_status, "Y"])
+        else:
+            if verbose:
+                fixable = typer.styler("NOT fixable", fg=typer.colors.YELLOW)
+                typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
+            USERS.append([canvas_user_id, email_status, "N"])
 
-        # we can remediate this user's account if the final column is False!
-        # outFile.write("%s,%s,%s\n" % (canvas_user_id, email_status, can_fix))
+    return pandas.DataFrame(data, columns=["canvas user id", "email status", "fixable"])
 
 
 # # red the enrollment file and verify the emails of all
@@ -290,5 +286,5 @@ def email_main(test, verbose):
     report = cleanup_report(report)
     CANVAS = get_canvas(test)
     UNCONFIRMED = find_unconfirmed_emails(report, CANVAS, verbose)
-    check_school(UNCONFIRMED, CANVAS)
+    check_school(UNCONFIRMED, CANVAS, verbose)
     typer.echo("FINISHED")
