@@ -1,4 +1,3 @@
-import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -84,10 +83,10 @@ def find_unconfirmed_emails(data, canvas, verbose):
                     status = typer.style(f"{email_status}", fg=typer.colors.YELLOW)
                     typer.echo(f"- Email status is {status} for user: {user_id}")
                 UNCONFIRMED.append([user_id, email_status])
-            elif verbose:
+            elif email_status == "active" and verbose:
                 status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
                 typer.echo(f"- Email status is {status} for user: {user_id}")
-        except:
+        except IndexError:
             if verbose:
                 error = typer.style("No email found for user:", fg=typer.colors.YELLOW)
                 typer.echo(f"- {error} {user_id}")
