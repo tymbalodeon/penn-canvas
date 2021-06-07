@@ -73,7 +73,7 @@ def find_unconfirmed_emails(data, canvas, verbose):
             email_status = communication_channels[0].workflow_state
         except:
             if verbose:
-                error = typer.style("Error occured for user:", fg=typer.colors.YELLOW)
+                error = typer.style("No email found for user:", fg=typer.colors.YELLOW)
                 typer.echo(f"- {error} {user_id}")
             UNCONFIRMED.append([user_id, "ERROR"])
 
