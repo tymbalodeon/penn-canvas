@@ -7,13 +7,10 @@ import typer
 
 from .canvas_shared import find_sub_accounts, get_canvas
 
-TODAY = datetime.now().strftime("%Y_%m_%d")
 EMAIL = Path.home() / "penn-canvas/email"
 REPORTS = EMAIL / "reports"
 USERS_REPORT = REPORTS / "users.csv"
 RESULTS = EMAIL / "results"
-RESULT_PATH = RESULTS / f"{TODAY}_results.csv"
-COMPLETED = EMAIL / "completed"
 ACCOUNTS = [
     "99243",
     "99237",
@@ -52,7 +49,12 @@ def find_users_report():
             )
             raise typer.Exit(1)
         else:
-            return USERS_REPORT
+            DATE_CREATED = datetime.fromtimestamp(
+                USERS_REPORT.stat().st_birthtime
+            ).strftime("%Y_%m_%d")
+            DATED_REPORT = REPORTS / f"{DATE_CREATED}_{USERS_REPORT.name}"
+            RESULT_PATH = RESULTS / f"{DATE_CREATED}_results.csv"
+            return USERS_REPORT.rename(DATED_REPORT), RESULT_PATH
 
 
 def cleanup_report(report):
@@ -80,7 +82,7 @@ def find_unconfirmed_emails(data, canvas, verbose):
             if email_status == "unconfirmed":
                 if verbose:
                     status = typer.style(f"{email_status}", fg=typer.colors.YELLOW)
-                    typer.echo(f"- Email status is {status} for {user_id}")
+                    typer.echo(f"- Email status is {status} for user: {user_id}")
                 UNCONFIRMED.append([user_id, email_status])
             elif verbose:
                 status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
@@ -94,7 +96,7 @@ def find_unconfirmed_emails(data, canvas, verbose):
     return pandas.DataFrame(UNCONFIRMED, columns=["canvas user id", "email status"])
 
 
-def check_school(data, canvas, verbose):
+def check_school(data, canvas, result_path, verbose):
     typer.echo(") Checking enrollments for users with unconfirmed emails...")
     SUB_ACCOUNTS = list()
     USERS = list()
@@ -122,7 +124,7 @@ def check_school(data, canvas, verbose):
                 typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
             USERS.append([canvas_user_id, email_status, "N"])
 
-    typer.echo(f") Saving results to {RESULT_PATH}...")
+    typer.echo(f") Saving results to {result_path}...")
 
     if not RESULTS.exists():
         Path.mkdir(RESULTS)
@@ -130,25 +132,13 @@ def check_school(data, canvas, verbose):
     RESULT = pandas.DataFrame(
         USERS, columns=["canvas user id", "email status", "fixable"]
     )
-    RESULT.to_csv(RESULT_PATH, index=False)
-
-
-def move_and_rename_report(report):
-    typer.echo(') Moving Canvas Users Provisioning report to "completed" folder...')
-
-    if not COMPLETED.exists():
-        Path.mkdir(COMPLETED)
-
-    new_name = report.rename(f"{TODAY}_{report.name}")
-    new_path = COMPLETED
-    shutil.move(new_name, new_path)
+    RESULT.to_csv(result_path, index=False)
 
 
 def email_main(test, verbose):
-    report = find_users_report()
+    report, RESULT_PATH = find_users_report()
     report = cleanup_report(report)
     CANVAS = get_canvas(test)
     UNCONFIRMED = find_unconfirmed_emails(report, CANVAS, verbose)
-    check_school(UNCONFIRMED, CANVAS, verbose)
-    move_and_rename_report(USERS_REPORT)
+    check_school(UNCONFIRMED, CANVAS, RESULT_PATH, verbose)
     typer.echo("FINISHED")
