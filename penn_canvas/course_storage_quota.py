@@ -4,14 +4,12 @@ from pathlib import Path
 import pandas
 import typer
 
-from .canvas_shared import code_to_sis, get_canvas
+from .canvas_shared import code_to_sis, get_canvas, get_command_paths
 
 TODAY = datetime.now().strftime("%d_%b_%Y")
-STORAGE = Path.home() / "penn-canvas/storage"
-REPORTS = STORAGE / "reports"
-RESULTS = STORAGE / "results"
-TODAY_IN_NUMS = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
-RESULT_PATH = RESULTS / f"{TODAY_IN_NUMS}.csv"
+TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
+REPORTS, RESULTS = get_command_paths("storage")
+RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}.csv"
 SUB_ACCOUNTS = [
     "132477",
     "99243",

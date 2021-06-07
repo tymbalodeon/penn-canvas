@@ -4,12 +4,10 @@ from pathlib import Path
 import pandas
 import typer
 
-from .canvas_shared import find_sub_accounts, get_canvas
+from .canvas_shared import find_sub_accounts, get_canvas, get_command_paths
 
-EMAIL = Path.home() / "penn-canvas/email"
-REPORTS = EMAIL / "reports"
+REPORTS, RESULTS = get_command_paths("email")
 USERS_REPORT = REPORTS / "users.csv"
-RESULTS = EMAIL / "results"
 ACCOUNTS = [
     "99243",
     "99237",
