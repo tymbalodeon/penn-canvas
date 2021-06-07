@@ -108,19 +108,19 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
 
                 if percentage_used >= 0.79:
                     if verbose:
-                        typer.secho(f"\t* Increase required", fg=typer.colors.YELLOW)
+                        typer.secho("\t* Increase required", fg=typer.colors.YELLOW)
                     if pandas.isna(sis_id):
                         if verbose:
                             typer.secho(
-                                f"\t* ACTION REQUIRED: A SIS_ID must be added for this"
-                                f" course.",
+                                "\t* ACTION REQUIRED: A SIS_ID must be added for this"
+                                " course.",
                                 fg=typer.colors.YELLOW,
                             )
                     elif sis_id:
                         COURSES_TO_INCREASE.append(sis_id)
-            except:
+            except Exception:
                 if verbose:
-                    typer.secho(f"\t* Couldn't find course", fg=typer.colors.YELLOW)
+                    typer.secho("\t* Couldn't find course", fg=typer.colors.YELLOW)
 
     if verbose:
         for row in ROWS:
@@ -157,7 +157,7 @@ def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
             )
             SUBACCOUNT.append(canvas_course.account_id)
             COURSE_ID.append(sis_id)
-        except:
+        except Exception:
             canvas_course = None
             SUBACCOUNT.append("ERROR")
             COURSE_ID.append(sis_id)
@@ -171,7 +171,7 @@ def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
                 typer.echo(
                     f"\t- {sis_id} | Old Quota: {old_quota} | New Quota: {new_quota}"
                 )
-            except:
+            except Exception:
                 new_quota = "ERROR"
                 typer.secho(
                     f"\t* Failed to increase quota for Canvas course ID: {sis_id}",
