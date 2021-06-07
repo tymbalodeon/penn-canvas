@@ -10,7 +10,8 @@ TODAY = datetime.now().strftime("%d_%b_%Y")
 STORAGE = Path.home() / "penn-canvas/storage"
 REPORTS = STORAGE / "reports"
 RESULTS = STORAGE / "results"
-RESULT_PATH = RESULTS / f"{TODAY}.csv"
+TODAY_IN_NUMS = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
+RESULT_PATH = RESULTS / f"{TODAY_IN_NUMS}.csv"
 SUB_ACCOUNTS = [
     "132477",
     "99243",

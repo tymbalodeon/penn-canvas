@@ -7,7 +7,7 @@ import typer
 
 from .canvas_shared import find_sub_accounts, get_canvas
 
-TODAY = datetime.now().strftime("%d_%b_%Y")
+TODAY = datetime.now().strftime("%Y_%m_%d")
 EMAIL = Path.home() / "penn-canvas/email"
 REPORTS = EMAIL / "reports"
 USERS_REPORT = REPORTS / "users.csv"
@@ -134,14 +134,14 @@ def check_school(data, canvas, verbose):
 
 
 def move_and_rename_report(report):
-    typer.echo(') Moving Canvas Users Provisioning report to "completed" folder..')
+    typer.echo(') Moving Canvas Users Provisioning report to "completed" folder...')
 
     if not COMPLETED.exists():
         Path.mkdir(COMPLETED)
 
-    new_path = COMPLETED / report.stem
-    shutil.move(report, new_path)
-    report.rename(f"{report.stem}_{TODAY}.csv")
+    new_name = report.rename(f"{TODAY}_{report.name}")
+    new_path = COMPLETED
+    shutil.move(new_name, new_path)
 
 
 def email_main(test, verbose):
