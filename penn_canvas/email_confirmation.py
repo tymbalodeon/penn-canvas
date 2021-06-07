@@ -163,6 +163,7 @@ def email_main(test, verbose):
     STYLED_PROBLEMS = typer.style(PROBLEMS, fg=typer.colors.MAGENTA)
     STYLED_FIXABLE = typer.style(FIXABLE, fg=typer.colors.MAGENTA)
     typer.echo(
-        f"- Found {STYLED_PROBLEMS} users with unconfirmed or missing an email account, of which {STYLED_FIXABLE} are manually fixable."
+        f"- Found {STYLED_PROBLEMS} users with unconfirmed or missing an email account,"
+        f" of which {STYLED_FIXABLE} are manually fixable."
     )
     typer.echo("FINISHED")

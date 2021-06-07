@@ -108,7 +108,10 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
                     if verbose:
                         typer.secho("\t* Increase required", fg=typer.colors.YELLOW)
                     if pandas.isna(sis_id):
-                        sis_id_error = "ACTION REQUIRED: A SIS_ID must be added for course: {canvas_id}"
+                        sis_id_error = (
+                            "ACTION REQUIRED: A SIS_ID must be added for course:"
+                            " {canvas_id}"
+                        )
                         if verbose:
                             typer.secho(f"\t* {sis_id_error}", fg=typer.colors.YELLOW)
                         ERRORS.append(f"- {sis_id_error}")
