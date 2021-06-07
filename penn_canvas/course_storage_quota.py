@@ -138,9 +138,6 @@ def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
         " storage..."
     )
 
-    if not RESULTS.exists():
-        Path.mkdir(RESULTS)
-
     SUBACCOUNT = list()
     COURSE_ID = list()
     OLD_QUOTA = list()
@@ -196,6 +193,12 @@ def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
                 increase_course_quota(sis_id)
 
     ROWS = list(zip(SUBACCOUNT, COURSE_ID, OLD_QUOTA, NEW_QUOTA))
+
+    typer.echo(f") Saving results to {RESULT_PATH}...")
+
+    if not RESULTS.exists():
+        Path.mkdir(RESULTS)
+
     RESULT = pandas.DataFrame(
         ROWS, columns=["subaccount_id", "course_id", "old_quota", "new_quota"]
     )

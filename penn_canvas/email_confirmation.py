@@ -1,3 +1,4 @@
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -9,8 +10,10 @@ from .canvas_shared import find_sub_accounts, get_canvas
 TODAY = datetime.now().strftime("%d_%b_%Y")
 EMAIL = Path.home() / "penn-canvas/email"
 REPORTS = EMAIL / "reports"
+USERS_REPORT = REPORTS / "users.csv"
 RESULTS = EMAIL / "results"
-RESULT_PATH = EMAIL / f"{TODAY}_results.csv"
+RESULT_PATH = RESULTS / f"{TODAY}_results.csv"
+COMPLETED = EMAIL / "completed"
 ACCOUNTS = [
     "99243",
     "99237",
@@ -40,8 +43,6 @@ def find_users_report():
         )
         raise typer.Exit(1)
     else:
-        USERS_REPORT = REPORTS / "users.csv"
-
         if not USERS_REPORT.exists():
             typer.echo(
                 "\tA Canvas Users Provisioning report was not found.\n\tPlease add a"
@@ -121,10 +122,26 @@ def check_school(data, canvas, verbose):
                 typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
             USERS.append([canvas_user_id, email_status, "N"])
 
+    typer.echo(f") Saving results to {RESULT_PATH}...")
+
+    if not RESULTS.exists():
+        Path.mkdir(RESULTS)
+
     RESULT = pandas.DataFrame(
         USERS, columns=["canvas user id", "email status", "fixable"]
     )
     RESULT.to_csv(RESULT_PATH, index=False)
+
+
+def move_and_rename_report(report):
+    typer.echo(') Moving Canvas Users Provisioning report to "completed" folder..')
+
+    if not COMPLETED.exists():
+        Path.mkdir(COMPLETED)
+
+    new_path = COMPLETED / report.stem
+    shutil.move(report, new_path)
+    report.rename(f"{report.stem}_{TODAY}.csv")
 
 
 def email_main(test, verbose):
@@ -133,4 +150,5 @@ def email_main(test, verbose):
     CANVAS = get_canvas(test)
     UNCONFIRMED = find_unconfirmed_emails(report, CANVAS, verbose)
     check_school(UNCONFIRMED, CANVAS, verbose)
+    move_and_rename_report(USERS_REPORT)
     typer.echo("FINISHED")
