@@ -131,6 +131,7 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
                 check_percentages(row)
 
     COURSES = pandas.DataFrame({"sis_id": COURSES_TO_INCREASE})
+
     return COURSES, ERRORS
 
 
@@ -207,6 +208,7 @@ def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
         ROWS, columns=["subaccount_id", "course_id", "old_quota", "new_quota"]
     )
     RESULT.to_csv(RESULT_PATH, index=False)
+
     return str(len(RESULT.index))
 
 

@@ -51,6 +51,7 @@ def find_users_report():
             ).strftime("%Y_%m_%d")
             DATED_REPORT = REPORTS / f"{DATE_CREATED}_{USERS_REPORT.name}"
             RESULT_PATH = RESULTS / f"{DATE_CREATED}_results.csv"
+
             return USERS_REPORT.rename(DATED_REPORT), RESULT_PATH
 
 
@@ -60,6 +61,7 @@ def cleanup_report(report):
     data = data[["canvas_user_id"]]
     data.drop_duplicates(inplace=True)
     data = data.astype("string", copy=False)
+
     return data
 
 
@@ -105,7 +107,6 @@ def check_school(data, canvas, result_path, verbose):
     typer.echo(") Checking enrollments for users with unconfirmed emails...")
     SUB_ACCOUNTS = list()
     USERS = list()
-    fixable_users = 0
 
     for account in ACCOUNTS:
         SUB_ACCOUNTS += find_sub_accounts(canvas, account)
@@ -124,7 +125,6 @@ def check_school(data, canvas, result_path, verbose):
                 fixable = typer.style("fixable", fg=typer.colors.GREEN)
                 typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
             USERS.append([canvas_user_id, email_status, "Y"])
-            fixable_users += 1
         else:
             if verbose:
                 fixable = typer.style("NOT fixable", fg=typer.colors.YELLOW)
@@ -148,6 +148,8 @@ def check_school(data, canvas, result_path, verbose):
         USERS, columns=["canvas user id", "email status", "fixable"]
     )
     RESULT.to_csv(result_path, index=False)
+    fixable_users = len(RESULT[RESULT["fixable"] == "Y"].index)
+
     return str(len(RESULT.index)), str(fixable_users)
 
 
