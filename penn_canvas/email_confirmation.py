@@ -147,6 +147,7 @@ def check_school(data, canvas, result_path, verbose):
     RESULT = pandas.DataFrame(
         USERS, columns=["canvas user id", "email status", "fixable"]
     )
+    RESULT.sort_values(by=["email status"], inplace=True)
     RESULT.to_csv(result_path, index=False)
     fixable_users = len(RESULT[RESULT["fixable"] == "Y"].index)
 
