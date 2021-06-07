@@ -105,6 +105,7 @@ def check_school(data, canvas, result_path, verbose):
     typer.echo(") Checking enrollments for users with unconfirmed emails...")
     SUB_ACCOUNTS = list()
     USERS = list()
+    fixable_users = 0
 
     for account in ACCOUNTS:
         SUB_ACCOUNTS += find_sub_accounts(canvas, account)
@@ -123,6 +124,7 @@ def check_school(data, canvas, result_path, verbose):
                 fixable = typer.style("fixable", fg=typer.colors.GREEN)
                 typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
             USERS.append([canvas_user_id, email_status, "Y"])
+            fixable_users += 1
         else:
             if verbose:
                 fixable = typer.style("NOT fixable", fg=typer.colors.YELLOW)
@@ -146,6 +148,7 @@ def check_school(data, canvas, result_path, verbose):
         USERS, columns=["canvas user id", "email status", "fixable"]
     )
     RESULT.to_csv(result_path, index=False)
+    return str(len(RESULT.index)), str(fixable_users)
 
 
 def email_main(test, verbose):
@@ -153,5 +156,10 @@ def email_main(test, verbose):
     report = cleanup_report(report)
     CANVAS = get_canvas(test)
     UNCONFIRMED = find_unconfirmed_emails(report, CANVAS, verbose)
-    check_school(UNCONFIRMED, CANVAS, RESULT_PATH, verbose)
+    PROBLEMS, FIXABLE = check_school(UNCONFIRMED, CANVAS, RESULT_PATH, verbose)
+    STYLED_PROBLEMS = typer.style(PROBLEMS, fg=typer.colors.MAGENTA)
+    STYLED_FIXABLE = typer.style(FIXABLE, fg=typer.colors.MAGENTA)
+    typer.echo(
+        f"- Found {STYLED_PROBLEMS} users with unconfirmed or missing an email account, of which {STYLED_FIXABLE} are manually fixable."
+    )
     typer.echo("FINISHED")

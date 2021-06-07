@@ -80,8 +80,8 @@ def cleanup_report(report):
 def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id=False):
     typer.echo(") Checking percentage of storage used for each course...")
     COURSES_TO_INCREASE = list()
-
     ROWS = data.itertuples(index=False)
+    ERRORS = list()
 
     def check_percentages(row):
         canvas_id, sis_id, account_id, storage_used = row
@@ -98,9 +98,9 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
                         fg=typer.colors.MAGENTA,
                     )
                     typer.echo(
-                        f"- Canvas ID: {canvas_id} | SIS_ID: {sis_id} | Storage used:"
-                        f" {storage_used} | Storage Quota (MB):"
-                        f" {canvas_course.storage_quota_mb} | Percentage used:"
+                        f"- Canvas ID: {canvas_id}, SIS_ID: {sis_id}, Storage used:"
+                        f" {storage_used}, Storage Quota (MB):"
+                        f" {canvas_course.storage_quota_mb}, Percentage used:"
                         f" {percentage_display}"
                     )
 
@@ -108,17 +108,19 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
                     if verbose:
                         typer.secho("\t* Increase required", fg=typer.colors.YELLOW)
                     if pandas.isna(sis_id):
+                        sis_id_error = "ACTION REQUIRED: A SIS_ID must be added for course: {canvas_id}"
                         if verbose:
-                            typer.secho(
-                                "\t* ACTION REQUIRED: A SIS_ID must be added for this"
-                                " course.",
-                                fg=typer.colors.YELLOW,
-                            )
+                            typer.secho(f"\t* {sis_id_error}", fg=typer.colors.YELLOW)
+                        ERRORS.append(f"- {sis_id_error}")
                     elif sis_id:
                         COURSES_TO_INCREASE.append(sis_id)
             except Exception:
+                not_found_error = (
+                    "Couldn't find course: Canvas ID: {canvas_id}, SIS ID: {sis_id}"
+                )
                 if verbose:
-                    typer.secho("\t* Couldn't find course", fg=typer.colors.YELLOW)
+                    typer.secho("\t* {not_found_error}", fg=typer.colors.YELLOW)
+                ERRORS.append(f"- {not_found_error}")
 
     if verbose:
         for row in ROWS:
@@ -128,7 +130,8 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
             for row in progress:
                 check_percentages(row)
 
-    return pandas.DataFrame({"sis_id": COURSES_TO_INCREASE})
+    COURSES = pandas.DataFrame({"sis_id": COURSES_TO_INCREASE})
+    return COURSES, ERRORS
 
 
 def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
@@ -168,7 +171,7 @@ def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
                 canvas_course.update(course={"storage_quota_mb": new_quota})
                 if verbose:
                     typer.echo(
-                        f"\t- {sis_id} | Old Quota: {old_quota} | New Quota: {new_quota}"
+                        f"\t- {sis_id}, Old Quota: {old_quota}, New Quota: {new_quota}"
                     )
             except Exception:
                 new_quota = "ERROR"
@@ -204,12 +207,24 @@ def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
         ROWS, columns=["subaccount_id", "course_id", "old_quota", "new_quota"]
     )
     RESULT.to_csv(RESULT_PATH, index=False)
+    return str(len(RESULT.index))
+
+
+def print_errors(errors):
+    color = typer.colors.YELLOW
+    typer.secho("- ERRORS:\n", fg=color)
+    for error in errors:
+        typer.secho(f"\t{error}", fg=color)
 
 
 def storage_main(test, verbose):
     report = find_todays_report()
     report = cleanup_report(report)
     CANVAS = get_canvas(test)
-    COURSES_TO_INCREASE = check_percent_storage(report, CANVAS, verbose)
-    increase_quota(COURSES_TO_INCREASE, CANVAS, verbose)
+    COURSES_TO_INCREASE, ERRORS = check_percent_storage(report, CANVAS, verbose)
+    INCREASED_COURSE_NUMBER = increase_quota(COURSES_TO_INCREASE, CANVAS, verbose)
+    STYLED_NUMBER = typer.style(INCREASED_COURSE_NUMBER, fg=typer.colors.MAGENTA)
+    typer.echo(f"- Increased storage quota for {STYLED_NUMBER} courses.")
+    if len(ERRORS) > 0:
+        print_errors(ERRORS)
     typer.echo("FINISHED")
