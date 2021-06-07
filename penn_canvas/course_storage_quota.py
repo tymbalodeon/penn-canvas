@@ -166,15 +166,17 @@ def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
 
             try:
                 canvas_course.update(course={"storage_quota_mb": new_quota})
-                typer.echo(
-                    f"\t- {sis_id} | Old Quota: {old_quota} | New Quota: {new_quota}"
-                )
+                if verbose:
+                    typer.echo(
+                        f"\t- {sis_id} | Old Quota: {old_quota} | New Quota: {new_quota}"
+                    )
             except Exception:
                 new_quota = "ERROR"
-                typer.secho(
-                    f"\t* Failed to increase quota for Canvas course ID: {sis_id}",
-                    fg=typer.colors.YELLOW,
-                )
+                if verbose:
+                    typer.secho(
+                        f"\t* Failed to increase quota for Canvas course ID: {sis_id}",
+                        fg=typer.colors.YELLOW,
+                    )
 
             OLD_QUOTA.append(old_quota)
             NEW_QUOTA.append(new_quota)
