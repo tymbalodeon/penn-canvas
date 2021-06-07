@@ -68,7 +68,7 @@ def find_unconfirmed_emails(data, canvas, verbose):
     USERS = data.itertuples(index=False)
     UNCONFIRMED = list()
 
-    for user in USERS:
+    def check_email_status(user):
         user_id = user.canvas_user_id
         user = canvas.get_user(user_id)
         communication_channels = user.get_communication_channels()
@@ -90,6 +90,14 @@ def find_unconfirmed_emails(data, canvas, verbose):
                 typer.echo(f"- {error} {user_id}")
             UNCONFIRMED.append([user_id, "not found"])
 
+    if verbose:
+        for user in USERS:
+            check_email_status(user)
+    else:
+        with typer.progressbar(USERS, length=len(data.index)) as progress:
+            for user in progress:
+                check_email_status(user)
+
     return pandas.DataFrame(UNCONFIRMED, columns=["canvas user id", "email status"])
 
 
@@ -103,7 +111,7 @@ def check_school(data, canvas, result_path, verbose):
 
     ROWS = data.itertuples(index=False)
 
-    for row in ROWS:
+    def check_fixable_status(row):
         canvas_user_id, email_status = row
         user = canvas.get_user(canvas_user_id)
         user_enrollments = user.get_courses()
@@ -120,6 +128,14 @@ def check_school(data, canvas, result_path, verbose):
                 fixable = typer.style("NOT fixable", fg=typer.colors.YELLOW)
                 typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
             USERS.append([canvas_user_id, email_status, "N"])
+
+    if verbose:
+        for row in ROWS:
+            check_fixable_status(row)
+    else:
+        with typer.progressbar(ROWS, length=len(data.index)) as progress:
+            for row in progress:
+                check_fixable_status(row)
 
     typer.echo(f") Saving results to {result_path}...")
 
