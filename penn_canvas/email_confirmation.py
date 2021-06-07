@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 
 import pandas
@@ -5,8 +6,11 @@ import typer
 
 from .canvas_shared import find_sub_accounts, get_canvas
 
+TODAY = datetime.now().strftime("%d_%b_%Y")
 EMAIL = Path.home() / "penn-canvas/email"
 REPORTS = EMAIL / "reports"
+RESULTS = EMAIL / "results"
+RESULT_PATH = EMAIL / f"{TODAY}_results.csv"
 ACCOUNTS = [
     "99243",
     "99237",
@@ -40,7 +44,7 @@ def find_users_report():
 
         if not USERS_REPORT.exists():
             typer.echo(
-                "\tA Canvas Users Provisioning report  was not found.\n\tPlease add a"
+                "\tA Canvas Users Provisioning report was not found.\n\tPlease add a"
                 " Canvas Users Provisioning report to this directory and then run this"
                 " script again.\n\t(If you need instructions for generating a Canvas"
                 " Provisioning report, run this command with the '--help' flag.)"
@@ -71,20 +75,20 @@ def find_unconfirmed_emails(data, canvas, verbose):
 
         try:
             email_status = communication_channels[0].workflow_state
+
+            if email_status == "unconfirmed":
+                if verbose:
+                    status = typer.style(f"{email_status}", fg=typer.colors.YELLOW)
+                    typer.echo(f"- Email status is {status} for {user_id}")
+                UNCONFIRMED.append([user_id, email_status])
+            elif verbose:
+                status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
+                typer.echo(f"- Email status is {status} for user: {user_id}")
         except:
             if verbose:
                 error = typer.style("No email found for user:", fg=typer.colors.YELLOW)
                 typer.echo(f"- {error} {user_id}")
-            UNCONFIRMED.append([user_id, "ERROR"])
-
-        if email_status == "unconfirmed":
-            if verbose:
-                status = typer.style(f"{email_status}", fg=typer.colors.YELLOW)
-                typer.echo(f"- Email status is {status} for {user_id}")
-            UNCONFIRMED.append([user_id, email_status])
-        elif verbose:
-            status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
-            typer.echo(f"- Email status is {status} for user: {user_id}")
+            UNCONFIRMED.append([user_id, "not found"])
 
     return pandas.DataFrame(UNCONFIRMED, columns=["canvas user id", "email status"])
 
@@ -117,9 +121,10 @@ def check_school(data, canvas, verbose):
                 typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
             USERS.append([canvas_user_id, email_status, "N"])
 
-    return pandas.DataFrame(
+    RESULT = pandas.DataFrame(
         USERS, columns=["canvas user id", "email status", "fixable"]
     )
+    RESULT.to_csv(RESULT_PATH, index=False)
 
 
 def email_main(test, verbose):
