@@ -129,6 +129,11 @@ def check_school(data, canvas, result_path, verbose):
 
     def check_fixable_status(row):
         canvas_user_id, email_status = row
+
+        if email_status == "not found":
+            USERS.append([canvas_user_id, email_status, "N"])
+            return
+
         user = canvas.get_user(canvas_user_id)
         user_enrollments = user.get_courses()
         account_ids = map(lambda account: account.account_id, user_enrollments)
