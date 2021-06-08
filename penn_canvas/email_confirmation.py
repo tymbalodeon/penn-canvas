@@ -74,19 +74,33 @@ def find_unconfirmed_emails(data, canvas, verbose):
         user_id = user.canvas_user_id
         user = canvas.get_user(user_id)
         communication_channels = user.get_communication_channels()
+        emails = filter(lambda x: x.type == "email", communication_channels)
+        email = next(emails, None)
 
-        try:
-            email_status = communication_channels[0].workflow_state
+        def get_status(email):
+            email_status = email.workflow_state
 
-            if email_status == "unconfirmed":
+            if email_status == "active":
                 if verbose:
-                    status = typer.style(f"{email_status}", fg=typer.colors.YELLOW)
+                    status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
                     typer.echo(f"- Email status is {status} for user: {user_id}")
-                UNCONFIRMED.append([user_id, email_status])
-            elif email_status == "active" and verbose:
-                status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
-                typer.echo(f"- Email status is {status} for user: {user_id}")
-        except IndexError:
+                return True
+            elif email_status == "unconfirmed":
+                return False
+
+        if email:
+            is_active = get_status(email)
+
+            while not is_active:
+                next_email = next(emails, None)
+                if not next_email:
+                    if verbose:
+                        status = typer.style("unconfirmed", fg=typer.colors.YELLOW)
+                        typer.echo(f"- Email status is {status} for user: {user_id}")
+                    UNCONFIRMED.append([user_id, "unconfirmed"])
+                    break
+                is_active = get_status(email)
+        else:
             if verbose:
                 error = typer.style("No email found for user:", fg=typer.colors.YELLOW)
                 typer.echo(f"- {error} {user_id}")
