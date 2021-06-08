@@ -74,7 +74,7 @@ def find_unconfirmed_emails(data, canvas, verbose):
         user_id = user.canvas_user_id
         user = canvas.get_user(user_id)
         communication_channels = user.get_communication_channels()
-        emails = filter(lambda x: x.type == "email", communication_channels)
+        emails = filter(lambda channel: channel.type == "email", communication_channels)
         email = next(emails, None)
 
         def get_status(email):
@@ -131,8 +131,10 @@ def check_school(data, canvas, result_path, verbose):
         canvas_user_id, email_status = row
         user = canvas.get_user(canvas_user_id)
         user_enrollments = user.get_courses()
-        account_ids = map(lambda x: x.account_id, user_enrollments)
-        fixable_id = next(filter(lambda x: x in SUB_ACCOUNTS, account_ids), None)
+        account_ids = map(lambda account: account.account_id, user_enrollments)
+        fixable_id = next(
+            filter(lambda account: account in SUB_ACCOUNTS, account_ids), None
+        )
 
         if fixable_id:
             if verbose:
