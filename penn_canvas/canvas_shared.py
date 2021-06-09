@@ -47,7 +47,7 @@ def check_config(config):
         return production, development
 
 
-def get_command_paths(command, logs):
+def get_command_paths(command, logs=False):
     COMMAND_DIRECTORY = Path.home() / f"penn-canvas/{command}"
     REPORTS = COMMAND_DIRECTORY / "reports"
     RESULTS = COMMAND_DIRECTORY / "results"

@@ -7,7 +7,7 @@ import typer
 
 from .canvas_shared import find_sub_accounts, get_canvas, get_command_paths
 
-REPORTS, RESULTS, LOGS = get_command_paths("email")
+REPORTS, RESULTS, LOGS = get_command_paths("email", True)
 USERS_REPORT = REPORTS / "users.csv"
 ACCOUNTS = [
     "99243",
