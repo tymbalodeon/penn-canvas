@@ -177,6 +177,9 @@ def activate_fixable_emails(data, canvas, result_path, log_path, verbose):
     typer.echo(") Activating email accounts for users with unconfirmed emails...")
     not_fixable = data[data["fixable"] == "N"]
     not_fixable = not_fixable[["canvas user id", "email status"]]
+    not_fixable.loc[
+        not_fixable["email status"] == "unconfirmed", ["email status"]
+    ] = "unsupported school(s)"
 
     fixable = data[data["fixable"] == "Y"]
     fixable = fixable[["canvas user id"]]
