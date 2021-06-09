@@ -65,31 +65,36 @@ def cleanup_report(report):
     return data
 
 
+def get_user_emails(user):
+    communication_channels = user.get_communication_channels()
+    return filter(lambda channel: channel.type == "email", communication_channels)
+
+
+def get_email_status(user_id, email, verbose):
+    email_status = email.workflow_state
+
+    if email_status == "active":
+        if verbose:
+            status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
+            typer.echo(f"- Email status is {status} for user: {user_id}")
+        return True
+    elif email_status == "unconfirmed":
+        return False
+
+
 def find_unconfirmed_emails(data, canvas, verbose):
     typer.echo(") Finding unconfirmed emails...")
     USERS = data.itertuples(index=False)
     UNCONFIRMED = list()
 
-    def check_email_status(user):
+    def get_email_status_list(user):
         user_id = user.canvas_user_id
         user = canvas.get_user(user_id)
-        communication_channels = user.get_communication_channels()
-        emails = filter(lambda channel: channel.type == "email", communication_channels)
+        emails = get_user_emails(user)
         email = next(emails, None)
 
-        def get_status(email):
-            email_status = email.workflow_state
-
-            if email_status == "active":
-                if verbose:
-                    status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
-                    typer.echo(f"- Email status is {status} for user: {user_id}")
-                return True
-            elif email_status == "unconfirmed":
-                return False
-
         if email:
-            is_active = get_status(email)
+            is_active = get_email_status(user_id, email, verbose)
 
             while not is_active:
                 next_email = next(emails, None)
@@ -99,7 +104,7 @@ def find_unconfirmed_emails(data, canvas, verbose):
                         typer.echo(f"- Email status is {status} for user: {user_id}")
                     UNCONFIRMED.append([user_id, "unconfirmed"])
                     break
-                is_active = get_status(email)
+                is_active = get_email_status(user_id, email, verbose)
         else:
             if verbose:
                 error = typer.style("No email found for user:", fg=typer.colors.YELLOW)
@@ -108,11 +113,11 @@ def find_unconfirmed_emails(data, canvas, verbose):
 
     if verbose:
         for user in USERS:
-            check_email_status(user)
+            get_email_status_list(user)
     else:
         with typer.progressbar(USERS, length=len(data.index)) as progress:
             for user in progress:
-                check_email_status(user)
+                get_email_status_list(user)
 
     return pandas.DataFrame(UNCONFIRMED, columns=["canvas user id", "email status"])
 
@@ -168,11 +173,58 @@ def check_school(data, canvas, result_path, verbose):
     RESULT = pandas.DataFrame(
         USERS, columns=["canvas user id", "email status", "fixable"]
     )
-    RESULT.sort_values(by=["email status"], inplace=True)
-    RESULT.to_csv(result_path, index=False)
-    fixable_users = len(RESULT[RESULT["fixable"] == "Y"].index)
+    return RESULT.sort_values(by=["email status"], inplace=True)
+    # RESULT.to_csv(result_path, index=False)
+    # fixable_users = len(RESULT[RESULT["fixable"] == "Y"].index)
 
-    return str(len(RESULT.index)), str(fixable_users)
+    # return str(len(RESULT.index)), str(fixable_users)
+
+
+def activate_fixable_emails(data, canvas, verbose):
+    not_found = data[data["fixable"] == "N"]
+    not_found = not_found["canvas user id", "email status"]
+    fixable = data[data["fixable"] == "Y"]
+    fixable = fixable[["canvas user id"]]
+    USERS = fixable.itertuples(index=False)
+    RESULTS = list()
+
+    for user in fixable:
+        print(user)
+
+    for user_id in USERS:
+        user = canvas.get_user(user_id)
+        emails = get_user_emails(user)
+
+        for email in emails:
+            address = email.address
+            email.delete()
+            user.create_communication_channel(
+                communication_channel={"address": address, "type": "email"},
+                skip_confirmation=True,
+            )
+
+        new_emails = get_user_emails(user)
+        email = next(new_emails, None)
+        is_active = get_email_status(user_id, email, False)
+
+        while not is_active:
+            next_email = next(emails, None)
+            if not next_email:
+                if verbose:
+                    typer.secho(
+                        f"- ERROR: failed to activate email(s) for user {user_id}!",
+                        fg=typer.colors.YELLOW,
+                    )
+                RESULTS.append([user_id, "failed to activate"])
+                break
+            is_active = get_email_status(user_id, email, False)
+
+        if is_active:
+            if verbose:
+                typer.echo(f"- Email(s) activated for user: {user_id}")
+            RESULTS.append([user_id], "auto-activated")
+
+    # merge RESULTS to dataFrame with not_found
 
 
 def email_main(test, verbose):
