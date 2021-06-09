@@ -26,13 +26,15 @@ def make_config():
 def check_config(config):
     if not config.exists():
         create = typer.confirm(
-            "\t- No config file ($HOME/.config/.penn-canvas) exists for Penn-Canvas. Would you like to create one?"
+            "\t- No config file ($HOME/.config/.penn-canvas) exists for Penn-Canvas."
+            " Would you like to create one?"
         )
         if not create:
             typer.echo("\n) Not creating...")
             typer.echo("\tPlease create a config file at: $HOME/.config/.penn-canvas")
             typer.echo(
-                "\tPlace your Canvas Access Tokens in this file using the following format:"
+                "\tPlace your Canvas Access Tokens in this file using the following"
+                " format:"
             )
             typer.echo("\t\tCANVAS_KEY_PROD=your-canvas-prod-key-here")
             typer.echo("\t\tCANVAS_KEY_DEV=your-canvas-test-key-here")

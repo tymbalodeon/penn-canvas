@@ -53,7 +53,8 @@ def find_todays_report():
 
         if not TODAYS_REPORT:
             typer.secho(
-                "- ERROR: A Canvas Course Storage report matching today's date was not found.",
+                "- ERROR: A Canvas Course Storage report matching today's date was not"
+                " found.",
                 fg=typer.colors.YELLOW,
             )
             typer.echo(
