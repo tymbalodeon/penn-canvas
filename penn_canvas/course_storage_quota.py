@@ -52,10 +52,13 @@ def find_todays_report():
                 TODAYS_REPORT = report
 
         if not TODAYS_REPORT:
+            typer.secho(
+                "- ERROR: A Canvas Course Storage report matching today's date was not found.",
+                fg=typer.colors.YELLOW,
+            )
             typer.echo(
-                "\tA Canvas storage report matching today's date was not"
-                " found.\n\tPlease add a Canvas storage report matching today's date"
-                f" to the following directory: {REPORTS}\n\t(If you need instructions"
+                "- Please add a Canvas storage report matching today's date"
+                f" to the following directory: {REPORTS}\n- (If you need instructions"
                 " for generating a Canvas storage report, run this command with the"
                 " '--help' flag.)"
             )

@@ -39,11 +39,15 @@ def find_users_report():
         raise typer.Exit(1)
     else:
         if not USERS_REPORT.exists():
+            typer.secho(
+                "- ERROR: A Canvas Provisioning Users CSV report was not found.",
+                fg=typer.colors.YELLOW,
+            )
             typer.echo(
-                "\tA Canvas Users Provisioning report was not found.\n\tPlease add a"
-                " Canvas Users Provisioning report to this directory and then run this"
-                " script again.\n\t(If you need instructions for generating a Canvas"
-                " Provisioning report, run this command with the '--help' flag.)"
+                "- Please add a Canvas Users Provisioning report to this directory"
+                " and then run this script again.\n- (If you need instructions for"
+                " generating a Canvas Provisioning report, run this command with the"
+                " '--help' flag.)"
             )
             raise typer.Exit(1)
         else:
@@ -173,7 +177,9 @@ def check_school(data, canvas, verbose):
     return RESULT.sort_values(by=["email status"])
 
 
-def activate_fixable_emails(data, canvas, result_path, log_path, verbose):
+def activate_fixable_emails(
+    data, canvas, result_path, log_path, include_fixed, verbose
+):
     typer.echo(") Activating email accounts for users with unconfirmed emails...")
     not_fixable = data[data["fixable"] == "N"]
     not_fixable = not_fixable[["canvas user id", "email status"]]
@@ -239,9 +245,15 @@ def activate_fixable_emails(data, canvas, result_path, log_path, verbose):
 
     fixed_count = str(len(FIXED))
     error_count = str(len(ERRORS))
-    FIXED += ERRORS
-    UPDATED = pandas.DataFrame(FIXED, columns=["canvas user id", "email status"])
-    RESULT = pandas.concat([UPDATED, not_fixable])
+
+    ERRORS = pandas.DataFrame(ERRORS, columns=["canvas user id", "email status"])
+    DATA_FRAMES = [ERRORS, not_fixable]
+
+    if include_fixed:
+        FIXED = pandas.DataFrame(FIXED, columns=["canvas user id", "email status"])
+        DATA_FRAMES.append(FIXED)
+
+    RESULT = pandas.concat(DATA_FRAMES)
 
     typer.echo(f") Saving results to {result_path}...")
 
@@ -253,14 +265,14 @@ def activate_fixable_emails(data, canvas, result_path, log_path, verbose):
     return fixed_count, error_count
 
 
-def email_main(test, verbose):
+def email_main(test, include_fixed, verbose):
     report, RESULT_PATH, LOG_PATH = find_users_report()
     report = cleanup_report(report)
     CANVAS = get_canvas(test)
     UNCONFIRMED = find_unconfirmed_emails(report, CANVAS, verbose)
     FIXED = check_school(UNCONFIRMED, CANVAS, verbose)
     FIXED, ERRORS = activate_fixable_emails(
-        FIXED, CANVAS, RESULT_PATH, LOG_PATH, verbose
+        FIXED, CANVAS, RESULT_PATH, LOG_PATH, include_fixed, verbose
     )
     STYLED_FIXED = typer.style(FIXED, fg=typer.colors.MAGENTA)
     typer.echo(f"- Activated {STYLED_FIXED} users with unconfirmed email accounts.")
