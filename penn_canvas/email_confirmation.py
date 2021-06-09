@@ -170,13 +170,13 @@ def check_school(data, canvas, verbose):
     RESULT = pandas.DataFrame(
         USERS, columns=["canvas user id", "email status", "fixable"]
     )
-    return RESULT.sort_values(by=["email status"], inplace=True)
+    return RESULT.sort_values(by=["email status"])
 
 
 def activate_fixable_emails(data, canvas, result_path, log_path, verbose):
     typer.echo(") Activating email accounts for users with unconfirmed emails...")
     not_fixable = data[data["fixable"] == "N"]
-    not_fixable = not_fixable["canvas user id", "email status"]
+    not_fixable = not_fixable[["canvas user id", "email status"]]
 
     fixable = data[data["fixable"] == "Y"]
     fixable = fixable[["canvas user id"]]
@@ -255,7 +255,7 @@ def email_main(test, verbose):
     report = cleanup_report(report)
     CANVAS = get_canvas(test)
     UNCONFIRMED = find_unconfirmed_emails(report, CANVAS, verbose)
-    FIXED = check_school(UNCONFIRMED, CANVAS, RESULT_PATH, verbose)
+    FIXED = check_school(UNCONFIRMED, CANVAS, verbose)
     FIXED, ERRORS = activate_fixable_emails(
         FIXED, CANVAS, RESULT_PATH, LOG_PATH, verbose
     )
