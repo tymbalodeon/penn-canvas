@@ -114,7 +114,7 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
                         )
                         if verbose:
                             typer.secho(f"\t* {sis_id_error}", fg=typer.colors.YELLOW)
-                        ERRORS.append(f"- {sis_id_error}")
+                        ERRORS.append(sis_id_error)
                     elif sis_id:
                         COURSES_TO_INCREASE.append(sis_id)
             except Exception:
@@ -123,7 +123,7 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
                 )
                 if verbose:
                     typer.secho("\t* {not_found_error}", fg=typer.colors.YELLOW)
-                ERRORS.append(f"- {not_found_error}")
+                ERRORS.append(not_found_error)
 
     if verbose:
         for row in ROWS:
@@ -216,10 +216,8 @@ def increase_quota(data, canvas, verbose=False, increase=1000):
 
 
 def print_errors(errors):
-    color = typer.colors.YELLOW
-    typer.secho("- ERRORS:\n", fg=color)
     for error in errors:
-        typer.secho(f"\t{error}", fg=color)
+        typer.secho(f"- ERROR: {error}", fg=typer.colors.RED)
 
 
 def storage_main(test, verbose):
