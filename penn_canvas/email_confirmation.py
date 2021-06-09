@@ -266,8 +266,8 @@ def email_main(test, verbose):
     typer.echo(f"- Activated {STYLED_FIXED} users with unconfirmed email accounts.")
     if ERRORS != "0":
         typer.secho(
-            f"- Failed to activate email(s) for {ERRORS} users with (an) unconfirmed email"
-            " account(s).",
+            f"- Failed to activate email(s) for {ERRORS} users with (an) unconfirmed"
+            " email account(s).",
             fg=typer.colors.RED,
         )
     typer.echo("FINISHED")
