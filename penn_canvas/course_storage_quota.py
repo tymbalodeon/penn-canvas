@@ -138,7 +138,7 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
     return COURSES, ERRORS
 
 
-def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
+def increase_quota(data, canvas, verbose=False, increase=1000):
     typer.echo(
         ") Increasing course storage quotas for courses using 80% or more of their"
         " storage..."
@@ -152,13 +152,13 @@ def increase_quota(data, canvas, verbose=False, increase=1000, use_sis_id=True):
     ROWS = data["sis_id"].tolist()
 
     def increase_course_quota(sis_id):
-        if use_sis_id and sis_id[:4] != "SRS_":
+        if sis_id[:4] != "SRS_":
             sis_id = code_to_sis(sis_id)
 
         try:
             canvas_course = canvas.get_course(
                 sis_id,
-                use_sis_id=use_sis_id,
+                use_sis_id=True,
             )
             SUBACCOUNT.append(canvas_course.account_id)
             COURSE_ID.append(sis_id)

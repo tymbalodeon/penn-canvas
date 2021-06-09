@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -6,7 +7,7 @@ import typer
 
 from .canvas_shared import find_sub_accounts, get_canvas, get_command_paths
 
-REPORTS, RESULTS = get_command_paths("email")
+REPORTS, RESULTS, LOGS = get_command_paths("email")
 USERS_REPORT = REPORTS / "users.csv"
 ACCOUNTS = [
     "99243",
@@ -51,8 +52,9 @@ def find_users_report():
             ).strftime("%Y_%m_%d")
             DATED_REPORT = REPORTS / f"{DATE_CREATED}_{USERS_REPORT.name}"
             RESULT_PATH = RESULTS / f"{DATE_CREATED}_results.csv"
+            LOG_PATH = LOGS / f"{DATE_CREATED}_logs.json"
 
-            return USERS_REPORT.rename(DATED_REPORT), RESULT_PATH
+            return USERS_REPORT.rename(DATED_REPORT), RESULT_PATH, LOG_PATH
 
 
 def cleanup_report(report):
@@ -104,7 +106,7 @@ def find_unconfirmed_emails(data, canvas, verbose):
                         typer.echo(f"- Email status is {status} for user: {user_id}")
                     UNCONFIRMED.append([user_id, "unconfirmed"])
                     break
-                is_active = get_email_status(user_id, email, verbose)
+                is_active = get_email_status(user_id, next_email, verbose)
         else:
             if verbose:
                 error = typer.style("No email found for user:", fg=typer.colors.YELLOW)
@@ -122,7 +124,7 @@ def find_unconfirmed_emails(data, canvas, verbose):
     return pandas.DataFrame(UNCONFIRMED, columns=["canvas user id", "email status"])
 
 
-def check_school(data, canvas, result_path, verbose):
+def check_school(data, canvas, verbose):
     typer.echo(") Checking enrollments for users with unconfirmed emails...")
     SUB_ACCOUNTS = list()
     USERS = list()
@@ -165,38 +167,38 @@ def check_school(data, canvas, result_path, verbose):
             for row in progress:
                 check_fixable_status(row)
 
-    typer.echo(f") Saving results to {result_path}...")
-
-    if not RESULTS.exists():
-        Path.mkdir(RESULTS)
-
     RESULT = pandas.DataFrame(
         USERS, columns=["canvas user id", "email status", "fixable"]
     )
     return RESULT.sort_values(by=["email status"], inplace=True)
-    # RESULT.to_csv(result_path, index=False)
-    # fixable_users = len(RESULT[RESULT["fixable"] == "Y"].index)
-
-    # return str(len(RESULT.index)), str(fixable_users)
 
 
-def activate_fixable_emails(data, canvas, verbose):
-    not_found = data[data["fixable"] == "N"]
-    not_found = not_found["canvas user id", "email status"]
+def activate_fixable_emails(data, canvas, result_path, log_path, verbose):
+    typer.echo(") Activating email accounts for users with unconfirmed emails...")
+    not_fixable = data[data["fixable"] == "N"]
+    not_fixable = not_fixable["canvas user id", "email status"]
+
     fixable = data[data["fixable"] == "Y"]
     fixable = fixable[["canvas user id"]]
+
     USERS = fixable.itertuples(index=False)
-    RESULTS = list()
+    FIXED = list()
+    ERRORS = list()
 
-    for user in fixable:
-        print(user)
-
-    for user_id in USERS:
+    def activate_and_confirm(user_id):
         user = canvas.get_user(user_id)
         emails = get_user_emails(user)
 
         for email in emails:
             address = email.address
+
+            if not LOGS.exists():
+                Path.mkdir(LOGS)
+
+            with open(log_path, "a") as logger:
+                deleted_email_account = {"user": user_id, "email": address}
+                logger.write(f"{json.dumps(deleted_email_account)}\n")
+
             email.delete()
             user.create_communication_channel(
                 communication_channel={"address": address, "type": "email"},
@@ -215,28 +217,53 @@ def activate_fixable_emails(data, canvas, verbose):
                         f"- ERROR: failed to activate email(s) for user {user_id}!",
                         fg=typer.colors.YELLOW,
                     )
-                RESULTS.append([user_id, "failed to activate"])
+                ERRORS.append([user_id, "failed to activate"])
                 break
-            is_active = get_email_status(user_id, email, False)
+            is_active = get_email_status(user_id, next_email, False)
 
         if is_active:
             if verbose:
                 typer.echo(f"- Email(s) activated for user: {user_id}")
-            RESULTS.append([user_id], "auto-activated")
+            FIXED.append([user_id], "auto-activated")
 
-    # merge RESULTS to dataFrame with not_found
+    if verbose:
+        for user_id in USERS:
+            activate_and_confirm(user_id)
+    else:
+        with typer.progressbar(USERS, length=(len(fixable.index))) as progress:
+            for user_id in progress:
+                activate_and_confirm(user_id)
+
+    fixed_count = str(len(FIXED))
+    error_count = str(len(ERRORS))
+    FIXED += ERRORS
+    UPDATED = pandas.DataFrame(FIXED, columns=["canvas user id", "email status"])
+    RESULT = pandas.concat([UPDATED, not_fixable])
+
+    typer.echo(f") Saving results to {result_path}...")
+
+    if not RESULTS.exists():
+        Path.mkdir(RESULTS)
+
+    RESULT.to_csv(result_path, index=False)
+
+    return fixed_count, error_count
 
 
 def email_main(test, verbose):
-    report, RESULT_PATH = find_users_report()
+    report, RESULT_PATH, LOG_PATH = find_users_report()
     report = cleanup_report(report)
     CANVAS = get_canvas(test)
     UNCONFIRMED = find_unconfirmed_emails(report, CANVAS, verbose)
-    PROBLEMS, FIXABLE = check_school(UNCONFIRMED, CANVAS, RESULT_PATH, verbose)
-    STYLED_PROBLEMS = typer.style(PROBLEMS, fg=typer.colors.MAGENTA)
-    STYLED_FIXABLE = typer.style(FIXABLE, fg=typer.colors.MAGENTA)
-    typer.echo(
-        f"- Found {STYLED_PROBLEMS} users with unconfirmed or missing an email account,"
-        f" of which {STYLED_FIXABLE} are manually fixable."
+    FIXED = check_school(UNCONFIRMED, CANVAS, RESULT_PATH, verbose)
+    FIXED, ERRORS = activate_fixable_emails(
+        FIXED, CANVAS, RESULT_PATH, LOG_PATH, verbose
+    )
+    STYLED_FIXED = typer.style(FIXED, fg=typer.colors.MAGENTA)
+    typer.echo(f"- Activated {STYLED_FIXED} users with unconfirmed email accounts.")
+    typer.secho(
+        f"- Failed to activate email(s) for {ERRORS} users with (an) unconfirmed email"
+        " account(s).",
+        fg=typer.colors.RED,
     )
     typer.echo("FINISHED")
