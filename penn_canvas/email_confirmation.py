@@ -1,4 +1,4 @@
-import json
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -56,7 +56,7 @@ def find_users_report():
             ).strftime("%Y_%m_%d")
             DATED_REPORT = REPORTS / f"{DATE_CREATED}_{USERS_REPORT.name}"
             RESULT_PATH = RESULTS / f"{DATE_CREATED}_results.csv"
-            LOG_PATH = LOGS / f"{DATE_CREATED}_logs.json"
+            LOG_PATH = LOGS / f"{DATE_CREATED}_logs.csv"
 
             return USERS_REPORT.rename(DATED_REPORT), RESULT_PATH, LOG_PATH
 
@@ -209,9 +209,10 @@ def activate_fixable_emails(
             if not LOGS.exists():
                 Path.mkdir(LOGS)
 
-            with open(log_path, "a") as logger:
-                deleted_email_account = {"user": user_id, "email": address}
-                logger.write(f"{json.dumps(deleted_email_account)}\n")
+            user_info = pandas.DataFrame(
+                [user_id, address], columns=["canvas user id", "address"]
+            )
+            user_info.to_csv(log_path, mode="a", index=False)
 
             email.delete()
             user.create_communication_channel(
@@ -232,7 +233,7 @@ def activate_fixable_emails(
                         fg=typer.colors.YELLOW,
                     )
                 FIXABLE.at[index, "email status"] = "failed to activate"
-                error += 1
+                result = False
                 break
             is_active = get_email_status(user_id, next_email, False)
 
@@ -240,11 +241,20 @@ def activate_fixable_emails(
             if verbose:
                 typer.echo(f"- Email(s) activated for user: {user_id}")
             FIXABLE.at[index, "email status"] = "auto-activate"
-            fixed += 1
+            result = True
+            log = pandas.read_csv(log_path)
+            log.drop(index=log.index[-1:], inplace=True)
+            log.to_csv(log_path)
+
+        return result
 
     if verbose:
         for row in ROWS:
-            activate_and_confirm(row)
+            result = activate_and_confirm(row)
+            if result:
+                fixed += 1
+            else:
+                error += 1
     else:
         with typer.progressbar(ROWS, length=(len(FIXABLE.index))) as progress:
             for row in progress:
@@ -274,6 +284,13 @@ def activate_fixable_emails(
     return fixed_count, error_count, unsupported_count, supported_not_found_count
 
 
+def remove_empty_log(log_path):
+    typer.echo(") Removing empty log file...")
+    log = pandas.read_csv(log_path)
+    if log.empty:
+        shutil.rmtree(LOGS, ignore_errors=True)
+
+
 def style(text):
     return typer.style(text, fg=typer.colors.MAGENTA)
 
@@ -288,7 +305,7 @@ def print_messages(total, fixed, supported_not_found, unsupported, errors):
     )
     typer.echo(
         f"- Found {style(unsupported)} unsupported users with missing or unconfirmed"
-        " email(s)."
+        " email accounts."
     )
     if errors != "0":
         typer.secho(
@@ -308,4 +325,5 @@ def email_main(test, include_fixed, verbose):
     FIXED, ERRORS, UNSUPPORTED, SUPPORTED_NOT_FOUND = activate_fixable_emails(
         FIXED, CANVAS, RESULT_PATH, LOG_PATH, include_fixed, verbose
     )
+    remove_empty_log(LOG_PATH)
     print_messages(TOTAL, FIXED, SUPPORTED_NOT_FOUND, UNSUPPORTED, ERRORS)
