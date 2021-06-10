@@ -230,7 +230,7 @@ def activate_fixable_emails(
                 if verbose:
                     typer.secho(
                         f"- ERROR: failed to activate email(s) for user {user_id}!",
-                        fg=typer.colors.YELLOW,
+                        fg=typer.colors.RED,
                     )
                 FIXABLE.at[index, "email status"] = "failed to activate"
                 result = False
@@ -285,10 +285,10 @@ def activate_fixable_emails(
 
 
 def remove_empty_log(log_path):
-    typer.echo(") Removing empty log file...")
     if log_path.is_file():
         log = pandas.read_csv(log_path)
         if log.empty:
+            typer.echo(") Removing empty log file...")
             shutil.rmtree(LOGS, ignore_errors=True)
 
 
@@ -296,7 +296,7 @@ def style(text):
     return typer.style(text, fg=typer.colors.MAGENTA)
 
 
-def print_messages(total, fixed, supported_not_found, unsupported, errors):
+def print_messages(total, fixed, supported_not_found, unsupported, errors, log_path):
     typer.echo(f"- Processed {style(total)} accounts.")
     typer.echo(
         f"- Activated {style(fixed)} supported users with unconfirmed email accounts."
@@ -311,7 +311,8 @@ def print_messages(total, fixed, supported_not_found, unsupported, errors):
     if errors != "0":
         typer.secho(
             f"- Failed to activate email(s) for {errors} supported users with (an)"
-            " unconfirmed email account(s).",
+            " unconfirmed email account(s). Affected accounts are recorded in the log"
+            f" file: {log_path}",
             fg=typer.colors.RED,
         )
     typer.echo("FINISHED")
@@ -327,4 +328,4 @@ def email_main(test, include_fixed, verbose):
         FIXED, CANVAS, RESULT_PATH, LOG_PATH, include_fixed, verbose
     )
     remove_empty_log(LOG_PATH)
-    print_messages(TOTAL, FIXED, SUPPORTED_NOT_FOUND, UNSUPPORTED, ERRORS)
+    print_messages(TOTAL, FIXED, SUPPORTED_NOT_FOUND, UNSUPPORTED, ERRORS, LOG_PATH)
