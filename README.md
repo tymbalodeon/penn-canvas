@@ -38,7 +38,7 @@ A config file containing your Access Tokens can be generated for you by Penn-Can
 You may also create your config file manually. Penn-Canvas expects the location to be "$HOME/.config/penn-canvas.txt" and the contents to be:
 
 > CANVAS_KEY_PROD=your-canvas-prod-key-here  
-> CANVAS_KEY_TEST=your-canvas-test-key-here
+> CANVAS_KEY_DEV=your-canvas-test-key-here
 
 Prepending the keys with "[KEY_NAME]=" is optional, but each token must be on its own line, with the production token first.
 

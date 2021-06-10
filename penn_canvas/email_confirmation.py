@@ -95,8 +95,8 @@ def find_unconfirmed_emails(data, canvas, verbose):
 
     def get_email_status_list(user):
         user_id = user.canvas_user_id
-        user = canvas.get_user(user_id)
-        emails = get_user_emails(user)
+        canvas_user = canvas.get_user(user_id)
+        emails = get_user_emails(canvas_user)
         email = next(emails, None)
 
         if email:
