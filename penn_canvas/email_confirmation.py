@@ -67,6 +67,7 @@ def cleanup_report(report):
     data = data[["canvas_user_id"]]
     data.drop_duplicates(inplace=True)
     data = data.astype("string", copy=False)
+
     TOTAL = str(len(data.index))
 
     return data, TOTAL
@@ -91,11 +92,10 @@ def get_email_status(user_id, email, verbose):
 
 def find_unconfirmed_emails(data, canvas, verbose):
     typer.echo(") Finding unconfirmed emails...")
-    USERS = data.itertuples(index=False)
-    UNCONFIRMED = list()
+    ROWS = data.itertuples()
 
-    def get_email_status_list(user):
-        user_id = user.canvas_user_id
+    def get_email_status_list(row):
+        index, user_id = row
         canvas_user = canvas.get_user(user_id)
         emails = get_user_emails(canvas_user)
         email = next(emails, None)
@@ -109,42 +109,52 @@ def find_unconfirmed_emails(data, canvas, verbose):
                     if verbose:
                         status = typer.style("unconfirmed", fg=typer.colors.YELLOW)
                         typer.echo(f"- Email status is {status} for user: {user_id}")
-                    UNCONFIRMED.append([user_id, "unconfirmed"])
+                    data.at[index, "email status"] = "unconfirmed"
                     break
                 is_active = get_email_status(user_id, next_email, verbose)
+
+            if is_active:
+                data.drop(index=index, inplace=True)
+
         else:
             if verbose:
                 error = typer.style("No email found for user:", fg=typer.colors.YELLOW)
                 typer.echo(f"- {error} {user_id}")
-            UNCONFIRMED.append([user_id, "not found"])
+            data.at[index, "email status"] = "not found"
 
     if verbose:
-        for user in USERS:
-            get_email_status_list(user)
+        for row in ROWS:
+            get_email_status_list(row)
     else:
-        with typer.progressbar(USERS, length=len(data.index)) as progress:
-            for user in progress:
-                get_email_status_list(user)
+        with typer.progressbar(ROWS, length=len(data.index)) as progress:
+            for row in progress:
+                get_email_status_list(row)
 
-    return pandas.DataFrame(UNCONFIRMED, columns=["canvas user id", "email status"])
+    return data
 
 
 def check_schools(data, canvas, verbose):
     typer.echo(") Checking enrollments for users with unconfirmed emails...")
     SUB_ACCOUNTS = list()
-    USERS = list()
 
     for account in ACCOUNTS:
         SUB_ACCOUNTS += find_sub_accounts(canvas, account)
 
-    ROWS = data.itertuples(index=False)
+    ROWS = data.itertuples()
 
     def check_fixable_status(row):
-        canvas_user_id, email_status = row
+        index, canvas_user_id, email_status = row
 
         user = canvas.get_user(canvas_user_id)
         user_enrollments = user.get_courses()
-        account_ids = map(lambda account: account.account_id, user_enrollments)
+
+        def get_account_id(course):
+            try:
+                return course.account_id
+            except Exception:
+                return ""
+
+        account_ids = map(get_account_id, user_enrollments)
         fixable_id = next(
             filter(lambda account: account in SUB_ACCOUNTS, account_ids), None
         )
@@ -153,12 +163,12 @@ def check_schools(data, canvas, verbose):
             if verbose:
                 fixable = typer.style("fixable", fg=typer.colors.GREEN)
                 typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
-            USERS.append([canvas_user_id, email_status, "Y"])
+            data.at[index, "supported school(s)"] = "Y"
         else:
             if verbose:
                 fixable = typer.style("NOT fixable", fg=typer.colors.YELLOW)
                 typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
-            USERS.append([canvas_user_id, email_status, "N"])
+            data.at[index, "supported school(s)"] = "N"
 
     if verbose:
         for row in ROWS:
@@ -168,11 +178,7 @@ def check_schools(data, canvas, verbose):
             for row in progress:
                 check_fixable_status(row)
 
-    RESULT = pandas.DataFrame(
-        USERS, columns=["canvas user id", "email status", "supported school(s)"]
-    )
-
-    return RESULT.sort_values(by=["email status"])
+    return data.sort_values(by=["email status"])
 
 
 def activate_fixable_emails(
@@ -188,12 +194,12 @@ def activate_fixable_emails(
     ]
 
     ROWS = FIXABLE.itertuples()
+
     fixed = 0
     error = 0
 
     def activate_and_confirm(row):
         index, user_id, email_status, is_supported = row
-        print(index)
         user = canvas.get_user(user_id)
         emails = get_user_emails(user)
 
@@ -244,11 +250,13 @@ def activate_fixable_emails(
             for row in progress:
                 activate_and_confirm(row)
 
-    DATA_FRAMES = (
-        [NOT_FIXABLE, SUPPORTED_NOT_FOUND, FIXABLE]
-        if include_fixed
-        else [NOT_FIXABLE, SUPPORTED_NOT_FOUND]
-    )
+    if include_fixed:
+        FIXABLE.sort_values(by=["email status"])
+        DATA_FRAMES = [FIXABLE, SUPPORTED_NOT_FOUND, NOT_FIXABLE]
+    else:
+        ERRORS = FIXABLE[FIXABLE["email status"] == "failed to activate"]
+        DATA_FRAMES = [ERRORS, SUPPORTED_NOT_FOUND, NOT_FIXABLE]
+
     RESULT = pandas.concat(DATA_FRAMES)
 
     typer.echo(f") Saving results to {result_path}...")
