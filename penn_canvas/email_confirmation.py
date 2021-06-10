@@ -286,9 +286,10 @@ def activate_fixable_emails(
 
 def remove_empty_log(log_path):
     typer.echo(") Removing empty log file...")
-    log = pandas.read_csv(log_path)
-    if log.empty:
-        shutil.rmtree(LOGS, ignore_errors=True)
+    if log_path.is_file():
+        log = pandas.read_csv(log_path)
+        if log.empty:
+            shutil.rmtree(LOGS, ignore_errors=True)
 
 
 def style(text):
