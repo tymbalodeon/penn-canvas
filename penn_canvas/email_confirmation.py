@@ -299,10 +299,12 @@ def remove_empty_log(log_path):
 def print_messages(total, fixed, supported_not_found, unsupported, errors, log_path):
     typer.echo(f"- Processed {colorize(total)} accounts.")
     typer.echo(
-        f"- Activated {colorize(fixed)} supported users with unconfirmed email accounts."
+        f"- Activated {colorize(fixed)} supported users with unconfirmed email"
+        " accounts."
     )
     typer.echo(
-        f"- Found {colorize(supported_not_found)} supported users with no email account."
+        f"- Found {colorize(supported_not_found)} supported users with no email"
+        " account."
     )
     typer.echo(
         f"- Found {colorize(unsupported)} unsupported users with missing or unconfirmed"

@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas
 import typer
 
-from .helpers import get_canvas, get_command_paths, colorize, toggle_progress_bar
+from .helpers import colorize, get_canvas, get_command_paths, toggle_progress_bar
 
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
