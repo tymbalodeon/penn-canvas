@@ -68,6 +68,7 @@ def find_users_report():
 
 def cleanup_report(report, start=0):
     typer.echo(") Removing unused columns...")
+
     data = pandas.read_csv(report)
     data = data[["canvas_user_id"]]
     data.drop_duplicates(inplace=True)
@@ -173,20 +174,30 @@ def check_schools(data, canvas, verbose):
 
     toggle_progress_bar(ROWS, len(data.index), check_fixable_status, verbose)
 
-    return data.sort_values(by=["email status"])
+    if "email status" in data.columns:
+        data.sort_values(by=["email status"], inplace=True)
+
+    return data
 
 
 def activate_fixable_emails(
     data, canvas, result_path, log_path, include_fixed, verbose
 ):
     typer.echo(") Activating email accounts for users with unconfirmed emails...")
-    NOT_FIXABLE = data[data["supported school(s)"] == "N"]
-    FIXABLE = data[
-        (data["supported school(s)"] == "Y") & (data["email status"] == "unconfirmed")
-    ]
-    SUPPORTED_NOT_FOUND = data[
-        (data["supported school(s)"] == "Y") & (data["email status"] == "not found")
-    ]
+
+    if "supported school(s)" in data.columns:
+        NOT_FIXABLE = data[data["supported school(s)"] == "N"]
+        FIXABLE = data[
+            (data["supported school(s)"] == "Y")
+            & (data["email status"] == "unconfirmed")
+        ]
+        SUPPORTED_NOT_FOUND = data[
+            (data["supported school(s)"] == "Y") & (data["email status"] == "not found")
+        ]
+    else:
+        NOT_FIXABLE = data
+        FIXABLE = data
+        SUPPORTED_NOT_FOUND = data
 
     ROWS = FIXABLE.itertuples()
 
@@ -242,14 +253,22 @@ def activate_fixable_emails(
 
     toggle_progress_bar(ROWS, len(FIXABLE.index), activate_and_confirm, verbose)
 
-    fixed = len(FIXABLE[FIXABLE["email status"] == "auto-activated"].index)
-    error = len(FIXABLE[FIXABLE["email status"] == "failed to activate"].index)
+    if "email status" in FIXABLE.columns:
+        fixed = len(FIXABLE[FIXABLE["email status"] == "auto-activated"].index)
+        error = len(FIXABLE[FIXABLE["email status"] == "failed to activate"].index)
+    else:
+        fixed = 0
+        error = 0
 
     if include_fixed:
-        FIXABLE.sort_values(by=["email status"])
+        if "email status" in FIXABLE.columns:
+            FIXABLE.sort_values(by=["email status"])
         DATA_FRAMES = [FIXABLE, SUPPORTED_NOT_FOUND, NOT_FIXABLE]
     else:
-        ERRORS = FIXABLE[FIXABLE["email status"] == "failed to activate"]
+        if "email status" in FIXABLE.columns:
+            ERRORS = FIXABLE[FIXABLE["email status"] == "failed to activate"]
+        else:
+            ERRORS = FIXABLE
         DATA_FRAMES = [ERRORS, SUPPORTED_NOT_FOUND, NOT_FIXABLE]
 
     RESULT = pandas.concat(DATA_FRAMES)
