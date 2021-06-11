@@ -66,13 +66,15 @@ def find_users_report():
             return USERS_REPORT.rename(DATED_REPORT), RESULT_PATH, LOG_PATH
 
 
-def cleanup_report(report):
+def cleanup_report(report, start=0):
     typer.echo(") Removing unused columns...")
     data = pandas.read_csv(report)
     data = data[["canvas_user_id"]]
     data.drop_duplicates(inplace=True)
     data = data.astype("string", copy=False)
 
+    end = data.index[-1:]
+    data = data.iloc[start:end, :]
     TOTAL = str(len(data.index))
 
     return data, TOTAL
