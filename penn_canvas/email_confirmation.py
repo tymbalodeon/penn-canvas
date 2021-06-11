@@ -127,7 +127,7 @@ def find_unconfirmed_emails(data, canvas, verbose):
                 typer.echo(f"- {error} {user_id}")
             data.at[index, "email status"] = "not found"
 
-    toggle_progress_bar(ROWS, len(data.index), get_email_status, verbose)
+    toggle_progress_bar(ROWS, len(data.index), get_email_status_list, verbose)
 
     return data
 
@@ -188,9 +188,6 @@ def activate_fixable_emails(
 
     ROWS = FIXABLE.itertuples()
 
-    fixed = 0
-    error = 0
-
     def activate_and_confirm(row):
         index, user_id, email_status, is_supported = row
         user = canvas.get_user(user_id)
@@ -241,14 +238,10 @@ def activate_fixable_emails(
 
         return result
 
-    def check_if_fixed(row):
-        result = activate_and_confirm(row)
-        if result:
-            fixed += 1
-        else:
-            error += 1
+    toggle_progress_bar(ROWS, len(FIXABLE.index), activate_and_confirm, verbose)
 
-    toggle_progress_bar(ROWS, len(FIXABLE.index), check_if_fixed, verbose)
+    fixed = len(FIXABLE[FIXABLE["email status"] == "auto-activated"].index)
+    error = len(FIXABLE[FIXABLE["email status"] == "failed to activate"].index)
 
     if include_fixed:
         FIXABLE.sort_values(by=["email status"])

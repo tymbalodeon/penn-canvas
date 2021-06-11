@@ -30,14 +30,14 @@ def check_config(config):
             " Would you like to create one?"
         )
         if not create:
-            typer.echo("\n) Not creating...")
-            typer.echo("\tPlease create a config file at: $HOME/.config/.penn-canvas")
             typer.echo(
+                "\n) Not creating..."
+                "\tPlease create a config file at: $HOME/.config/.penn-canvas"
                 "\tPlace your Canvas Access Tokens in this file using the following"
                 " format:"
+                "\t\tCANVAS_KEY_PROD=your-canvas-prod-key-here"
+                "\t\tCANVAS_KEY_DEV=your-canvas-test-key-here"
             )
-            typer.echo("\t\tCANVAS_KEY_PROD=your-canvas-prod-key-here")
-            typer.echo("\t\tCANVAS_KEY_DEV=your-canvas-test-key-here")
             raise typer.Abort()
         else:
             make_config()
