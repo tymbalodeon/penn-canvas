@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas
 import typer
 
-from .canvas_shared import code_to_sis, get_canvas, get_command_paths
+from .canvas_shared import get_canvas, get_command_paths, toggle_progress_bar
 
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
@@ -129,17 +129,17 @@ def check_percent_storage(data, canvas, verbose=False, increase=1000, use_sis_id
                     typer.secho("\t* {not_found_error}", fg=typer.colors.YELLOW)
                 ERRORS.append(not_found_error)
 
-    if verbose:
-        for row in ROWS:
-            check_percentages(row)
-    else:
-        with typer.progressbar(ROWS, length=len(data.index)) as progress:
-            for row in progress:
-                check_percentages(row)
+    toggle_progress_bar(ROWS, len(data.index), check_percentages, verbose)
 
     COURSES = pandas.DataFrame({"sis_id": COURSES_TO_INCREASE})
 
     return COURSES, ERRORS
+
+
+def convert_course_code(course_code):
+    middle = course_code[:-5][-6:]
+
+    return f"SRS_{course_code[:11]}-{middle[:3]}-{middle[3:]} {course_code[-5:]}"
 
 
 def increase_quota(data, canvas, verbose=False, increase=1000):
@@ -157,7 +157,7 @@ def increase_quota(data, canvas, verbose=False, increase=1000):
 
     def increase_course_quota(sis_id):
         if sis_id[:4] != "SRS_":
-            sis_id = code_to_sis(sis_id)
+            sis_id = convert_course_code(sis_id)
 
         try:
             canvas_course = canvas.get_course(
@@ -196,13 +196,7 @@ def increase_quota(data, canvas, verbose=False, increase=1000):
             OLD_QUOTA.append("N/A")
             NEW_QUOTA.append("N/A")
 
-    if verbose:
-        for sis_id in ROWS:
-            increase_course_quota(sis_id)
-    else:
-        with typer.progressbar(ROWS, length=len(data.index)) as progress:
-            for sis_id in progress:
-                increase_course_quota(sis_id)
+    toggle_progress_bar(ROWS, len(data.index), increase_course_quota, verbose)
 
     ROWS = list(zip(SUBACCOUNT, COURSE_ID, OLD_QUOTA, NEW_QUOTA))
 

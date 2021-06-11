@@ -5,7 +5,12 @@ from pathlib import Path
 import pandas
 import typer
 
-from .canvas_shared import find_sub_accounts, get_canvas, get_command_paths
+from .canvas_shared import (
+    find_sub_accounts,
+    get_canvas,
+    get_command_paths,
+    toggle_progress_bar,
+)
 
 REPORTS, RESULTS, LOGS = get_command_paths("email", True)
 USERS_REPORT = REPORTS / "users.csv"
@@ -122,13 +127,7 @@ def find_unconfirmed_emails(data, canvas, verbose):
                 typer.echo(f"- {error} {user_id}")
             data.at[index, "email status"] = "not found"
 
-    if verbose:
-        for row in ROWS:
-            get_email_status_list(row)
-    else:
-        with typer.progressbar(ROWS, length=len(data.index)) as progress:
-            for row in progress:
-                get_email_status_list(row)
+    toggle_progress_bar(ROWS, len(data.index), get_email_status, verbose)
 
     return data
 
@@ -170,13 +169,7 @@ def check_schools(data, canvas, verbose):
                 typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
             data.at[index, "supported school(s)"] = "N"
 
-    if verbose:
-        for row in ROWS:
-            check_fixable_status(row)
-    else:
-        with typer.progressbar(ROWS, length=len(data.index)) as progress:
-            for row in progress:
-                check_fixable_status(row)
+    toggle_progress_bar(ROWS, len(data.index), check_fixable_status, verbose)
 
     return data.sort_values(by=["email status"])
 
@@ -248,17 +241,14 @@ def activate_fixable_emails(
 
         return result
 
-    if verbose:
-        for row in ROWS:
-            result = activate_and_confirm(row)
-            if result:
-                fixed += 1
-            else:
-                error += 1
-    else:
-        with typer.progressbar(ROWS, length=(len(FIXABLE.index))) as progress:
-            for row in progress:
-                activate_and_confirm(row)
+    def check_if_fixed(row):
+        result = activate_and_confirm(row)
+        if result:
+            fixed += 1
+        else:
+            error += 1
+
+    toggle_progress_bar(ROWS, len(FIXABLE.index), check_if_fixed, verbose)
 
     if include_fixed:
         FIXABLE.sort_values(by=["email status"])

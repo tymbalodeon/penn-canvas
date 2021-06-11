@@ -12,10 +12,9 @@ from .email_confirmation import email_main
 # import student_integrity_check
 # import zoom_check
 
-MAIN_HELP = """
-    Welcome to the Penn-Canvas -- working with Canvas has never been easier!
-"""
-app = typer.Typer(help=MAIN_HELP)
+app = typer.Typer(
+    help="""Welcome to the Penn-Canvas -- working with Canvas has never been easier!"""
+)
 
 
 @app.command()

@@ -60,6 +60,22 @@ def get_command_paths(command, logs=False):
         return REPORTS, RESULTS
 
 
+def toggle_progress_bar(data, size, callback, verbose):
+    def verbose_mode(data, callback):
+        for item in data:
+            callback(item)
+
+    def progress_bar_mode(data, size, callback):
+        with typer.progressbar(data, length=size) as progress:
+            for item in progress:
+                callback(item)
+
+    if verbose:
+        verbose_mode(data, callback)
+    else:
+        progress_bar_mode(data, size, callback)
+
+
 def get_canvas(test):
     production, development = check_config(CONFIG_PATH)
     return Canvas(
@@ -77,12 +93,6 @@ def find_sub_accounts(canvas, account_id):
         ACCOUNTS.append(account.id)
 
     return ACCOUNTS
-
-
-def code_to_sis(course_code):
-    middle = course_code[:-5][-6:]
-
-    return f"SRS_{course_code[:11]}-{middle[:3]}-{middle[3:]} {course_code[-5:]}"
 
 
 def WH_linked_to_SRS(canvas, canvas_id):
