@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas
 import typer
 
-from .canvas_shared import (
+from .helpers import (
     find_sub_accounts,
     get_canvas,
     get_command_paths,

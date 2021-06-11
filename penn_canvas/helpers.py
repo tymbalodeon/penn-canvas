@@ -93,20 +93,3 @@ def find_sub_accounts(canvas, account_id):
         ACCOUNTS.append(account.id)
 
     return ACCOUNTS
-
-
-def WH_linked_to_SRS(canvas, canvas_id):
-    course = canvas.get_course(canvas_id)
-    sections = course.get_sections()
-
-    for s in sections:
-        try:
-            if s.sis_section_id.startswith("SRS_"):
-                return True
-        except:
-            pass
-    return False
-
-
-def linked_to_SRS(course_id):
-    return course_id.startswith("SRS_")
