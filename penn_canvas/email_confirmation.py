@@ -9,6 +9,7 @@ from .helpers import (
     find_sub_accounts,
     get_canvas,
     get_command_paths,
+    colorize,
     toggle_progress_bar,
 )
 
@@ -296,20 +297,16 @@ def remove_empty_log(log_path):
             shutil.rmtree(LOGS, ignore_errors=True)
 
 
-def style(text):
-    return typer.style(text, fg=typer.colors.MAGENTA)
-
-
 def print_messages(total, fixed, supported_not_found, unsupported, errors, log_path):
-    typer.echo(f"- Processed {style(total)} accounts.")
+    typer.echo(f"- Processed {colorize(total)} accounts.")
     typer.echo(
-        f"- Activated {style(fixed)} supported users with unconfirmed email accounts."
+        f"- Activated {colorize(fixed)} supported users with unconfirmed email accounts."
     )
     typer.echo(
-        f"- Found {style(supported_not_found)} supported users with no email account."
+        f"- Found {colorize(supported_not_found)} supported users with no email account."
     )
     typer.echo(
-        f"- Found {style(unsupported)} unsupported users with missing or unconfirmed"
+        f"- Found {colorize(unsupported)} unsupported users with missing or unconfirmed"
         " email accounts."
     )
     if errors != "0":

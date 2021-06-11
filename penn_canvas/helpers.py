@@ -93,3 +93,7 @@ def find_sub_accounts(canvas, account_id):
         ACCOUNTS.append(account.id)
 
     return ACCOUNTS
+
+
+def colorize(text):
+    return typer.style(text, fg=typer.colors.MAGENTA)
