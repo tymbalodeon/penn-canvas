@@ -6,10 +6,10 @@ import pandas
 import typer
 
 from .helpers import (
+    colorize,
     find_sub_accounts,
     get_canvas,
     get_command_paths,
-    colorize,
     toggle_progress_bar,
 )
 
@@ -36,7 +36,7 @@ def find_users_report():
     if not REPORTS.exists():
         Path.mkdir(REPORTS, parents=True)
         typer.echo(
-            "\tCanvas email reports directory not found. Creating one for you at:"
+            "- Canvas email reports directory not found. Creating one for you at:"
             f" {REPORTS}\n\tPlease add a Canvas Users Provisioning report to this"
             " directory and then run this script again.\n\t(If you need instructions"
             " for generating a Canvas Provisioning report, run this command with the"
@@ -75,11 +75,10 @@ def cleanup_report(report, start=0):
     data.drop_duplicates(inplace=True)
     data = data.astype("string", copy=False)
 
-    end = data.index[-1:]
-    data = data.iloc[start:end, :]
-    TOTAL = str(len(data.index))
+    TOTAL = len(data.index)
+    data = data.iloc[start:TOTAL, :]
 
-    return data, TOTAL
+    return data, str(TOTAL)
 
 
 def get_user_emails(user):
