@@ -128,8 +128,6 @@ def check_percent_storage(course, canvas, verbose):
         not_found_error = (
             f"Couldn't find course: Canvas ID: {canvas_id}, SIS ID: {sis_id}"
         )
-        if verbose:
-            typer.secho("\t* {not_found_error}", fg=typer.colors.YELLOW)
         return False, not_found_error
 
 
@@ -201,10 +199,11 @@ def storage_main(test, verbose):
         elif content is not None:
             ERRORS.append(content)
 
+    typer.echo(") Processing courses...")
     toggle_progress_bar(report, check_and_increase_storage, CANVAS, verbose)
     RESULT = pandas.read_csv(RESULT_PATH)
     INCREASED = len(RESULT.index)
-    typer.echo(f"- Increased storage quota for {colorize(str(INCREASED))} courses.")
+    typer.echo(f"\n\tIncreased storage quota for {colorize(str(INCREASED))} courses.")
     if len(ERRORS) > 0:
         print_errors(ERRORS)
-    typer.echo("FINISHED")
+    typer.echo("\nFINISHED")
