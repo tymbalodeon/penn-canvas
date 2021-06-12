@@ -102,3 +102,7 @@ def find_sub_accounts(canvas, account_id):
 
 def colorize(text):
     return typer.style(text, fg=typer.colors.MAGENTA)
+
+
+def colorize_path(text):
+    return typer.style(text, fg=typer.colors.GREEN)

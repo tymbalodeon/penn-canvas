@@ -7,14 +7,18 @@ import typer
 
 from .helpers import (
     colorize,
+    colorize_path,
     find_sub_accounts,
     get_canvas,
     get_command_paths,
     toggle_progress_bar,
 )
 
+TODAY = datetime.now().strftime("%d_%b_%Y")
+TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 REPORTS, RESULTS, LOGS = get_command_paths("email", True)
-USERS_REPORT = REPORTS / "users.csv"
+RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_email_result.csv"
+LOG_PATH = LOGS / f"{TODAY_AS_Y_M_D}_email_log.csv"
 ACCOUNTS = [
     "99243",
     "99237",
@@ -35,36 +39,39 @@ def find_users_report():
 
     if not REPORTS.exists():
         Path.mkdir(REPORTS, parents=True)
+        error = typer.style(
+            "- ERROR: Canvas email reports directory not found.", fg=typer.colors.YELLOW
+        )
         typer.echo(
-            "- Canvas email reports directory not found. Creating one for you at:"
-            f" {REPORTS}\n\tPlease add a Canvas Users Provisioning report to this"
-            " directory and then run this script again.\n\t(If you need instructions"
-            " for generating a Canvas Provisioning report, run this command with the"
-            " '--help' flag.)"
+            f"{error} \n- Creating one for you at: {colorize_path(str(REPORTS))}\n- Please add a Canvas"
+            " Users Provisioning report matching today's date to this directory and"
+            " then run this script again.\n- (If you need instructions for generating"
+            " a Canvas Provisioning report, run this command with the '--help' flag.)"
         )
         raise typer.Exit(1)
     else:
-        if not USERS_REPORT.exists():
+        TODAYS_REPORT = ""
+        CSV_FILES = Path(REPORTS).glob("*.csv")
+
+        for report in CSV_FILES:
+            if TODAY in report.name:
+                TODAYS_REPORT = report
+
+        if not TODAYS_REPORT:
             typer.secho(
-                "- ERROR: A Canvas Provisioning Users CSV report was not found.",
+                "- ERROR: A Canvas Provisioning Users CSV report matching today's date"
+                " was not found.",
                 fg=typer.colors.YELLOW,
             )
             typer.echo(
-                "- Please add a Canvas Users Provisioning report to this directory"
-                " and then run this script again.\n- (If you need instructions for"
-                " generating a Canvas Provisioning report, run this command with the"
-                " '--help' flag.)"
+                "- Please add a Canvas Users Provisioning report matching today's date"
+                " to the following directory and then run this script again:"
+                f" {colorize_path(str(REPORTS))}\n- (If you need instructions for generating a Canvas"
+                " Provisioning report, run this command with the '--help' flag.)"
             )
             raise typer.Exit(1)
         else:
-            DATE_CREATED = datetime.fromtimestamp(
-                USERS_REPORT.stat().st_birthtime
-            ).strftime("%Y_%m_%d")
-            DATED_REPORT = REPORTS / f"{DATE_CREATED}_{USERS_REPORT.name}"
-            RESULT_PATH = RESULTS / f"{DATE_CREATED}_results.csv"
-            LOG_PATH = LOGS / f"{DATE_CREATED}_logs.csv"
-
-            return USERS_REPORT.rename(DATED_REPORT), RESULT_PATH, LOG_PATH
+            return TODAYS_REPORT
 
 
 def cleanup_report(report, start=0):
@@ -321,7 +328,7 @@ def print_messages(total, fixed, supported_not_found, unsupported, errors, log_p
 
 
 def email_main(test, include_fixed, verbose):
-    report, RESULT_PATH, LOG_PATH = find_users_report()
+    report = find_users_report()
     report, TOTAL = cleanup_report(report)
     CANVAS = get_canvas(test)
     UNCONFIRMED = find_unconfirmed_emails(report, CANVAS, verbose)

@@ -5,12 +5,18 @@ from pathlib import Path
 import pandas
 import typer
 
-from .helpers import colorize, get_canvas, get_command_paths, toggle_progress_bar
+from .helpers import (
+    colorize,
+    colorize_path,
+    get_canvas,
+    get_command_paths,
+    toggle_progress_bar,
+)
 
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 REPORTS, RESULTS = get_command_paths("storage")
-RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}.csv"
+RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result.csv"
 SUB_ACCOUNTS = [
     "132477",
     "99243",
@@ -40,17 +46,20 @@ def make_results_paths():
             writer.writerow(["subaccount id", "course id", "old quota", "new quota"])
 
 
-def find_todays_report():
-    typer.echo(") Finding today's report...")
+def find_storage_report():
+    typer.echo(") Finding storage report...")
 
     if not REPORTS.exists():
         Path.mkdir(REPORTS, parents=True)
+        error = typer.style(
+            "- ERROR: Canvas storage reports directory not found.",
+            fg=typer.colors.YELLOW,
+        )
         typer.echo(
-            "\tCanvas storage reports directory not found. Creating one for you at:"
-            f" {REPORTS}\n\tPlease add a Canvas storage report matching today's date to"
-            " this directory and then run this script again.\n\t(If you need"
-            " instructions for generating a Canvas storage report, run this command"
-            " with the '--help' flag.)"
+            f"{error} \n- Creating one for you at: {colorize_path(REPORTS)}\n\tPlease add a Canvas"
+            " storage report matching today's date to this directory and then run this"
+            " script again.\n- (If you need instructions for generating a Canvas"
+            " storage report, run this command with the '--help' flag.)"
         )
         raise typer.Exit(1)
     else:
@@ -68,10 +77,10 @@ def find_todays_report():
                 fg=typer.colors.YELLOW,
             )
             typer.echo(
-                "- Please add a Canvas storage report matching today's date"
-                f" to the following directory: {REPORTS}\n- (If you need instructions"
-                " for generating a Canvas storage report, run this command with the"
-                " '--help' flag.)"
+                "- Please add a Canvas storage report matching today's date to the"
+                f" following directory and then run this script again: {colorize_path(REPORTS)}\n-"
+                " (If you need instructions for generating a Canvas storage report,"
+                " run this command with the '--help' flag.)"
             )
             raise typer.Exit(1)
         else:
@@ -187,7 +196,7 @@ def print_errors(errors):
 
 def storage_main(test, verbose):
     CANVAS = get_canvas(test)
-    report = find_todays_report()
+    report = find_storage_report()
     report = cleanup_report(report)
     make_results_paths()
     ERRORS = list()
