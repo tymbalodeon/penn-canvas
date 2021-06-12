@@ -24,19 +24,22 @@ def make_config():
 
 
 def check_config(config):
+    typer.echo(") Reading Canvas Access Tokens from config file...")
     if not config.exists():
-        create = typer.confirm(
-            "\t- No config file ($HOME/.config/.penn-canvas) exists for Penn-Canvas."
-            " Would you like to create one?"
+        error = typer.style(
+            "- ERROR: No config file ($HOME/.config/.penn-canvas) exists for"
+            " Penn-Canvas.",
+            fg=typer.colors.YELLOW,
         )
+        create = typer.confirm(f"{error} \n- Would you like to create one?")
         if not create:
             typer.echo(
-                "\n) Not creating..."
-                "\tPlease create a config file at: $HOME/.config/.penn-canvas"
-                "\tPlace your Canvas Access Tokens in this file using the following"
+                ") Not creating...\n"
+                "- Please create a config file at: $HOME/.config/.penn-canvas"
+                "\n- Place your Canvas Access Tokens in this file using the following"
                 " format:"
-                "\t\tCANVAS_KEY_PROD=your-canvas-prod-key-here"
-                "\t\tCANVAS_KEY_DEV=your-canvas-test-key-here"
+                "\n\tCANVAS_KEY_PROD=your-canvas-prod-key-here"
+                "\n\tCANVAS_KEY_DEV=your-canvas-test-key-here"
             )
             raise typer.Abort()
         else:
@@ -60,20 +63,22 @@ def get_command_paths(command, logs=False):
         return REPORTS, RESULTS
 
 
-def toggle_progress_bar(data, size, callback, verbose):
-    def verbose_mode(data, callback):
-        for item in data:
-            callback(item)
+def toggle_progress_bar(data, callback, canvas, verbose):
+    def verbose_mode():
+        for item in data.itertuples(index=False):
+            callback(item, canvas, verbose)
 
-    def progress_bar_mode(data, size, callback):
-        with typer.progressbar(data, length=size) as progress:
+    def progress_bar_mode():
+        with typer.progressbar(
+            data.itertuples(index=False), length=len(data.index)
+        ) as progress:
             for item in progress:
-                callback(item)
+                callback(item, canvas, verbose)
 
     if verbose:
-        verbose_mode(data, callback)
+        verbose_mode()
     else:
-        progress_bar_mode(data, size, callback)
+        progress_bar_mode()
 
 
 def get_canvas(test):
