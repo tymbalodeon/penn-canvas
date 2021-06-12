@@ -30,6 +30,11 @@ SUB_ACCOUNTS = [
 ]
 
 
+def make_results_dir():
+    if not RESULTS.exists():
+        Path.mkdir(RESULTS)
+
+
 def find_todays_report():
     typer.echo(") Finding today's report...")
 
@@ -105,7 +110,7 @@ def check_percent_storage(course, canvas, verbose):
                 typer.secho("\t* Increase required", fg=typer.colors.YELLOW)
             if pandas.isna(sis_id):
                 sis_id_error = (
-                    "ACTION REQUIRED: A SIS_ID must be added for course:" " {canvas_id}"
+                    "ACTION REQUIRED: A SIS_ID must be added for course: {canvas_id}"
                 )
                 if verbose:
                     typer.secho(f"\t* {sis_id_error}", fg=typer.colors.YELLOW)
@@ -162,19 +167,14 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
         old_quota = "N/A"
         new_quota = "N/A"
 
-    ROWS = list([subaccount_id, sis_id, old_quota, new_quota])
+    ROW = [subaccount_id, sis_id, old_quota, new_quota]
 
     typer.echo(f") Saving results to {RESULT_PATH}...")
 
-    if not RESULTS.exists():
-        Path.mkdir(RESULTS)
-
     RESULT = pandas.DataFrame(
-        ROWS, columns=["subaccount_id", "course_id", "old_quota", "new_quota"]
+        ROW, columns=["subaccount id", "course id", "old quota", "new quota"]
     )
-    RESULT.to_csv(RESULT_PATH, index=False)
-
-    return str(len(RESULT.index))
+    RESULT.to_csv(RESULT_PATH, mode="a")
 
 
 def print_errors(errors):
@@ -183,14 +183,20 @@ def print_errors(errors):
 
 
 def storage_main(test, verbose):
+    make_results_dir()
     report = find_todays_report()
     report = cleanup_report(report)
     CANVAS = get_canvas(test)
-    COURSES_TO_INCREASE, ERRORS = check_percent_storage(report, CANVAS, verbose)
-    INCREASED_COURSE_NUMBER = increase_quota(COURSES_TO_INCREASE, CANVAS, verbose)
-    typer.echo(
-        f"- Increased storage quota for {colorize(INCREASED_COURSE_NUMBER)} courses."
-    )
+    ERRORS = list()
+    INCREASED = 0
+    for course in report.itertuples(index=False):
+        increase, content = check_percent_storage(report, CANVAS, verbose)
+        if increase:
+            increase_quota(content, CANVAS, verbose)
+            INCREASED += 1
+        elif content is not None:
+            ERRORS.append(content)
+    typer.echo(f"- Increased storage quota for {colorize(str(INCREASED))} courses.")
     if len(ERRORS) > 0:
         print_errors(ERRORS)
     typer.echo("FINISHED")
