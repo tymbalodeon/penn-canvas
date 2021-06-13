@@ -19,7 +19,7 @@ TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 REPORTS, RESULTS, LOGS = get_command_paths("email", True)
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_email_result.csv"
-HEADERS = ["canvas_user_id", "email status", "supported school(s)"]
+HEADERS = ["index", "canvas user id", "email status", "supported school(s)"]
 LOG_PATH = LOGS / f"{TODAY_AS_Y_M_D}_email_log.csv"
 ACCOUNTS = [
     "99243",
@@ -95,8 +95,7 @@ def cleanup_report(report, start=0):
     data.drop_duplicates(inplace=True)
     data = data.astype("string", copy=False)
 
-    # TOTAL = len(data.index)
-    TOTAL = 100
+    TOTAL = len(data.index)
     data = data.loc[start:TOTAL, :]
 
     return data, str(TOTAL)
@@ -113,14 +112,14 @@ def get_email_status(user_id, email, verbose):
     if email_status == "active":
         if verbose:
             status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
-            typer.echo(f"- Email status is {status} for user: {user_id}")
+            typer.echo(f"- Email status is {status} for user {user_id}")
         return True
     elif email_status == "unconfirmed":
         return False
 
 
 def find_unconfirmed_emails(user, canvas, verbose):
-    index, user_id = user
+    user_id = user[1]
     canvas_user = canvas.get_user(user_id)
     emails = get_user_emails(canvas_user)
     email = next(emails, None)
@@ -132,8 +131,8 @@ def find_unconfirmed_emails(user, canvas, verbose):
             next_email = next(emails, None)
             if not next_email:
                 if verbose:
-                    status = typer.style("unconfirmed", fg=typer.colors.YELLOW)
-                    typer.echo(f"- Email status is {status} for user: {user_id}")
+                    status = typer.style("UNCONFIRMED", fg=typer.colors.YELLOW)
+                    typer.echo(f"- Email status is {status} for user {user_id}")
                 return True, "unconfirmed"
                 break
             is_active = get_email_status(user_id, next_email, verbose)
@@ -143,8 +142,8 @@ def find_unconfirmed_emails(user, canvas, verbose):
 
     else:
         if verbose:
-            error = typer.style("No email found for user:", fg=typer.colors.YELLOW)
-            typer.echo(f"- {error} {user_id}")
+            status = typer.style("NOT FOUND", fg=typer.colors.YELLOW)
+            typer.echo(f"- Email status is {status} for user {user_id}")
         return True, "not found"
 
 
@@ -167,13 +166,13 @@ def check_schools(user, sub_accounts, canvas, verbose):
 
     if fixable_id:
         if verbose:
-            fixable = typer.style("fixable", fg=typer.colors.GREEN)
-            typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
+            supported = typer.style("supported", fg=typer.colors.GREEN)
+            typer.echo(f"\t* Enrollment status for user {canvas_user_id}: {supported}")
         return True
     else:
         if verbose:
-            fixable = typer.style("NOT fixable", fg=typer.colors.YELLOW)
-            typer.echo(f"- Email status for {canvas_user_id} is {fixable}")
+            supported = typer.style("UNSUPPORTED", fg=typer.colors.YELLOW)
+            typer.echo(f"\t* Enrollment status for user {canvas_user_id}: {supported}")
         return False
 
 
@@ -271,6 +270,7 @@ def process_result(include_fixed):
         DATA_FRAMES = [ERRORS, SUPPORTED_NOT_FOUND, NOT_FIXABLE]
 
     result = pandas.concat(DATA_FRAMES)
+    result.drop("index", axis=1, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
 
     fixed_count = str(fixed)
@@ -329,9 +329,10 @@ def email_main(test, include_fixed, verbose):
             else:
                 report.at[index, "supported school(s)"] = "N"
 
-            report.iloc[index].to_csv(RESULT_PATH, mode="a")
+            report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
         else:
             report.drop(index=index, inplace=True)
+            report.reset_index(drop=True)
 
     OPTIONS = RESULT_PATH, LOG_PATH
     typer.echo(") Processing users...")
