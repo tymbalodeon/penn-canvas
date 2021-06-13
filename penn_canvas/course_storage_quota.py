@@ -10,6 +10,7 @@ from .helpers import (
     colorize_path,
     get_canvas,
     get_command_paths,
+    make_results_paths,
     toggle_progress_bar,
 )
 
@@ -17,6 +18,7 @@ TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 REPORTS, RESULTS = get_command_paths("storage")
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result.csv"
+HEADERS = ["subaccount id", "course id", "old quota", "new quota"]
 SUB_ACCOUNTS = [
     "132477",
     "99243",
@@ -37,16 +39,6 @@ SUB_ACCOUNTS = [
 ]
 
 
-def make_results_paths():
-    if not RESULTS.exists():
-        Path.mkdir(RESULTS)
-    if not RESULT_PATH.is_file():
-        with open(RESULT_PATH, "w", newline="") as result:
-            writer(result).writerow(
-                ["subaccount id", "course id", "old quota", "new quota"]
-            )
-
-
 def find_storage_report():
     typer.echo(") Finding storage report...")
 
@@ -57,10 +49,10 @@ def find_storage_report():
             fg=typer.colors.YELLOW,
         )
         typer.echo(
-            f"{error} \n- Creating one for you at: {colorize_path(REPORTS)}\n\tPlease add a Canvas"
-            " storage report matching today's date to this directory and then run this"
-            " script again.\n- (If you need instructions for generating a Canvas"
-            " storage report, run this command with the '--help' flag.)"
+            f"{error} \n- Creating one for you at: {colorize_path(REPORTS)}\n\tPlease"
+            " add a Canvas storage report matching today's date to this directory and"
+            " then run this script again.\n- (If you need instructions for generating"
+            " a Canvas storage report, run this command with the '--help' flag.)"
         )
         raise typer.Exit(1)
     else:
@@ -79,9 +71,10 @@ def find_storage_report():
             )
             typer.echo(
                 "- Please add a Canvas storage report matching today's date to the"
-                f" following directory and then run this script again: {colorize_path(str(REPORTS))}\n-"
-                " (If you need instructions for generating a Canvas storage report,"
-                " run this command with the '--help' flag.)"
+                " following directory and then run this script again:"
+                f" {colorize_path(str(REPORTS))}\n- (If you need instructions for"
+                " generating a Canvas storage report, run this command with the"
+                " '--help' flag.)"
             )
             raise typer.Exit(1)
         else:
@@ -193,15 +186,15 @@ def storage_main(test, verbose):
     CANVAS = get_canvas(test)
     report = find_storage_report()
     report = cleanup_report(report)
-    make_results_paths()
+    make_results_paths(RESULTS, RESULT_PATH, HEADERS)
     ERRORS = list()
 
     def check_and_increase_storage(course, canvas, verbose):
-        increase, content = check_percent_storage(course, canvas, verbose)
-        if increase:
-            increase_quota(content, canvas, verbose)
-        elif content is not None:
-            ERRORS.append(content)
+        needs_increase, message = check_percent_storage(course, canvas, verbose)
+        if needs_increase:
+            increase_quota(message, canvas, verbose)
+        elif message is not None:
+            ERRORS.append(message)
 
     typer.echo(") Processing courses...")
     toggle_progress_bar(report, check_and_increase_storage, CANVAS, verbose)

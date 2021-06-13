@@ -1,3 +1,4 @@
+from csv import writer
 from pathlib import Path
 
 import typer
@@ -52,6 +53,14 @@ def check_config(config):
         return production, development
 
 
+def make_results_paths(results_dir, result_file, headers):
+    if not results_dir.exists():
+        Path.mkdir(results_dir)
+    if not result_file.is_file():
+        with open(result_file, "w", newline="") as result:
+            writer(result).writerow(headers)
+
+
 def get_command_paths(command, logs=False):
     COMMAND_DIRECTORY = Path.home() / f"penn-canvas/{command}"
     REPORTS = COMMAND_DIRECTORY / "reports"
@@ -63,22 +72,39 @@ def get_command_paths(command, logs=False):
         return REPORTS, RESULTS
 
 
-def toggle_progress_bar(data, callback, canvas, verbose):
+def toggle_progress_bar(data, callback, canvas, verbose, options=None, index=False):
     def verbose_mode():
-        for item in data.itertuples(index=False):
+        for item in data.itertuples(index=index):
             callback(item, canvas, verbose)
+
+    def verbose_mode_with_options():
+        for item in data.itertuples(index=index):
+            callback(item, canvas, verbose, options)
 
     def progress_bar_mode():
         with typer.progressbar(
-            data.itertuples(index=False), length=len(data.index)
+            data.itertuples(index=index), length=len(data.index)
         ) as progress:
             for item in progress:
                 callback(item, canvas, verbose)
 
+    def progress_bar_mode_with_options():
+        with typer.progressbar(
+            data.itertuples(index=index), length=len(data.index)
+        ) as progress:
+            for item in progress:
+                callback(item, canvas, verbose, options)
+
     if verbose:
-        verbose_mode()
+        if options:
+            verbose_mode_with_options()
+        else:
+            verbose_mode()
     else:
-        progress_bar_mode()
+        if options:
+            progress_bar_mode_with_options()
+        else:
+            progress_bar_mode()
 
 
 def get_canvas(test):
