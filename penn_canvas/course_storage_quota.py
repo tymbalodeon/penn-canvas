@@ -1,4 +1,4 @@
-import csv
+from csv import writer
 from datetime import datetime
 from pathlib import Path
 
@@ -42,8 +42,9 @@ def make_results_paths():
         Path.mkdir(RESULTS)
     if not RESULT_PATH.is_file():
         with open(RESULT_PATH, "w", newline="") as result:
-            writer = csv.writer(result)
-            writer.writerow(["subaccount id", "course id", "old quota", "new quota"])
+            writer(result).writerow(
+                ["subaccount id", "course id", "old quota", "new quota"]
+            )
 
 
 def find_storage_report():
@@ -78,7 +79,7 @@ def find_storage_report():
             )
             typer.echo(
                 "- Please add a Canvas storage report matching today's date to the"
-                f" following directory and then run this script again: {colorize_path(REPORTS)}\n-"
+                f" following directory and then run this script again: {colorize_path(str(REPORTS))}\n-"
                 " (If you need instructions for generating a Canvas storage report,"
                 " run this command with the '--help' flag.)"
             )
@@ -173,20 +174,14 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
                     fg=typer.colors.YELLOW,
                 )
 
-        old_quota = old_quota
-        new_quota = new_quota
     else:
         old_quota = "N/A"
         new_quota = "N/A"
 
     ROW = [subaccount_id, sis_id, old_quota, new_quota]
 
-    typer.echo(f") Saving results to {RESULT_PATH}...")
-
-    RESULT = pandas.DataFrame(
-        ROW, columns=["subaccount id", "course id", "old quota", "new quota"]
-    )
-    RESULT.to_csv(RESULT_PATH, mode="a")
+    with open(RESULT_PATH, "a", newline="") as result:
+        writer(result).writerow(ROW)
 
 
 def print_errors(errors):
@@ -213,6 +208,8 @@ def storage_main(test, verbose):
     RESULT = pandas.read_csv(RESULT_PATH)
     INCREASED = len(RESULT.index)
     typer.echo(f"\n\tIncreased storage quota for {colorize(str(INCREASED))} courses.")
+
     if len(ERRORS) > 0:
         print_errors(ERRORS)
+
     typer.echo("\nFINISHED")
