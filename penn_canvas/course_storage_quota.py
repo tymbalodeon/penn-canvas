@@ -146,8 +146,6 @@ def check_percent_storage(course, canvas, verbose, total):
 
 
 def increase_quota(sis_id, canvas, verbose, increase=1000):
-    original_sis_id = sis_id
-
     if sis_id[:4] != "SRS_":
         middle = sis_id[:-5][-6:]
         sis_id = f"SRS_{sis_id[:11]}-{middle[:3]}-{middle[3:]} {sis_id[-5:]}"
