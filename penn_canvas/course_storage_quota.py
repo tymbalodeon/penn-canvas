@@ -100,9 +100,7 @@ def check_percent_storage(course, canvas, verbose):
 
     try:
         canvas_course = canvas.get_course(canvas_id)
-        percentage_used = float(storage_used) / round(
-            int(canvas_course.storage_quota_mb)
-        )
+        percentage_used = float(storage_used) / canvas_course.storage_quota_mb
 
         if verbose:
             if percentage_used >= 0.79:
