@@ -47,6 +47,22 @@ def get_sub_accounts(canvas):
     return SUB_ACCOUNTS
 
 
+def get_previous_output():
+    if RESULT_PATH.is_file():
+        INCOMPLETE = pandas.read_csv(RESULT_PATH)
+        if "index" in INCOMPLETE.columns:
+            try:
+                index = INCOMPLETE.at[INCOMPLETE.index[-1], "index"]
+            except Exception:
+                index = 0
+        else:
+            index = 0
+    else:
+        index = 0
+
+    return index
+
+
 def find_users_report():
     typer.echo(") Finding users report...")
 
@@ -325,9 +341,10 @@ def print_messages(
 
 
 def email_main(test, include_fixed, verbose):
+    START = get_previous_output()
     CANVAS = get_canvas(test)
     report = find_users_report()
-    report, TOTAL = cleanup_report(report)
+    report, TOTAL = cleanup_report(report, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
     SUB_ACCOUNTS = get_sub_accounts(CANVAS)
