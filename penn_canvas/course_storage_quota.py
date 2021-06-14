@@ -118,21 +118,22 @@ def check_percent_storage(course, canvas, verbose):
             if verbose:
                 typer.secho("\t* INCREASE REQUIRED", fg=typer.colors.YELLOW)
             if pandas.isna(sis_id):
-                sis_id_error = (
-                    f"ACTION REQUIRED: A SIS_ID must be added for course: {canvas_id}"
-                )
                 if verbose:
-                    typer.secho(f"\t* {sis_id_error}", fg=typer.colors.YELLOW)
-                return False, sis_id_error
+                    typer.secho(
+                        f"- ACTION REQUIRED: A SISID must be added for course: {canvas_id}",
+                        fg=typer.colors.YELLOW,
+                    )
+                return False, "missing sis id"
             elif sis_id:
                 return True, sis_id
         else:
             return False, None
     except Exception:
-        not_found_error = f"ERROR: {sis_id} ({canvas_id}) NOT FOUND"
         if verbose:
-            typer.secho(f"- {not_found_error}", fg=typer.colors.RED)
-        return False, not_found_error
+            typer.secho(
+                f"- ERROR: {sis_id} ({canvas_id}) NOT FOUND", fg=typer.colors.RED
+            )
+        return False, "course not found"
 
 
 def increase_quota(sis_id, canvas, verbose, increase=1000):
@@ -178,24 +179,16 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
         writer(result).writerow(ROW)
 
 
-def print_errors(errors):
-    for error in errors:
-        typer.secho(f"- ERROR: {error}", fg=typer.colors.RED)
-
-
 def storage_main(test, verbose):
     CANVAS = get_canvas(test)
     report = find_storage_report()
     report = cleanup_report(report)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
-    ERRORS = list()
 
     def check_and_increase_storage(course, canvas, verbose):
         needs_increase, message = check_percent_storage(course, canvas, verbose)
         if needs_increase:
             increase_quota(message, canvas, verbose)
-        elif message is not None:
-            ERRORS.append(message)
 
     typer.echo(") Processing courses...")
     toggle_progress_bar(report, check_and_increase_storage, CANVAS, verbose)
