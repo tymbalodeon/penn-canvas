@@ -18,7 +18,7 @@ TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 REPORTS, RESULTS = get_command_paths("storage")
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result.csv"
-HEADERS = ["subaccount id", "course id", "old quota", "new quota"]
+HEADERS = ["subaccount id", "course id", "old quota", "new quota", "error"]
 SUB_ACCOUNTS = [
     "132477",
     "99243",
@@ -92,7 +92,9 @@ def cleanup_report(report):
     data = data.astype("string", copy=False, errors="ignore")
     data = data[data["account id"].isin(SUB_ACCOUNTS)]
 
-    return data
+    TOTAL = len(data.index)
+
+    return data, TOTAL
 
 
 def check_percent_storage(course, canvas, verbose):
@@ -147,9 +149,11 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
             use_sis_id=True,
         )
         subaccount_id = canvas_course.account_id
+        error = "none"
     except Exception:
         canvas_course = None
         subaccount_id = "ERROR"
+        error = "course not found"
 
     if canvas_course:
         old_quota = canvas_course.storage_quota_mb
@@ -173,27 +177,49 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
         old_quota = "N/A"
         new_quota = "N/A"
 
-    ROW = [subaccount_id, sis_id, old_quota, new_quota]
+    ROW = [subaccount_id, sis_id, old_quota, new_quota, error]
 
     with open(RESULT_PATH, "a", newline="") as result:
         writer(result).writerow(ROW)
 
 
+def write_error(sis_id, error):
+    ROW = ["ERROR", sis_id, "N/A", "N/A", error]
+
+    with open(RESULT_PATH, "a", newline="") as result:
+        writer(result).writerow(ROW)
+
+
+def process_result(result):
+    increased_count = len(result[result["error"] == "none"].index)
+    error_count = len(result[result["error"] != "none"].index)
+    return increased_count, error_count
+
+
+def print_messages(total, increased, errors):
+    typer.echo("SUMMARY:")
+    typer.echo(f"- Processed {colorize(str(total))} courses.")
+    typer.echo(f"- Increased storage quota for {colorize(str(increased))} courses.")
+    typer.echo(f"- Failed to find {colorize(str(errors))} courses.")
+    typer.echo("FINISHED")
+
+
 def storage_main(test, verbose):
     CANVAS = get_canvas(test)
     report = find_storage_report()
-    report = cleanup_report(report)
+    report, TOTAL = cleanup_report(report)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
 
     def check_and_increase_storage(course, canvas, verbose):
         needs_increase, message = check_percent_storage(course, canvas, verbose)
         if needs_increase:
             increase_quota(message, canvas, verbose)
+        if message == "course not found":
+            sis_id = course[1]
+            write_error(sis_id, message)
 
     typer.echo(") Processing courses...")
     toggle_progress_bar(report, check_and_increase_storage, CANVAS, verbose)
     RESULT = pandas.read_csv(RESULT_PATH)
-    INCREASED = len(RESULT.index)
-    typer.echo("SUMMARY:")
-    typer.echo(f"- Increased storage quota for {colorize(str(INCREASED))} courses.")
-    typer.echo("FINISHED")
+    INCREASED_COUNT, ERROR_COUNT = process_result(RESULT)
+    print_messages(TOTAL, INCREASED_COUNT, ERROR_COUNT)
