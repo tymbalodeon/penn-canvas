@@ -241,6 +241,7 @@ def process_result(include_fixed):
     result = pandas.read_csv(RESULT_PATH)
 
     NOT_FIXABLE = result[result["supported school(s)"] == "N"]
+    NOT_FIXABLE.sort_values(by=["email status"], inplace=True)
     FIXABLE = result[
         (result["supported school(s)"] == "Y")
         & (result["email status"] == "unconfirmed")
@@ -256,7 +257,7 @@ def process_result(include_fixed):
     result = pandas.concat([SUPPORTED_NOT_FOUND, USERS_NOT_FOUND, NOT_FIXABLE])
 
     if include_fixed:
-        FIXABLE.sort_values(by=["email status"])
+        FIXABLE.sort_values(by=["email status"], inplace=True)
         result = pandas.concat([FIXABLE, result])
     else:
         ERRORS = FIXABLE[FIXABLE["email status"] == "failed to activate"]
