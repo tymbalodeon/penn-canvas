@@ -53,11 +53,11 @@ def check_config(config):
         return production, development
 
 
-def make_results_paths(results_dir, result_file, headers):
-    if not results_dir.exists():
-        Path.mkdir(results_dir)
-    if not result_file.is_file():
-        with open(result_file, "w", newline="") as result:
+def make_csv_paths(csv_dir, csv_file, headers):
+    if not csv_dir.exists():
+        Path.mkdir(csv_dir)
+    if not csv_file.is_file():
+        with open(csv_file, "w", newline="") as result:
             writer(result).writerow(headers)
 
 

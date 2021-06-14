@@ -1,4 +1,5 @@
 import shutil
+from csv import writer
 from datetime import datetime
 from pathlib import Path
 
@@ -11,7 +12,7 @@ from .helpers import (
     find_sub_accounts,
     get_canvas,
     get_command_paths,
-    make_results_paths,
+    make_csv_paths,
     toggle_progress_bar,
 )
 
@@ -21,6 +22,7 @@ REPORTS, RESULTS, LOGS = get_command_paths("email", True)
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_email_result.csv"
 HEADERS = ["index", "canvas user id", "email status", "supported school(s)"]
 LOG_PATH = LOGS / f"{TODAY_AS_Y_M_D}_email_log.csv"
+LOG_HEADERS = ["canvas user id", "email address"]
 ACCOUNTS = [
     "99243",
     "99237",
@@ -124,7 +126,7 @@ def find_unconfirmed_emails(user, canvas, verbose):
         canvas_user = canvas.get_user(user_id)
     except Exception:
         if verbose:
-            typer.secho(f"- ERROR: User NOT FOUND: {user_id}", fg=typer.colors.RED)
+            typer.secho(f"- ERROR: User NOT FOUND ({user_id})", fg=typer.colors.RED)
         return False, "user not found"
     emails = get_user_emails(canvas_user)
     email = next(emails, None)
@@ -194,10 +196,9 @@ def activate_fixable_emails(
         if not LOGS.exists():
             Path.mkdir(LOGS)
 
-        user_info = pandas.DataFrame(
-            [[user_id, address]], columns=["canvas user id", "address"]
-        )
-        user_info.to_csv(log_path, mode="a", index=False)
+        user_info = [user_id, address]
+        with open(log_path, "a", newline="") as result:
+            writer(result).writerow(user_info)
 
         email.delete()
         user_id.create_communication_channel(
@@ -225,8 +226,8 @@ def activate_fixable_emails(
             typer.secho(f"\t* Email(s) activated for {user_id}", fg=typer.colors.GREEN)
         log = pandas.read_csv(log_path)
         log.drop(index=log.index[-1:], inplace=True)
-        log.to_csv(log_path)
-        return True, "auto-activate"
+        log.to_csv(log_path, index=False)
+        return True, "auto-activated"
 
 
 def remove_empty_log(log_path):
@@ -240,12 +241,9 @@ def remove_empty_log(log_path):
 def process_result(include_fixed):
     result = pandas.read_csv(RESULT_PATH)
 
-    NOT_FIXABLE = result[result["supported school(s)"] == "N"]
-    NOT_FIXABLE.sort_values(by=["email status"], inplace=True)
-    FIXABLE = result[
-        (result["supported school(s)"] == "Y")
-        & (result["email status"] == "unconfirmed")
-    ]
+    not_fixable = result[result["supported school(s)"] == "N"]
+    not_fixable = not_fixable.sort_values(by=["email status"])
+    FIXABLE = result[result["supported school(s)"] == "Y"]
     SUPPORTED_NOT_FOUND = result[
         (result["supported school(s)"] == "Y") & (result["email status"] == "not found")
     ]
@@ -254,7 +252,7 @@ def process_result(include_fixed):
     fixed = len(FIXABLE[FIXABLE["email status"] == "auto-activated"].index)
     error = len(FIXABLE[FIXABLE["email status"] == "failed to activate"].index)
 
-    result = pandas.concat([SUPPORTED_NOT_FOUND, USERS_NOT_FOUND, NOT_FIXABLE])
+    result = pandas.concat([SUPPORTED_NOT_FOUND, USERS_NOT_FOUND, not_fixable])
 
     if include_fixed:
         FIXABLE.sort_values(by=["email status"], inplace=True)
@@ -268,7 +266,7 @@ def process_result(include_fixed):
 
     fixed_count = str(fixed)
     error_count = str(error)
-    unsupported_count = str(len(NOT_FIXABLE.index))
+    unsupported_count = str(len(not_fixable.index))
     supported_not_found_count = str(len(SUPPORTED_NOT_FOUND.index))
     user_not_found_count = str(len(USERS_NOT_FOUND.index))
 
@@ -290,19 +288,25 @@ def print_messages(
     log_path,
     user_not_found,
 ):
+    typer.echo("SUMMARY:")
     typer.echo(f"- Processed {colorize(total)} accounts.")
     typer.echo(
         f"- Activated {colorize(fixed)} supported users with unconfirmed email"
         " accounts."
     )
-    typer.echo(
-        f"- Found {colorize(supported_not_found)} supported users with no email"
-        " account."
-    )
-    typer.echo(
-        f"- Found {colorize(unsupported)} unsupported users with missing or unconfirmed"
-        " email accounts."
-    )
+
+    if int(supported_not_found) > 0:
+        typer.echo(
+            f"- Found {colorize(supported_not_found)} supported users with no email"
+            " account."
+        )
+
+    if int(unsupported) > 0:
+        typer.echo(
+            f"- Found {colorize(unsupported)} unsupported users with missing or unconfirmed"
+            " email accounts."
+        )
+
     if int(errors) > 0:
         typer.secho(
             f"- Failed to activate email(s) for {errors} supported users with (an)"
@@ -310,11 +314,13 @@ def print_messages(
             f" file: {log_path}",
             fg=typer.colors.RED,
         )
+
     if int(user_not_found) > 0:
         typer.secho(
             f"- Failed to find {user_not_found} users",
             fg=typer.colors.RED,
         )
+
     typer.echo("FINISHED")
 
 
@@ -322,7 +328,8 @@ def email_main(test, include_fixed, verbose):
     CANVAS = get_canvas(test)
     report = find_users_report()
     report, TOTAL = cleanup_report(report)
-    make_results_paths(RESULTS, RESULT_PATH, HEADERS)
+    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
+    make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
     SUB_ACCOUNTS = get_sub_accounts(CANVAS)
 
     def check_and_activate_emails(user, canvas, verbose, options):
@@ -336,9 +343,10 @@ def email_main(test, include_fixed, verbose):
             if is_supported:
                 report.at[index, "supported school(s)"] = "Y"
                 if message == "unconfirmed":
-                    activated, message = activate_fixable_emails(
+                    activated, activate_message = activate_fixable_emails(
                         user, canvas, result_path, log_path, include_fixed, verbose
                     )
+                    report.at[index, "email status"] = activate_message
             else:
                 report.at[index, "supported school(s)"] = "N"
 

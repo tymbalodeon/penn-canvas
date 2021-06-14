@@ -10,7 +10,7 @@ from .helpers import (
     colorize_path,
     get_canvas,
     get_command_paths,
-    make_results_paths,
+    make_csv_paths,
     toggle_progress_bar,
 )
 
@@ -187,7 +187,7 @@ def storage_main(test, verbose):
     CANVAS = get_canvas(test)
     report = find_storage_report()
     report = cleanup_report(report)
-    make_results_paths(RESULTS, RESULT_PATH, HEADERS)
+    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     ERRORS = list()
 
     def check_and_increase_storage(course, canvas, verbose):
@@ -201,5 +201,6 @@ def storage_main(test, verbose):
     toggle_progress_bar(report, check_and_increase_storage, CANVAS, verbose)
     RESULT = pandas.read_csv(RESULT_PATH)
     INCREASED = len(RESULT.index)
+    typer.echo("SUMMARY:")
     typer.echo(f"- Increased storage quota for {colorize(str(INCREASED))} courses.")
     typer.echo("FINISHED")
