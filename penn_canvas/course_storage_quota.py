@@ -131,9 +131,9 @@ def check_percent_storage(course, canvas, verbose):
         else:
             return False, None
     except Exception:
-        not_found_error = (
-            f"Couldn't find course: Canvas ID: {canvas_id}, SIS ID: {sis_id}"
-        )
+        not_found_error = f"ERROR: {sis_id} ({canvas_id}) NOT FOUND"
+        if verbose:
+            typer.secho(f"- {not_found_error}", fg=typer.colors.RED)
         return False, not_found_error
 
 
@@ -204,8 +204,4 @@ def storage_main(test, verbose):
     RESULT = pandas.read_csv(RESULT_PATH)
     INCREASED = len(RESULT.index)
     typer.echo(f"- Increased storage quota for {colorize(str(INCREASED))} courses.")
-
-    if len(ERRORS) > 0:
-        print_errors(ERRORS)
-
     typer.echo("FINISHED")
