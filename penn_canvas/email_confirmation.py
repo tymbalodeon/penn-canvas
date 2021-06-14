@@ -357,7 +357,7 @@ def email_main(test, include_fixed, verbose):
             report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
         else:
             report.drop(index=index, inplace=True)
-            report.reset_index(drop=True)
+            report.reset_index(drop=True, inplace=True)
 
     OPTIONS = RESULT_PATH, LOG_PATH
     typer.echo(") Processing users...")

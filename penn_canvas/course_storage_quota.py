@@ -91,14 +91,16 @@ def cleanup_report(report):
     data.sort_values(by=["storage used in MB"], inplace=True)
     data = data.astype("string", copy=False, errors="ignore")
     data = data[data["account id"].isin(SUB_ACCOUNTS)]
+    data.reset_index(drop=True, inplace=True)
 
     TOTAL = len(data.index)
 
     return data, TOTAL
 
 
-def check_percent_storage(course, canvas, verbose):
-    canvas_id, sis_id, account_id, storage_used = course
+def check_percent_storage(course, canvas, verbose, total):
+    index, canvas_id, sis_id, account_id, storage_used = course
+    index += 1
 
     try:
         canvas_course = canvas.get_course(canvas_id)
@@ -114,17 +116,20 @@ def check_percent_storage(course, canvas, verbose):
                     f"{int(percentage_used * 100)}%", fg=typer.colors.GREEN
                 )
 
-            typer.echo(f"- {sis_id} ({canvas_id}): {percentage_display}")
+            typer.echo(
+                f"- {sis_id} ({canvas_id}): {percentage_display} ({index}/{total})"
+            )
 
         if percentage_used >= 0.79:
             if verbose:
                 typer.secho("\t* INCREASE REQUIRED", fg=typer.colors.YELLOW)
             if pandas.isna(sis_id):
                 if verbose:
-                    typer.secho(
-                        f"- ACTION REQUIRED: A SISID must be added for course: {canvas_id}",
+                    message = typer.style(
+                        f"- ACTION REQUIRED: A SIS ID must be added for course: {canvas_id}",
                         fg=typer.colors.YELLOW,
                     )
+                    typer.echo(f"{message} ({index}/{total})")
                 return False, "missing sis id"
             elif sis_id:
                 return True, sis_id
@@ -132,13 +137,17 @@ def check_percent_storage(course, canvas, verbose):
             return False, None
     except Exception:
         if verbose:
-            typer.secho(
-                f"- ERROR: {sis_id} ({canvas_id}) NOT FOUND", fg=typer.colors.RED
+            message = typer.style(
+                f"- ERROR: {sis_id} ({canvas_id}) NOT FOUND",
+                fg=typer.colors.RED,
             )
+            typer.echo(f"{message} ({index}/{total})")
         return False, "course not found"
 
 
 def increase_quota(sis_id, canvas, verbose, increase=1000):
+    original_sis_id = sis_id
+
     if sis_id[:4] != "SRS_":
         middle = sis_id[:-5][-6:]
         sis_id = f"SRS_{sis_id[:11]}-{middle[:3]}-{middle[3:]} {sis_id[-5:]}"
@@ -172,7 +181,6 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
                     f"\t* Failed to increase quota for Canvas course ID: {sis_id}",
                     fg=typer.colors.YELLOW,
                 )
-
     else:
         old_quota = "N/A"
         new_quota = "N/A"
@@ -210,16 +218,18 @@ def storage_main(test, verbose):
     report, TOTAL = cleanup_report(report)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
 
-    def check_and_increase_storage(course, canvas, verbose):
-        needs_increase, message = check_percent_storage(course, canvas, verbose)
+    def check_and_increase_storage(course, canvas, verbose, total):
+        needs_increase, message = check_percent_storage(course, canvas, verbose, total)
         if needs_increase:
-            increase_quota(message, canvas, verbose)
+            ROW = increase_quota(message, canvas, verbose)
         if message == "course not found":
             sis_id = course[1]
             write_error(sis_id, message)
 
     typer.echo(") Processing courses...")
-    toggle_progress_bar(report, check_and_increase_storage, CANVAS, verbose)
+    toggle_progress_bar(
+        report, check_and_increase_storage, CANVAS, verbose, options=TOTAL, index=True
+    )
     RESULT = pandas.read_csv(RESULT_PATH)
     INCREASED_COUNT, ERROR_COUNT = process_result(RESULT)
     print_messages(TOTAL, INCREASED_COUNT, ERROR_COUNT)
