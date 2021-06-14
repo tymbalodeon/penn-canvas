@@ -105,17 +105,20 @@ def check_percent_storage(course, canvas, verbose):
         )
 
         if verbose:
-            percentage_display = colorize(f"{int(percentage_used * 100)}%")
-            typer.echo(
-                f"- Canvas ID: {canvas_id}, SIS_ID: {sis_id}, Storage used:"
-                f" {storage_used}, Storage Quota (MB):"
-                f" {canvas_course.storage_quota_mb}, Percentage used:"
-                f" {percentage_display}"
-            )
+            if percentage_used >= 0.79:
+                percentage_display = typer.style(
+                    f"{int(percentage_used * 100)}%", fg=typer.colors.YELLOW
+                )
+            else:
+                percentage_display = typer.style(
+                    f"{int(percentage_used * 100)}%", fg=typer.colors.GREEN
+                )
+
+            typer.echo(f"- {sis_id} ({canvas_id}): {percentage_display}")
 
         if percentage_used >= 0.79:
             if verbose:
-                typer.secho("\t* Increase required", fg=typer.colors.YELLOW)
+                typer.secho("\t* INCREASE REQUIRED", fg=typer.colors.YELLOW)
             if pandas.isna(sis_id):
                 sis_id_error = (
                     f"ACTION REQUIRED: A SIS_ID must be added for course: {canvas_id}"
@@ -157,7 +160,7 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
             canvas_course.update(course={"storage_quota_mb": new_quota})
             if verbose:
                 typer.echo(
-                    f"\t- {sis_id}, Old Quota: {old_quota}, New Quota: {new_quota}"
+                    f"\t* Increased storage from {old_quota} MB to {new_quota} MB"
                 )
         except Exception:
             new_quota = "ERROR"
@@ -200,9 +203,9 @@ def storage_main(test, verbose):
     toggle_progress_bar(report, check_and_increase_storage, CANVAS, verbose)
     RESULT = pandas.read_csv(RESULT_PATH)
     INCREASED = len(RESULT.index)
-    typer.echo(f"\n\tIncreased storage quota for {colorize(str(INCREASED))} courses.")
+    typer.echo(f"- Increased storage quota for {colorize(str(INCREASED))} courses.")
 
     if len(ERRORS) > 0:
         print_errors(ERRORS)
 
-    typer.echo("\nFINISHED")
+    typer.echo("FINISHED")
