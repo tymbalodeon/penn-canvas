@@ -106,13 +106,13 @@ def get_user_emails(user):
     return filter(lambda channel: channel.type == "email", communication_channels)
 
 
-def get_email_status(user_id, email, verbose):
+def get_email_status(user, email, verbose):
     email_status = email.workflow_state
 
     if email_status == "active":
         if verbose:
             status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
-            typer.echo(f"- Email status is {status} for user {user_id}")
+            typer.echo(f"- {user}: {status}")
         return True
     elif email_status == "unconfirmed":
         return False
@@ -120,22 +120,27 @@ def get_email_status(user_id, email, verbose):
 
 def find_unconfirmed_emails(user, canvas, verbose):
     user_id = user[1]
-    canvas_user = canvas.get_user(user_id)
+    try:
+        canvas_user = canvas.get_user(user_id)
+    except Exception:
+        if verbose:
+            typer.secho(f"- ERROR: User NOT FOUND: {user_id}", fg=typer.colors.RED)
+        return False, "user not found"
     emails = get_user_emails(canvas_user)
     email = next(emails, None)
 
     if email:
-        is_active = get_email_status(user_id, email, verbose)
+        is_active = get_email_status(canvas_user, email, verbose)
 
         while not is_active:
             next_email = next(emails, None)
             if not next_email:
                 if verbose:
                     status = typer.style("UNCONFIRMED", fg=typer.colors.YELLOW)
-                    typer.echo(f"- Email status is {status} for user {user_id}")
+                    typer.echo(f"- {canvas_user}: {status}")
                 return True, "unconfirmed"
                 break
-            is_active = get_email_status(user_id, next_email, verbose)
+            is_active = get_email_status(canvas_user, next_email, verbose)
 
         if is_active:
             return False, None
@@ -143,7 +148,7 @@ def find_unconfirmed_emails(user, canvas, verbose):
     else:
         if verbose:
             status = typer.style("NOT FOUND", fg=typer.colors.YELLOW)
-            typer.echo(f"- Email status is {status} for user {user_id}")
+            typer.echo(f"- {canvas_user}: {status}")
         return True, "not found"
 
 
@@ -167,12 +172,12 @@ def check_schools(user, sub_accounts, canvas, verbose):
     if fixable_id:
         if verbose:
             supported = typer.style("supported", fg=typer.colors.GREEN)
-            typer.echo(f"\t* Enrollment status for user {canvas_user_id}: {supported}")
+            typer.echo(f"\t* Enrollment status: {supported}")
         return True
     else:
         if verbose:
             supported = typer.style("UNSUPPORTED", fg=typer.colors.YELLOW)
-            typer.echo(f"\t* Enrollment status for user {canvas_user_id}: {supported}")
+            typer.echo(f"\t* Enrollment status: {supported}")
         return False
 
 
@@ -209,20 +214,19 @@ def activate_fixable_emails(
         if not next_email:
             if verbose:
                 typer.secho(
-                    f"- ERROR: failed to activate email(s) for user {user_id}!",
+                    f"\t* ERROR: failed to activate email(s) for {user_id}!",
                     fg=typer.colors.RED,
                 )
             return False, "failed to activate"
-            break
         is_active = get_email_status(user_id, next_email, False)
 
     if is_active:
         if verbose:
-            typer.echo(f"- Email(s) activated for user: {user_id}")
-        return True, "auto-activate"
+            typer.secho(f"\t* Email(s) activated for {user_id}", fg=typer.colors.GREEN)
         log = pandas.read_csv(log_path)
         log.drop(index=log.index[-1:], inplace=True)
         log.to_csv(log_path)
+        return True, "auto-activate"
 
 
 def remove_empty_log(log_path):
@@ -236,40 +240,28 @@ def remove_empty_log(log_path):
 def process_result(include_fixed):
     result = pandas.read_csv(RESULT_PATH)
 
-    if "supported school(s)" in result.columns:
-        NOT_FIXABLE = result[result["supported school(s)"] == "N"]
-        FIXABLE = result[
-            (result["supported school(s)"] == "Y")
-            & (result["email status"] == "unconfirmed")
-        ]
-        SUPPORTED_NOT_FOUND = result[
-            (result["supported school(s)"] == "Y")
-            & (result["email status"] == "not found")
-        ]
-    else:
-        NOT_FIXABLE = result
-        FIXABLE = result
-        SUPPORTED_NOT_FOUND = result
+    NOT_FIXABLE = result[result["supported school(s)"] == "N"]
+    FIXABLE = result[
+        (result["supported school(s)"] == "Y")
+        & (result["email status"] == "unconfirmed")
+    ]
+    SUPPORTED_NOT_FOUND = result[
+        (result["supported school(s)"] == "Y") & (result["email status"] == "not found")
+    ]
+    USERS_NOT_FOUND = result[result["email status"] == "ERROR: user not found"]
 
-    if "email status" in FIXABLE.columns:
-        fixed = len(FIXABLE[FIXABLE["email status"] == "auto-activated"].index)
-        error = len(FIXABLE[FIXABLE["email status"] == "failed to activate"].index)
-    else:
-        fixed = 0
-        error = 0
+    fixed = len(FIXABLE[FIXABLE["email status"] == "auto-activated"].index)
+    error = len(FIXABLE[FIXABLE["email status"] == "failed to activate"].index)
+
+    result = pandas.concat([SUPPORTED_NOT_FOUND, USERS_NOT_FOUND, NOT_FIXABLE])
 
     if include_fixed:
-        if "email status" in FIXABLE.columns:
-            FIXABLE.sort_values(by=["email status"])
-        DATA_FRAMES = [FIXABLE, SUPPORTED_NOT_FOUND, NOT_FIXABLE]
+        FIXABLE.sort_values(by=["email status"])
+        result = pandas.concat([FIXABLE, result])
     else:
-        if "email status" in FIXABLE.columns:
-            ERRORS = FIXABLE[FIXABLE["email status"] == "failed to activate"]
-        else:
-            ERRORS = FIXABLE
-        DATA_FRAMES = [ERRORS, SUPPORTED_NOT_FOUND, NOT_FIXABLE]
+        ERRORS = FIXABLE[FIXABLE["email status"] == "failed to activate"]
+        result = pandas.concat([ERRORS, result])
 
-    result = pandas.concat(DATA_FRAMES)
     result.drop("index", axis=1, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
 
@@ -277,11 +269,26 @@ def process_result(include_fixed):
     error_count = str(error)
     unsupported_count = str(len(NOT_FIXABLE.index))
     supported_not_found_count = str(len(SUPPORTED_NOT_FOUND.index))
+    user_not_found_count = str(len(USERS_NOT_FOUND.index))
 
-    return fixed_count, error_count, unsupported_count, supported_not_found_count
+    return (
+        fixed_count,
+        error_count,
+        unsupported_count,
+        supported_not_found_count,
+        user_not_found_count,
+    )
 
 
-def print_messages(total, fixed, supported_not_found, unsupported, errors, log_path):
+def print_messages(
+    total,
+    fixed,
+    supported_not_found,
+    unsupported,
+    errors,
+    log_path,
+    user_not_found,
+):
     typer.echo(f"- Processed {colorize(total)} accounts.")
     typer.echo(
         f"- Activated {colorize(fixed)} supported users with unconfirmed email"
@@ -295,11 +302,16 @@ def print_messages(total, fixed, supported_not_found, unsupported, errors, log_p
         f"- Found {colorize(unsupported)} unsupported users with missing or unconfirmed"
         " email accounts."
     )
-    if errors != "0":
+    if int(errors) > 0:
         typer.secho(
             f"- Failed to activate email(s) for {errors} supported users with (an)"
             " unconfirmed email account(s). Affected accounts are recorded in the log"
             f" file: {log_path}",
+            fg=typer.colors.RED,
+        )
+    if int(user_not_found) > 0:
+        typer.secho(
+            f"- Failed to find {user_not_found} users",
             fg=typer.colors.RED,
         )
     typer.echo("FINISHED")
@@ -330,6 +342,10 @@ def email_main(test, include_fixed, verbose):
                 report.at[index, "supported school(s)"] = "N"
 
             report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
+        elif message == "user not found":
+            report.at[index, "email status"] = "ERROR: user not found"
+            report.at[index, "supported school(s)"] = "ERROR: user not found"
+            report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
         else:
             report.drop(index=index, inplace=True)
             report.reset_index(drop=True)
@@ -346,6 +362,7 @@ def email_main(test, include_fixed, verbose):
         error_count,
         unsupported_count,
         supported_not_found_count,
+        user_not_found_count,
     ) = process_result(include_fixed)
 
     print_messages(
@@ -355,4 +372,5 @@ def email_main(test, include_fixed, verbose):
         unsupported_count,
         error_count,
         LOG_PATH,
+        user_not_found_count,
     )
