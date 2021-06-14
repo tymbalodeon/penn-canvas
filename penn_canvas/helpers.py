@@ -1,3 +1,4 @@
+from csv import writer
 from pathlib import Path
 
 import typer
@@ -24,19 +25,22 @@ def make_config():
 
 
 def check_config(config):
+    typer.echo(") Reading Canvas Access Tokens from config file...")
     if not config.exists():
-        create = typer.confirm(
-            "\t- No config file ($HOME/.config/.penn-canvas) exists for Penn-Canvas."
-            " Would you like to create one?"
+        error = typer.style(
+            "- ERROR: No config file ($HOME/.config/.penn-canvas) exists for"
+            " Penn-Canvas.",
+            fg=typer.colors.YELLOW,
         )
+        create = typer.confirm(f"{error} \n- Would you like to create one?")
         if not create:
             typer.echo(
-                "\n) Not creating..."
-                "\tPlease create a config file at: $HOME/.config/.penn-canvas"
-                "\tPlace your Canvas Access Tokens in this file using the following"
+                ") Not creating...\n"
+                "- Please create a config file at: $HOME/.config/.penn-canvas"
+                "\n- Place your Canvas Access Tokens in this file using the following"
                 " format:"
-                "\t\tCANVAS_KEY_PROD=your-canvas-prod-key-here"
-                "\t\tCANVAS_KEY_DEV=your-canvas-test-key-here"
+                "\n\tCANVAS_KEY_PROD=your-canvas-prod-key-here"
+                "\n\tCANVAS_KEY_DEV=your-canvas-test-key-here"
             )
             raise typer.Abort()
         else:
@@ -47,6 +51,14 @@ def check_config(config):
             production = lines[0].replace("CANVAS_KEY_PROD=", "")
             development = lines[1].replace("CANVAS_KEY_DEV=", "")
         return production, development
+
+
+def make_csv_paths(csv_dir, csv_file, headers):
+    if not csv_dir.exists():
+        Path.mkdir(csv_dir)
+    if not csv_file.is_file():
+        with open(csv_file, "w", newline="") as result:
+            writer(result).writerow(headers)
 
 
 def get_command_paths(command, logs=False):
@@ -60,20 +72,39 @@ def get_command_paths(command, logs=False):
         return REPORTS, RESULTS
 
 
-def toggle_progress_bar(data, size, callback, verbose):
-    def verbose_mode(data, callback):
-        for item in data:
-            callback(item)
+def toggle_progress_bar(data, callback, canvas, verbose, options=None, index=False):
+    def verbose_mode():
+        for item in data.itertuples(index=index):
+            callback(item, canvas, verbose)
 
-    def progress_bar_mode(data, size, callback):
-        with typer.progressbar(data, length=size) as progress:
+    def verbose_mode_with_options():
+        for item in data.itertuples(index=index):
+            callback(item, canvas, verbose, options)
+
+    def progress_bar_mode():
+        with typer.progressbar(
+            data.itertuples(index=index), length=len(data.index)
+        ) as progress:
             for item in progress:
-                callback(item)
+                callback(item, canvas, verbose)
+
+    def progress_bar_mode_with_options():
+        with typer.progressbar(
+            data.itertuples(index=index), length=len(data.index)
+        ) as progress:
+            for item in progress:
+                callback(item, canvas, verbose, options)
 
     if verbose:
-        verbose_mode(data, callback)
+        if options:
+            verbose_mode_with_options()
+        else:
+            verbose_mode()
     else:
-        progress_bar_mode(data, size, callback)
+        if options:
+            progress_bar_mode_with_options()
+        else:
+            progress_bar_mode()
 
 
 def get_canvas(test):
@@ -97,3 +128,7 @@ def find_sub_accounts(canvas, account_id):
 
 def colorize(text):
     return typer.style(text, fg=typer.colors.MAGENTA)
+
+
+def colorize_path(text):
+    return typer.style(text, fg=typer.colors.GREEN)
