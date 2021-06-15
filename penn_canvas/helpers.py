@@ -7,7 +7,7 @@ from canvasapi import Canvas
 CANVAS_URL_PROD = "https://canvas.upenn.edu/"
 CANVAS_URL_TEST = "https://upenn.test.instructure.com/"
 CONFIG_DIR = Path.home() / ".config"
-CONFIG_PATH = CONFIG_DIR / "penn-canvas.txt"
+CONFIG_PATH = CONFIG_DIR / "penn-canvas"
 
 
 def make_config():
@@ -28,7 +28,7 @@ def check_config(config):
     typer.echo(") Reading Canvas Access Tokens from config file...")
     if not config.exists():
         error = typer.style(
-            "- ERROR: No config file ($HOME/.config/.penn-canvas) exists for"
+            "- ERROR: No config file ($HOME/.config/penn-canvas) exists for"
             " Penn-Canvas.",
             fg=typer.colors.YELLOW,
         )
@@ -36,7 +36,7 @@ def check_config(config):
         if not create:
             typer.echo(
                 ") Not creating...\n"
-                "- Please create a config file at: $HOME/.config/.penn-canvas"
+                "- Please create a config file at: $HOME/.config/penn-canvas"
                 "\n- Place your Canvas Access Tokens in this file using the following"
                 " format:"
                 "\n\tCANVAS_KEY_PROD=your-canvas-prod-key-here"
