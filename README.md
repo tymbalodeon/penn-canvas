@@ -8,7 +8,7 @@ NOTE: This project is intended to be developed and built using [poetry](https://
 
 1. `poetry install`
 2. `poetry build`
-3. `pip install --user <path-to-.whl-file-in-this-project's-dist-folder>`
+3. `pip install <path-to-.whl-file-in-this-project's-dist-folder>`
 
 The `penn-canvas` command will then be globally available in your shell.
 
@@ -35,7 +35,7 @@ A config file containing your Access Tokens can be generated for you by Penn-Can
 
 #### Manual config creation
 
-You may also create your config file manually. Penn-Canvas expects the location to be "$HOME/.config/penn-canvas.txt" and the contents to be:
+You may also create your config file manually. Penn-Canvas expects the location to be "$HOME/.config/penn-canvas" and the contents to be:
 
 > CANVAS_KEY_PROD=your-canvas-prod-key-here  
 > CANVAS_KEY_DEV=your-canvas-test-key-here
