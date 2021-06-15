@@ -212,7 +212,8 @@ def print_messages(total, increased, errors):
 
 
 def storage_main(test, verbose):
-    CANVAS = get_canvas(test)
+    INSTANCE = "test" if test else "prod"
+    CANVAS = get_canvas(INSTANCE)
     report = find_storage_report()
     report, TOTAL = cleanup_report(report)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)

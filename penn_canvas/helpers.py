@@ -6,6 +6,7 @@ from canvasapi import Canvas
 
 CANVAS_URL_PROD = "https://canvas.upenn.edu/"
 CANVAS_URL_TEST = "https://upenn.test.instructure.com/"
+CANVAS_URL_OPEN = "https://upenn-catalog.instructure.com/"
 CONFIG_DIR = Path.home() / ".config"
 CONFIG_PATH = CONFIG_DIR / "penn-canvas"
 
@@ -19,9 +20,11 @@ def make_config():
     development = typer.prompt(
         "Please enter your Access Token for the TEST instance of Penn Canvas"
     )
+    open_canvas = typer.prompt("Please enter your Access Token for Open Canvas")
     with open(CONFIG_PATH, "w+") as config:
         config.write(f"CANVAS_KEY_PROD={production}")
         config.write(f"\nCANVAS_KEY_DEV={development}")
+        config.write(f"\nCANVAS_KEY_OPEN={open_canvas}")
 
 
 def check_config(config):
@@ -41,6 +44,7 @@ def check_config(config):
                 " format:"
                 "\n\tCANVAS_KEY_PROD=your-canvas-prod-key-here"
                 "\n\tCANVAS_KEY_DEV=your-canvas-test-key-here"
+                "\n\tCANVAS_KEY_OPEN=your-open-canvas-key-here"
             )
             raise typer.Abort()
         else:
@@ -50,7 +54,8 @@ def check_config(config):
             lines = config.read().splitlines()
             production = lines[0].replace("CANVAS_KEY_PROD=", "")
             development = lines[1].replace("CANVAS_KEY_DEV=", "")
-        return production, development
+            open_canvas = lines[2].replace("CANVAS_KEY_OPEN=", "")
+        return production, development, open_canvas
 
 
 def make_csv_paths(csv_dir, csv_file, headers):
@@ -107,12 +112,18 @@ def toggle_progress_bar(data, callback, canvas, verbose, options=None, index=Fal
             progress_bar_mode()
 
 
-def get_canvas(test):
-    production, development = check_config(CONFIG_PATH)
-    return Canvas(
-        CANVAS_URL_TEST if test else CANVAS_URL_PROD,
-        development if test else production,
-    )
+def get_canvas(instance):
+    production, development, open_canvas = check_config(CONFIG_PATH)
+    if instance == "prod":
+        url = CANVAS_URL_PROD
+        access_token = production
+    elif instance == "test":
+        url = CANVAS_URL_TEST
+        access_token = development
+    elif instance == "open":
+        url = CANVAS_URL_OPEN
+        access_token = open_canvas
+    return Canvas(url, access_token)
 
 
 def find_sub_accounts(canvas, account_id):

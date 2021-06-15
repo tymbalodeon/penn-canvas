@@ -346,7 +346,8 @@ def print_messages(
 
 
 def email_main(test, include_fixed, verbose):
-    CANVAS = get_canvas(test)
+    INSTANCE = "test" if test else "prod"
+    CANVAS = get_canvas(INSTANCE)
     report = find_users_report()
     START = get_previous_output()
     report, TOTAL = cleanup_report(report, START)
