@@ -126,7 +126,8 @@ def check_percent_storage(course, canvas, verbose, total):
             if pandas.isna(sis_id):
                 if verbose:
                     message = typer.style(
-                        f"- ACTION REQUIRED: A SIS ID must be added for course: {canvas_id}",
+                        "- ACTION REQUIRED: A SIS ID must be added for course:"
+                        f" {canvas_id}",
                         fg=typer.colors.YELLOW,
                     )
                     typer.echo(f"{message} ({index}/{total})")
@@ -219,7 +220,7 @@ def storage_main(test, verbose):
     def check_and_increase_storage(course, canvas, verbose, total):
         needs_increase, message = check_percent_storage(course, canvas, verbose, total)
         if needs_increase:
-            ROW = increase_quota(message, canvas, verbose)
+            increase_quota(message, canvas, verbose)
         if message == "course not found":
             sis_id = course[1]
             write_error(sis_id, message)

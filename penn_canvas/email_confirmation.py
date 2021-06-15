@@ -324,8 +324,8 @@ def print_messages(
 
     if int(unsupported) > 0:
         typer.echo(
-            f"- Found {colorize(unsupported)} unsupported users with missing or unconfirmed"
-            " email accounts."
+            f"- Found {colorize(unsupported)} unsupported users with missing or"
+            " unconfirmed email accounts."
         )
 
     if int(errors) > 0:
