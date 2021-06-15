@@ -36,6 +36,24 @@ MASTER_FILE = f"data/course_shopping_master_{TERM}{'_test' if TESTING else ''}.c
 
 canvas_id_in_master = []
 
+
+def linked_to_SRS(course_id):
+    return course_id.startswith("SRS_")
+
+
+def WH_linked_to_SRS(canvas, canvas_id):
+    course = canvas.get_course(canvas_id)
+    sections = course.get_sections()
+
+    for s in sections:
+        try:
+            if s.sis_section_id.startswith("SRS_"):
+                return True
+        except:
+            pass
+    return False
+
+
 # Load the master file and put the canvas_id from it into list canvas_id_in_master
 def load_master():
     master = open(MASTER_FILE, "r")
