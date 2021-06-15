@@ -48,11 +48,16 @@ def get_sub_accounts(canvas):
 
 
 def get_previous_output():
+    typer.echo(") Checking for previous results from this date's report...")
     if RESULT_PATH.is_file():
         INCOMPLETE = pandas.read_csv(RESULT_PATH)
         if "index" in INCOMPLETE.columns:
             try:
                 index = INCOMPLETE.at[INCOMPLETE.index[-1], "index"]
+                INCOMPLETE.drop(
+                    INCOMPLETE[INCOMPLETE["index"] == index].index, inplace=True
+                )
+                INCOMPLETE.to_csv(RESULT_PATH, index=False)
             except Exception:
                 index = 0
         else:
@@ -64,7 +69,7 @@ def get_previous_output():
 
 
 def find_users_report():
-    typer.echo(") Finding users report...")
+    typer.echo(") Finding Canvas Provisioning Users report...")
 
     if not REPORTS.exists():
         Path.mkdir(REPORTS, parents=True)
@@ -106,7 +111,7 @@ def find_users_report():
 
 
 def cleanup_report(report, start=0):
-    typer.echo(") Removing unused columns...")
+    typer.echo(") Preparing report...")
 
     data = pandas.read_csv(report)
     data = data[["canvas_user_id"]]
@@ -341,9 +346,9 @@ def print_messages(
 
 
 def email_main(test, include_fixed, verbose):
-    START = get_previous_output()
     CANVAS = get_canvas(test)
     report = find_users_report()
+    START = get_previous_output()
     report, TOTAL = cleanup_report(report, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
@@ -374,7 +379,6 @@ def email_main(test, include_fixed, verbose):
             report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
         else:
             report.drop(index=index, inplace=True)
-            report.reset_index(drop=True, inplace=True)
 
     OPTIONS = RESULT_PATH, LOG_PATH
     typer.echo(") Processing users...")
