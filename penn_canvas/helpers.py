@@ -20,7 +20,7 @@ def make_config():
     development = typer.prompt(
         "Please enter your Access Token for the TEST instance of Penn Canvas"
     )
-    open_canvas = typer.prompt("Please enter your Access Token for Open Canvas")
+    open_canvas = typer.prompt("Please enter your Access Token for OPEN Canvas")
     with open(CONFIG_PATH, "w+") as config:
         config.write(f"CANVAS_KEY_PROD={production}")
         config.write(f"\nCANVAS_KEY_DEV={development}")

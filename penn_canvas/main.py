@@ -20,7 +20,20 @@ app = typer.Typer(
 @app.command()
 def configure():
     """
-    Automatically generate a config file for Penn-Canvas.
+    Automatically generates a config file for Penn-Canvas.
+
+    You will be asked to input Access Tokens for:
+    - PRODUCTION: `https://canvas.upenn.edu/`
+    - DEVELOPMENT: `https://upenn.test.instructure.com/`
+    - OPEN: `https://upenn-catalog.instructure.com/`
+
+    To generate these tokens, login to the appropriate Canvas instance using one
+    of the urls above. Go to 'Account > Settings' and click 'New Access Token'
+    under the 'Approved Integrations' heading. Enter a description in the
+    'Purpose' field and click 'Generate Token'. Paste this token into the
+    terminal when prompted by the `configure` command. You may leave the value
+    empty by hitting ENTER when prompted, if not using all three Canvas
+    instances.
     """
     make_config()
 
