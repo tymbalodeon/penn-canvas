@@ -117,7 +117,7 @@ def check_percent_storage(course, canvas, verbose, total):
                 )
 
             typer.echo(
-                f"- {sis_id} ({canvas_id}): {percentage_display} ({index}/{total})"
+                f"- ({index}/{total}) {sis_id} ({canvas_id}): {percentage_display}"
             )
 
         if percentage_used >= 0.79:
@@ -130,7 +130,7 @@ def check_percent_storage(course, canvas, verbose, total):
                         f" {canvas_id}",
                         fg=typer.colors.YELLOW,
                     )
-                    typer.echo(f"{message} ({index}/{total})")
+                    typer.echo(f"({index}/{total}) {message}")
                 return False, "missing sis id"
             elif sis_id:
                 return True, sis_id
@@ -139,10 +139,10 @@ def check_percent_storage(course, canvas, verbose, total):
     except Exception:
         if verbose:
             message = typer.style(
-                f"- ERROR: {sis_id} ({canvas_id}) NOT FOUND",
+                f"ERROR: {sis_id} ({canvas_id}) NOT FOUND",
                 fg=typer.colors.RED,
             )
-            typer.echo(f"{message} ({index}/{total})")
+            typer.echo(f"- ({index}/{total}) {message}")
         return False, "course not found"
 
 
