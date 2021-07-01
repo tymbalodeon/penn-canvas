@@ -166,7 +166,8 @@ def find_unconfirmed_emails(user, canvas, verbose, index, total):
                 if verbose:
                     status = typer.style("UNCONFIRMED", fg=typer.colors.YELLOW)
                     typer.echo(
-                        f"- {current_count if current_count else ''}{canvas_user}: {status}"
+                        f"- {current_count if current_count else ''}{canvas_user}:"
+                        f" {status}"
                     )
                 return True, "unconfirmed"
                 break
