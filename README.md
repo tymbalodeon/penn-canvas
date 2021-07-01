@@ -8,7 +8,7 @@ NOTE: This project is intended to be developed and built using [poetry](https://
 
 1. `poetry install`
 2. `poetry build`
-3. `pip install <path-to-.whl-file-in-this-project's-dist-folder>`
+3. `pip install <path-to-.whl-file-in-this-project's-dist-folder>` (you may need to run this with `sudo` or add the `--user` flag)
 
 The `penn-canvas` command will then be globally available in your shell.
 
