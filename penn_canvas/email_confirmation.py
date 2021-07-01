@@ -129,41 +129,50 @@ def get_user_emails(user):
     return filter(lambda channel: channel.type == "email", communication_channels)
 
 
-def get_email_status(user, email, verbose):
+def get_email_status(user, email, verbose, current_count=False):
     email_status = email.workflow_state
 
     if email_status == "active":
         if verbose:
             status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
-            typer.echo(f"- {user}: {status}")
+            typer.echo(f"- {current_count if current_count else ''}{user}: {status}")
         return True
     elif email_status == "unconfirmed":
         return False
 
 
-def find_unconfirmed_emails(user, canvas, verbose):
+def find_unconfirmed_emails(user, canvas, verbose, index, total):
     user_id = user[1]
     try:
         canvas_user = canvas.get_user(user_id)
     except Exception:
         if verbose:
-            typer.secho(f"- ERROR: User NOT FOUND ({user_id})", fg=typer.colors.RED)
+            message = typer.style(
+                f"ERROR: User NOT FOUND ({user_id})",
+                fg=typer.colors.RED,
+            )
+            typer.echo(f"- ({index}/{total}) {message}")
         return False, "user not found"
     emails = get_user_emails(canvas_user)
     email = next(emails, None)
+    current_count = f"({index}/{total}) "
 
     if email:
-        is_active = get_email_status(canvas_user, email, verbose)
+        is_active = get_email_status(canvas_user, email, verbose, current_count)
 
         while not is_active:
             next_email = next(emails, None)
             if not next_email:
                 if verbose:
                     status = typer.style("UNCONFIRMED", fg=typer.colors.YELLOW)
-                    typer.echo(f"- {canvas_user}: {status}")
+                    typer.echo(
+                        f"- {current_count if current_count else ''}{canvas_user}: {status}"
+                    )
                 return True, "unconfirmed"
                 break
-            is_active = get_email_status(canvas_user, next_email, verbose)
+            is_active = get_email_status(
+                canvas_user, next_email, verbose, current_count
+            )
 
         if is_active:
             return False, None
@@ -171,7 +180,9 @@ def find_unconfirmed_emails(user, canvas, verbose):
     else:
         if verbose:
             status = typer.style("NOT FOUND", fg=typer.colors.YELLOW)
-            typer.echo(f"- {canvas_user}: {status}")
+            typer.echo(
+                f"- {current_count if current_count else ''}{canvas_user}: {status}"
+            )
         return True, "not found"
 
 
@@ -195,12 +206,12 @@ def check_schools(user, sub_accounts, canvas, verbose):
     if fixable_id:
         if verbose:
             supported = typer.style("supported", fg=typer.colors.GREEN)
-            typer.echo(f"\t* Enrollment status: {supported}")
+            typer.secho(f"\t* Enrollment status: {supported}", fg=typer.colors.BLUE)
         return True
     else:
         if verbose:
             supported = typer.style("UNSUPPORTED", fg=typer.colors.YELLOW)
-            typer.echo(f"\t* Enrollment status: {supported}")
+            typer.secho(f"\t* Enrollment status: {supported}", fg=typer.colors.BLUE)
         return False
 
 
@@ -358,7 +369,9 @@ def email_main(test, include_fixed, verbose):
     def check_and_activate_emails(user, canvas, verbose, options):
         index = user[0]
         result_path, log_path = options
-        needs_support_check, message = find_unconfirmed_emails(user, canvas, verbose)
+        needs_support_check, message = find_unconfirmed_emails(
+            user, canvas, verbose, index, TOTAL
+        )
 
         if needs_support_check:
             report.at[index, "email status"] = message
