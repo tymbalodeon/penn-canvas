@@ -1,13 +1,58 @@
 import os
 import sys
+from datetime import datetime
+from pathlib import Path
 
 import typer
 
-from .helpers import get_canvas, get_command_paths
+from .helpers import colorize_path, get_canvas, get_command_paths
 
-REPORTS, RESULTS = get_command_paths("group_enrollments")
+CURRENT_YEAR = datetime.now().strftime("%Y")
+INPUT, RESULTS = get_command_paths("group_enrollments", input_dir=True)
 RESULT_PATH = RESULTS / "result.csv"
 HEADERS = ["course id, group set, group, pennkey, status"]
+
+
+def find_enrollments_report():
+    typer.echo(") Finding group enrollments report...")
+
+    if not INPUT.exists():
+        Path.mkdir(INPUT, parents=True)
+        error = typer.style(
+            "- ERROR: Group enrollments input directory not found.",
+            fg=typer.colors.YELLOW,
+        )
+        typer.echo(
+            f"{error} \n- Creating one for you at: {colorize_path(INPUT)}\n\tPlease"
+            " add a group enrollment file matching the current year to this"
+            " directory and then run this script again.\n- (If you need detailed"
+            " instructions, run this command with the '--help' flag.)"
+        )
+        raise typer.Exit(1)
+    else:
+        CURRENT_REPORT = ""
+        CSV_FILES = Path(INPUT).glob("*.csv")
+
+        for report in CSV_FILES:
+            if CURRENT_YEAR in report.name:
+                CURRENT_REPORT = report
+
+        if not CURRENT_REPORT:
+            typer.secho(
+                "- ERROR: A group enrollments file matching the current year was not"
+                " found.",
+                fg=typer.colors.YELLOW,
+            )
+            typer.echo(
+                "- Please add a group enrollments file matching the current year to the"
+                " following directory and then run this script again:"
+                f" {colorize_path(str(INPUT))}\n- (If you need detailed instructions,"
+                " run this command with the"
+                " '--help' flag.)"
+            )
+            raise typer.Exit(1)
+        else:
+            return CURRENT_REPORT
 
 
 def find_group(name, groups):
@@ -72,5 +117,8 @@ def create_group_enrollments(
             outFile.write(message)
 
 
-def group_enrollments_main():
+def group_enrollments_main(test, verbose):
+    INSTANCE = "test" if test else "prod"
+    CANVAS = get_canvas(INSTANCE)
+    report = find_enrollments_report()
     typer.echo("HELLO")

@@ -66,9 +66,10 @@ def make_csv_paths(csv_dir, csv_file, headers):
             writer(result).writerow(headers)
 
 
-def get_command_paths(command, logs=False):
+def get_command_paths(command, logs=False, input_dir=False):
     COMMAND_DIRECTORY = Path.home() / f"penn-canvas/{command}"
-    REPORTS = COMMAND_DIRECTORY / "reports"
+    input_name = "input" if input_dir else "reports"
+    REPORTS = COMMAND_DIRECTORY / input_name
     RESULTS = COMMAND_DIRECTORY / "results"
     LOGS = COMMAND_DIRECTORY / "logs"
     if logs:

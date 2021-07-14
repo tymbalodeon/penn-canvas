@@ -48,11 +48,21 @@ def shopping():
 
 
 @app.command()
-def group_enrollments():
+def group_enrollments(
+    test: bool = typer.Option(
+        False,
+        "--test",
+        help=(
+            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
+            " of production (https://canvas.upenn.edu/)"
+        ),
+    ),
+    verbose: bool = typer.Option(False, "--verbose"),
+):
     """
     Group enrollments
     """
-    group_enrollments_main()
+    group_enrollments_main(test, verbose)
 
 
 @app.command()
