@@ -1,5 +1,3 @@
-import os
-import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -83,7 +81,7 @@ def create_group_enrollments(data, canvas, test=False):
                 group_set = course.create_group_category(group_set_name)
 
             filter_group = make_find_group_name(group_name)
-            group = next(filter(filter_group, group.get_groups()), None)
+            group = next(filter(filter_group, group_set.get_groups()), None)
 
             if not group:
                 typer.echo(f") Creating group {group_name}...")
