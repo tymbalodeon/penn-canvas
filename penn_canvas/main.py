@@ -2,8 +2,8 @@ import typer
 
 from .course_storage_quota import storage_main
 from .email_confirmation import email_main
-from .helpers import make_config
 from .group_enrollments import group_enrollments_main
+from .helpers import make_config
 
 # import email_confirmation
 # import module_progression_lock

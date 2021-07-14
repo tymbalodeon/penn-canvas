@@ -3,9 +3,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import pandas
 import typer
 
-from .helpers import colorize_path, get_canvas, get_command_paths
+from .helpers import colorize_path, get_canvas, get_command_paths, make_csv_paths
 
 CURRENT_YEAR = datetime.now().strftime("%Y")
 INPUT, RESULTS = get_command_paths("group_enrollments", input_dir=True)
@@ -52,7 +53,7 @@ def find_enrollments_report():
             )
             raise typer.Exit(1)
         else:
-            return CURRENT_REPORT
+            return pandas.read_csv(CURRENT_REPORT)
 
 
 def find_group(name, groups):
@@ -63,62 +64,44 @@ def find_group(name, groups):
     return found
 
 
-def create_group_enrollments(
-    inputfile="groups.csv", outputfile="NSO_group_enrollments.csv", test=False
-):
-    canvas = get_canvas(test)
-    my_path = os.path.dirname(os.path.abspath(sys.argv[0]))
-    file_path = os.path.join(my_path, "ACP/data", inputfile)
-    dataFile = open(file_path, "r")
-    dataFile.readline()
-    outFile = open(os.path.join(my_path, "ACP/data", outputfile), "w+")
-    outFile.write("canvas_course_id, group_set, group, pennkey, status\n")
-
-    for line in dataFile:
-        course_id, groupset_name, group_name, pennkey = line.replace("\n", "").split(
-            ","
-        )
-
-        canvas_site = canvas.get_course(course_id)
+def create_group_enrollments(data, canvas, test=False):
+    for row in data:
+        course_id, group_set_name, group_name, penn_key = row
+        course = canvas.get_course(course_id)
 
         try:
-            group_set = find_group(groupset_name, canvas_site.get_group_categories())
+            group_set = find_group(group_set_name, course.get_group_categories())
 
-            if group_set is None:
-                raise TypeError
+            if not group_set:
+                typer.echo(f") Creating group set {group_set_name}...")
+                group_set = course.create_group_category(group_set_name)
 
-        except Exception:
-            print("creating group set: ", groupset_name)
-            group_set = canvas_site.create_group_category(groupset_name)
-
-        try:
             group = find_group(group_name, group_set.get_groups())
-            if group is None:
-                raise TypeError
 
-        except Exception:
-            print("creating group: ", group_name)
-            group = group_set.create_group(name=group_name)
+            if not group:
+                typer.echo(f") Creating group {group_name}...")
+                group = group_set.create_group(name=group_name)
 
-        try:
-            user = canvas.get_user(pennkey, "sis_login_id")
+            user = canvas.get_user(penn_key, "sis_login_id")
             group.create_membership(user)
 
             message = (
-                f"{course_id}, {groupset_name}, {group_name}, {pennkey}, 'accepted'\n"
-            )
-            print(message)
-            outFile.write(message)
-        except Exception:
-            message = (
-                f"{course_id}, {groupset_name}, {group_name}, {pennkey}, 'failed'\n"
+                f"{course_id}, {group_set_name}, {group_name}, {penn_key}, 'accepted'\n"
             )
             typer.echo(message)
-            outFile.write(message)
+            # outFile.write(message)
+        except Exception:
+            message = (
+                f"{course_id}, {group_set_name}, {group_name}, {penn_key}, 'failed'\n"
+            )
+            typer.echo(message)
+            # outFile.write(message)
 
 
 def group_enrollments_main(test, verbose):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-    report = find_enrollments_report()
+    DATA = find_enrollments_report()
+    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
+    create_group_enrollments(DATA, CANVAS, test)
     typer.echo("HELLO")
