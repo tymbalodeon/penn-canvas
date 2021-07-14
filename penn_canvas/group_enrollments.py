@@ -51,7 +51,9 @@ def find_enrollments_report():
             )
             raise typer.Exit(1)
         else:
-            return pandas.read_csv(CURRENT_REPORT)
+            DATA = pandas.read_csv(CURRENT_REPORT)
+            TOTAL = len(DATA.index)
+            return DATA, TOTAL
 
 
 def make_find_group_name(group_name):
@@ -61,7 +63,7 @@ def make_find_group_name(group_name):
     return find_group_name
 
 
-def create_group_enrollments(data, canvas, test=False):
+def create_group_enrollments(data, canvas, verbose, total=0):
     for row in data:
         course_id, group_set_name, group_name, penn_key = row
         course = canvas.get_course(course_id)
@@ -106,7 +108,7 @@ def create_group_enrollments(data, canvas, test=False):
 def group_enrollments_main(test, verbose):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-    DATA = find_enrollments_report()
+    DATA, TOTAL = find_enrollments_report()
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
-    create_group_enrollments(DATA, CANVAS, test)
-    typer.echo("HELLO")
+    create_group_enrollments(DATA, CANVAS, verbose, TOTAL)
+    typer.echo(TOTAL)
