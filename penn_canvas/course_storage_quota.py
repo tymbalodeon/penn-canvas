@@ -169,12 +169,14 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
 
         try:
             canvas_course.update(course={"storage_quota_mb": new_quota})
+
             if verbose:
                 typer.echo(
                     f"\t* Increased storage from {old_quota} MB to {new_quota} MB"
                 )
         except Exception:
             new_quota = "ERROR"
+
             if verbose:
                 typer.secho(
                     f"\t* Failed to increase quota for Canvas course ID: {sis_id}",
@@ -232,7 +234,7 @@ def storage_main(test, verbose):
 
     typer.echo(") Processing courses...")
     toggle_progress_bar(
-        report, check_and_increase_storage, CANVAS, verbose, options=TOTAL, index=True
+        report, check_and_increase_storage, CANVAS, verbose, args=TOTAL, index=True
     )
     RESULT = pandas.read_csv(RESULT_PATH)
     INCREASED_COUNT, ERROR_COUNT = process_result(RESULT)

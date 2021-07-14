@@ -1,10 +1,17 @@
+from csv import writer
 from datetime import datetime
 from pathlib import Path
 
 import pandas
 import typer
 
-from .helpers import colorize_path, get_canvas, get_command_paths, make_csv_paths
+from .helpers import (
+    colorize_path,
+    get_canvas,
+    get_command_paths,
+    make_csv_paths,
+    toggle_progress_bar,
+)
 
 CURRENT_YEAR = datetime.now().strftime("%Y")
 INPUT, RESULTS = get_command_paths("group_enrollments", input_dir=True)
@@ -63,46 +70,62 @@ def make_find_group_name(group_name):
     return find_group_name
 
 
-def create_group_enrollments(data, canvas, verbose, total=0):
-    for row in data:
-        course_id, group_set_name, group_name, penn_key = row
-        course = canvas.get_course(course_id)
+def create_group_enrollments(student, canvas, verbose, total=0):
+    index, course_id, group_set_name, group_name, penn_key = student
+    index += 1
+    course = canvas.get_course(course_id)
 
-        try:
-            filter_group_set = make_find_group_name(group_set_name)
-            group_set = next(
-                filter(
-                    filter_group_set,
-                    course.get_group_categories(),
-                ),
-                None,
-            )
+    try:
+        filter_group_set = make_find_group_name(group_set_name)
+        group_set = next(
+            filter(
+                filter_group_set,
+                course.get_group_categories(),
+            ),
+            None,
+        )
 
-            if not group_set:
+        if not group_set:
+            if verbose:
                 typer.echo(f") Creating group set {group_set_name}...")
-                group_set = course.create_group_category(group_set_name)
+            group_set = course.create_group_category(group_set_name)
 
-            filter_group = make_find_group_name(group_name)
-            group = next(filter(filter_group, group_set.get_groups()), None)
+        filter_group = make_find_group_name(group_name)
+        group = next(filter(filter_group, group_set.get_groups()), None)
 
-            if not group:
+        if not group:
+            if verbose:
                 typer.echo(f") Creating group {group_name}...")
-                group = group_set.create_group(name=group_name)
+            group = group_set.create_group(name=group_name)
 
-            user = canvas.get_user(penn_key, "sis_login_id")
-            group.create_membership(user)
+        student = canvas.get_user(penn_key, "sis_login_id")
+        group.create_membership(student)
 
-            message = (
-                f"{course_id}, {group_set_name}, {group_name}, {penn_key}, 'accepted'\n"
+        accepted = typer.secho("ACCEPTED", fg=typer.colors.GREEN)
+
+        if verbose:
+            typer.echo(
+                f"- ({index}/{total}) {course_id}, {group_set_name}, {group_name},"
+                f" {penn_key}: {accepted}'"
             )
-            typer.echo(message)
-            # outFile.write(message)
-        except Exception:
-            message = (
-                f"{course_id}, {group_set_name}, {group_name}, {penn_key}, 'failed'\n"
+
+        ROW = [course_id, group_set_name, group_name, penn_key, accepted]
+
+        with open(RESULT_PATH, "a", newline="") as result:
+            writer(result).writerow(ROW)
+    except Exception:
+        accepted = typer.secho("FAILED", fg=typer.colors.YELLOW)
+
+        if verbose:
+            typer.echo(
+                f"- ({index}/{total}) {course_id}, {group_set_name}, {group_name},"
+                f" {penn_key}: {accepted}'"
             )
-            typer.echo(message)
-            # outFile.write(message)
+
+        ROW = [course_id, group_set_name, group_name, penn_key, accepted]
+
+        with open(RESULT_PATH, "a", newline="") as result:
+            writer(result).writerow(ROW)
 
 
 def group_enrollments_main(test, verbose):
@@ -110,5 +133,9 @@ def group_enrollments_main(test, verbose):
     CANVAS = get_canvas(INSTANCE)
     DATA, TOTAL = find_enrollments_report()
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
+    typer.echo(") Processing students...")
+    toggle_progress_bar(
+        DATA, create_group_enrollments, CANVAS, verbose, args=TOTAL, index=True
+    )
     create_group_enrollments(DATA, CANVAS, verbose, TOTAL)
     typer.echo(TOTAL)

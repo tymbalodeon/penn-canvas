@@ -78,14 +78,14 @@ def get_command_paths(command, logs=False, input_dir=False):
         return REPORTS, RESULTS
 
 
-def toggle_progress_bar(data, callback, canvas, verbose, options=None, index=False):
+def toggle_progress_bar(data, callback, canvas, verbose, args=None, index=False):
     def verbose_mode():
         for item in data.itertuples(index=index):
             callback(item, canvas, verbose)
 
-    def verbose_mode_with_options():
+    def verbose_mode_with_args():
         for item in data.itertuples(index=index):
-            callback(item, canvas, verbose, options)
+            callback(item, canvas, verbose, args)
 
     def progress_bar_mode():
         with typer.progressbar(
@@ -94,21 +94,21 @@ def toggle_progress_bar(data, callback, canvas, verbose, options=None, index=Fal
             for item in progress:
                 callback(item, canvas, verbose)
 
-    def progress_bar_mode_with_options():
+    def progress_bar_mode_with_args():
         with typer.progressbar(
             data.itertuples(index=index), length=len(data.index)
         ) as progress:
             for item in progress:
-                callback(item, canvas, verbose, options)
+                callback(item, canvas, verbose, args)
 
     if verbose:
-        if options:
-            verbose_mode_with_options()
+        if args:
+            verbose_mode_with_args()
         else:
             verbose_mode()
     else:
-        if options:
-            progress_bar_mode_with_options()
+        if args:
+            progress_bar_mode_with_args()
         else:
             progress_bar_mode()
 
