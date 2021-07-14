@@ -3,6 +3,7 @@ import typer
 from .course_storage_quota import storage_main
 from .email_confirmation import email_main
 from .helpers import make_config
+from .group_enrollments import group_enrollments_main
 
 # import email_confirmation
 # import module_progression_lock
@@ -44,6 +45,14 @@ def shopping():
     Course shopping
     """
     typer.echo("test")
+
+
+@app.command()
+def group_enrollments():
+    """
+    Group enrollments
+    """
+    group_enrollments_main()
 
 
 @app.command()
