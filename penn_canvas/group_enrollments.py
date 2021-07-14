@@ -56,12 +56,11 @@ def find_enrollments_report():
             return pandas.read_csv(CURRENT_REPORT)
 
 
-def find_group(name, groups):
-    found = None
-    for group in groups:
-        if group.name == name:
-            found = group
-    return found
+def make_find_group_name(group_name):
+    def find_group_name(group):
+        return group.name == group_name
+
+    return find_group_name
 
 
 def create_group_enrollments(data, canvas, test=False):
@@ -70,13 +69,21 @@ def create_group_enrollments(data, canvas, test=False):
         course = canvas.get_course(course_id)
 
         try:
-            group_set = find_group(group_set_name, course.get_group_categories())
+            filter_group_set = make_find_group_name(group_set_name)
+            group_set = next(
+                filter(
+                    filter_group_set,
+                    course.get_group_categories(),
+                ),
+                None,
+            )
 
             if not group_set:
                 typer.echo(f") Creating group set {group_set_name}...")
                 group_set = course.create_group_category(group_set_name)
 
-            group = find_group(group_name, group_set.get_groups())
+            filter_group = make_find_group_name(group_name)
+            group = next(filter(filter_group, group.get_groups()), None)
 
             if not group:
                 typer.echo(f") Creating group {group_name}...")
