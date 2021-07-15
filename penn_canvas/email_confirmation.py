@@ -15,6 +15,7 @@ from .helpers import (
     get_command_paths,
     make_csv_paths,
     toggle_progress_bar,
+    check_if_complete,
 )
 
 TODAY = datetime.now().strftime("%d_%b_%Y")
@@ -97,8 +98,8 @@ def cleanup_report(report, start=0):
     data = data[["canvas_user_id"]]
     data.drop_duplicates(inplace=True)
     data = data.astype("string", copy=False)
-
     TOTAL = len(data.index)
+    check_if_complete(start, TOTAL)
     data = data.loc[start:TOTAL, :]
 
     return data, str(TOTAL)

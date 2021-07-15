@@ -1,3 +1,4 @@
+import os
 from csv import writer
 from datetime import datetime
 from pathlib import Path
@@ -6,6 +7,7 @@ import pandas
 import typer
 
 from .helpers import (
+    check_if_complete,
     check_previous_output,
     colorize_path,
     get_canvas,
@@ -77,7 +79,7 @@ def find_enrollments_file():
             return CURRENT_FILE, CURRENT_EXTENSION
 
 
-def cleanup_data(input_file, extension, start=0):
+def cleanup_data(input_file, extension, force, start=0):
     typer.echo(") Preparing enrollments file...")
 
     if extension == ".csv":
@@ -89,8 +91,11 @@ def cleanup_data(input_file, extension, start=0):
     data["pennkey"] = data["pennkey"].str.lower()
     data = data.astype("string", copy=False)
     data[list(data)] = data[list(data)].apply(lambda column: column.str.strip())
-
     TOTAL = len(data.index)
+
+    if not force:
+        check_if_complete(start, TOTAL)
+
     data = data.loc[start:TOTAL, :]
 
     return data, str(TOTAL)
@@ -103,12 +108,24 @@ def make_find_group_name(group_name):
     return find_group_name
 
 
-def group_enrollments_main(test, verbose):
+def process_result():
+    result = pandas.read_csv(RESULT_PATH)
+
+
+def group_enrollments_main(test, verbose, force):
     data, EXTENSION = find_enrollments_file()
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-    START = check_previous_output(RESULT_PATH)
-    data, TOTAL = cleanup_data(data, EXTENSION, START)
+
+    if force:
+        START = 0
+
+        if RESULT_PATH.exists():
+            os.remove(RESULT_PATH)
+    else:
+        START = check_previous_output(RESULT_PATH)
+
+    data, TOTAL = cleanup_data(data, EXTENSION, force, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
 
     def create_group_enrollments(student, canvas, verbose, total=0):
@@ -158,11 +175,12 @@ def group_enrollments_main(test, verbose):
 
             penn_key = typer.style(penn_key, fg=typer.colors.MAGENTA)
             typer.echo(
-                f"- ({index + 1}/{total}) {penn_key}, {group_set_name}, {group_name}: {accepted_display}"
+                f"- ({index + 1}/{total}) {penn_key}, {group_set_name}, {group_name}:"
+                f" {accepted_display}"
             )
 
     typer.echo(") Processing students...")
     toggle_progress_bar(
         data, create_group_enrollments, CANVAS, verbose, args=TOTAL, index=True
     )
-    typer.echo(TOTAL)
+    typer.echo("FINISHED")

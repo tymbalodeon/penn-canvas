@@ -124,6 +124,17 @@ def check_previous_output(result_path):
     return index
 
 
+def check_if_complete(start, total):
+    if start > total:
+        typer.secho("TASK ALREADY COMPLETE FOR CURRENT PERIOD", fg=typer.colors.YELLOW)
+        typer.echo(
+            "- To re-run the task, overwriting previous results, run this command with"
+            " the '--force' option"
+        )
+
+        raise typer.Exit(1)
+
+
 def toggle_progress_bar(data, callback, canvas, verbose, args=None, index=False):
     def verbose_mode():
         for item in data.itertuples(index=index):

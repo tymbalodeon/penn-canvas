@@ -70,13 +70,23 @@ def group_enrollments(
             " of production (https://canvas.upenn.edu/)"
         ),
     ),
-    verbose: bool = typer.Option(False, "--verbose"),
+    verbose: bool = typer.Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help=(
+            "Force the task to start from the beginning despite the presence of a"
+            " pre-existing incomplete result file and overwrite that file."
+        ),
+    ),
 ):
     """
     Group enrollments
     """
 
-    group_enrollments_main(test, verbose)
+    group_enrollments_main(test, verbose, force)
 
 
 @app.command()
@@ -89,7 +99,9 @@ def storage(
             " of production (https://canvas.upenn.edu/)"
         ),
     ),
-    verbose: bool = typer.Option(False, "--verbose"),
+    verbose: bool = typer.Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
 ):
     """
     Increases the storage quota for each course that currently uses 79% or more
@@ -129,7 +141,9 @@ def email(
             " automatically activated by the script"
         ),
     ),
-    verbose: bool = typer.Option(False, "--verbose"),
+    verbose: bool = typer.Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
 ):
     """
     Checks the email status of users and activates any unconfirmed email
