@@ -14,10 +14,17 @@ from .helpers import (
     toggle_progress_bar,
 )
 
-CURRENT_YEAR = datetime.now().strftime("%Y")
+GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
 INPUT, RESULTS = get_command_paths("group_enrollments", input_dir=True)
 RESULT_PATH = RESULTS / "result.csv"
-HEADERS = ["course id, group set, group, pennkey, status"]
+HEADERS = [
+    "index",
+    "canvas course id",
+    "group set name",
+    "group name",
+    "pennkey",
+    "status",
+]
 
 
 def find_enrollments_file():
@@ -30,44 +37,58 @@ def find_enrollments_file():
             fg=typer.colors.YELLOW,
         )
         typer.echo(
-            f"{error} \n- Creating one for you at: {colorize_path(INPUT)}\n\tPlease"
-            " add a group enrollment file matching the current year to this"
-            " directory and then run this script again.\n- (If you need detailed"
-            " instructions, run this command with the '--help' flag.)"
+            f"{error} \n- Creating one for you at: {colorize_path(INPUT)}\n\tPlease add"
+            " a group enrollment file matching the graduation year of this year's"
+            " incoming freshmen to this directory and then run this script again.\n-"
+            " (If you need detailed instructions, run this command with the '--help'"
+            " flag.)"
         )
+
         raise typer.Exit(1)
     else:
         CURRENT_FILE = ""
-        CSV_FILES = Path(INPUT).glob("*.csv")
+        EXTENSIONS = ["*.csv", "*.xlsx"]
 
-        for csv_file in CSV_FILES:
-            if CURRENT_YEAR in csv_file.name:
-                CURRENT_FILE = csv_file
+        INPUT_FILES = list()
+
+        for extension in EXTENSIONS:
+            INPUT_FILES.extend(Path(INPUT).glob(extension))
+
+        for input_file in INPUT_FILES:
+            if GRADUATION_YEAR in input_file.name:
+                CURRENT_FILE = input_file
+                CURRENT_EXTENSION = input_file.suffix
 
         if not CURRENT_FILE:
-            typer.secho(
+            typer.style(
                 "- ERROR: A group enrollments file matching the current year was not"
                 " found.",
                 fg=typer.colors.YELLOW,
             )
             typer.echo(
-                "- Please add a group enrollments file matching the current year to the"
-                " following directory and then run this script again:"
-                f" {colorize_path(str(INPUT))}\n- (If you need detailed instructions,"
-                " run this command with the"
-                " '--help' flag.)"
+                "- Please add a group enrollments file matching the graduation year of"
+                " this year's incoming freshmen to the following directory and then"
+                f" run this script again: {colorize_path(str(INPUT))}\n- (If you need"
+                " detailed instructions, run this command with the '--help' flag.)"
             )
+
             raise typer.Exit(1)
         else:
-            return CURRENT_FILE
+            return CURRENT_FILE, CURRENT_EXTENSION
 
 
-def cleanup_data(data, start=0):
+def cleanup_data(input_file, extension, start=0):
     typer.echo(") Preparing enrollments file...")
 
-    data = pandas.read_csv(data)
-    data.drop_duplicates(inplace=True)
+    if extension == ".csv":
+        data = pandas.read_csv(input_file)
+    else:
+        data = pandas.read_excel(input_file, engine="openpyxl")
+
+    data.columns = data.columns.str.lower()
+    data["pennkey"] = data["pennkey"].str.lower()
     data = data.astype("string", copy=False)
+    data[list(data)] = data[list(data)].apply(lambda column: column.str.strip())
 
     TOTAL = len(data.index)
     data = data.loc[start:TOTAL, :]
@@ -82,60 +103,64 @@ def make_find_group_name(group_name):
     return find_group_name
 
 
-def create_group_enrollments(student, canvas, verbose, total=0):
-    index, course_id, group_set_name, group_name, penn_key = student
-    index += 1
-    course = canvas.get_course(course_id)
-
-    try:
-        filter_group_set = make_find_group_name(group_set_name)
-        group_set = next(
-            filter(
-                filter_group_set,
-                course.get_group_categories(),
-            ),
-            None,
-        )
-
-        if not group_set:
-            if verbose:
-                typer.echo(f") Creating group set {group_set_name}...")
-            group_set = course.create_group_category(group_set_name)
-
-        filter_group = make_find_group_name(group_name)
-        group = next(filter(filter_group, group_set.get_groups()), None)
-
-        if not group:
-            if verbose:
-                typer.echo(f") Creating group {group_name}...")
-            group = group_set.create_group(name=group_name)
-
-        student = canvas.get_user(penn_key, "sis_login_id")
-        group.create_membership(student)
-
-        accepted = typer.secho("ACCEPTED", fg=typer.colors.GREEN)
-    except Exception:
-        accepted = typer.secho("FAILED", fg=typer.colors.RED)
-
-    if verbose:
-        typer.echo(
-            f"- ({index}/{total}) {course_id}, {group_set_name}, {group_name},"
-            f" {penn_key}: {accepted}'"
-        )
-
-    ROW = [course_id, group_set_name, group_name, penn_key, accepted]
-
-    with open(RESULT_PATH, "a", newline="") as result:
-        writer(result).writerow(ROW)
-
-
 def group_enrollments_main(test, verbose):
+    data, EXTENSION = find_enrollments_file()
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-    data = find_enrollments_file()
     START = check_previous_output(RESULT_PATH)
-    data, TOTAL = cleanup_data(data, START)
+    data, TOTAL = cleanup_data(data, EXTENSION, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
+
+    def create_group_enrollments(student, canvas, verbose, total=0):
+        index, course_id, group_set_name, group_name, penn_key = student
+
+        try:
+            course = canvas.get_course(course_id)
+            group_set_filter = make_find_group_name(group_set_name)
+            group_set = next(
+                filter(
+                    group_set_filter,
+                    course.get_group_categories(),
+                ),
+                None,
+            )
+
+            if not group_set:
+                if verbose:
+                    typer.echo(f") Creating group set {group_set_name}...")
+                group_set = course.create_group_category(group_set_name)
+
+            group_filter = make_find_group_name(group_name)
+            group = next(filter(group_filter, group_set.get_groups()), None)
+
+            if not group:
+                if verbose:
+                    typer.echo(f") Creating group {group_name}...")
+                group = group_set.create_group(name=group_name)
+
+            student = canvas.get_user(penn_key, "sis_login_id")
+            group.create_membership(student)
+
+            accepted = "accepted"
+        except Exception as error:
+            data.at[index, "error"] = error
+            accepted = "failed"
+
+        data.at[index, "status"] = accepted
+        data.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
+
+        if verbose:
+            accepted_display = accepted.upper()
+            if accepted_display == "ACCEPTED":
+                accepted_display = typer.style(accepted_display, fg=typer.colors.GREEN)
+            else:
+                accepted_display = typer.style(accepted_display, fg=typer.colors.RED)
+
+            penn_key = typer.style(penn_key, fg=typer.colors.MAGENTA)
+            typer.echo(
+                f"- ({index + 1}/{total}) {penn_key}, {group_set_name}, {group_name}: {accepted_display}"
+            )
+
     typer.echo(") Processing students...")
     toggle_progress_bar(
         data, create_group_enrollments, CANVAS, verbose, args=TOTAL, index=True
