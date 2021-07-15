@@ -1,6 +1,7 @@
 from csv import writer
 from pathlib import Path
 
+import pandas
 import typer
 from canvasapi import Canvas
 
@@ -98,6 +99,29 @@ def get_command_paths(command, logs=False, input_dir=False):
         return REPORTS, RESULTS, LOGS
     else:
         return REPORTS, RESULTS
+
+
+def check_previous_output(result_path):
+    typer.echo(") Checking for previous results...")
+
+    if result_path.is_file():
+        INCOMPLETE = pandas.read_csv(result_path)
+
+        if "index" in INCOMPLETE.columns:
+            try:
+                index = INCOMPLETE.at[INCOMPLETE.index[-1], "index"]
+                INCOMPLETE.drop(
+                    INCOMPLETE[INCOMPLETE["index"] == index].index, inplace=True
+                )
+                INCOMPLETE.to_csv(result_path, index=False)
+            except Exception:
+                index = 0
+        else:
+            index = 0
+    else:
+        index = 0
+
+    return index
 
 
 def toggle_progress_bar(data, callback, canvas, verbose, args=None, index=False):

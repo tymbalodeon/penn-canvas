@@ -7,6 +7,7 @@ import pandas
 import typer
 
 from .helpers import (
+    check_previous_output,
     colorize,
     colorize_path,
     find_sub_accounts,
@@ -45,29 +46,6 @@ def get_sub_accounts(canvas):
         SUB_ACCOUNTS += find_sub_accounts(canvas, account)
 
     return SUB_ACCOUNTS
-
-
-def get_previous_output():
-    typer.echo(") Checking for previous results from this date's report...")
-
-    if RESULT_PATH.is_file():
-        INCOMPLETE = pandas.read_csv(RESULT_PATH)
-
-        if "index" in INCOMPLETE.columns:
-            try:
-                index = INCOMPLETE.at[INCOMPLETE.index[-1], "index"]
-                INCOMPLETE.drop(
-                    INCOMPLETE[INCOMPLETE["index"] == index].index, inplace=True
-                )
-                INCOMPLETE.to_csv(RESULT_PATH, index=False)
-            except Exception:
-                index = 0
-        else:
-            index = 0
-    else:
-        index = 0
-
-    return index
 
 
 def find_users_report():
@@ -363,7 +341,7 @@ def email_main(test, include_fixed, verbose):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
     report = find_users_report()
-    START = get_previous_output()
+    START = check_previous_output(RESULT_PATH)
     report, TOTAL = cleanup_report(report, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)

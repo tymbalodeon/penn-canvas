@@ -6,6 +6,7 @@ import pandas
 import typer
 
 from .helpers import (
+    check_previous_output,
     colorize_path,
     get_canvas,
     get_command_paths,
@@ -19,8 +20,8 @@ RESULT_PATH = RESULTS / "result.csv"
 HEADERS = ["course id, group set, group, pennkey, status"]
 
 
-def find_enrollments_report():
-    typer.echo(") Finding group enrollments report...")
+def find_enrollments_file():
+    typer.echo(") Finding group enrollments file...")
 
     if not INPUT.exists():
         Path.mkdir(INPUT, parents=True)
@@ -36,14 +37,14 @@ def find_enrollments_report():
         )
         raise typer.Exit(1)
     else:
-        CURRENT_REPORT = ""
+        CURRENT_FILE = ""
         CSV_FILES = Path(INPUT).glob("*.csv")
 
-        for report in CSV_FILES:
-            if CURRENT_YEAR in report.name:
-                CURRENT_REPORT = report
+        for csv_file in CSV_FILES:
+            if CURRENT_YEAR in csv_file.name:
+                CURRENT_FILE = csv_file
 
-        if not CURRENT_REPORT:
+        if not CURRENT_FILE:
             typer.secho(
                 "- ERROR: A group enrollments file matching the current year was not"
                 " found.",
@@ -58,9 +59,20 @@ def find_enrollments_report():
             )
             raise typer.Exit(1)
         else:
-            DATA = pandas.read_csv(CURRENT_REPORT)
-            TOTAL = len(DATA.index)
-            return DATA, TOTAL
+            return CURRENT_FILE
+
+
+def cleanup_data(data, start=0):
+    typer.echo(") Preparing enrollments file...")
+
+    data = pandas.read_csv(data)
+    data.drop_duplicates(inplace=True)
+    data = data.astype("string", copy=False)
+
+    TOTAL = len(data.index)
+    data = data.loc[start:TOTAL, :]
+
+    return data, str(TOTAL)
 
 
 def make_find_group_name(group_name):
@@ -120,11 +132,12 @@ def create_group_enrollments(student, canvas, verbose, total=0):
 def group_enrollments_main(test, verbose):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-    DATA, TOTAL = find_enrollments_report()
+    data = find_enrollments_file()
+    START = check_previous_output(RESULT_PATH)
+    data, TOTAL = cleanup_data(data, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     typer.echo(") Processing students...")
     toggle_progress_bar(
-        DATA, create_group_enrollments, CANVAS, verbose, args=TOTAL, index=True
+        data, create_group_enrollments, CANVAS, verbose, args=TOTAL, index=True
     )
-    create_group_enrollments(DATA, CANVAS, verbose, TOTAL)
     typer.echo(TOTAL)
