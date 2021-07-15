@@ -49,10 +49,11 @@ def find_storage_report():
             fg=typer.colors.YELLOW,
         )
         typer.echo(
-            f"{error} \n- Creating one for you at: {colorize_path(REPORTS)}\n\tPlease"
-            " add a Canvas storage report matching today's date to this directory and"
-            " then run this script again.\n- (If you need instructions for generating"
-            " a Canvas storage report, run this command with the '--help' flag.)"
+            f"{error} \n- Creating one for you at:"
+            f" {colorize_path(str(REPORTS))}\n\tPlease add a Canvas storage report"
+            " matching today's date to this directory and then run this script"
+            " again.\n- (If you need instructions for generating a Canvas storage"
+            " report, run this command with the '--help' flag.)"
         )
         raise typer.Exit(1)
     else:
