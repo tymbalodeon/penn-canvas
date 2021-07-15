@@ -102,30 +102,19 @@ def create_group_enrollments(student, canvas, verbose, total=0):
         group.create_membership(student)
 
         accepted = typer.secho("ACCEPTED", fg=typer.colors.GREEN)
-
-        if verbose:
-            typer.echo(
-                f"- ({index}/{total}) {course_id}, {group_set_name}, {group_name},"
-                f" {penn_key}: {accepted}'"
-            )
-
-        ROW = [course_id, group_set_name, group_name, penn_key, accepted]
-
-        with open(RESULT_PATH, "a", newline="") as result:
-            writer(result).writerow(ROW)
     except Exception:
-        accepted = typer.secho("FAILED", fg=typer.colors.YELLOW)
+        accepted = typer.secho("FAILED", fg=typer.colors.RED)
 
-        if verbose:
-            typer.echo(
-                f"- ({index}/{total}) {course_id}, {group_set_name}, {group_name},"
-                f" {penn_key}: {accepted}'"
-            )
+    if verbose:
+        typer.echo(
+            f"- ({index}/{total}) {course_id}, {group_set_name}, {group_name},"
+            f" {penn_key}: {accepted}'"
+        )
 
-        ROW = [course_id, group_set_name, group_name, penn_key, accepted]
+    ROW = [course_id, group_set_name, group_name, penn_key, accepted]
 
-        with open(RESULT_PATH, "a", newline="") as result:
-            writer(result).writerow(ROW)
+    with open(RESULT_PATH, "a", newline="") as result:
+        writer(result).writerow(ROW)
 
 
 def group_enrollments_main(test, verbose):

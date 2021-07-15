@@ -49,8 +49,10 @@ def get_sub_accounts(canvas):
 
 def get_previous_output():
     typer.echo(") Checking for previous results from this date's report...")
+
     if RESULT_PATH.is_file():
         INCOMPLETE = pandas.read_csv(RESULT_PATH)
+
         if "index" in INCOMPLETE.columns:
             try:
                 index = INCOMPLETE.at[INCOMPLETE.index[-1], "index"]
