@@ -14,6 +14,7 @@ CONFIG_PATH = CONFIG_DIR / "penn-canvas"
 def make_config():
     if not CONFIG_DIR.exists():
         Path.mkdir(CONFIG_DIR, parents=True)
+
     production = typer.prompt(
         "Please enter your Access Token for the PRODUCTION instance of Penn Canvas"
     )
@@ -21,14 +22,30 @@ def make_config():
         "Please enter your Access Token for the TEST instance of Penn Canvas"
     )
     open_canvas = typer.prompt("Please enter your Access Token for OPEN Canvas")
+
     with open(CONFIG_PATH, "w+") as config:
         config.write(f"CANVAS_KEY_PROD={production}")
         config.write(f"\nCANVAS_KEY_DEV={development}")
         config.write(f"\nCANVAS_KEY_OPEN={open_canvas}")
 
 
+def display_config():
+    production, development, open_canvas = check_config(CONFIG_PATH)
+
+    production = typer.style(f"{production}", fg=typer.colors.YELLOW)
+    development = typer.style(f"{development}", fg=typer.colors.YELLOW)
+    open_canvas = typer.style(f"{open_canvas}", fg=typer.colors.YELLOW)
+
+    typer.echo(
+        f"\nCANVAS_KEY_PROD: {production}"
+        f"\nCANVAS_KEY_DEV: {development}"
+        f"\nCANVAS_KEY_OPEN: {open_canvas}"
+    )
+
+
 def check_config(config):
     typer.echo(") Reading Canvas Access Tokens from config file...")
+
     if not config.exists():
         error = typer.style(
             "- ERROR: No config file ($HOME/.config/penn-canvas) exists for"
@@ -36,6 +53,7 @@ def check_config(config):
             fg=typer.colors.YELLOW,
         )
         create = typer.confirm(f"{error} \n- Would you like to create one?")
+
         if not create:
             typer.echo(
                 ") Not creating...\n"
@@ -49,18 +67,21 @@ def check_config(config):
             raise typer.Abort()
         else:
             make_config()
+
     if config.is_file():
         with open(CONFIG_PATH, "r") as config:
             lines = config.read().splitlines()
             production = lines[0].replace("CANVAS_KEY_PROD=", "")
             development = lines[1].replace("CANVAS_KEY_DEV=", "")
             open_canvas = lines[2].replace("CANVAS_KEY_OPEN=", "")
+
         return production, development, open_canvas
 
 
 def make_csv_paths(csv_dir, csv_file, headers):
     if not csv_dir.exists():
         Path.mkdir(csv_dir)
+
     if not csv_file.is_file():
         with open(csv_file, "w", newline="") as result:
             writer(result).writerow(headers)
@@ -72,6 +93,7 @@ def get_command_paths(command, logs=False, input_dir=False):
     REPORTS = COMMAND_DIRECTORY / input_name
     RESULTS = COMMAND_DIRECTORY / "results"
     LOGS = COMMAND_DIRECTORY / "logs"
+
     if logs:
         return REPORTS, RESULTS, LOGS
     else:
@@ -115,6 +137,7 @@ def toggle_progress_bar(data, callback, canvas, verbose, args=None, index=False)
 
 def get_canvas(instance):
     production, development, open_canvas = check_config(CONFIG_PATH)
+
     if instance == "prod":
         url = CANVAS_URL_PROD
         access_token = production
@@ -124,6 +147,7 @@ def get_canvas(instance):
     elif instance == "open":
         url = CANVAS_URL_OPEN
         access_token = open_canvas
+
     return Canvas(url, access_token)
 
 

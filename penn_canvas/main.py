@@ -3,7 +3,7 @@ import typer
 from .course_storage_quota import storage_main
 from .email_confirmation import email_main
 from .group_enrollments import group_enrollments_main
-from .helpers import make_config
+from .helpers import display_config, make_config
 
 # import email_confirmation
 # import module_progression_lock
@@ -19,7 +19,15 @@ app = typer.Typer(
 
 
 @app.command()
-def configure():
+def config(
+    view: bool = typer.Option(
+        False,
+        "--view",
+        help=(
+            "Display your config's values instead of creating or updating your config."
+        ),
+    )
+):
     """
     Automatically generates a config file for Penn-Canvas.
 
@@ -36,7 +44,11 @@ def configure():
     empty by hitting ENTER when prompted, if not using all three Canvas
     instances.
     """
-    make_config()
+
+    if view:
+        display_config()
+    else:
+        make_config()
 
 
 @app.command()
@@ -44,6 +56,7 @@ def shopping():
     """
     Course shopping
     """
+
     typer.echo("test")
 
 
@@ -62,6 +75,7 @@ def group_enrollments(
     """
     Group enrollments
     """
+
     group_enrollments_main(test, verbose)
 
 
@@ -93,6 +107,7 @@ def storage(
     generated (as indicated in the file name). A file whose name contains a
     previous date will not be accepted.
     """
+
     storage_main(test, verbose)
 
 
@@ -135,6 +150,7 @@ def email(
     $HOME/penn-canvas/email/reports/. Once the file has been added to the
     directory, run this command.
     """
+
     email_main(test, include_fixed, verbose)
 
 
