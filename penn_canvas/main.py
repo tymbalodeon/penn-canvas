@@ -88,7 +88,18 @@ def group_enrollments(
     ),
 ):
     """
-    Group enrollments
+    Enrolls incoming freshmen into Canvas Groups as part of the 'Thrive at Penn'
+    site.
+
+    INPUT: A csv or xlsx file (assumes graduation year is in the file name) with
+    the columns [Canvas Course Id | Group Set Name | Group Name | Pennkey]
+
+    OUPUT: A csv file listing students who were not successfully added to a
+    Group
+
+    NOTE: This command assumes a graduation year of 4 years from the current
+    year when the command is run. A file whose name contains any other year will
+    not be accepted.
     """
 
     group_enrollments_main(test, verbose, force)
