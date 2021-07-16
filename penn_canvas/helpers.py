@@ -36,8 +36,10 @@ def display_config():
     production = typer.style(f"{production}", fg=typer.colors.YELLOW)
     development = typer.style(f"{development}", fg=typer.colors.YELLOW)
     open_canvas = typer.style(f"{open_canvas}", fg=typer.colors.YELLOW)
+    config_path = typer.style(f"{CONFIG_PATH}", fg=typer.colors.GREEN)
 
     typer.echo(
+        f"\nCONFIG: {config_path}\n"
         f"\nCANVAS_KEY_PROD: {production}"
         f"\nCANVAS_KEY_DEV: {development}"
         f"\nCANVAS_KEY_OPEN: {open_canvas}"

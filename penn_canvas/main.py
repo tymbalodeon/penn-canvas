@@ -31,10 +31,15 @@ def config(
     """
     Automatically generates a config file for Penn-Canvas.
 
-    You will be asked to input Access Tokens for:
+    INPUT: Canvas Access Tokens, for
+
     - PRODUCTION: `https://canvas.upenn.edu/`
+
     - DEVELOPMENT: `https://upenn.test.instructure.com/`
+
     - OPEN: `https://upenn-catalog.instructure.com/`
+
+    OUTPUT: config file located at $HOME/.config/penn-canvas
 
     To generate these tokens, login to the appropriate Canvas instance using one
     of the urls above. Go to 'Account > Settings' and click 'New Access Token'
@@ -152,22 +157,25 @@ def email(
     """
     Checks the email status of users and activates any unconfirmed email
     addresses for users with at least one enrollment in a "supported" school.
-    Outputs a list of users who either have no email accounts, or who have
-    unconfirmed accounts but have no enrollments in a "supported" school.
+
+    INPUT: Canvas Provisioning report (Users)
+
+    OUTPUT: A csv file listing users who either have no email accounts, or who
+    have unconfirmed accounts but have no enrollments in a "supported" school
+    (and optionally listing users whose accounts were successfully activated)
 
     "Supported" schools are all schools EXCEPT:
 
-        Wharton, Perelman School of Medicine ("PSOM")
+        Wharton, Perelman School of Medicine
 
-    Requires a Canvas Provisioning Users CSV report as input. To download,
-    login to `https://canvas.upenn.edu/` (admin priveledges are required) and
-    click 'Admin > Upenn > Settings > Reports', then click 'Configure...' to the
-    right of 'Provisioning.' Select the desired term, check "Users CSV" and
-    click 'Run Report.' When notified that the report has finished generating,
-    download the file (click the down arrow icon) and place it in:
+    To download a Canvas Provisioning report for Users, login to
+    `https://canvas.upenn.edu/` (admin priveledges are required) and click
+    'Admin > Upenn > Settings > Reports', then click 'Configure...' to the right
+    of 'Provisioning.' Select the desired term, check "Users CSV" and click 'Run
+    Report.' When notified that the report has finished generating, download the
+    file (click the down arrow icon) and place it in:
     $HOME/penn-canvas/email/reports/. Once the file has been added to the
-    directory, run this command.
-    """
+    directory, run this command."""
 
     email_main(test, include_fixed, verbose)
 
