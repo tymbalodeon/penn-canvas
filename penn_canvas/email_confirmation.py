@@ -339,7 +339,7 @@ def print_messages(
 
     if int(user_not_found) > 0:
         typer.secho(
-            f"- Failed to find {user_not_found} users",
+            f"- Failed to find {user_not_found} users.",
             fg=typer.colors.RED,
         )
 

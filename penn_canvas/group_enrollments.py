@@ -9,6 +9,7 @@ import typer
 from .helpers import (
     check_if_complete,
     check_previous_output,
+    colorize,
     colorize_path,
     get_canvas,
     get_command_paths,
@@ -111,6 +112,34 @@ def make_find_group_name(group_name):
 
 def process_result():
     result = pandas.read_csv(RESULT_PATH)
+    result = result[result["status"] == "failed"]
+    failed_count = len(result.index)
+    result.drop("index", axis=1, inplace=True)
+    result.to_csv(RESULT_PATH, index=False)
+
+    return str(failed_count)
+
+
+def print_messages(failed_count, total):
+    typer.echo("SUMMARY:")
+    typer.echo(f"- Processed {colorize(total)} accounts.")
+    accepted_count = typer.style(
+        str(int(total) - int(failed_count)), fg=typer.colors.GREEN
+    )
+    typer.echo(
+        f"- Activated {accepted_count} supported users with unconfirmed email"
+        " accounts."
+    )
+
+    if int(failed_count) > 0:
+        typer.secho(
+            f"- Failed to add {failed_count} students to a Group.",
+            fg=typer.colors.RED,
+        )
+        result_path = typer.style(f"{RESULT_PATH}", fg=typer.colors.GREEN)
+        typer.echo(f"- Details recorded to result file: {result_path}")
+
+    typer.echo("FINISHED")
 
 
 def group_enrollments_main(test, verbose, force):
@@ -161,7 +190,6 @@ def group_enrollments_main(test, verbose, force):
 
             accepted = "accepted"
         except Exception as error:
-            data.at[index, "error"] = error
             accepted = "failed"
 
         data.at[index, "status"] = accepted
@@ -184,4 +212,5 @@ def group_enrollments_main(test, verbose, force):
     toggle_progress_bar(
         data, create_group_enrollments, CANVAS, verbose, args=TOTAL, index=True
     )
-    typer.echo("FINISHED")
+    failed_count = process_result()
+    print_messages(failed_count, TOTAL)
