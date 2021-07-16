@@ -1,5 +1,4 @@
 import os
-from csv import writer
 from datetime import datetime
 from pathlib import Path
 
@@ -126,10 +125,7 @@ def print_messages(failed_count, total):
     accepted_count = typer.style(
         str(int(total) - int(failed_count)), fg=typer.colors.GREEN
     )
-    typer.echo(
-        f"- Activated {accepted_count} supported users with unconfirmed email"
-        " accounts."
-    )
+    typer.echo(f"- Successfully added {accepted_count} students to groups")
 
     if int(failed_count) > 0:
         typer.secho(
@@ -189,7 +185,7 @@ def group_enrollments_main(test, verbose, force):
             group.create_membership(student)
 
             accepted = "accepted"
-        except Exception as error:
+        except Exception:
             accepted = "failed"
 
         data.at[index, "status"] = accepted
