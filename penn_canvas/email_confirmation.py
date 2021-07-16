@@ -7,6 +7,7 @@ import pandas
 import typer
 
 from .helpers import (
+    check_if_complete,
     check_previous_output,
     colorize,
     colorize_path,
@@ -15,7 +16,6 @@ from .helpers import (
     get_command_paths,
     make_csv_paths,
     toggle_progress_bar,
-    check_if_complete,
 )
 
 TODAY = datetime.now().strftime("%d_%b_%Y")
@@ -64,6 +64,7 @@ def find_users_report():
             " instructions for generating a Canvas Provisioning report, run this"
             " command with the '--help' flag.)"
         )
+
         raise typer.Exit(1)
     else:
         TODAYS_REPORT = ""
@@ -74,18 +75,19 @@ def find_users_report():
                 TODAYS_REPORT = report
 
         if not TODAYS_REPORT:
-            typer.secho(
+            error = typer.style(
                 "- ERROR: A Canvas Provisioning Users CSV report matching today's date"
                 " was not found.",
                 fg=typer.colors.YELLOW,
             )
             typer.echo(
-                "- Please add a Canvas Users Provisioning report matching today's date"
-                " to the following directory and then run this script again:"
-                f" {colorize_path(str(REPORTS))}\n- (If you need instructions for"
-                " generating a Canvas Provisioning report, run this command with the"
-                " '--help' flag.)"
+                f"{error}\n- Please add a Canvas Users Provisioning report matching"
+                " today's date to the following directory and then run this script"
+                f" again: {colorize_path(str(REPORTS))}\n- (If you need instructions"
+                " for generating a Canvas Provisioning report, run this command with"
+                " the '--help' flag.)"
             )
+
             raise typer.Exit(1)
         else:
             return TODAYS_REPORT

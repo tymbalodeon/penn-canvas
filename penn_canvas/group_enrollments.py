@@ -39,8 +39,8 @@ def find_enrollments_file():
             fg=typer.colors.YELLOW,
         )
         typer.echo(
-            f"{error} \n- Creating one for you at: {colorize_path(INPUT)}\n\tPlease add"
-            " a group enrollment file matching the graduation year of this year's"
+            f"{error}\n- Creating one for you at: {colorize_path(str(INPUT))}\n\tPlease"
+            " add a group enrollment file matching the graduation year of this year's"
             " incoming freshmen to this directory and then run this script again.\n-"
             " (If you need detailed instructions, run this command with the '--help'"
             " flag.)"
@@ -62,16 +62,17 @@ def find_enrollments_file():
                 CURRENT_EXTENSION = input_file.suffix
 
         if not CURRENT_FILE:
-            typer.style(
-                "- ERROR: A group enrollments file matching the current year was not"
-                " found.",
+            error = typer.style(
+                "- ERROR: A group enrollments file matching the graduation year of this"
+                " year's incoming freshmen was not found.",
                 fg=typer.colors.YELLOW,
             )
             typer.echo(
-                "- Please add a group enrollments file matching the graduation year of"
-                " this year's incoming freshmen to the following directory and then"
-                f" run this script again: {colorize_path(str(INPUT))}\n- (If you need"
-                " detailed instructions, run this command with the '--help' flag.)"
+                f"{error}\n- Please add a group enrollments file matching the"
+                " graduation year of this year's incoming freshmen to the following"
+                " directory and then run this script again:"
+                f" {colorize_path(str(INPUT))}\n- (If you need detailed instructions,"
+                " run this command with the '--help' flag.)"
             )
 
             raise typer.Exit(1)
