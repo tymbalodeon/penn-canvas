@@ -31,7 +31,7 @@ def config(
     """
     Automatically generates a config file for Penn-Canvas.
 
-    INPUT: Canvas Access Tokens, for
+    INPUT: Canvas Access Token(s) for
 
     - PRODUCTION: `https://canvas.upenn.edu/`
 
@@ -45,9 +45,9 @@ def config(
     of the urls above. Go to 'Account > Settings' and click 'New Access Token'
     under the 'Approved Integrations' heading. Enter a description in the
     'Purpose' field and click 'Generate Token'. Paste this token into the
-    terminal when prompted by the `configure` command. You may leave the value
-    empty by hitting ENTER when prompted, if not using all three Canvas
-    instances.
+    terminal when prompted by the `configure` command. You do not need to
+    include all three; for each one you will be asked whether you want to
+    include it in your config.
     """
 
     if view:

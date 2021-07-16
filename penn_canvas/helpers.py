@@ -16,13 +16,30 @@ def make_config():
     if not CONFIG_DIR.exists():
         Path.mkdir(CONFIG_DIR, parents=True)
 
-    production = typer.prompt(
-        "Please enter your Access Token for the PRODUCTION instance of Penn Canvas"
-    )
-    development = typer.prompt(
-        "Please enter your Access Token for the TEST instance of Penn Canvas"
-    )
-    open_canvas = typer.prompt("Please enter your Access Token for OPEN Canvas")
+    use_production = typer.confirm("Input an Access Token for PRODUCTION?")
+
+    if use_production:
+        production = typer.prompt(
+            "Please enter your Access Token for the PRODUCTION instance of Penn Canvas"
+        )
+    else:
+        production = ""
+
+    use_development = typer.confirm("Input an Access Token for DEVELOPMENT?")
+
+    if use_development:
+        development = typer.prompt(
+            "Please enter your Access Token for the TEST instance of Penn Canvas"
+        )
+    else:
+        development = ""
+
+    use_open = typer.confirm("Input an Access Token for OPEN canvas?")
+
+    if use_open:
+        open_canvas = typer.prompt("Please enter your Access Token for OPEN Canvas")
+    else:
+        open_canvas = ""
 
     with open(CONFIG_PATH, "w+") as config:
         config.write(f"CANVAS_KEY_PROD={production}")
@@ -59,7 +76,7 @@ def check_config(config):
 
         if not create:
             typer.echo(
-                ") Not creating...\n"
+                ") NOT creating...\n"
                 "- Please create a config file at: $HOME/.config/penn-canvas"
                 "\n- Place your Canvas Access Tokens in this file using the following"
                 " format:"
@@ -73,10 +90,18 @@ def check_config(config):
 
     if config.is_file():
         with open(CONFIG_PATH, "r") as config:
-            lines = config.read().splitlines()
-            production = lines[0].replace("CANVAS_KEY_PROD=", "")
-            development = lines[1].replace("CANVAS_KEY_DEV=", "")
-            open_canvas = lines[2].replace("CANVAS_KEY_OPEN=", "")
+            LINES = config.read().splitlines()
+            production = ""
+            development = ""
+            open_canvas = ""
+
+            for line in LINES:
+                if "CANVAS_KEY_PROD" in line:
+                    production = line.replace("CANVAS_KEY_PROD=", "")
+                elif "CANVAS_KEY_DEV" in line:
+                    development = line.replace("CANVAS_KEY_DEV=", "")
+                elif "CANVAS_KEY_OPEN" in line:
+                    open_canvas = line.replace("CANVAS_KEY_OPEN=", "")
 
         return production, development, open_canvas
 
