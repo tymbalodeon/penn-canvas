@@ -16,14 +16,14 @@ def make_config():
     if not CONFIG_DIR.exists():
         Path.mkdir(CONFIG_DIR, parents=True)
 
+    production, development, open_canvas = read_config(CONFIG_PATH)
+
     use_production = typer.confirm("Input an Access Token for PRODUCTION?")
 
     if use_production:
         production = typer.prompt(
             "Please enter your Access Token for the PRODUCTION instance of Penn Canvas"
         )
-    else:
-        production = ""
 
     use_development = typer.confirm("Input an Access Token for DEVELOPMENT?")
 
@@ -31,15 +31,11 @@ def make_config():
         development = typer.prompt(
             "Please enter your Access Token for the TEST instance of Penn Canvas"
         )
-    else:
-        development = ""
 
     use_open = typer.confirm("Input an Access Token for OPEN canvas?")
 
     if use_open:
         open_canvas = typer.prompt("Please enter your Access Token for OPEN Canvas")
-    else:
-        open_canvas = ""
 
     with open(CONFIG_PATH, "w+") as config:
         config.write(f"CANVAS_KEY_PROD={production}")
@@ -88,12 +84,17 @@ def check_config(config):
         else:
             make_config()
 
+    return read_config(config)
+
+
+def read_config(config):
+    production = ""
+    development = ""
+    open_canvas = ""
+
     if config.is_file():
         with open(CONFIG_PATH, "r") as config:
             LINES = config.read().splitlines()
-            production = ""
-            development = ""
-            open_canvas = ""
 
             for line in LINES:
                 if "CANVAS_KEY_PROD" in line:
@@ -103,7 +104,7 @@ def check_config(config):
                 elif "CANVAS_KEY_OPEN" in line:
                     open_canvas = line.replace("CANVAS_KEY_OPEN=", "")
 
-        return production, development, open_canvas
+    return production, development, open_canvas
 
 
 def make_csv_paths(csv_dir, csv_file, headers):
@@ -197,15 +198,14 @@ def toggle_progress_bar(data, callback, canvas, verbose, args=None, index=False)
             progress_bar_mode()
 
 
-def get_canvas(instance):
+def get_canvas(instance="test"):
     production, development, open_canvas = check_config(CONFIG_PATH)
+    url = CANVAS_URL_TEST
+    access_token = development
 
     if instance == "prod":
         url = CANVAS_URL_PROD
         access_token = production
-    elif instance == "test":
-        url = CANVAS_URL_TEST
-        access_token = development
     elif instance == "open":
         url = CANVAS_URL_OPEN
         access_token = open_canvas

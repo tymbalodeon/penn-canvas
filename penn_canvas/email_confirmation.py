@@ -366,8 +366,10 @@ def email_main(test, include_fixed, verbose):
         if needs_support_check:
             report.at[index, "email status"] = message
             is_supported = check_schools(user, SUB_ACCOUNTS, canvas, verbose)
+
             if is_supported:
                 report.at[index, "supported school(s)"] = "Y"
+
                 if message == "unconfirmed":
                     activated, activate_message = activate_fixable_emails(
                         user, canvas, result_path, log_path, include_fixed, verbose

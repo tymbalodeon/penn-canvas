@@ -111,7 +111,10 @@ def make_find_group_name(group_name):
 
 def process_result():
     result = pandas.read_csv(RESULT_PATH)
-    result = result[result["status"] == "failed"]
+    result = result[
+        (result["status"] == "user not enrolled in course")
+        | (result["status"] == "user not found in canvas")
+    ]
     failed_count = len(result.index)
     result.drop("index", axis=1, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
@@ -181,27 +184,36 @@ def group_enrollments_main(test, verbose, force):
                     typer.echo(f") Creating group {group_name}...")
                 group = group_set.create_group(name=group_name)
 
-            student = canvas.get_user(penn_key, "sis_login_id")
-            group.create_membership(student)
+            canvas_user = canvas.get_user(penn_key, "sis_login_id")
+            group.create_membership(canvas_user)
 
-            accepted = "accepted"
+            status = "added"
         except Exception:
-            accepted = "failed"
+            try:
+                course = canvas.get_course(course_id)
+                canvas_user = canvas.get_user(penn_key, "sis_login_id")
 
-        data.at[index, "status"] = accepted
+                try:
+                    course_user = course.get_user(canvas_user)
+                except Exception:
+                    status = "user not enrolled in course"
+            except Exception as error:
+                status = "user not found in canvas"
+
+        data.at[index, "status"] = status
         data.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
         if verbose:
-            accepted_display = accepted.upper()
-            if accepted_display == "ACCEPTED":
-                accepted_display = typer.style(accepted_display, fg=typer.colors.GREEN)
+            status_display = status.upper()
+            if status_display == "ADDED":
+                status_display = typer.style(status_display, fg=typer.colors.GREEN)
             else:
-                accepted_display = typer.style(accepted_display, fg=typer.colors.RED)
+                status_display = typer.style(status_display, fg=typer.colors.RED)
 
             penn_key = typer.style(penn_key, fg=typer.colors.MAGENTA)
             typer.echo(
                 f"- ({index + 1}/{total}) {penn_key}, {group_set_name}, {group_name}:"
-                f" {accepted_display}"
+                f" {status_display}"
             )
 
     typer.echo(") Processing students...")

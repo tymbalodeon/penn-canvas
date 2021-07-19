@@ -205,9 +205,11 @@ def write_error(sis_id, error):
 def process_result(result):
     increased_count = len(result[result["error"] == "none"].index)
     error_count = len(result[result["error"] != "none"].index)
+
     if error_count == 0:
         result.drop(columns=["error"], inplace=True)
         result.to_csv(RESULT_PATH, index=False)
+
     return increased_count, error_count
 
 
@@ -215,8 +217,10 @@ def print_messages(total, increased, errors):
     typer.echo("SUMMARY:")
     typer.echo(f"- Processed {colorize(str(total))} courses.")
     typer.echo(f"- Increased storage quota for {colorize(str(increased))} courses.")
+
     if errors > 0:
         typer.echo(f"- Failed to find {colorize(str(errors))} courses.")
+
     typer.echo("FINISHED")
 
 
@@ -229,8 +233,10 @@ def storage_main(test, verbose):
 
     def check_and_increase_storage(course, canvas, verbose, total):
         needs_increase, message = check_percent_storage(course, canvas, verbose, total)
+
         if needs_increase:
             increase_quota(message, canvas, verbose)
+
         if message == "course not found":
             sis_id = course[1]
             write_error(sis_id, message)
