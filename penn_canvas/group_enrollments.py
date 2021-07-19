@@ -88,7 +88,7 @@ def find_enrollments_file():
             return CURRENT_FILE, CURRENT_EXTENSION
 
 
-def cleanup_data(input_file, extension, force, start=0):
+def cleanup_data(input_file, extension, start=0):
     typer.echo(") Preparing enrollments file...")
 
     if extension == ".csv":
@@ -222,7 +222,7 @@ def group_enrollments_main(test, verbose, force):
     else:
         START = check_previous_output(RESULT_PATH)
 
-    data, TOTAL = cleanup_data(data, EXTENSION, force, START)
+    data, TOTAL = cleanup_data(data, EXTENSION, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
 
     if START > 0:

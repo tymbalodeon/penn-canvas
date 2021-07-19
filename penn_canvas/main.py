@@ -164,6 +164,14 @@ def email(
     verbose: bool = typer.Option(
         False, "--verbose", help="Print out detailed information as the task runs."
     ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help=(
+            "Force the task to start from the beginning despite the presence of a"
+            " pre-existing incomplete result file and overwrite that file."
+        ),
+    ),
 ):
     """
     Checks the email status of users and activates any unconfirmed email
@@ -188,7 +196,7 @@ def email(
     $HOME/penn-canvas/email/reports/. Once the file has been added to the
     directory, run this command."""
 
-    email_main(test, include_fixed, verbose)
+    email_main(test, include_fixed, verbose, force)
 
 
 @app.command()
