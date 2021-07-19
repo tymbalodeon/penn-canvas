@@ -1,7 +1,6 @@
 from csv import writer
 from pathlib import Path
 
-import cx_Oracle
 import pandas
 import typer
 from canvasapi import Canvas
@@ -11,13 +10,6 @@ CANVAS_URL_TEST = "https://upenn.test.instructure.com/"
 CANVAS_URL_OPEN = "https://upenn-catalog.instructure.com/"
 CONFIG_DIR = Path.home() / ".config"
 CONFIG_PATH = CONFIG_DIR / "penn-canvas"
-
-lib_dir = Path.home() / "Downloads/instantclient_19_8"
-config_dir = lib_dir / "network/admin"
-cx_Oracle.init_oracle_client(
-    lib_dir=str(lib_dir),
-    config_dir=str(config_dir),
-)
 
 
 def make_config():
@@ -275,13 +267,10 @@ def get_canvas(instance="test"):
     return Canvas(url, access_token)
 
 
-def get_data_warehouse_cursor():
-    typer.echo(") Reading Data Warehouse DSN and credentials from config file...")
+def get_data_warehouse_config():
+    typer.echo(") Reading Data Warehouse credentials from config file...")
 
-    user, password, dsn = check_config(CONFIG_PATH)[3:]
-    connection = cx_Oracle.connect(user, password, dsn)
-
-    return connection.cursor()
+    return check_config(CONFIG_PATH)[3:]
 
 
 def find_sub_accounts(canvas, account_id):

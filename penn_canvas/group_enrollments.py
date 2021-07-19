@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas
 import typer
+from cx_Oracle import connect, init_oracle_client
 
 from .helpers import (
     check_if_complete,
@@ -12,9 +13,16 @@ from .helpers import (
     colorize_path,
     get_canvas,
     get_command_paths,
-    get_data_warehouse_cursor,
+    get_data_warehouse_config,
     make_csv_paths,
     toggle_progress_bar,
+)
+
+lib_dir = Path.home() / "Downloads/instantclient_19_8"
+config_dir = lib_dir / "network/admin"
+init_oracle_client(
+    lib_dir=str(lib_dir),
+    config_dir=str(config_dir),
 )
 
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
@@ -112,33 +120,84 @@ def make_find_group_name(group_name):
 
 def process_result():
     result = pandas.read_csv(RESULT_PATH)
-    result = result[
-        (result["status"] == "user not enrolled in course")
-        | (result["status"] == "user not found in canvas")
-        | (result["status"] == "invalid pennkey")
-        | (result["status"] == "error")
-    ]
-    result = result.sort_values(by=["status"])
-    failed_count = len(result.index)
+    NOT_ENROLLED = result[result["status"] == "user not enrolled in course"]
+    NOT_IN_CANVAS = result[result["status"] == "user not found in canvas"]
+    INVALID_PENNKEY = result[result["status"] == "invalid pennkey"]
+    ERROR = result[result["status"] == "error"]
+    NOT_ENROLLED_COUNT = str(len(NOT_ENROLLED.index))
+    NOT_IN_CANVAS_COUNT = str(len(NOT_IN_CANVAS.index))
+    INVALID_PENNKEY_COUNT = str(len(INVALID_PENNKEY.index))
+    ERROR_COUNT = str(len(ERROR.index))
+    result = pandas.concat([NOT_ENROLLED, NOT_IN_CANVAS, INVALID_PENNKEY, ERROR])
     result.drop("index", axis=1, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
 
-    return str(failed_count)
+    return NOT_ENROLLED_COUNT, NOT_IN_CANVAS_COUNT, INVALID_PENNKEY_COUNT, ERROR_COUNT
 
 
-def print_messages(failed_count, total):
+def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
     typer.secho("SUMMARY:", fg=typer.colors.CYAN)
     typer.echo(f"- Processed {colorize(total)} accounts.")
+    TOTAL_ERRORS = (
+        int(not_enrolled) + int(not_in_canvas) + int(invalid_pennkey) + int(error)
+    )
     accepted_count = typer.style(
-        str(int(total) - int(failed_count)), fg=typer.colors.GREEN
+        str(int(total) - TOTAL_ERRORS),
+        fg=typer.colors.GREEN,
     )
     typer.echo(f"- Successfully added {accepted_count} students to groups")
 
-    if int(failed_count) > 0:
+    errors = False
+
+    if int(not_enrolled) > 0:
+        if int(not_enrolled) > 1:
+            student = "students"
+        else:
+            student = "student"
+
         typer.secho(
-            f"- Failed to add {failed_count} students to a Group.",
+            f"- Found {not_enrolled} {student} not enrolled in the course.",
             fg=typer.colors.RED,
         )
+        errors = True
+
+    if int(not_in_canvas) > 0:
+        if int(not_in_canvas) > 1:
+            student = "students"
+        else:
+            student = "student"
+
+        typer.secho(
+            f"- Found {not_enrolled} {student} without Canvas accounts.",
+            fg=typer.colors.RED,
+        )
+        errors = True
+
+    if int(invalid_pennkey) > 0:
+        if int(invalid_pennkey) > 1:
+            student = "students"
+        else:
+            student = "student"
+
+        typer.secho(
+            f"- Found {not_enrolled} {student} with invalid pennkeys.",
+            fg=typer.colors.RED,
+        )
+        errors = True
+
+    if int(error) > 0:
+        if int(error) > 1:
+            student = "students"
+        else:
+            student = "student"
+
+        typer.secho(
+            f"- Encountered an unknown error for {error} {student}.",
+            fg=typer.colors.RED,
+        )
+        errors = True
+
+    if errors:
         result_path = typer.style(f"{RESULT_PATH}", fg=typer.colors.GREEN)
         typer.echo(f"- Details recorded to result file: {result_path}")
 
@@ -149,6 +208,11 @@ def group_enrollments_main(test, verbose, force):
     data, EXTENSION = find_enrollments_file()
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
+    (
+        DATA_WAREHOUSE_USER,
+        DATA_WAREHOUSE_PASSWORD,
+        DATA_WAREHOUSE_DSN,
+    ) = get_data_warehouse_config()
 
     if force:
         START = 0
@@ -160,11 +224,8 @@ def group_enrollments_main(test, verbose, force):
 
     data, TOTAL = cleanup_data(data, EXTENSION, force, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
-    CURSOR = get_data_warehouse_cursor()
 
-    def create_group_enrollments(student, canvas, verbose, args):
-        cursor, total = args
-
+    def create_group_enrollments(student, canvas, verbose, total=0):
         index, course_id, group_set_name, group_name, penn_key = student
 
         try:
@@ -206,6 +267,15 @@ def group_enrollments_main(test, verbose, force):
                     status = "user not enrolled in course"
             except Exception:
                 try:
+                    if verbose:
+                        penn_key_display = typer.style(penn_key, fg=typer.colors.CYAN)
+                        typer.echo(
+                            f") Checking the Data Warehouse for pennkey: {penn_key_display}..."
+                        )
+
+                    cursor = connect(
+                        DATA_WAREHOUSE_USER, DATA_WAREHOUSE_PASSWORD, DATA_WAREHOUSE_DSN
+                    ).cursor()
                     cursor.execute(
                         """
                         SELECT
@@ -248,8 +318,8 @@ def group_enrollments_main(test, verbose, force):
         create_group_enrollments,
         CANVAS,
         verbose,
-        args=(CURSOR, TOTAL),
+        args=TOTAL,
         index=True,
     )
-    failed_count = process_result()
-    print_messages(failed_count, TOTAL)
+    not_enrolled, not_in_canvas, invalid_pennkey, error = process_result()
+    print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, TOTAL)
