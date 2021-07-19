@@ -164,11 +164,13 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
     if int(not_in_canvas) > 0:
         if int(not_in_canvas) > 1:
             student = "students"
+            account = "Canvas accounts"
         else:
             student = "student"
+            account = "a Canvas account"
 
         typer.secho(
-            f"- Found {not_enrolled} {student} without Canvas accounts.",
+            f"- Found {not_enrolled} {student} without {account}.",
             fg=typer.colors.RED,
         )
         errors = True
@@ -176,11 +178,13 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
     if int(invalid_pennkey) > 0:
         if int(invalid_pennkey) > 1:
             student = "students"
+            pennkey = "pennkeys"
         else:
             student = "student"
+            pennkey = "pennkey"
 
         typer.secho(
-            f"- Found {not_enrolled} {student} with invalid pennkeys.",
+            f"- Found {invalid_pennkey} {student} with invalid {pennkey}.",
             fg=typer.colors.RED,
         )
         errors = True
