@@ -12,6 +12,7 @@ from .helpers import (
     colorize_path,
     get_canvas,
     get_command_paths,
+    get_data_warehouse_cursor,
     make_csv_paths,
     toggle_progress_bar,
 )
@@ -114,6 +115,8 @@ def process_result():
     result = result[
         (result["status"] == "user not enrolled in course")
         | (result["status"] == "user not found in canvas")
+        | (result["status"] == "invalid pennkey")
+        | (result["status"] == "error")
     ]
     result = result.sort_values(by=["status"])
     failed_count = len(result.index)
@@ -124,7 +127,7 @@ def process_result():
 
 
 def print_messages(failed_count, total):
-    typer.echo("SUMMARY:")
+    typer.secho("SUMMARY:", fg=typer.colors.CYAN)
     typer.echo(f"- Processed {colorize(total)} accounts.")
     accepted_count = typer.style(
         str(int(total) - int(failed_count)), fg=typer.colors.GREEN
@@ -139,7 +142,7 @@ def print_messages(failed_count, total):
         result_path = typer.style(f"{RESULT_PATH}", fg=typer.colors.GREEN)
         typer.echo(f"- Details recorded to result file: {result_path}")
 
-    typer.echo("FINISHED")
+    typer.secho("FINISHED", fg=typer.colors.CYAN)
 
 
 def group_enrollments_main(test, verbose, force):
@@ -157,8 +160,11 @@ def group_enrollments_main(test, verbose, force):
 
     data, TOTAL = cleanup_data(data, EXTENSION, force, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
+    CURSOR = get_data_warehouse_cursor()
 
-    def create_group_enrollments(student, canvas, verbose, total=0):
+    def create_group_enrollments(student, canvas, verbose, args):
+        cursor, total = args
+
         index, course_id, group_set_name, group_name, penn_key = student
 
         try:
@@ -195,17 +201,36 @@ def group_enrollments_main(test, verbose, force):
                 canvas_user = canvas.get_user(penn_key, "sis_login_id")
 
                 try:
-                    course_user = course.get_user(canvas_user)
+                    course.get_user(canvas_user)
                 except Exception:
                     status = "user not enrolled in course"
-            except Exception as error:
-                status = "user not found in canvas"
+            except Exception:
+                try:
+                    cursor.execute(
+                        """
+                        SELECT
+                            pennkey
+                        FROM dwadmin.person_all_v
+                        WHERE pennkey= :penn_key
+                        """,
+                        penn_key=penn_key,
+                    )
+
+                    status = "invalid pennkey"
+
+                    for student in cursor:
+                        if len(student) > 0:
+                            status = "user not found in canvas"
+                            break
+                except Exception:
+                    status = "error"
 
         data.at[index, "status"] = status
         data.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
         if verbose:
             status_display = status.upper()
+
             if status_display == "ADDED":
                 status_display = typer.style(status_display, fg=typer.colors.GREEN)
             else:
@@ -219,7 +244,12 @@ def group_enrollments_main(test, verbose, force):
 
     typer.echo(") Processing students...")
     toggle_progress_bar(
-        data, create_group_enrollments, CANVAS, verbose, args=TOTAL, index=True
+        data,
+        create_group_enrollments,
+        CANVAS,
+        verbose,
+        args=(CURSOR, TOTAL),
+        index=True,
     )
     failed_count = process_result()
     print_messages(failed_count, TOTAL)

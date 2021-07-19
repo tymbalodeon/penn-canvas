@@ -15,6 +15,7 @@ canvasapi = "^2.2.0"
 requests = "^2.25.1"
 pandas = "^1.2.4"
 openpyxl = "^3.0.7"
+cx-Oracle = "^8.2.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

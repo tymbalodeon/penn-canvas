@@ -1,6 +1,7 @@
 from csv import writer
 from pathlib import Path
 
+import cx_Oracle
 import pandas
 import typer
 from canvasapi import Canvas
@@ -11,12 +12,26 @@ CANVAS_URL_OPEN = "https://upenn-catalog.instructure.com/"
 CONFIG_DIR = Path.home() / ".config"
 CONFIG_PATH = CONFIG_DIR / "penn-canvas"
 
+lib_dir = Path.home() / "Downloads/instantclient_19_8"
+config_dir = lib_dir / "network/admin"
+cx_Oracle.init_oracle_client(
+    lib_dir=str(lib_dir),
+    config_dir=str(config_dir),
+)
+
 
 def make_config():
     if not CONFIG_DIR.exists():
         Path.mkdir(CONFIG_DIR, parents=True)
 
-    production, development, open_canvas = read_config(CONFIG_PATH)
+    (
+        production,
+        development,
+        open_canvas,
+        data_warehouse_user,
+        data_warehouse_password,
+        data_warehouse_dsn,
+    ) = read_config(CONFIG_PATH)
 
     use_production = typer.confirm("Input an Access Token for PRODUCTION?")
 
@@ -37,18 +52,44 @@ def make_config():
     if use_open:
         open_canvas = typer.prompt("Please enter your Access Token for OPEN Canvas")
 
+    use_data_warehouse = typer.confirm(
+        "Input DSN and connection credentials for DATA WAREHOUSE?"
+    )
+
+    if use_data_warehouse:
+        data_warehouse_user = typer.prompt("Please enter your DATA WAREHOUSE USER")
+        data_warehouse_password = typer.prompt(
+            "Please enter your DATA WAREHOUSE PASSWORD"
+        )
+        data_warehouse_dsn = typer.prompt("Please enter your DATA WAREHOUSE DSN")
+
     with open(CONFIG_PATH, "w+") as config:
         config.write(f"CANVAS_KEY_PROD={production}")
         config.write(f"\nCANVAS_KEY_DEV={development}")
         config.write(f"\nCANVAS_KEY_OPEN={open_canvas}")
+        config.write(f"\nDATA_WAREHOUSE_USER={data_warehouse_user}")
+        config.write(f"\nDATA_WAREHOUSE_PASSWORD={data_warehouse_password}")
+        config.write(f"\nDATA_WAREHOUSE_DSN={data_warehouse_dsn}")
 
 
 def display_config():
-    production, development, open_canvas = check_config(CONFIG_PATH)
+    (
+        production,
+        development,
+        open_canvas,
+        data_warehouse_user,
+        data_warehouse_password,
+        data_warehouse_dsn,
+    ) = check_config(CONFIG_PATH)
 
     production = typer.style(f"{production}", fg=typer.colors.YELLOW)
     development = typer.style(f"{development}", fg=typer.colors.YELLOW)
     open_canvas = typer.style(f"{open_canvas}", fg=typer.colors.YELLOW)
+    data_warehouse_user = typer.style(f"{data_warehouse_user}", fg=typer.colors.YELLOW)
+    data_warehouse_password = typer.style(
+        f"{data_warehouse_password}", fg=typer.colors.YELLOW
+    )
+    data_warehouse_dsn = typer.style(f"{data_warehouse_dsn}", fg=typer.colors.YELLOW)
     config_path = typer.style(f"{CONFIG_PATH}", fg=typer.colors.GREEN)
 
     typer.echo(
@@ -56,12 +97,13 @@ def display_config():
         f"\nCANVAS_KEY_PROD: {production}"
         f"\nCANVAS_KEY_DEV: {development}"
         f"\nCANVAS_KEY_OPEN: {open_canvas}"
+        f"\nDATA_WAREHOUSE_USER: {data_warehouse_user}"
+        f"\nDATA_WAREHOUSE_PASSWORD: {data_warehouse_password}"
+        f"\nDATA_WAREHOUSE_DSN: {data_warehouse_dsn}"
     )
 
 
 def check_config(config):
-    typer.echo(") Reading Canvas Access Tokens from config file...")
-
     if not config.exists():
         error = typer.style(
             "- ERROR: No config file ($HOME/.config/penn-canvas) exists for"
@@ -91,6 +133,9 @@ def read_config(config):
     production = ""
     development = ""
     open_canvas = ""
+    data_warehouse_user = ""
+    data_warehouse_password = ""
+    data_warehouse_dsn = ""
 
     if config.is_file():
         with open(CONFIG_PATH, "r") as config:
@@ -103,8 +148,23 @@ def read_config(config):
                     development = line.replace("CANVAS_KEY_DEV=", "")
                 elif "CANVAS_KEY_OPEN" in line:
                     open_canvas = line.replace("CANVAS_KEY_OPEN=", "")
+                elif "DATA_WAREHOUSE_USER" in line:
+                    data_warehouse_user = line.replace("DATA_WAREHOUSE_USER=", "")
+                elif "DATA_WAREHOUSE_PASSWORD" in line:
+                    data_warehouse_password = line.replace(
+                        "DATA_WAREHOUSE_PASSWORD=", ""
+                    )
+                elif "DATA_WAREHOUSE_DSN" in line:
+                    data_warehouse_dsn = line.replace("DATA_WAREHOUSE_DSN=", "")
 
-    return production, development, open_canvas
+    return (
+        production,
+        development,
+        open_canvas,
+        data_warehouse_user,
+        data_warehouse_password,
+        data_warehouse_dsn,
+    )
 
 
 def make_csv_paths(csv_dir, csv_file, headers):
@@ -199,7 +259,9 @@ def toggle_progress_bar(data, callback, canvas, verbose, args=None, index=False)
 
 
 def get_canvas(instance="test"):
-    production, development, open_canvas = check_config(CONFIG_PATH)
+    typer.echo(") Reading Canvas Access Tokens from config file...")
+
+    production, development, open_canvas = check_config(CONFIG_PATH)[0:3]
     url = CANVAS_URL_TEST
     access_token = development
 
@@ -211,6 +273,15 @@ def get_canvas(instance="test"):
         access_token = open_canvas
 
     return Canvas(url, access_token)
+
+
+def get_data_warehouse_cursor():
+    typer.echo(") Reading Data Warehouse DSN and credentials from config file...")
+
+    user, password, dsn = check_config(CONFIG_PATH)[3:]
+    connection = cx_Oracle.connect(user, password, dsn)
+
+    return connection.cursor()
 
 
 def find_sub_accounts(canvas, account_id):

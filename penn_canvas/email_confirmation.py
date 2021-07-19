@@ -310,7 +310,7 @@ def print_messages(
     log_path,
     user_not_found,
 ):
-    typer.echo("SUMMARY:")
+    typer.secho("SUMMARY:", fg=typer.colors.CYAN)
     typer.echo(f"- Processed {colorize(total)} accounts.")
     typer.echo(
         f"- Activated {colorize(fixed)} supported users with unconfirmed email"
@@ -343,7 +343,7 @@ def print_messages(
             fg=typer.colors.RED,
         )
 
-    typer.echo("FINISHED")
+    typer.secho("FINISHED:", fg=typer.colors.CYAN)
 
 
 def email_main(test, include_fixed, verbose):

@@ -214,14 +214,14 @@ def process_result(result):
 
 
 def print_messages(total, increased, errors):
-    typer.echo("SUMMARY:")
+    typer.secho("SUMMARY:", fg=typer.colors.CYAN)
     typer.echo(f"- Processed {colorize(str(total))} courses.")
     typer.echo(f"- Increased storage quota for {colorize(str(increased))} courses.")
 
     if errors > 0:
         typer.echo(f"- Failed to find {colorize(str(errors))} courses.")
 
-    typer.echo("FINISHED")
+    typer.secho("FINISHED:", fg=typer.colors.CYAN)
 
 
 def storage_main(test, verbose):
