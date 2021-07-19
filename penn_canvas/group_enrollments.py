@@ -115,6 +115,7 @@ def process_result():
         (result["status"] == "user not enrolled in course")
         | (result["status"] == "user not found in canvas")
     ]
+    result = result.sort_values(by=["status"])
     failed_count = len(result.index)
     result.drop("index", axis=1, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
