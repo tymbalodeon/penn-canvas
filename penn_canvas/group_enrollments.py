@@ -7,7 +7,6 @@ import typer
 from cx_Oracle import connect, init_oracle_client
 
 from .helpers import (
-    check_if_complete,
     check_previous_output,
     colorize,
     colorize_path,
@@ -102,9 +101,6 @@ def cleanup_data(input_file, extension, force, start=0):
     data = data.astype("string", copy=False)
     data[list(data)] = data[list(data)].apply(lambda column: column.str.strip())
     TOTAL = len(data.index)
-
-    if not force:
-        check_if_complete(start, TOTAL)
 
     data = data.loc[start:TOTAL, :]
 
@@ -228,6 +224,17 @@ def group_enrollments_main(test, verbose, force):
 
     data, TOTAL = cleanup_data(data, EXTENSION, force, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
+
+    if START > 0:
+        if START == 1:
+            student = "STUDENT"
+        else:
+            student = "STUDENTS"
+
+        typer.secho(
+            f") SKIPPING {START} PREVIOUSLY PROCESSED {student}...",
+            fg=typer.colors.YELLOW,
+        )
 
     def create_group_enrollments(student, canvas, verbose, total=0):
         index, course_id, group_set_name, group_name, penn_key = student

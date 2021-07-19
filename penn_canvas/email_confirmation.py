@@ -7,7 +7,6 @@ import pandas
 import typer
 
 from .helpers import (
-    check_if_complete,
     check_previous_output,
     colorize,
     colorize_path,
@@ -101,7 +100,6 @@ def cleanup_report(report, start=0):
     data.drop_duplicates(inplace=True)
     data = data.astype("string", copy=False)
     TOTAL = len(data.index)
-    check_if_complete(start, TOTAL)
     data = data.loc[start:TOTAL, :]
 
     return data, str(TOTAL)
