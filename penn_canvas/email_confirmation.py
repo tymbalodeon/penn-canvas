@@ -9,7 +9,7 @@ import typer
 from .helpers import (
     colorize,
     colorize_path,
-    find_sub_accounts,
+    find_subaccounts,
     get_canvas,
     get_command_paths,
     make_csv_paths,
@@ -42,7 +42,7 @@ def get_sub_accounts(canvas):
     SUB_ACCOUNTS = list()
 
     for account in ACCOUNTS:
-        SUB_ACCOUNTS += find_sub_accounts(canvas, account)
+        SUB_ACCOUNTS += find_subaccounts(canvas, account)
 
     return SUB_ACCOUNTS
 

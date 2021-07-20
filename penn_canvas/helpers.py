@@ -126,7 +126,7 @@ def get_canvas(instance):
     return Canvas(url, access_token)
 
 
-def find_sub_accounts(canvas, account_id):
+def find_subaccounts(canvas, account_id):
     ACCOUNT = canvas.get_account(account_id)
     sub_accounts = ACCOUNT.get_subaccounts(recursive=True)
     ACCOUNTS = [account_id]
