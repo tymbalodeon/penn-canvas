@@ -34,8 +34,7 @@ TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 REPORTS, RESULTS, LOGS = get_command_paths("shopping", True)
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_course_shopping_result.csv"
-HEADERS = ["index", "canvas id", "sis id", " short name", "account id", "status"]
-# outFile.write("sis_id, canvas_id, visibility_status, published, notes\n")
+HEADERS = ["index", "canvas course id", "course id", "status", "notes"]
 
 INFILE = f"data/course_shopping_{TODAY}{'_test' if TESTING else ''}.csv"
 OUTFILE = f"data/course_shopping_enabled_{TODAY}{'_test' if TESTING else ''}.csv"
@@ -50,252 +49,263 @@ MASTER_FILE = f"data/course_shopping_master_{TERM}{'_test' if TESTING else ''}.c
 
 canvas_id_in_master = []
 
-WH_EXCLUDE = (
-    1570395,
-    1561313,
-    1547534,
-    1570415,
-    1557428,
-    1561900,
-    1569679,
-    1570197,
-    1556491,
-    1568283,
-    1571450,
-    1569376,
-    1568956,
-    1571142,
-    1557429,
-    1569235,
-    1556348,
-    1568292,
-    1560829,
-    1562996,
-    1569378,
-    1561940,
-    1557344,
-    1561720,
-    1562001,
-    1570626,
-    1561675,
-    1562002,
-    1568363,
-    1568432,
-    1570977,
-    1569407,
-    1561254,
-    1560744,
-    1561759,
-    1570413,
-    1571335,
-    1571258,
-    1571346,
-    1567954,
-    1567952,
-    1567970,
-    1570982,
-    1571220,
-    1571223,
-    1571226,
-    1571259,
-    1571247,
-    1571213,
-    1571228,
-    1561671,
-    1561674,
-    1561001,
-    1571466,
-    1571465,
-    1571464,
-    1571262,
-    1571480,
-    1571482,
-    1571481,
-    1571479,
-    1569321,
-    1558823,
-    1571264,
-    1557348,
-    1569541,
-    1569542,
-    1560288,
-    1567879,
-    1557350,
-    1568926,
-    1569318,
-    1571265,
-    1571266,
-    1558648,
-    1561859,
-    1571246,
-    1569543,
-    1570202,
-    1570446,
-    1570717,
-    1570718,
-    1571252,
-    1571364,
-    1570301,
-    1556034,
-    1554947,
-    1568466,
-    1568827,
-    1561296,
-    1561297,
-    1561298,
-    1561299,
-    1561264,
-    1571251,
-    1568963,
-    1569346,
-    1571267,
-    1570668,
-    1568923,
-    1570600,
-    1562905,
-    1567756,
-    1568631,
-    1571469,
-    1560739,
-    1560996,
-    1568515,
-    1568517,
-    1568518,
-    1568520,
-    1568522,
-    1568524,
-    1568526,
-    1568528,
-    1568530,
-    1568532,
-    1568534,
-    1568536,
-    1568538,
-    1568540,
-    1568542,
-    1568544,
-    1568546,
-    1568548,
-    1568550,
-    1568552,
-    1568554,
-    1568556,
-    1568558,
-    1568560,
-    1568561,
-    1568516,
-    1568519,
-    1568521,
-    1568523,
-    1568525,
-    1568527,
-    1568529,
-    1568531,
-    1568533,
-    1568535,
-    1568537,
-    1568539,
-    1568541,
-    1568543,
-    1568545,
-    1568547,
-    1568549,
-    1568551,
-    1568553,
-    1568555,
-    1568557,
-    1568559,
-    1568562,
-    1568563,
-    1568564,
-    1568511,
-    1568512,
-    1568513,
-    1568514,
-    1568565,
-    1568566,
-    1568567,
-    1568568,
-    1568569,
-    1557340,
-    1557268,
-    1557336,
-    1557341,
-    1557338,
-    1561872,
-    1557337,
-    1569470,
-    1569471,
-    1569472,
-    1569473,
-    1569474,
-    1569475,
-    1569476,
-    1569477,
-    1569478,
-    1569479,
-    1569480,
-    1569481,
-    1569482,
-    1569483,
-    1569484,
-    1569485,
-    1569486,
-    1569487,
-    1569488,
-    1569489,
-    1569490,
-    1569491,
-    1569492,
-    1569493,
-    1569494,
-    1569495,
-    1569496,
-    1569497,
-    1569498,
-    1569499,
-    1569500,
-    1569501,
-    1569502,
-    1569503,
-    1569504,
-    1569505,
-    1569506,
-    1569507,
-    1569508,
-    1569509,
-    1569510,
-    1569511,
-    1569512,
-    1560922,
-    1571374,
-    1571375,
-    1571376,
-    1571377,
-    1571378,
-    1571379,
-    1571380,
-    1571387,
-    1571381,
-    1571382,
-    1571383,
-    1571384,
-    1571388,
-    1571385,
-    1571386,
-    1569548,
-)
+WH_EXCLUDE = [
+    "1570395",
+    "1561313",
+    "1547534",
+    "1570415",
+    "1557428",
+    "1561900",
+    "1569679",
+    "1570197",
+    "1556491",
+    "1568283",
+    "1571450",
+    "1569376",
+    "1568956",
+    "1571142",
+    "1557429",
+    "1569235",
+    "1556348",
+    "1568292",
+    "1560829",
+    "1562996",
+    "1569378",
+    "1561940",
+    "1557344",
+    "1561720",
+    "1562001",
+    "1570626",
+    "1561675",
+    "1562002",
+    "1568363",
+    "1568432",
+    "1570977",
+    "1569407",
+    "1561254",
+    "1560744",
+    "1561759",
+    "1570413",
+    "1571335",
+    "1571258",
+    "1571346",
+    "1567954",
+    "1567952",
+    "1567970",
+    "1570982",
+    "1571220",
+    "1571223",
+    "1571226",
+    "1571259",
+    "1571247",
+    "1571213",
+    "1571228",
+    "1561671",
+    "1561674",
+    "1561001",
+    "1571466",
+    "1571465",
+    "1571464",
+    "1571262",
+    "1571480",
+    "1571482",
+    "1571481",
+    "1571479",
+    "1569321",
+    "1558823",
+    "1571264",
+    "1557348",
+    "1569541",
+    "1569542",
+    "1560288",
+    "1567879",
+    "1557350",
+    "1568926",
+    "1569318",
+    "1571265",
+    "1571266",
+    "1558648",
+    "1561859",
+    "1571246",
+    "1569543",
+    "1570202",
+    "1570446",
+    "1570717",
+    "1570718",
+    "1571252",
+    "1571364",
+    "1570301",
+    "1556034",
+    "1554947",
+    "1568466",
+    "1568827",
+    "1561296",
+    "1561297",
+    "1561298",
+    "1561299",
+    "1561264",
+    "1571251",
+    "1568963",
+    "1569346",
+    "1571267",
+    "1570668",
+    "1568923",
+    "1570600",
+    "1562905",
+    "1567756",
+    "1568631",
+    "1571469",
+    "1560739",
+    "1560996",
+    "1568515",
+    "1568517",
+    "1568518",
+    "1568520",
+    "1568522",
+    "1568524",
+    "1568526",
+    "1568528",
+    "1568530",
+    "1568532",
+    "1568534",
+    "1568536",
+    "1568538",
+    "1568540",
+    "1568542",
+    "1568544",
+    "1568546",
+    "1568548",
+    "1568550",
+    "1568552",
+    "1568554",
+    "1568556",
+    "1568558",
+    "1568560",
+    "1568561",
+    "1568516",
+    "1568519",
+    "1568521",
+    "1568523",
+    "1568525",
+    "1568527",
+    "1568529",
+    "1568531",
+    "1568533",
+    "1568535",
+    "1568537",
+    "1568539",
+    "1568541",
+    "1568543",
+    "1568545",
+    "1568547",
+    "1568549",
+    "1568551",
+    "1568553",
+    "1568555",
+    "1568557",
+    "1568559",
+    "1568562",
+    "1568563",
+    "1568564",
+    "1568511",
+    "1568512",
+    "1568513",
+    "1568514",
+    "1568565",
+    "1568566",
+    "1568567",
+    "1568568",
+    "1568569",
+    "1557340",
+    "1557268",
+    "1557336",
+    "1557341",
+    "1557338",
+    "1561872",
+    "1557337",
+    "1569470",
+    "1569471",
+    "1569472",
+    "1569473",
+    "1569474",
+    "1569475",
+    "1569476",
+    "1569477",
+    "1569478",
+    "1569479",
+    "1569480",
+    "1569481",
+    "1569482",
+    "1569483",
+    "1569484",
+    "1569485",
+    "1569486",
+    "1569487",
+    "1569488",
+    "1569489",
+    "1569490",
+    "1569491",
+    "1569492",
+    "1569493",
+    "1569494",
+    "1569495",
+    "1569496",
+    "1569497",
+    "1569498",
+    "1569499",
+    "1569500",
+    "1569501",
+    "1569502",
+    "1569503",
+    "1569504",
+    "1569505",
+    "1569506",
+    "1569507",
+    "1569508",
+    "1569509",
+    "1569510",
+    "1569511",
+    "1569512",
+    "1560922",
+    "1571374",
+    "1571375",
+    "1571376",
+    "1571377",
+    "1571378",
+    "1571379",
+    "1571380",
+    "1571387",
+    "1571381",
+    "1571382",
+    "1571383",
+    "1571384",
+    "1571388",
+    "1571385",
+    "1571386",
+    "1569548",
+]
 
-
-SAS_ONL_ACCOUNT = 132413
-ADMIN_ACCOUNT = 131963
-WHARTON_ACCOUNT_ID = 81471
-SAS_ACCOUNT_ID = 99237
-SEAS_ACCOUNT_ID = 99238
-NURS_ACCOUNT_ID = 99239
-AN_ACCOUNT_ID = 99243
+SAS_ONL_ACCOUNT = "132413"
+ADMIN_ACCOUNT = "131963"
+WHARTON_ACCOUNT_ID = "81471"
+SAS_ACCOUNT_ID = "99237"
+SEAS_ACCOUNT_ID = "99238"
+NURS_ACCOUNT_ID = "99239"
+AN_ACCOUNT_ID = "99243"
 IGNORED_SUBJECTS = ["MAPP", "IMPA", "DYNM"]
 IGNORED_SITES = ["1529220"]
+
+
+def get_accounts(test):
+    canvas = get_canvas(test)
+    SEAS_ACCOUNTS = find_subaccounts(canvas, SEAS_ACCOUNT_ID)
+    NURS_ACCOUNTS = find_subaccounts(canvas, NURS_ACCOUNT_ID)
+    SAS_ACCOUNTS = find_subaccounts(canvas, SAS_ACCOUNT_ID)
+    SAS_ACCOUNTS.remove(SAS_ONL_ACCOUNT)
+    SAS_ACCOUNTS.remove(ADMIN_ACCOUNT)
+    AN_ACCOUNTS = find_subaccounts(canvas, AN_ACCOUNT_ID)
+
+    return SEAS_ACCOUNTS, NURS_ACCOUNTS, SAS_ACCOUNTS, AN_ACCOUNTS
 
 
 def find_course_shopping_report():
@@ -345,7 +355,9 @@ def cleanup_report(report, start=0):
     typer.echo(") Preparing report...")
 
     data = pandas.read_csv(report)
-    data = data[["canvas_course_id", "course_id", "short_name", "account_id", "status"]]
+    data = data[
+        ["canvas_course_id", "course_id", "short_name", "canvas_account_id", "status"]
+    ]
     data = data.astype("string", copy=False)
     data = data[data["course_id"] != ""]
     data.reset_index(drop=True, inplace=True)
@@ -398,7 +410,7 @@ def enable_wharton_course_shopping(inputfile, outputfile):
     outFile.write("sis_id, canvas_id, visibility_status, published, notes\n")
 
     for line in dataFile:
-        canvas_id, sis_id, short_name, account_id, status = line.replace(
+        canvas_id, sis_id, short_name, canvas_account_id, status = line.replace(
             "\n", ""
         ).split(",")
 
@@ -414,10 +426,10 @@ def enable_wharton_course_shopping(inputfile, outputfile):
                 published = "ERROR"
 
             if canvas_course:
-                if not account_id.isnumeric():
-                    print("\t Invalid account_id %s", account_id)
+                if not canvas_account_id.isnumeric():
+                    print("\t Invalid account_id %s", canvas_account_id)
                 elif (
-                    int(account_id) not in WHARTON_ACCOUNTS
+                    int(canvas_account_id) not in WHARTON_ACCOUNTS
                 ):  # then we should not update this site!!!!
                     print("\t school not participating")
                     notes += "/ NOT WHARTON"
@@ -430,7 +442,14 @@ def enable_wharton_course_shopping(inputfile, outputfile):
                     update = False
                     try:
                         # see if the course is connected to SRS
-                        print("\t", canvas_id, sis_id, short_name, account_id, status)
+                        print(
+                            "\t",
+                            canvas_id,
+                            sis_id,
+                            short_name,
+                            canvas_account_id,
+                            status,
+                        )
                         update = False
 
                         in_SRS = section_contains_srs(canvas, canvas_id)
@@ -440,7 +459,7 @@ def enable_wharton_course_shopping(inputfile, outputfile):
                             update = False
                         elif (
                             int(canvas_id) in WH_EXCLUDE
-                            or account_id == SUB_ACCOUNT_EXCLUDE
+                            or canvas_account_id == SUB_ACCOUNT_EXCLUDE
                         ):
                             print("\t single site to ignore")
                             notes += "\ in exclude list"
@@ -496,107 +515,97 @@ def enable_wharton_course_shopping(inputfile, outputfile):
     outFile.close()
 
 
-def enable_course_shopping(courses):
-    canvas = get_canvas(TESTING)
+def should_update_course(canvas_account_id, course_number, subject, test):
+    SEAS_ACCOUNTS, NURS_ACCOUNTS, SAS_ACCOUNTS, AN_ACCOUNTS = get_accounts(test)
 
+    if (
+        canvas_account_id in SEAS_ACCOUNTS
+        or (canvas_account_id in NURS_ACCOUNTS and course_number <= 600)
+        or (
+            canvas_account_id in SAS_ACCOUNTS
+            and course_number <= 500
+            and subject not in IGNORED_SUBJECTS
+        )
+        or (
+            canvas_account_id in AN_ACCOUNTS
+            and course_number <= 500
+            and subject == "COMM"
+        )
+    ):
+
+        return True
+    else:
+        return False
+
+
+def enable_course_shopping(courses, test):
+    typer.echo(") Enabling course shopping for non-Wharton schools...")
+    canvas = get_canvas(TESTING)
     WHARTON_ACCOUNTS = find_subaccounts(canvas, WHARTON_ACCOUNT_ID)
-    SAS_ACCOUNTS = find_subaccounts(canvas, SAS_ACCOUNT_ID)
-    SAS_ACCOUNTS.remove(SAS_ONL_ACCOUNT)
-    SAS_ACCOUNTS.remove(ADMIN_ACCOUNT)
-    SEAS_ACCOUNTS = find_subaccounts(canvas, SEAS_ACCOUNT_ID)
-    NURS_ACCOUNTS = find_subaccounts(canvas, NURS_ACCOUNT_ID)
-    AN_ACCOUNTS = find_subaccounts(canvas, AN_ACCOUNT_ID)
+    SEAS_ACCOUNTS, NURS_ACCOUNTS, SAS_ACCOUNTS, AN_ACCOUNTS = get_accounts(test)
     SUB_ACCOUNTS = SAS_ACCOUNTS + SEAS_ACCOUNTS + NURS_ACCOUNTS + AN_ACCOUNTS
+    courses = courses[
+        "index", "canvas course id", "course id", "canvas_account_id", "status"
+    ]
 
     for course in courses.itertuples():
-        index, canvas_course_id, course_id, short_name, account_id, status = course
+        (
+            index,
+            canvas_course_id,
+            course_id,
+            canvas_account_id,
+            status,
+        ) = course
 
-        if canvas_course_id not in canvas_id_in_master:
+        if canvas_course_id in canvas_id_in_master:
+            continue
 
-            notes = ""
-            canvas_course = None
-
+        if canvas_account_id not in SUB_ACCOUNTS:
+            typer.echo("- School not participating.")
+            notes = "school not participating"
+        elif not course_contains_srs(course_id):
+            typer.echo("- Course not in SRS.")
+            notes = "course not in srs"
+        elif canvas_course_id in IGNORED_SITES:
+            typer.echo("- Ignored course.")
+            notes = "ignored course"
+        else:
             try:
                 canvas_course = canvas.get_course(canvas_course_id)
-                published = status
-            except Exception:
-                notes = "couldnt find course"
-                published = "ERROR"
+                course_number = int(course_id.split("-")[1])
+                subject = course_id.split("-")[0][4:]
+                notes = ""
 
-            if canvas_course:
-                if not account_id.isnumeric():
-                    print(f"- ERROR: Invalid account id: {account_id}")
-                elif int(account_id) not in SUB_ACCOUNTS:
-                    print("- School not participating")
-                    notes += "/ subaccount opt out"
-                    outFile.write(
-                        f"{course_id}, {canvas_course_id}, {status}, {published}, {notes}"
-                    )
-                else:
-                    try:
-                        update = False
+                if should_update_course(
+                    canvas_account_id, course_number, subject, test
+                ):
+                    typer.echo(f") Updating course...")
 
-                        if not course_contains_srs(course_id):
-                            print("- Course not in SRS.")
-                        elif int(canvas_course_id) in IGNORED_SITES:
-                            print("- Ignored course.")
-                        else:
-                            course_number = course_id.split("-")[1]
-                            subject = course_id.split("-")[0][4:]
-                            print(f"- COURSE NUMBER: {course_number}")
-                            print(f"- SUBJECT: {subject}")
+                    canvas_course.update(course={"is_public_to_auth_users": True})
+                    status = "public to auth users"
 
-                            if int(account_id) in SEAS_ACCOUNTS:
-                                update = True
-                            else:
-                                if int(account_id) in NURS_ACCOUNTS:
-                                    if int(course_number) <= 600:
-                                        update = True
-                                elif (
-                                    int(account_id) in SAS_ACCOUNTS
-                                    and int(course_number) <= 500
-                                ):
-                                    if subject in IGNORED_SUBJECTS:
-                                        print("- Ignored subject.")
-                                    else:
-                                        update = True
-                                elif (
-                                    int(account_id) in AN_ACCOUNTS
-                                    and int(course_number) <= 500
-                                ):
-                                    if subject == "COMM":
-                                        update = True
-                    except Exception as error:
-                        print(
-                            f"- ERROR: Failed to enable course shopping for {course_id} ({canvas_course_id}) ({error})"
-                        )
-                        outFile.write(
-                            f"{course_id}, {canvas_course_id}, 'err', 'err', 'err'"
-                        )
+                    master = open(MASTER_FILE, "a")
+                    master.write(f"{canvas_course_id}, {course_id}, {status}, {notes}")
+                    master.close()
+                elif subject in IGNORED_SUBJECTS:
+                    typer.echo("- Ignored course.")
+                    notes = "ignored course"
+            except Exception as error:
+                typer.echo(
+                    f"- ERROR: Failed to enable course shopping for {canvas_course_id} - {course_id} ({error})"
+                )
+                status = "ERROR"
+                notes = error
 
-                    if update:
-                        print(f") Updating course...")
-
-                        try:
-                            canvas_course.update(
-                                course={"is_public_to_auth_users": True}
-                            )
-                            status = "public to auth users"
-                        except Exception:
-                            status = "ERROR"
-
-                        outFile.write(
-                            f"{course_id}, {canvas_course_id}, {status}, {published}, {notes}"
-                        )
-
-                        master = open(MASTER_FILE, "a")
-                        master.write(
-                            f"{course_id}, {canvas_course_id}, {status}, {published}, {notes}"
-                        )
-                        master.close()
-
-    dataFile.close()
-    outFile.close()
+        courses.loc[
+            index,
+            [
+                "canvas_course_id",
+                "course_id",
+                "status",
+                "notes",
+            ],
+        ] = [canvas_course_id, course_id, status, notes]
 
 
 def disable_course_shopping(inputfile=MASTER_FILE, outputfile=DISABLE_OUTFILE):
