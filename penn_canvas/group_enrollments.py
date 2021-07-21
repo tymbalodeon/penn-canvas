@@ -134,7 +134,7 @@ def process_result():
 
 
 def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
-    typer.secho("SUMMARY:", fg=typer.colors.CYAN)
+    typer.secho("SUMMARY:", fg=typer.colors.YELLOW)
     typer.echo(f"- Processed {colorize(total)} accounts.")
     TOTAL_ERRORS = (
         int(not_enrolled) + int(not_in_canvas) + int(invalid_pennkey) + int(error)
@@ -203,7 +203,7 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
         result_path = typer.style(f"{RESULT_PATH}", fg=typer.colors.GREEN)
         typer.echo(f"- Details recorded to result file: {result_path}")
 
-    typer.secho("FINISHED", fg=typer.colors.CYAN)
+    typer.secho("FINISHED", fg=typer.colors.YELLOW)
 
 
 def group_enrollments_main(test, verbose, force):

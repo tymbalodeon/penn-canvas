@@ -198,7 +198,7 @@ def check_previous_output(result_path):
             except Exception:
                 index = 0
         else:
-            typer.secho("TASK COMPLETE", fg=typer.colors.YELLOW)
+            typer.secho("TASK ALREADY COMPLETE", fg=typer.colors.YELLOW)
             result_path_display = typer.style(str(result_path), fg=typer.colors.GREEN)
             typer.echo(f"- Output available at: {result_path_display}")
             typer.echo(
@@ -232,10 +232,11 @@ def make_skip_message(start, item):
     else:
         item = f"{item.upper()}S"
 
-    typer.secho(
-        f") SKIPPING {start} PREVIOUSLY PROCESSED {item}...",
+    message = typer.style(
+        f"SKIPPING {start} PREVIOUSLY PROCESSED {item}...",
         fg=typer.colors.YELLOW,
     )
+    typer.echo(f") {message}")
 
 
 def toggle_progress_bar(data, callback, canvas, verbose, args=None, index=False):
