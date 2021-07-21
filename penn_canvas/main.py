@@ -1,17 +1,8 @@
 import typer
 
-from .course_shopping import shopping_main
 from .course_storage_quota import storage_main
 from .email_confirmation import email_main
 from .helpers import display_config, make_config
-
-# import email_confirmation
-# import module_progression_lock
-# import piazza_report
-# import quiz_students_check
-# import reserve
-# import student_integrity_check
-# import zoom_check
 
 app = typer.Typer(
     help="""Welcome to the Penn-Canvas -- working with Canvas has never been easier!"""
@@ -54,29 +45,6 @@ def config(
         display_config()
     else:
         make_config()
-
-
-@app.command()
-def shopping(
-    test: bool = typer.Option(
-        False,
-        "--test",
-        help=(
-            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)"
-        ),
-    ),
-    wharton: bool = typer.Option(
-        False, "--wharton", help="Manage course shopping for Wharton."
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", help="Print out detailed information as the task runs."
-    ),
-):
-    """
-    Course shopping
-    """
-    shopping_main(test, wharton, verbose)
 
 
 @app.command()
@@ -132,6 +100,14 @@ def storage(
     verbose: bool = typer.Option(
         False, "--verbose", help="Print out detailed information as the task runs."
     ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help=(
+            "Force the task to start from the beginning despite the presence of a"
+            " pre-existing incomplete result file and overwrite that file."
+        ),
+    ),
 ):
     """
     Increases the storage quota for each course that currently uses 79% or more
@@ -154,7 +130,7 @@ def storage(
     previous date will not be accepted.
     """
 
-    storage_main(test, verbose)
+    storage_main(test, verbose, force)
 
 
 @app.command()
