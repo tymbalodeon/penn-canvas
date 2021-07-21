@@ -4,6 +4,7 @@ from .email import email_main
 from .helpers import display_config, make_config
 from .nso import nso_main
 from .storage import storage_main
+from .tool import tool_main
 
 app = typer.Typer(
     help=(
@@ -49,6 +50,62 @@ def config(
         display_config()
     else:
         make_config()
+
+
+@app.command()
+def email(
+    test: bool = typer.Option(
+        False,
+        "--test",
+        help=(
+            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
+            " of production (https://canvas.upenn.edu/)"
+        ),
+    ),
+    include_fixed: bool = typer.Option(
+        False,
+        "--include-fixed",
+        help=(
+            "Include in the output file the list of users whose email accounts were"
+            " automatically activated by the script"
+        ),
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help=(
+            "Force the task to start from the beginning despite the presence of a"
+            " pre-existing incomplete result file and overwrite that file."
+        ),
+    ),
+):
+    """
+    Checks the email status of users and activates any unconfirmed email
+    addresses for users with at least one enrollment in a "supported" school.
+
+    INPUT: Canvas Provisioning report (Users)
+
+    OUTPUT: A csv file listing users who either have no email accounts, or who
+    have unconfirmed accounts but have no enrollments in a "supported" school
+    (and optionally listing users whose accounts were successfully activated)
+
+    "Supported" schools are all schools EXCEPT:
+
+        Wharton, Perelman School of Medicine
+
+    To download a Canvas Provisioning report for Users, login to
+    `https://canvas.upenn.edu/` (admin priveledges are required) and click
+    'Admin > Upenn > Settings > Reports', then click 'Configure...' to the right
+    of 'Provisioning.' Select the desired term, check "Users CSV" and click 'Run
+    Report.' When notified that the report has finished generating, download the
+    file (click the down arrow icon) and place it in:
+    $HOME/penn-canvas/email/reports/. Once the file has been added to the
+    directory, run this command."""
+
+    email_main(test, include_fixed, verbose, force)
 
 
 @app.command()
@@ -138,104 +195,8 @@ def storage(
 
 
 @app.command()
-def email(
-    test: bool = typer.Option(
-        False,
-        "--test",
-        help=(
-            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)"
-        ),
-    ),
-    include_fixed: bool = typer.Option(
-        False,
-        "--include-fixed",
-        help=(
-            "Include in the output file the list of users whose email accounts were"
-            " automatically activated by the script"
-        ),
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", help="Print out detailed information as the task runs."
-    ),
-    force: bool = typer.Option(
-        False,
-        "--force",
-        help=(
-            "Force the task to start from the beginning despite the presence of a"
-            " pre-existing incomplete result file and overwrite that file."
-        ),
-    ),
-):
+def tool():
     """
-    Checks the email status of users and activates any unconfirmed email
-    addresses for users with at least one enrollment in a "supported" school.
-
-    INPUT: Canvas Provisioning report (Users)
-
-    OUTPUT: A csv file listing users who either have no email accounts, or who
-    have unconfirmed accounts but have no enrollments in a "supported" school
-    (and optionally listing users whose accounts were successfully activated)
-
-    "Supported" schools are all schools EXCEPT:
-
-        Wharton, Perelman School of Medicine
-
-    To download a Canvas Provisioning report for Users, login to
-    `https://canvas.upenn.edu/` (admin priveledges are required) and click
-    'Admin > Upenn > Settings > Reports', then click 'Configure...' to the right
-    of 'Provisioning.' Select the desired term, check "Users CSV" and click 'Run
-    Report.' When notified that the report has finished generating, download the
-    file (click the down arrow icon) and place it in:
-    $HOME/penn-canvas/email/reports/. Once the file has been added to the
-    directory, run this command."""
-
-    email_main(test, include_fixed, verbose, force)
-
-
-@app.command()
-def module():
-    """
-    Module progression lock
-    """
-    typer.echo("module")
-
-
-@app.command()
-def piazza():
-    """
-    Piazza report
+    Tool report
     """
     typer.echo("piazza")
-
-
-@app.command()
-def quiz():
-    """
-    Quiz students check
-    """
-    typer.echo("quiz")
-
-
-@app.command()
-def reserve():
-    """
-    Reserve commands (enable and report)
-    """
-    typer.echo("reserve")
-
-
-@app.command()
-def integrity():
-    """
-    Student integrity check
-    """
-    typer.echo("integrity")
-
-
-@app.command()
-def zoom():
-    """
-    Zoom check
-    """
-    typer.echo("zoom")
