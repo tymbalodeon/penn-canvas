@@ -1,7 +1,7 @@
 import typer
 
-from .course_storage_quota import storage_main
-from .email_confirmation import email_main
+from .storage import storage_main
+from .email import email_main
 from .helpers import display_config, make_config
 
 app = typer.Typer(
