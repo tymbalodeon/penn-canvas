@@ -1,5 +1,6 @@
 import typer
 
+from .course_shopping import shopping_main
 from .course_storage_quota import storage_main
 from .email_confirmation import email_main
 from .helpers import make_config
@@ -39,11 +40,21 @@ def configure():
 
 
 @app.command()
-def shopping():
+def shopping(
+    test: bool = typer.Option(
+        False,
+        "--test",
+        help=(
+            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
+            " of production (https://canvas.upenn.edu/)"
+        ),
+    ),
+    verbose: bool = typer.Option(False, "--verbose"),
+):
     """
     Course shopping
     """
-    typer.echo("test")
+    shopping_main(test, verbose)
 
 
 @app.command()

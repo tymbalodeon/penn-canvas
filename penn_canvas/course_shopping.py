@@ -14,23 +14,37 @@ get a provisioning report of all courses
 """
 
 from datetime import datetime
+from pathlib import Path
 
+import pandas
 import typer
-from .helpers import find_subaccounts, get_canvas
+
+from .helpers import (
+    colorize_path,
+    find_subaccounts,
+    get_canvas,
+    get_command_paths,
+    make_csv_paths,
+)
 
 TESTING = False
 TERM = "2021A"
 
-TIME = datetime.now().strftime("%d_%b_%Y")
+TODAY = datetime.now().strftime("%d_%b_%Y")
+TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
+REPORTS, RESULTS, LOGS = get_command_paths("shopping", True)
+RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_course_shopping_result.csv"
+HEADERS = ["index", "canvas id", "sis id", " short name", "account id", "status"]
+# outFile.write("sis_id, canvas_id, visibility_status, published, notes\n")
 
-INFILE = f"data/course_shopping_{TIME}{'_test' if TESTING else ''}.csv"
-OUTFILE = f"data/course_shopping_enabled_{TIME}{'_test' if TESTING else ''}.csv"
-WH_OUTFILE = f"data/WH_course_shopping_enabled_{TIME}{'_test' if TESTING else ''}.csv"
+INFILE = f"data/course_shopping_{TODAY}{'_test' if TESTING else ''}.csv"
+OUTFILE = f"data/course_shopping_enabled_{TODAY}{'_test' if TESTING else ''}.csv"
+WH_OUTFILE = f"data/WH_course_shopping_enabled_{TODAY}{'_test' if TESTING else ''}.csv"
 DISABLE_OUTFILE = (
-    f"data/course_shopping_disabled_{TIME}{'_test' if TESTING else ''}.csv"
+    f"data/course_shopping_disabled_{TODAY}{'_test' if TESTING else ''}.csv"
 )
 WH_DISABLE_OUTFILE = (
-    f"data/WH_course_shopping_disabled_{TIME}{'_test' if TESTING else ''}.csv"
+    f"data/WH_course_shopping_disabled_{TODAY}{'_test' if TESTING else ''}.csv"
 )
 MASTER_FILE = f"data/course_shopping_master_{TERM}{'_test' if TESTING else ''}.csv"
 
@@ -284,6 +298,64 @@ IGNORED_SUBJECTS = ["MAPP", "IMPA", "DYNM"]
 IGNORED_SITES = ["1529220"]
 
 
+def find_course_shopping_report():
+    typer.echo(") Finding Canvas Provisioning (Courses) report...")
+
+    if not REPORTS.exists():
+        Path.mkdir(REPORTS, parents=True)
+        error = typer.style(
+            "- ERROR: Canvas course shopping reports directory not found.",
+            fg=typer.colors.YELLOW,
+        )
+        typer.echo(
+            f"{error} \n- Creating one for you at: {colorize_path(str(REPORTS))}\n-"
+            " Please add a Canvas Provisioning (Courses) report matching today's date to"
+            " this directory and then run this script again.\n- (If you need"
+            " instructions for generating a Canvas Provisioning report, run this"
+            " command with the '--help' flag.)"
+        )
+        raise typer.Exit(1)
+    else:
+        TODAYS_REPORT = ""
+        CSV_FILES = Path(REPORTS).glob("*.csv")
+
+        for report in CSV_FILES:
+            if TODAY in report.name:
+                TODAYS_REPORT = report
+
+        if not TODAYS_REPORT:
+            typer.secho(
+                "- ERROR: A Canvas Provisioning (Courses) CSV report matching today's date"
+                " was not found.",
+                fg=typer.colors.YELLOW,
+            )
+            typer.echo(
+                "- Please add a Canvas Provisioning (Courses) report matching today's date"
+                " to the following directory and then run this script again:"
+                f" {colorize_path(str(REPORTS))}\n- (If you need instructions for"
+                " generating a Canvas Provisioning report, run this command with the"
+                " '--help' flag.)"
+            )
+            raise typer.Exit(1)
+        else:
+            return TODAYS_REPORT
+
+
+def cleanup_report(report, start=0):
+    typer.echo(") Preparing report...")
+
+    data = pandas.read_csv(report)
+    data = data[["canvas_course_id", "course_id", "short_name", "account_id", "status"]]
+    data = data.astype("string", copy=False)
+    data = data[data["course_id"] != ""]
+    data.reset_index(drop=True, inplace=True)
+
+    TOTAL = len(data.index)
+    data = data.loc[start:TOTAL, :]
+
+    return data, str(TOTAL)
+
+
 def course_contains_srs(course_id):
     return course_id.startswith("SRS_")
 
@@ -424,7 +496,7 @@ def enable_wharton_course_shopping(inputfile, outputfile):
     outFile.close()
 
 
-def enable_course_shopping(courses, outputfile):
+def enable_course_shopping(courses):
     canvas = get_canvas(TESTING)
 
     WHARTON_ACCOUNTS = find_subaccounts(canvas, WHARTON_ACCOUNT_ID)
@@ -436,22 +508,16 @@ def enable_course_shopping(courses, outputfile):
     AN_ACCOUNTS = find_subaccounts(canvas, AN_ACCOUNT_ID)
     SUB_ACCOUNTS = SAS_ACCOUNTS + SEAS_ACCOUNTS + NURS_ACCOUNTS + AN_ACCOUNTS
 
-    dataFile = open(courses, "r")
-    dataFile.readline()
-
-    outFile = open(outputfile, "w+")
-    outFile.write("sis_id, canvas_id, visibility_status, published, notes\n")
-
     for course in courses.itertuples():
-        index, canvas_id, sis_id, short_name, account_id, status = course
+        index, canvas_course_id, course_id, short_name, account_id, status = course
 
-        if len(sis_id) > 0 and canvas_id not in canvas_id_in_master:
+        if canvas_course_id not in canvas_id_in_master:
 
             notes = ""
             canvas_course = None
 
             try:
-                canvas_course = canvas.get_course(canvas_id)
+                canvas_course = canvas.get_course(canvas_course_id)
                 published = status
             except Exception:
                 notes = "couldnt find course"
@@ -464,19 +530,19 @@ def enable_course_shopping(courses, outputfile):
                     print("- School not participating")
                     notes += "/ subaccount opt out"
                     outFile.write(
-                        f"{sis_id}, {canvas_id}, {status}, {published}, {notes}"
+                        f"{course_id}, {canvas_course_id}, {status}, {published}, {notes}"
                     )
                 else:
                     try:
                         update = False
 
-                        if not course_contains_srs(sis_id):
+                        if not course_contains_srs(course_id):
                             print("- Course not in SRS.")
-                        elif int(canvas_id) in IGNORED_SITES:
+                        elif int(canvas_course_id) in IGNORED_SITES:
                             print("- Ignored course.")
                         else:
-                            course_number = sis_id.split("-")[1]
-                            subject = sis_id.split("-")[0][4:]
+                            course_number = course_id.split("-")[1]
+                            subject = course_id.split("-")[0][4:]
                             print(f"- COURSE NUMBER: {course_number}")
                             print(f"- SUBJECT: {subject}")
 
@@ -502,9 +568,11 @@ def enable_course_shopping(courses, outputfile):
                                         update = True
                     except Exception as error:
                         print(
-                            f"- ERROR: Failed to enable course shopping for {sis_id} ({canvas_id}) ({error})"
+                            f"- ERROR: Failed to enable course shopping for {course_id} ({canvas_course_id}) ({error})"
                         )
-                        outFile.write(f"{sis_id}, {canvas_id}, 'err', 'err', 'err'")
+                        outFile.write(
+                            f"{course_id}, {canvas_course_id}, 'err', 'err', 'err'"
+                        )
 
                     if update:
                         print(f") Updating course...")
@@ -518,12 +586,12 @@ def enable_course_shopping(courses, outputfile):
                             status = "ERROR"
 
                         outFile.write(
-                            f"{sis_id}, {canvas_id}, {status}, {published}, {notes}"
+                            f"{course_id}, {canvas_course_id}, {status}, {published}, {notes}"
                         )
 
                         master = open(MASTER_FILE, "a")
                         master.write(
-                            f"{sis_id}, {canvas_id}, {status}, {published}, {notes}"
+                            f"{course_id}, {canvas_course_id}, {status}, {published}, {notes}"
                         )
                         master.close()
 
@@ -575,10 +643,13 @@ def disable_course_shopping(inputfile=MASTER_FILE, outputfile=DISABLE_OUTFILE):
             )
 
 
-def course_shopping_main(term, test):
-    if test:
-        typer.echo("~~This is a TEST~~")
-    typer.echo(term)
+def shopping_main(term, test):
+    INSTANCE = "test" if test else "prod"
+    CANVAS = get_canvas(INSTANCE)
+    report = find_course_shopping_report()
+    report, TOTAL = cleanup_report(report)
+    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
+    typer.echo("FINISHED")
 
 
 # load_master()

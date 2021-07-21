@@ -38,7 +38,7 @@ ACCOUNTS = [
 ]
 
 
-def get_sub_accounts(canvas):
+def get_subaccounts(canvas):
     SUB_ACCOUNTS = list()
 
     for account in ACCOUNTS:
@@ -69,7 +69,7 @@ def get_previous_output():
 
 
 def find_users_report():
-    typer.echo(") Finding Canvas Provisioning Users report...")
+    typer.echo(") Finding Canvas Provisioning (Users) report...")
 
     if not REPORTS.exists():
         Path.mkdir(REPORTS, parents=True)
@@ -78,7 +78,7 @@ def find_users_report():
         )
         typer.echo(
             f"{error} \n- Creating one for you at: {colorize_path(str(REPORTS))}\n-"
-            " Please add a Canvas Users Provisioning report matching today's date to"
+            " Please add a Canvas Provisioning (Users) report matching today's date to"
             " this directory and then run this script again.\n- (If you need"
             " instructions for generating a Canvas Provisioning report, run this"
             " command with the '--help' flag.)"
@@ -94,12 +94,12 @@ def find_users_report():
 
         if not TODAYS_REPORT:
             typer.secho(
-                "- ERROR: A Canvas Provisioning Users CSV report matching today's date"
+                "- ERROR: A Canvas Provisioning (Users) CSV report matching today's date"
                 " was not found.",
                 fg=typer.colors.YELLOW,
             )
             typer.echo(
-                "- Please add a Canvas Users Provisioning report matching today's date"
+                "- Please add a Canvas Provisioning (Users) report matching today's date"
                 " to the following directory and then run this script again:"
                 f" {colorize_path(str(REPORTS))}\n- (If you need instructions for"
                 " generating a Canvas Provisioning report, run this command with the"
@@ -365,7 +365,7 @@ def email_main(test, include_fixed, verbose):
     report, TOTAL = cleanup_report(report, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
-    SUB_ACCOUNTS = get_sub_accounts(CANVAS)
+    SUB_ACCOUNTS = get_subaccounts(CANVAS)
 
     def check_and_activate_emails(user, canvas, verbose, options):
         index = user[0]
@@ -377,8 +377,10 @@ def email_main(test, include_fixed, verbose):
         if needs_support_check:
             report.at[index, "email status"] = message
             is_supported = check_schools(user, SUB_ACCOUNTS, canvas, verbose)
+
             if is_supported:
                 report.at[index, "supported school(s)"] = "Y"
+
                 if message == "unconfirmed":
                     activated, activate_message = activate_fixable_emails(
                         user, canvas, result_path, log_path, include_fixed, verbose
