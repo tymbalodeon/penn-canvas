@@ -1,8 +1,9 @@
 import typer
 
-from .storage import storage_main
 from .email import email_main
 from .helpers import display_config, make_config
+from .nso import nso_main
+from .storage import storage_main
 
 app = typer.Typer(
     help="""Welcome to the Penn-Canvas -- working with Canvas has never been easier!"""
@@ -48,7 +49,7 @@ def config(
 
 
 @app.command()
-def group_enrollments(
+def nso(
     test: bool = typer.Option(
         False,
         "--test",
@@ -84,7 +85,7 @@ def group_enrollments(
     not be accepted.
     """
 
-    # group_enrollments_main(test, verbose, force)
+    nso_main(test, verbose, force)
 
 
 @app.command()

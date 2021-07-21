@@ -25,7 +25,7 @@ init_oracle_client(
 )
 
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
-INPUT, RESULTS = get_command_paths("group_enrollments", input_dir=True)
+INPUT, RESULTS = get_command_paths("nso", input_dir=True)
 RESULT_PATH = RESULTS / "result.csv"
 HEADERS = [
     "index",
@@ -37,18 +37,18 @@ HEADERS = [
 ]
 
 
-def find_enrollments_file():
-    typer.echo(") Finding group enrollments file...")
+def find_nso_file():
+    typer.echo(") Finding NSO file...")
 
     if not INPUT.exists():
         Path.mkdir(INPUT, parents=True)
         error = typer.style(
-            "- ERROR: Group enrollments input directory not found.",
+            "- ERROR: NSO input directory not found.",
             fg=typer.colors.YELLOW,
         )
         typer.echo(
             f"{error}\n- Creating one for you at: {colorize_path(str(INPUT))}\n\tPlease"
-            " add a group enrollment file matching the graduation year of this year's"
+            " add an NSO input file matching the graduation year of this year's"
             " incoming freshmen to this directory and then run this script again.\n-"
             " (If you need detailed instructions, run this command with the '--help'"
             " flag.)"
@@ -71,12 +71,12 @@ def find_enrollments_file():
 
         if not CURRENT_FILE:
             error = typer.style(
-                "- ERROR: A group enrollments file matching the graduation year of this"
+                "- ERROR: A nso file matching the graduation year of this"
                 " year's incoming freshmen was not found.",
                 fg=typer.colors.YELLOW,
             )
             typer.echo(
-                f"{error}\n- Please add a group enrollments file matching the"
+                f"{error}\n- Please add a NSO input file matching the"
                 " graduation year of this year's incoming freshmen to the following"
                 " directory and then run this script again:"
                 f" {colorize_path(str(INPUT))}\n- (If you need detailed instructions,"
@@ -89,7 +89,7 @@ def find_enrollments_file():
 
 
 def cleanup_data(input_file, extension, start=0):
-    typer.echo(") Preparing enrollments file...")
+    typer.echo(") Preparing NSO file...")
 
     if extension == ".csv":
         data = pandas.read_csv(input_file)
@@ -204,8 +204,8 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
     typer.secho("FINISHED", fg=typer.colors.YELLOW)
 
 
-def group_enrollments_main(test, verbose, force):
-    def create_group_enrollments(student, canvas, verbose, total=0):
+def nso_main(test, verbose, force):
+    def create_enrollments(student, canvas, verbose, total=0):
         index, course_id, group_set_name, group_name, penn_key = student
 
         try:
@@ -293,7 +293,7 @@ def group_enrollments_main(test, verbose, force):
                 f" {status_display}"
             )
 
-    data, EXTENSION = find_enrollments_file()
+    data, EXTENSION = find_nso_file()
     (
         DATA_WAREHOUSE_USER,
         DATA_WAREHOUSE_PASSWORD,
@@ -310,7 +310,7 @@ def group_enrollments_main(test, verbose, force):
 
     toggle_progress_bar(
         data,
-        create_group_enrollments,
+        create_enrollments,
         CANVAS,
         verbose,
         args=TOTAL,
