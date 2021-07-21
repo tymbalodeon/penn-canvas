@@ -1,4 +1,3 @@
-import os
 from datetime import datetime
 from pathlib import Path
 
@@ -7,15 +6,14 @@ import typer
 from cx_Oracle import connect, init_oracle_client
 
 from .helpers import (
-    check_previous_output,
     colorize,
-    make_skip_message,
     colorize_path,
     get_canvas,
     get_command_paths,
     get_data_warehouse_config,
     get_start_index,
     make_csv_paths,
+    make_skip_message,
     toggle_progress_bar,
 )
 

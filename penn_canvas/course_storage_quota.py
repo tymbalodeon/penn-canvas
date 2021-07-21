@@ -1,4 +1,3 @@
-import os
 from datetime import datetime
 from pathlib import Path
 
@@ -6,14 +5,13 @@ import pandas
 import typer
 
 from .helpers import (
-    check_previous_output,
     colorize,
     colorize_path,
-    get_start_index,
     get_canvas,
-    make_skip_message,
     get_command_paths,
+    get_start_index,
     make_csv_paths,
+    make_skip_message,
     toggle_progress_bar,
 )
 

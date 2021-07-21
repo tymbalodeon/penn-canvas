@@ -1,4 +1,3 @@
-import os
 import shutil
 from csv import writer
 from datetime import datetime
@@ -8,7 +7,6 @@ import pandas
 import typer
 
 from .helpers import (
-    check_previous_output,
     colorize,
     colorize_path,
     find_sub_accounts,
