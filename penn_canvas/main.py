@@ -6,7 +6,10 @@ from .nso import nso_main
 from .storage import storage_main
 
 app = typer.Typer(
-    help="""Welcome to the Penn-Canvas -- working with Canvas has never been easier!"""
+    help=(
+        "Welcome to Penn-Canvas -- working with Penn's Canvas instances has never been"
+        " easier!"
+    )
 )
 
 
