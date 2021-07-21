@@ -21,8 +21,8 @@ REPORTS, RESULTS = get_command_paths("storage")
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result.csv"
 HEADERS = [
     "index",
-    "subaccount id",
-    "course id",
+    "id",
+    "sis id",
     "account id",
     "storage used in MB",
     "old quota",
@@ -142,11 +142,12 @@ def check_percent_storage(course, canvas, verbose, total):
                         fg=typer.colors.YELLOW,
                     )
                     typer.echo(f"({index + 1}/{total}) {message}")
-                return index, False, "missing sis id"
-            elif sis_id:
-                return index, True, sis_id
+
+                return False, "missing sis id"
+            else:
+                return True, sis_id
         else:
-            return index, False, None
+            return False, None
     except Exception:
         if verbose:
             message = typer.style(
@@ -154,7 +155,7 @@ def check_percent_storage(course, canvas, verbose, total):
                 fg=typer.colors.RED,
             )
             typer.echo(f"- ({index + 1}/{total}) {message}")
-        return index, False, "course not found"
+        return False, "course not found"
 
 
 def increase_quota(sis_id, canvas, verbose, increase=1000):
@@ -203,6 +204,7 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
 def process_result():
     result = pandas.read_csv(RESULT_PATH)
     increased_count = len(result[result["error"] == "none"].index)
+    result.drop(result[result["error"] == "increase not required"].index, inplace=True)
     error_count = len(result[result["error"] != "none"].index)
 
     if error_count == 0:
@@ -210,6 +212,7 @@ def process_result():
 
     result.fillna("N/A", inplace=True)
     result.drop(columns=["index", "account id", "storage used in MB"], inplace=True)
+    result.rename(columns={"id": "subaccount id", "sis id": "course id"}, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
 
     return increased_count, error_count
@@ -221,21 +224,27 @@ def print_messages(total, increased, errors):
     typer.echo(f"- Increased storage quota for {colorize(str(increased))} courses.")
 
     if errors > 0:
-        typer.echo(f"- Failed to find {colorize(str(errors))} courses.")
+        message = typer.style(
+            f"Failed to find {str(errors)} courses.", fg=typer.colors.RED
+        )
+        typer.echo(f"- {message}")
 
     typer.secho("FINISHED", fg=typer.colors.YELLOW)
 
 
 def storage_main(test, verbose, force):
     def check_and_increase_storage(course, canvas, verbose, total):
-        index, needs_increase, message = check_percent_storage(
-            course, canvas, verbose, total
-        )
+        index = course[0]
+        canvas_id = course[1]
+        sis_id = course[2]
+
+        needs_increase, message = check_percent_storage(course, canvas, verbose, total)
 
         if needs_increase:
             row = increase_quota(message, canvas, verbose)
+        elif message is None:
+            row = [canvas_id, sis_id, "N/A", "N/A", "increase not required"]
         else:
-            sis_id = course[1]
             row = ["ERROR", sis_id, "N/A", "N/A", message]
 
         report.loc[
