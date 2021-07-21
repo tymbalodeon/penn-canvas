@@ -95,6 +95,22 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
+name = "cx-oracle"
+version = "8.2.1"
+description = "Python interface to Oracle"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
+name = "et-xmlfile"
+version = "1.1.0"
+description = "An implementation of lxml.xmlfile for the standard library"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
 name = "flake8"
 version = "3.9.2"
 description = "the modular source code checker: pep8 pyflakes and co"
@@ -159,6 +175,17 @@ description = "NumPy is the fundamental package for array computing with Python.
 category = "main"
 optional = false
 python-versions = ">=3.7"
+
+[[package]]
+name = "openpyxl"
+version = "3.0.7"
+description = "A Python library to read/write Excel 2010 xlsx/xlsm files"
+category = "main"
+optional = false
+python-versions = ">=3.6,"
+
+[package.dependencies]
+et-xmlfile = "*"
 
 [[package]]
 name = "packaging"
@@ -372,7 +399,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "c0569db9299b061eecccaf32fd4dbcbb239ee1ed4659e54069d3a8a76b662434"
+content-hash = "70ad126be95fb856987ca8f7ff8d335de4e494ce69f5ce3ecae847b9df2fc0c6"
 
 [metadata.files]
 appdirs = [
@@ -409,6 +436,25 @@ click = [
 colorama = [
     {file = "colorama-0.4.4-py2.py3-none-any.whl", hash = "sha256:9f47eda37229f68eee03b24b9748937c7dc3868f906e8ba69fbcbdd3bc5dc3e2"},
     {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
+]
+cx-oracle = [
+    {file = "cx_Oracle-8.2.1-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:7b260db58c9e330832480dded5109815f4df3968f9bc0510a63922a600c97f81"},
+    {file = "cx_Oracle-8.2.1-cp36-cp36m-win32.whl", hash = "sha256:c70d6dbab3ce19fd4b2bd58af9cf3c61120d0f1770dcdffe79c93a2cae9b2938"},
+    {file = "cx_Oracle-8.2.1-cp36-cp36m-win_amd64.whl", hash = "sha256:3b95cdde0806ef16ee1e50d1a8aee5fb6eb28aa65a72ada3ec1598d57a3e3ed0"},
+    {file = "cx_Oracle-8.2.1-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:78a195f176854ce5b74ff31bb485d293ce53df525811f71785779e5be4c98e8e"},
+    {file = "cx_Oracle-8.2.1-cp37-cp37m-win32.whl", hash = "sha256:54d7717b8b5b004ed051921f88b2414424dc25352bdb05f07698086e1e26a574"},
+    {file = "cx_Oracle-8.2.1-cp37-cp37m-win_amd64.whl", hash = "sha256:bc32f11b67ed649af13217f3d5df047990672b2a04737a82ffc1f6672672f66a"},
+    {file = "cx_Oracle-8.2.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:7a7fe16fb6ebd09cbfb7fffe4e202bf82071c63a81ef514c47e3d5267d076e1a"},
+    {file = "cx_Oracle-8.2.1-cp38-cp38-win32.whl", hash = "sha256:53d2d807ea7dc2f5621ef23566f930721dc34a79e10e24afa8793c2c72910077"},
+    {file = "cx_Oracle-8.2.1-cp38-cp38-win_amd64.whl", hash = "sha256:32b2991cb76fa6461fda24e263ce598eadc17a2b8af12ec03ecee9dafc402cb8"},
+    {file = "cx_Oracle-8.2.1-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:efdfbd5a08bcaccf1cdf789455cb166814a55a2a2a15aa5ca22f592366a54ddd"},
+    {file = "cx_Oracle-8.2.1-cp39-cp39-win32.whl", hash = "sha256:ad23cd6a527e43bb3d992e68d0c41ab6a08e7055fb2285389619dcc193f15c6e"},
+    {file = "cx_Oracle-8.2.1-cp39-cp39-win_amd64.whl", hash = "sha256:2c940fec140ecd7498328b8351442e00e2d2c88b503ee5d0545cadb24e0e4d60"},
+    {file = "cx_Oracle-8.2.1.tar.gz", hash = "sha256:12e7e913a7a10fd8caafb9855e6703a601b7dd5cc596fcd489d0ac9529608b6c"},
+]
+et-xmlfile = [
+    {file = "et_xmlfile-1.1.0-py3-none-any.whl", hash = "sha256:a2ba85d1d6a74ef63837eed693bcb89c3f752169b0e3e7ae5b16ca5e1b3deada"},
+    {file = "et_xmlfile-1.1.0.tar.gz", hash = "sha256:8eb9e2bc2f8c97e37a2dc85a09ecdcdec9d8a396530a6d5a33b30b9a92da0c5c"},
 ]
 flake8 = [
     {file = "flake8-3.9.2-py2.py3-none-any.whl", hash = "sha256:bf8fd333346d844f616e8d47905ef3a3384edae6b4e9beb0c5101e25e3110907"},
@@ -459,6 +505,10 @@ numpy = [
     {file = "numpy-1.20.3-cp39-cp39-win_amd64.whl", hash = "sha256:6690080810f77485667bfbff4f69d717c3be25e5b11bb2073e76bb3f578d99b4"},
     {file = "numpy-1.20.3-pp37-pypy37_pp73-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:4e465afc3b96dbc80cf4a5273e5e2b1e3451286361b4af70ce1adb2984d392f9"},
     {file = "numpy-1.20.3.zip", hash = "sha256:e55185e51b18d788e49fe8305fd73ef4470596b33fc2c1ceb304566b99c71a69"},
+]
+openpyxl = [
+    {file = "openpyxl-3.0.7-py2.py3-none-any.whl", hash = "sha256:46af4eaf201a89b610fcca177eed957635f88770a5462fb6aae4a2a52b0ff516"},
+    {file = "openpyxl-3.0.7.tar.gz", hash = "sha256:6456a3b472e1ef0facb1129f3c6ef00713cebf62e736cd7a75bcc3247432f251"},
 ]
 packaging = [
     {file = "packaging-20.9-py2.py3-none-any.whl", hash = "sha256:67714da7f7bc052e064859c05c595155bd1ee9f69f76557e21f051443c20947a"},

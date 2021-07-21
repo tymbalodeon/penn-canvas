@@ -1,4 +1,5 @@
 import shutil
+import os
 from csv import writer
 from datetime import datetime
 from pathlib import Path
@@ -7,6 +8,7 @@ import pandas
 import typer
 
 from .helpers import (
+    check_previous_output,
     colorize,
     colorize_path,
     find_subaccounts,
@@ -47,29 +49,6 @@ def get_subaccounts(canvas):
     return SUB_ACCOUNTS
 
 
-def get_previous_output():
-    typer.echo(") Checking for previous results from this date's report...")
-
-    if RESULT_PATH.is_file():
-        INCOMPLETE = pandas.read_csv(RESULT_PATH)
-
-        if "index" in INCOMPLETE.columns:
-            try:
-                index = INCOMPLETE.at[INCOMPLETE.index[-1], "index"]
-                INCOMPLETE.drop(
-                    INCOMPLETE[INCOMPLETE["index"] == index].index, inplace=True
-                )
-                INCOMPLETE.to_csv(RESULT_PATH, index=False)
-            except Exception:
-                index = 0
-        else:
-            index = 0
-    else:
-        index = 0
-
-    return index
-
-
 def find_users_report():
     typer.echo(") Finding Canvas Provisioning (Users) report...")
 
@@ -85,6 +64,7 @@ def find_users_report():
             " instructions for generating a Canvas Provisioning report, run this"
             " command with the '--help' flag.)"
         )
+
         raise typer.Exit(1)
     else:
         TODAYS_REPORT = ""
@@ -95,18 +75,19 @@ def find_users_report():
                 TODAYS_REPORT = report
 
         if not TODAYS_REPORT:
-            typer.secho(
-                "- ERROR: A Canvas Provisioning (Users) CSV report matching today's date"
+            error = typer.style(
+                "- ERROR: A Canvas Provisioning Users CSV report matching today's date"
                 " was not found.",
                 fg=typer.colors.YELLOW,
             )
             typer.echo(
-                "- Please add a Canvas Provisioning (Users) report matching today's date"
-                " to the following directory and then run this script again:"
-                f" {colorize_path(str(REPORTS))}\n- (If you need instructions for"
-                " generating a Canvas Provisioning report, run this command with the"
-                " '--help' flag.)"
+                f"{error}\n- Please add a Canvas Users Provisioning report matching"
+                " today's date to the following directory and then run this script"
+                f" again: {colorize_path(str(REPORTS))}\n- (If you need instructions"
+                " for generating a Canvas Provisioning report, run this command with"
+                " the '--help' flag.)"
             )
+
             raise typer.Exit(1)
         else:
             return TODAYS_REPORT
@@ -119,7 +100,6 @@ def cleanup_report(report, start=0):
     data = data[["canvas_user_id"]]
     data.drop_duplicates(inplace=True)
     data = data.astype("string", copy=False)
-
     TOTAL = len(data.index)
     data = data.loc[start:TOTAL, :]
 
@@ -145,6 +125,7 @@ def get_email_status(user, email, verbose, current_count=False):
 
 def find_unconfirmed_emails(user, canvas, verbose, index, total):
     user_id = user[1]
+
     try:
         canvas_user = canvas.get_user(user_id)
     except Exception:
@@ -153,11 +134,11 @@ def find_unconfirmed_emails(user, canvas, verbose, index, total):
                 f"ERROR: User NOT FOUND ({user_id})",
                 fg=typer.colors.RED,
             )
-            typer.echo(f"- ({index}/{total}) {message}")
+            typer.echo(f"- ({index + 1}/{total}) {message}")
         return False, "user not found"
     emails = get_user_emails(canvas_user)
     email = next(emails, None)
-    current_count = f"({index}/{total}) "
+    current_count = f"({index + 1}/{total}) "
 
     if email:
         is_active = get_email_status(canvas_user, email, verbose, current_count)
@@ -209,12 +190,12 @@ def check_schools(user, sub_accounts, canvas, verbose):
     if fixable_id:
         if verbose:
             supported = typer.style("supported", fg=typer.colors.GREEN)
-            typer.secho(f"\t* Enrollment status: {supported}", fg=typer.colors.BLUE)
+            typer.secho(f"\t* Enrollment status: {supported}", fg=typer.colors.CYAN)
         return True
     else:
         if verbose:
             supported = typer.style("UNSUPPORTED", fg=typer.colors.YELLOW)
-            typer.secho(f"\t* Enrollment status: {supported}", fg=typer.colors.BLUE)
+            typer.secho(f"\t* Enrollment status: {supported}", fg=typer.colors.CYAN)
         return False
 
 
@@ -232,6 +213,7 @@ def activate_fixable_emails(
             Path.mkdir(LOGS)
 
         user_info = [user_id, address]
+
         with open(log_path, "a", newline="") as result:
             writer(result).writerow(user_info)
 
@@ -247,27 +229,32 @@ def activate_fixable_emails(
 
     while not is_active:
         next_email = next(emails, None)
+
         if not next_email:
             if verbose:
                 typer.secho(
                     f"\t* ERROR: failed to activate email(s) for {user_id}!",
                     fg=typer.colors.RED,
                 )
+
             return False, "failed to activate"
         is_active = get_email_status(user_id, next_email, False)
 
     if is_active:
         if verbose:
             typer.secho(f"\t* Email(s) activated for {user_id}", fg=typer.colors.GREEN)
+
         log = pandas.read_csv(log_path)
         log.drop(index=log.index[-1:], inplace=True)
         log.to_csv(log_path, index=False)
+
         return True, "auto-activated"
 
 
 def remove_empty_log(log_path):
     if log_path.is_file():
         log = pandas.read_csv(log_path)
+
         if log.empty:
             typer.echo(") Removing empty log file...")
             shutil.rmtree(LOGS, ignore_errors=True)
@@ -323,7 +310,7 @@ def print_messages(
     log_path,
     user_not_found,
 ):
-    typer.echo("SUMMARY:")
+    typer.secho("SUMMARY:", fg=typer.colors.CYAN)
     typer.echo(f"- Processed {colorize(total)} accounts.")
     typer.echo(
         f"- Activated {colorize(fixed)} supported users with unconfirmed email"
@@ -352,26 +339,45 @@ def print_messages(
 
     if int(user_not_found) > 0:
         typer.secho(
-            f"- Failed to find {user_not_found} users",
+            f"- Failed to find {user_not_found} users.",
             fg=typer.colors.RED,
         )
 
-    typer.echo("FINISHED")
+    typer.secho("FINISHED:", fg=typer.colors.CYAN)
 
 
-def email_main(test, include_fixed, verbose):
+def email_main(test, include_fixed, verbose, force):
+    report = find_users_report()
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-    report = find_users_report()
-    START = get_previous_output()
+
+    if force:
+        START = 0
+
+        if RESULT_PATH.exists():
+            os.remove(RESULT_PATH)
+    else:
+        START = check_previous_output(RESULT_PATH)
+
     report, TOTAL = cleanup_report(report, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
     SUB_ACCOUNTS = get_subaccounts(CANVAS)
 
-    def check_and_activate_emails(user, canvas, verbose, options):
+    if START > 0:
+        if START == 1:
+            student = "STUDENT"
+        else:
+            student = "STUDENTS"
+
+        typer.secho(
+            f") SKIPPING {START} PREVIOUSLY PROCESSED {student}...",
+            fg=typer.colors.YELLOW,
+        )
+
+    def check_and_activate_emails(user, canvas, verbose, args):
         index = user[0]
-        result_path, log_path = options
+        result_path, log_path = args
         needs_support_check, message = find_unconfirmed_emails(
             user, canvas, verbose, index, TOTAL
         )
@@ -399,10 +405,10 @@ def email_main(test, include_fixed, verbose):
         else:
             report.drop(index=index, inplace=True)
 
-    OPTIONS = RESULT_PATH, LOG_PATH
+    ARGS = RESULT_PATH, LOG_PATH
     typer.echo(") Processing users...")
     toggle_progress_bar(
-        report, check_and_activate_emails, CANVAS, verbose, options=OPTIONS, index=True
+        report, check_and_activate_emails, CANVAS, verbose, args=ARGS, index=True
     )
     remove_empty_log(LOG_PATH)
 

@@ -3,7 +3,7 @@ import typer
 from .course_shopping import shopping_main
 from .course_storage_quota import storage_main
 from .email_confirmation import email_main
-from .helpers import make_config
+from .helpers import display_config, make_config
 
 # import email_confirmation
 # import module_progression_lock
@@ -19,24 +19,41 @@ app = typer.Typer(
 
 
 @app.command()
-def configure():
+def config(
+    view: bool = typer.Option(
+        False,
+        "--view",
+        help=(
+            "Display your config's values instead of creating or updating your config."
+        ),
+    )
+):
     """
     Automatically generates a config file for Penn-Canvas.
 
-    You will be asked to input Access Tokens for:
+    INPUT: Canvas Access Token(s) for
+
     - PRODUCTION: `https://canvas.upenn.edu/`
+
     - DEVELOPMENT: `https://upenn.test.instructure.com/`
+
     - OPEN: `https://upenn-catalog.instructure.com/`
+
+    OUTPUT: config file located at $HOME/.config/penn-canvas
 
     To generate these tokens, login to the appropriate Canvas instance using one
     of the urls above. Go to 'Account > Settings' and click 'New Access Token'
     under the 'Approved Integrations' heading. Enter a description in the
     'Purpose' field and click 'Generate Token'. Paste this token into the
-    terminal when prompted by the `configure` command. You may leave the value
-    empty by hitting ENTER when prompted, if not using all three Canvas
-    instances.
+    terminal when prompted by the `configure` command. You do not need to
+    include all three; for each one you will be asked whether you want to
+    include it in your config.
     """
-    make_config()
+
+    if view:
+        display_config()
+    else:
+        make_config()
 
 
 @app.command()
@@ -58,6 +75,46 @@ def shopping(
 
 
 @app.command()
+def group_enrollments(
+    test: bool = typer.Option(
+        False,
+        "--test",
+        help=(
+            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
+            " of production (https://canvas.upenn.edu/)"
+        ),
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help=(
+            "Force the task to start from the beginning despite the presence of a"
+            " pre-existing incomplete result file and overwrite that file."
+        ),
+    ),
+):
+    """
+    Enrolls incoming freshmen into Canvas Groups as part of the 'Thrive at Penn'
+    site.
+
+    INPUT: A csv or xlsx file (assumes graduation year is in the file name) with
+    the columns [Canvas Course Id | Group Set Name | Group Name | Pennkey]
+
+    OUPUT: A csv file listing students who were not successfully added to a
+    Group
+
+    NOTE: This command assumes a graduation year of 4 years from the current
+    year when the command is run. A file whose name contains any other year will
+    not be accepted.
+    """
+
+    # group_enrollments_main(test, verbose, force)
+
+
+@app.command()
 def storage(
     test: bool = typer.Option(
         False,
@@ -67,13 +124,19 @@ def storage(
             " of production (https://canvas.upenn.edu/)"
         ),
     ),
-    verbose: bool = typer.Option(False, "--verbose"),
+    verbose: bool = typer.Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
 ):
     """
     Increases the storage quota for each course that currently uses 79% or more
     of its current storage allotment.
 
-    Requires a Canvas Course Storage report as input. To download, login to
+    INPUT: Canvas Course Storage report
+
+    OUTPUT: A csv file listing courses whose storage was increased
+
+    To download a Canvas Course Storage report, login to
     `https://canvas.upenn.edu/` (admin priveledges are required) and click
     'Admin > Upenn > Settings > Reports', then click 'Configure...' to the right
     of 'Course storage.' Select the desired term and click 'Run Report.' When
@@ -85,6 +148,7 @@ def storage(
     generated (as indicated in the file name). A file whose name contains a
     previous date will not be accepted.
     """
+
     storage_main(test, verbose)
 
 
@@ -106,28 +170,42 @@ def email(
             " automatically activated by the script"
         ),
     ),
-    verbose: bool = typer.Option(False, "--verbose"),
+    verbose: bool = typer.Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help=(
+            "Force the task to start from the beginning despite the presence of a"
+            " pre-existing incomplete result file and overwrite that file."
+        ),
+    ),
 ):
     """
     Checks the email status of users and activates any unconfirmed email
     addresses for users with at least one enrollment in a "supported" school.
-    Outputs a list of users who either have no email accounts, or who have
-    unconfirmed accounts but have no enrollments in a "supported" school.
+
+    INPUT: Canvas Provisioning report (Users)
+
+    OUTPUT: A csv file listing users who either have no email accounts, or who
+    have unconfirmed accounts but have no enrollments in a "supported" school
+    (and optionally listing users whose accounts were successfully activated)
 
     "Supported" schools are all schools EXCEPT:
 
-        Wharton, Perelman School of Medicine ("PSOM")
+        Wharton, Perelman School of Medicine
 
-    Requires a Canvas Provisioning Users CSV report as input. To download,
-    login to `https://canvas.upenn.edu/` (admin priveledges are required) and
-    click 'Admin > Upenn > Settings > Reports', then click 'Configure...' to the
-    right of 'Provisioning.' Select the desired term, check "Users CSV" and
-    click 'Run Report.' When notified that the report has finished generating,
-    download the file (click the down arrow icon) and place it in:
+    To download a Canvas Provisioning report for Users, login to
+    `https://canvas.upenn.edu/` (admin priveledges are required) and click
+    'Admin > Upenn > Settings > Reports', then click 'Configure...' to the right
+    of 'Provisioning.' Select the desired term, check "Users CSV" and click 'Run
+    Report.' When notified that the report has finished generating, download the
+    file (click the down arrow icon) and place it in:
     $HOME/penn-canvas/email/reports/. Once the file has been added to the
-    directory, run this command.
-    """
-    email_main(test, include_fixed, verbose)
+    directory, run this command."""
+
+    email_main(test, include_fixed, verbose, force)
 
 
 @app.command()

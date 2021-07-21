@@ -49,11 +49,13 @@ def find_storage_report():
             fg=typer.colors.YELLOW,
         )
         typer.echo(
-            f"{error} \n- Creating one for you at: {colorize_path(REPORTS)}\n\tPlease"
-            " add a Canvas storage report matching today's date to this directory and"
-            " then run this script again.\n- (If you need instructions for generating"
-            " a Canvas storage report, run this command with the '--help' flag.)"
+            f"{error} \n- Creating one for you at:"
+            f" {colorize_path(str(REPORTS))}\n\tPlease add a Canvas storage report"
+            " matching today's date to this directory and then run this script"
+            " again.\n- (If you need instructions for generating a Canvas storage"
+            " report, run this command with the '--help' flag.)"
         )
+
         raise typer.Exit(1)
     else:
         TODAYS_REPORT = ""
@@ -64,18 +66,19 @@ def find_storage_report():
                 TODAYS_REPORT = report
 
         if not TODAYS_REPORT:
-            typer.secho(
+            error = typer.style(
                 "- ERROR: A Canvas Course Storage report matching today's date was not"
                 " found.",
                 fg=typer.colors.YELLOW,
             )
             typer.echo(
-                "- Please add a Canvas storage report matching today's date to the"
-                " following directory and then run this script again:"
+                f"{error}\n- Please add a Canvas storage report matching today's date"
+                " to the following directory and then run this script again:"
                 f" {colorize_path(str(REPORTS))}\n- (If you need instructions for"
                 " generating a Canvas storage report, run this command with the"
                 " '--help' flag.)"
             )
+
             raise typer.Exit(1)
         else:
             return TODAYS_REPORT
@@ -169,12 +172,14 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
 
         try:
             canvas_course.update(course={"storage_quota_mb": new_quota})
+
             if verbose:
                 typer.echo(
                     f"\t* Increased storage from {old_quota} MB to {new_quota} MB"
                 )
         except Exception:
             new_quota = "ERROR"
+
             if verbose:
                 typer.secho(
                     f"\t* Failed to increase quota for Canvas course ID: {sis_id}",
@@ -200,39 +205,45 @@ def write_error(sis_id, error):
 def process_result(result):
     increased_count = len(result[result["error"] == "none"].index)
     error_count = len(result[result["error"] != "none"].index)
+
     if error_count == 0:
         result.drop(columns=["error"], inplace=True)
         result.to_csv(RESULT_PATH, index=False)
+
     return increased_count, error_count
 
 
 def print_messages(total, increased, errors):
-    typer.echo("SUMMARY:")
+    typer.secho("SUMMARY:", fg=typer.colors.CYAN)
     typer.echo(f"- Processed {colorize(str(total))} courses.")
     typer.echo(f"- Increased storage quota for {colorize(str(increased))} courses.")
+
     if errors > 0:
         typer.echo(f"- Failed to find {colorize(str(errors))} courses.")
-    typer.echo("FINISHED")
+
+    typer.secho("FINISHED:", fg=typer.colors.CYAN)
 
 
 def storage_main(test, verbose):
+    report = find_storage_report()
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-    report = find_storage_report()
     report, TOTAL = cleanup_report(report)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
 
     def check_and_increase_storage(course, canvas, verbose, total):
         needs_increase, message = check_percent_storage(course, canvas, verbose, total)
+
         if needs_increase:
             increase_quota(message, canvas, verbose)
+
         if message == "course not found":
             sis_id = course[1]
             write_error(sis_id, message)
 
     typer.echo(") Processing courses...")
     toggle_progress_bar(
-        report, check_and_increase_storage, CANVAS, verbose, options=TOTAL, index=True
+        report, check_and_increase_storage, CANVAS, verbose, args=TOTAL, index=True
     )
     RESULT = pandas.read_csv(RESULT_PATH)
     INCREASED_COUNT, ERROR_COUNT = process_result(RESULT)
