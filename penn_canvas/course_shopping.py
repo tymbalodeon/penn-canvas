@@ -544,7 +544,8 @@ def shopping_main(wharton, test):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
     report = find_course_shopping_report()
-    report, TOTAL = cleanup_report(report)
+    START = get_previous_output()
+    report, TOTAL = cleanup_report(report, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     enable_course_shopping(report, wharton, test)
     typer.echo("FINISHED")
@@ -552,12 +553,6 @@ def shopping_main(wharton, test):
 
 # load_master()
 # print(canvas_id_in_master)
-
-# WHARTON_enable_course_shopping(INFILE, WH_OUTFILE)
-# print("WHARTON completed")
-
-# enable_course_shopping(INFILE, OUTFILE)
-# print("All completed")
 
 # disable_course_shopping(MASTER_FILE, DISABLE_OUTFILE)
 # disable_course_shopping(WH_OUTFILE, WH_DISABLE_OUTFILE)
