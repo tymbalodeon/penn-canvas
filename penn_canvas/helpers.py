@@ -30,20 +30,25 @@ def make_config():
 
     if use_production:
         production = typer.prompt(
-            "Please enter your Access Token for the PRODUCTION instance of Penn Canvas"
+            "Please enter your Access Token for the PRODUCTION instance of Penn Canvas",
+            hide_input=True,
         )
 
     use_development = typer.confirm("Input an Access Token for DEVELOPMENT?")
 
     if use_development:
         development = typer.prompt(
-            "Please enter your Access Token for the TEST instance of Penn Canvas"
+            "Please enter your Access Token for the TEST instance of Penn Canvas",
+            hide_input=True,
         )
 
     use_open = typer.confirm("Input an Access Token for OPEN canvas?")
 
     if use_open:
-        open_canvas = typer.prompt("Please enter your Access Token for OPEN Canvas")
+        open_canvas = typer.prompt(
+            "Please enter your Access Token for OPEN Canvas",
+            hide_input=True,
+        )
 
     use_data_warehouse = typer.confirm(
         "Input DSN and connection credentials for DATA WAREHOUSE?"
@@ -52,7 +57,8 @@ def make_config():
     if use_data_warehouse:
         data_warehouse_user = typer.prompt("Please enter your DATA WAREHOUSE USER")
         data_warehouse_password = typer.prompt(
-            "Please enter your DATA WAREHOUSE PASSWORD"
+            "Please enter your DATA WAREHOUSE PASSWORD",
+            hide_input=True,
         )
         data_warehouse_dsn = typer.prompt("Please enter your DATA WAREHOUSE DSN")
 
