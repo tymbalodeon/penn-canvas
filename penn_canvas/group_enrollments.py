@@ -9,10 +9,12 @@ from cx_Oracle import connect, init_oracle_client
 from .helpers import (
     check_previous_output,
     colorize,
+    make_skip_message,
     colorize_path,
     get_canvas,
     get_command_paths,
     get_data_warehouse_config,
+    get_start_index,
     make_csv_paths,
     toggle_progress_bar,
 )
@@ -205,37 +207,6 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
 
 
 def group_enrollments_main(test, verbose, force):
-    data, EXTENSION = find_enrollments_file()
-    INSTANCE = "test" if test else "prod"
-    CANVAS = get_canvas(INSTANCE)
-    (
-        DATA_WAREHOUSE_USER,
-        DATA_WAREHOUSE_PASSWORD,
-        DATA_WAREHOUSE_DSN,
-    ) = get_data_warehouse_config()
-
-    if force:
-        START = 0
-
-        if RESULT_PATH.exists():
-            os.remove(RESULT_PATH)
-    else:
-        START = check_previous_output(RESULT_PATH)
-
-    data, TOTAL = cleanup_data(data, EXTENSION, START)
-    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
-
-    if START > 0:
-        if START == 1:
-            student = "STUDENT"
-        else:
-            student = "STUDENTS"
-
-        typer.secho(
-            f") SKIPPING {START} PREVIOUSLY PROCESSED {student}...",
-            fg=typer.colors.YELLOW,
-        )
-
     def create_group_enrollments(student, canvas, verbose, total=0):
         index, course_id, group_set_name, group_name, penn_key = student
 
@@ -281,7 +252,8 @@ def group_enrollments_main(test, verbose, force):
                     if verbose:
                         penn_key_display = typer.style(penn_key, fg=typer.colors.CYAN)
                         typer.echo(
-                            f") Checking the Data Warehouse for pennkey: {penn_key_display}..."
+                            ") Checking the Data Warehouse for pennkey:"
+                            f" {penn_key_display}..."
                         )
 
                     cursor = connect(
@@ -323,7 +295,21 @@ def group_enrollments_main(test, verbose, force):
                 f" {status_display}"
             )
 
+    data, EXTENSION = find_enrollments_file()
+    (
+        DATA_WAREHOUSE_USER,
+        DATA_WAREHOUSE_PASSWORD,
+        DATA_WAREHOUSE_DSN,
+    ) = get_data_warehouse_config()
+    START = get_start_index(force, RESULT_PATH)
+    data, TOTAL = cleanup_data(data, EXTENSION, START)
+    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
+    make_skip_message(START, "student")
+    INSTANCE = "test" if test else "prod"
+    CANVAS = get_canvas(INSTANCE)
+
     typer.echo(") Processing students...")
+
     toggle_progress_bar(
         data,
         create_group_enrollments,

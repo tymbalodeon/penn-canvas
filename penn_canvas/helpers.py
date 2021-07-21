@@ -1,3 +1,4 @@
+import os
 from csv import writer
 from pathlib import Path
 
@@ -197,19 +198,44 @@ def check_previous_output(result_path):
             except Exception:
                 index = 0
         else:
-            typer.secho("TASK COMPLETE", fg=typer.colors.CYAN)
+            typer.secho("TASK COMPLETE", fg=typer.colors.YELLOW)
             result_path_display = typer.style(str(result_path), fg=typer.colors.GREEN)
             typer.echo(f"- Output available at: {result_path_display}")
             typer.echo(
-                "- To re-run the task, overwriting previous results, run this command with"
-                " the '--force' option"
+                "- To re-run the task, overwriting previous results, run this command"
+                " with the '--force' option"
             )
+            typer.secho("FINISHED", fg=typer.colors.YELLOW)
 
             raise typer.Exit(1)
     else:
         index = 0
 
     return index
+
+
+def get_start_index(force, result_path):
+    if force:
+        if result_path.exists():
+            os.remove(result_path)
+
+        return 0
+    else:
+        return check_previous_output(result_path)
+
+
+def make_skip_message(start, item):
+    if start == 0:
+        return
+    elif start == 1:
+        item = f"{item.upper()}"
+    else:
+        item = f"{item.upper()}S"
+
+    typer.secho(
+        f") SKIPPING {start} PREVIOUSLY PROCESSED {item}...",
+        fg=typer.colors.YELLOW,
+    )
 
 
 def toggle_progress_bar(data, callback, canvas, verbose, args=None, index=False):

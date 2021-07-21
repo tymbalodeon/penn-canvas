@@ -23,6 +23,7 @@ from .helpers import (
     check_previous_output,
     colorize_path,
     find_sub_accounts,
+    make_skip_message,
     get_canvas,
     get_command_paths,
     make_csv_paths,
@@ -316,8 +317,8 @@ def find_course_shopping_report():
         )
         typer.echo(
             f"{error} \n- Creating one for you at: {colorize_path(str(REPORTS))}\n-"
-            " Please add a Canvas Provisioning (Courses) report matching today's date to"
-            " this directory and then run this script again.\n- (If you need"
+            " Please add a Canvas Provisioning (Courses) report matching today's date"
+            " to this directory and then run this script again.\n- (If you need"
             " instructions for generating a Canvas Provisioning report, run this"
             " command with the '--help' flag.)"
         )
@@ -332,13 +333,13 @@ def find_course_shopping_report():
 
         if not TODAYS_REPORT:
             typer.secho(
-                "- ERROR: A Canvas Provisioning (Courses) CSV report matching today's date"
-                " was not found.",
+                "- ERROR: A Canvas Provisioning (Courses) CSV report matching today's"
+                " date was not found.",
                 fg=typer.colors.YELLOW,
             )
             typer.echo(
-                "- Please add a Canvas Provisioning (Courses) report matching today's date"
-                " to the following directory and then run this script again:"
+                "- Please add a Canvas Provisioning (Courses) report matching today's"
+                " date to the following directory and then run this script again:"
                 f" {colorize_path(str(REPORTS))}\n- (If you need instructions for"
                 " generating a Canvas Provisioning report, run this command with the"
                 " '--help' flag.)"
@@ -447,24 +448,6 @@ def disable_course_shopping(inputfile=MASTER_FILE, outputfile=DISABLE_OUTFILE):
 
 
 def shopping_main(test, wharton, verbose):
-    report = find_course_shopping_report()
-    START = check_previous_output(RESULT_PATH)
-    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
-    report, TOTAL = cleanup_report(report, START)
-    INSTANCE = "test" if test else "prod"
-    CANVAS = get_canvas(INSTANCE)
-
-    if START > 0:
-        if START == 1:
-            course = "COURSE"
-        else:
-            course = "COURSES"
-
-        typer.secho(
-            f") SKIPPING {START} PREVIOUSLY PROCESSED {course}...",
-            fg=typer.colors.YELLOW,
-        )
-
     def enable_course(course, canvas, verbose, wharton=False):
         WHARTON_ACCOUNTS = find_sub_accounts(canvas, WHARTON_ACCOUNT_ID)
         SEAS_ACCOUNTS, NURS_ACCOUNTS, SAS_ACCOUNTS, AN_ACCOUNTS = get_accounts(canvas)
@@ -527,7 +510,8 @@ def shopping_main(test, wharton, verbose):
             except Exception as error:
                 if verbose:
                     typer.echo(
-                        f"- ERROR: Failed to enable course shopping for ({canvas_course_id}) {course_id} - {error}"
+                        "- ERROR: Failed to enable course shopping for"
+                        f" ({canvas_course_id}) {course_id} - {error}"
                     )
 
                 status = "ERROR"
@@ -545,12 +529,17 @@ def shopping_main(test, wharton, verbose):
 
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
+    report = find_course_shopping_report()
+    START = check_previous_output(RESULT_PATH)
+    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
+    report, TOTAL = cleanup_report(report, START)
+    INSTANCE = "test" if test else "prod"
+    CANVAS = get_canvas(INSTANCE)
+    make_skip_message(START, "course")
+
     typer.echo(") Enabling shopping for courses...")
+
     toggle_progress_bar(
         report, enable_course, CANVAS, verbose, args=wharton, index=True
     )
     typer.echo("FINISHED")
-
-
-# disable_course_shopping(MASTER_FILE, DISABLE_OUTFILE)
-# disable_course_shopping(WH_OUTFILE, WH_DISABLE_OUTFILE)

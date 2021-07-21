@@ -1,5 +1,5 @@
-import shutil
 import os
+import shutil
 from csv import writer
 from datetime import datetime
 from pathlib import Path
@@ -14,7 +14,9 @@ from .helpers import (
     find_sub_accounts,
     get_canvas,
     get_command_paths,
+    get_start_index,
     make_csv_paths,
+    make_skip_message,
     toggle_progress_bar,
 )
 
@@ -347,34 +349,6 @@ def print_messages(
 
 
 def email_main(test, include_fixed, verbose, force):
-    report = find_users_report()
-
-    if force:
-        START = 0
-
-        if RESULT_PATH.exists():
-            os.remove(RESULT_PATH)
-    else:
-        START = check_previous_output(RESULT_PATH)
-
-    report, TOTAL = cleanup_report(report, START)
-    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
-    make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
-    INSTANCE = "test" if test else "prod"
-    CANVAS = get_canvas(INSTANCE)
-    SUB_ACCOUNTS = get_subaccounts(CANVAS)
-
-    if START > 0:
-        if START == 1:
-            student = "STUDENT"
-        else:
-            student = "STUDENTS"
-
-        typer.secho(
-            f") SKIPPING {START} PREVIOUSLY PROCESSED {student}...",
-            fg=typer.colors.YELLOW,
-        )
-
     def check_and_activate_emails(user, canvas, verbose, args):
         index = user[0]
         result_path, log_path = args
@@ -405,13 +379,23 @@ def email_main(test, include_fixed, verbose, force):
         else:
             report.drop(index=index, inplace=True)
 
+    report = find_users_report()
+    START = get_start_index(force, RESULT_PATH)
+    report, TOTAL = cleanup_report(report, START)
+    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
+    make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
     ARGS = RESULT_PATH, LOG_PATH
+    make_skip_message(START, "student")
+    INSTANCE = "test" if test else "prod"
+    CANVAS = get_canvas(INSTANCE)
+    SUB_ACCOUNTS = get_subaccounts(CANVAS)
+
     typer.echo(") Processing users...")
+
     toggle_progress_bar(
         report, check_and_activate_emails, CANVAS, verbose, args=ARGS, index=True
     )
     remove_empty_log(LOG_PATH)
-
     (
         fixed_count,
         error_count,
@@ -419,7 +403,6 @@ def email_main(test, include_fixed, verbose, force):
         supported_not_found_count,
         user_not_found_count,
     ) = process_result(include_fixed)
-
     print_messages(
         TOTAL,
         fixed_count,
