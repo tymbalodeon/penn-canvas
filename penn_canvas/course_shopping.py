@@ -20,11 +20,13 @@ import pandas
 import typer
 
 from .helpers import (
+    check_previous_output,
     colorize_path,
-    find_subaccounts,
+    find_sub_accounts,
     get_canvas,
     get_command_paths,
     make_csv_paths,
+    toggle_progress_bar,
 )
 
 TESTING = False
@@ -43,8 +45,6 @@ WH_DISABLE_OUTFILE = (
     f"data/WH_course_shopping_disabled_{TODAY}{'_test' if TESTING else ''}.csv"
 )
 MASTER_FILE = f"data/course_shopping_master_{TERM}{'_test' if TESTING else ''}.csv"
-
-canvas_id_in_master = []
 
 SUB_ACCOUNT_EXCLUDE = "82603"
 WH_EXCLUDE = [
@@ -294,14 +294,13 @@ IGNORED_SUBJECTS = ["MAPP", "IMPA", "DYNM"]
 IGNORED_SITES = ["1529220"]
 
 
-def get_accounts(test):
-    canvas = get_canvas(test)
-    SEAS_ACCOUNTS = find_subaccounts(canvas, SEAS_ACCOUNT_ID)
-    NURS_ACCOUNTS = find_subaccounts(canvas, NURS_ACCOUNT_ID)
-    SAS_ACCOUNTS = find_subaccounts(canvas, SAS_ACCOUNT_ID)
-    SAS_ACCOUNTS.remove(SAS_ONL_ACCOUNT)
-    SAS_ACCOUNTS.remove(ADMIN_ACCOUNT)
-    AN_ACCOUNTS = find_subaccounts(canvas, AN_ACCOUNT_ID)
+def get_accounts(canvas):
+    SEAS_ACCOUNTS = find_sub_accounts(canvas, SEAS_ACCOUNT_ID)
+    NURS_ACCOUNTS = find_sub_accounts(canvas, NURS_ACCOUNT_ID)
+    SAS_ACCOUNTS = find_sub_accounts(canvas, SAS_ACCOUNT_ID)
+    # SAS_ACCOUNTS.remove(SAS_ONL_ACCOUNT)
+    # SAS_ACCOUNTS.remove(ADMIN_ACCOUNT)
+    AN_ACCOUNTS = find_sub_accounts(canvas, AN_ACCOUNT_ID)
 
     return SEAS_ACCOUNTS, NURS_ACCOUNTS, SAS_ACCOUNTS, AN_ACCOUNTS
 
@@ -353,9 +352,7 @@ def cleanup_report(report, start=0):
     typer.echo(") Preparing report...")
 
     data = pandas.read_csv(report)
-    data = data[
-        ["canvas_course_id", "course_id", "short_name", "canvas_account_id", "status"]
-    ]
+    data = data[["canvas_course_id", "course_id", "canvas_account_id", "status"]]
     data = data.astype("string", copy=False)
     data = data[data["course_id"] != ""]
     data.reset_index(drop=True, inplace=True)
@@ -382,20 +379,8 @@ def section_contains_srs(canvas, canvas_id):
     return bool(srs_section)
 
 
-def load_master():
-    master = open(MASTER_FILE, "r")
-    master.readline()
-
-    for line in master:
-        sis_id, canvas_id, visibility_status, published, notes = line.strip().split(",")
-        if visibility_status.strip() == "public_to_auth_users":
-            canvas_id_in_master.append(canvas_id.strip())
-
-    master.close()
-
-
-def should_update_course(canvas_account_id, course_number, subject, test):
-    SEAS_ACCOUNTS, NURS_ACCOUNTS, SAS_ACCOUNTS, AN_ACCOUNTS = get_accounts(test)
+def should_update_course(canvas_account_id, course_number, subject, canvas):
+    SEAS_ACCOUNTS, NURS_ACCOUNTS, SAS_ACCOUNTS, AN_ACCOUNTS = get_accounts(canvas)
 
     if (
         canvas_account_id in SEAS_ACCOUNTS
@@ -415,85 +400,6 @@ def should_update_course(canvas_account_id, course_number, subject, test):
         return True
     else:
         return False
-
-
-def enable_course_shopping(courses, wharton, test):
-    typer.echo(") Enabling course shopping for non-Wharton schools...")
-    canvas = get_canvas(TESTING)
-    WHARTON_ACCOUNTS = find_subaccounts(canvas, WHARTON_ACCOUNT_ID)
-    SEAS_ACCOUNTS, NURS_ACCOUNTS, SAS_ACCOUNTS, AN_ACCOUNTS = get_accounts(test)
-    SUB_ACCOUNTS = SAS_ACCOUNTS + SEAS_ACCOUNTS + NURS_ACCOUNTS + AN_ACCOUNTS
-    courses = courses[
-        "index", "canvas course id", "course id", "canvas_account_id", "status"
-    ]
-
-    for course in courses.itertuples():
-        (
-            index,
-            canvas_course_id,
-            course_id,
-            canvas_account_id,
-            status,
-        ) = course
-
-        if canvas_course_id in canvas_id_in_master:
-            continue
-
-        if wharton:
-            account = WHARTON_ACCOUNTS
-            srs_checker = section_contains_srs
-            course_or_section_string = "section"
-            ignored_courses = SUB_ACCOUNT_EXCLUDE
-        else:
-            account = SUB_ACCOUNTS
-            srs_checker = course_contains_srs
-            course_or_section_string = "course"
-            ignored_courses = IGNORED_SITES
-
-        if canvas_account_id not in account:
-            typer.echo("- School not participating.")
-            notes = "school not participating"
-        elif not course_contains_srs(course_id):
-            typer.echo(f"- {course_or_section_string} not in SRS.")
-            notes = f"{course_or_section_string} not in srs"
-        elif canvas_course_id in IGNORED_SITES:
-            typer.echo("- Ignored course.")
-            notes = "ignored course"
-        else:
-            try:
-                canvas_course = canvas.get_course(canvas_course_id)
-                course_number = int(course_id.split("-")[1])
-                subject = course_id.split("-")[0][4:]
-                notes = ""
-
-                if wharton or should_update_course(
-                    canvas_account_id, course_number, subject, test
-                ):
-                    typer.echo(f") Updating course...")
-
-                    canvas_course.update(course={"is_public_to_auth_users": True})
-                    status = "public to auth users"
-                elif subject in IGNORED_SUBJECTS:
-                    typer.echo("- Ignored course.")
-                    notes = "ignored course"
-            except Exception as error:
-                typer.echo(
-                    f"- ERROR: Failed to enable course shopping for {canvas_course_id} - {course_id} ({error})"
-                )
-                status = "ERROR"
-                notes = error
-
-        courses.loc[
-            index,
-            [
-                "canvas_course_id",
-                "course_id",
-                "status",
-                "notes",
-            ],
-        ] = [canvas_course_id, course_id, status, notes]
-
-        courses.to_csv(RESULT_PATH)
 
 
 def disable_course_shopping(inputfile=MASTER_FILE, outputfile=DISABLE_OUTFILE):
@@ -540,19 +446,111 @@ def disable_course_shopping(inputfile=MASTER_FILE, outputfile=DISABLE_OUTFILE):
             )
 
 
-def shopping_main(wharton, test):
+def shopping_main(test, wharton, verbose):
+    report = find_course_shopping_report()
+    START = check_previous_output(RESULT_PATH)
+    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
+    report, TOTAL = cleanup_report(report, START)
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-    report = find_course_shopping_report()
-    START = get_previous_output()
-    report, TOTAL = cleanup_report(report, START)
-    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
-    enable_course_shopping(report, wharton, test)
+
+    if START > 0:
+        if START == 1:
+            course = "COURSE"
+        else:
+            course = "COURSES"
+
+        typer.secho(
+            f") SKIPPING {START} PREVIOUSLY PROCESSED {course}...",
+            fg=typer.colors.YELLOW,
+        )
+
+    def enable_course(course, canvas, verbose, wharton=False):
+        WHARTON_ACCOUNTS = find_sub_accounts(canvas, WHARTON_ACCOUNT_ID)
+        SEAS_ACCOUNTS, NURS_ACCOUNTS, SAS_ACCOUNTS, AN_ACCOUNTS = get_accounts(canvas)
+        SUB_ACCOUNTS = SAS_ACCOUNTS + SEAS_ACCOUNTS + NURS_ACCOUNTS + AN_ACCOUNTS
+
+        (
+            index,
+            canvas_course_id,
+            course_id,
+            canvas_account_id,
+            status,
+        ) = course
+
+        if wharton:
+            account = WHARTON_ACCOUNTS
+            srs_checker = section_contains_srs
+            course_or_section_string = "section"
+            ignored_courses = SUB_ACCOUNT_EXCLUDE
+        else:
+            account = SUB_ACCOUNTS
+            srs_checker = course_contains_srs
+            course_or_section_string = "course"
+            ignored_courses = IGNORED_SITES
+
+        if canvas_account_id not in account:
+            if verbose:
+                typer.echo("- School not participating.")
+
+            notes = "school not participating"
+        elif not course_contains_srs(course_id):
+            if verbose:
+                typer.echo(f"- {course_or_section_string} not in SRS.")
+
+            notes = f"{course_or_section_string} not in srs"
+        elif canvas_course_id in IGNORED_SITES:
+            if verbose:
+                typer.echo("- Ignored course.")
+
+            notes = "ignored course"
+        else:
+            try:
+                canvas_course = canvas.get_course(canvas_course_id)
+                course_number = int(course_id.split("-")[1])
+                subject = course_id.split("-")[0][4:]
+                notes = ""
+
+                if wharton or should_update_course(
+                    canvas_account_id, course_number, subject, canvas
+                ):
+                    if verbose:
+                        typer.echo(f") Updating course...")
+
+                    canvas_course.update(course={"is_public_to_auth_users": True})
+                    status = "public to auth users"
+                elif subject in IGNORED_SUBJECTS:
+                    if verbose:
+                        typer.echo("- Ignored course.")
+
+                    notes = "ignored course"
+            except Exception as error:
+                if verbose:
+                    typer.echo(
+                        f"- ERROR: Failed to enable course shopping for ({canvas_course_id}) {course_id} - {error}"
+                    )
+
+                status = "ERROR"
+                notes = error
+
+        report.loc[
+            index,
+            [
+                "canvas_course_id",
+                "course_id",
+                "status",
+                "notes",
+            ],
+        ] = [canvas_course_id, course_id, status, notes]
+
+        report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
+
+    typer.echo(") Enabling shopping for courses...")
+    toggle_progress_bar(
+        report, enable_course, CANVAS, verbose, args=wharton, index=True
+    )
     typer.echo("FINISHED")
 
-
-# load_master()
-# print(canvas_id_in_master)
 
 # disable_course_shopping(MASTER_FILE, DISABLE_OUTFILE)
 # disable_course_shopping(WH_OUTFILE, WH_DISABLE_OUTFILE)

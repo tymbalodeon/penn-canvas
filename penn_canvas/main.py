@@ -66,12 +66,17 @@ def shopping(
             " of production (https://canvas.upenn.edu/)"
         ),
     ),
-    verbose: bool = typer.Option(False, "--verbose"),
+    wharton: bool = typer.Option(
+        False, "--wharton", help="Manage course shopping for Wharton."
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
 ):
     """
     Course shopping
     """
-    shopping_main(test, verbose)
+    shopping_main(test, wharton, verbose)
 
 
 @app.command()

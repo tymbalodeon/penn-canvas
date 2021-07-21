@@ -11,7 +11,7 @@ from .helpers import (
     check_previous_output,
     colorize,
     colorize_path,
-    find_subaccounts,
+    find_sub_accounts,
     get_canvas,
     get_command_paths,
     make_csv_paths,
@@ -44,7 +44,7 @@ def get_subaccounts(canvas):
     SUB_ACCOUNTS = list()
 
     for account in ACCOUNTS:
-        SUB_ACCOUNTS += find_subaccounts(canvas, account)
+        SUB_ACCOUNTS += find_sub_accounts(canvas, account)
 
     return SUB_ACCOUNTS
 
@@ -348,8 +348,6 @@ def print_messages(
 
 def email_main(test, include_fixed, verbose, force):
     report = find_users_report()
-    INSTANCE = "test" if test else "prod"
-    CANVAS = get_canvas(INSTANCE)
 
     if force:
         START = 0
@@ -362,6 +360,8 @@ def email_main(test, include_fixed, verbose, force):
     report, TOTAL = cleanup_report(report, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
+    INSTANCE = "test" if test else "prod"
+    CANVAS = get_canvas(INSTANCE)
     SUB_ACCOUNTS = get_subaccounts(CANVAS)
 
     if START > 0:
