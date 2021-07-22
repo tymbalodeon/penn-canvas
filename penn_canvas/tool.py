@@ -146,9 +146,8 @@ def process_result(tool, result_path):
             inplace=True,
         )
     elif ACTIVE_COUNT:
+        result = result[result["found"] == "active"]
         result = result[["canvas_account_id", "term_id", "course_id"]]
-
-    result = result[result["found"] == "active"]
 
     if ERROR_COUNT or ACTIVE_COUNT:
         result = result.groupby(
@@ -199,7 +198,7 @@ def print_messages(tool, active, inactive, not_found, error, total, result_path)
 
 def tool_main(tool, test, verbose, force):
     def check_tool_usage(course, canvas, verbose, tool):
-        tool = typer.style(tool, fg=typer.colors.CYAN)
+        tool_display = typer.style(tool, fg=typer.colors.CYAN)
 
         try:
             (
@@ -218,32 +217,38 @@ def tool_main(tool, test, verbose, force):
                 tabs = course.get_tabs()
                 tool_tab = next(filter(lambda tab: tab.label == tool, tabs), None)
 
-                if tool_tab and tool_tab.visibility == "public":
-                    account = canvas.get_account(canvas_account_id)
-                    school = account.name
-                    found = "active"
+                if tool_tab:
+                    if tool_tab.visibility == "public":
+                        account = canvas.get_account(canvas_account_id)
+                        school = account.name
+                        found = "active"
 
-                    if verbose:
-                        found_display = typer.style(
-                            found.upper(), fg=typer.colors.GREEN
-                        )
-                        typer.echo(
-                            f'- ({index + 1}/{TOTAL}) "{tool}" {found_display}: {course_id}, {canvas_account_id} ({school})'
-                        )
+                        if verbose:
+                            found_display = typer.style(
+                                found.upper(), fg=typer.colors.GREEN
+                            )
+                            typer.echo(
+                                f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display}: {course_id}, {canvas_account_id} ({school})'
+                            )
+                    else:
+                        found = "inactive"
+
+                        if verbose:
+                            found_display = typer.style(
+                                found.upper(), fg=typer.colors.YELLOW
+                            )
+                            typer.echo(
+                                f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for {course_id}.'
+                            )
                 else:
-                    found = "inactive"
-
-                    if verbose:
-                        found_display = typer.style(
-                            found.upper(), fg=typer.colors.YELLOW
-                        )
-                        typer.echo(
-                            f'- ({index + 1}/{TOTAL}) "{tool}" {found_display} for {course_id}.'
-                        )
+                    found_display = typer.style(found.upper(), fg=typer.colors.YELLOW)
+                    typer.echo(
+                        f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for {course_id}.'
+                    )
             elif verbose:
                 found_display = typer.style(found.upper(), fg=typer.colors.YELLOW)
                 typer.echo(
-                    f'- ({index + 1}/{TOTAL}) "{tool}" {found_display} for {course_id}.'
+                    f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for {course_id}.'
                 )
         except Exception as error:
             if verbose:
