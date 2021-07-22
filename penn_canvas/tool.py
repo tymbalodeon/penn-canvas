@@ -130,9 +130,17 @@ def process_result(tool, result_path):
     NOT_FOUND_COUNT = str(len(NOT_FOUND))
     ERROR_COUNT = str(len(ERROR))
     result = result[(result["found"] != "inactive") & (result["found"] != "not found")]
-    result = result[["course_id", "term_id", "canvas_account_id"]]
+    result = result[["canvas_account_id", "term_id", "course_id"]]
     result = result.groupby(["canvas_account_id", "term_id"], group_keys=False).apply(
         pandas.DataFrame.sort_values, "course_id"
+    )
+    result.rename(
+        columns={
+            "canvas_account_id": "canvas account id",
+            "term_id": "term id",
+            "course_id": "course id",
+        },
+        inplace=True,
     )
 
     with open(result_path, "w", newline="") as result_file:
