@@ -45,9 +45,7 @@ def make_config():
     if use_open:
         open_canvas = typer.prompt("Please enter your Access Token for OPEN Canvas")
 
-    use_data_warehouse = typer.confirm(
-        "Input DSN and connection credentials for DATA WAREHOUSE?"
-    )
+    use_data_warehouse = typer.confirm("Input DATA WAREHOUSE credentials?")
 
     if use_data_warehouse:
         data_warehouse_user = typer.prompt("Please enter your DATA WAREHOUSE USER")

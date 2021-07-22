@@ -191,18 +191,18 @@ def tool_main(tool, test, verbose, force):
                             found.upper(), fg=typer.colors.GREEN
                         )
                         typer.echo(
-                            f"- ({index + 1}/{TOTAL}) {tool} {found_display}: {course_id}, {canvas_account_id} ({school})"
+                            f'- ({index + 1}/{TOTAL}) "{tool}" {found_display}: {course_id}, {canvas_account_id} ({school})'
                         )
                 else:
                     found = "inactive"
                     found_display = typer.style(found.upper(), fg=typer.colors.RED)
                     typer.echo(
-                        f"- ({index + 1}/{TOTAL}) {tool} {found_display} for {course_id}."
+                        f'- ({index + 1}/{TOTAL}) "{tool}" {found_display} for {course_id}.'
                     )
             elif verbose:
                 found_display = typer.style(found.upper(), fg=typer.colors.RED)
                 typer.echo(
-                    f"- ({index + 1}/{TOTAL}) {tool} {found_display} for {course_id}."
+                    f'- ({index + 1}/{TOTAL}) "{tool}" {found_display} for {course_id}.'
                 )
         except Exception as error:
             if verbose:
