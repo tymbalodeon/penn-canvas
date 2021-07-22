@@ -195,8 +195,29 @@ def storage(
 
 
 @app.command()
-def tool():
+def tool(
+    tool: str = typer.Argument(...),
+    test: bool = typer.Option(
+        False,
+        "--test",
+        help=(
+            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
+            " of production (https://canvas.upenn.edu/)"
+        ),
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help=(
+            "Force the task to start from the beginning despite the presence of a"
+            " pre-existing incomplete result file and overwrite that file."
+        ),
+    ),
+):
     """
     Tool report
     """
-    typer.echo("piazza")
+    tool_main(tool, test, verbose, force)
