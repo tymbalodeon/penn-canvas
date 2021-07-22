@@ -19,7 +19,6 @@ from .helpers import (
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 REPORTS, RESULTS = get_command_paths("tool")
-RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_tool_result.csv"
 HEADERS = [
     "index",
     "canvas_course_id",
@@ -116,8 +115,8 @@ def cleanup_report(reports, report_display, start=0):
     return data_frame, str(TOTAL)
 
 
-def process_result(tool):
-    result = pandas.read_csv(RESULT_PATH)
+def process_result(tool, result_path):
+    result = pandas.read_csv(result_path)
     ACTIVE = result[result["found"] == "active"]
     INACTIVE = result[result["found"] == "inactive"]
     NOT_FOUND = result[result["found"] == "not found"]
@@ -132,24 +131,27 @@ def process_result(tool):
     ERROR_COUNT = str(len(ERROR))
     result = result[(result["found"] != "inactive") & (result["found"] != "not found")]
     result = result[["course_id", "term_id", "canvas_account_id"]]
-    result = result.sort_values(by=["canvas_account_id"])
+    result = result.groupby(["canvas_account_id", "term_id"], group_keys=False).apply(
+        pandas.DataFrame.sort_values, "course_id"
+    )
 
-    with open(RESULT_PATH, "w", newline="") as result_file:
+    with open(result_path, "w", newline="") as result_file:
         writer(result_file).writerow(
             [f'COURSES WITH "{tool.upper()}" ENABLED', None, None]
         )
 
-    result.to_csv(RESULT_PATH, mode="a", index=False)
+    result.to_csv(result_path, mode="a", index=False)
 
     return ACTIVE_COUNT, INACTIVE_COUNT, NOT_FOUND_COUNT, ERROR_COUNT
 
 
-def print_messages(tool, active, inactive, not_found, error, total):
+def print_messages(tool, active, inactive, not_found, error, total, result_path):
     typer.secho("SUMMARY:", fg=typer.colors.YELLOW)
     typer.echo(f"- Processed {colorize(total)} courses.")
-    typer.echo(f"- Found {colorize(active)} courses with {tool} enabled.")
-    typer.echo(f"- Found {colorize(inactive)} courses with inactive {tool} tab.")
-    typer.echo(f"- Found {colorize(not_found)} courses with no {tool} tab.")
+    total_active = typer.style(active, fg=typer.colors.GREEN)
+    typer.echo(f'- Found {total_active} courses with "{tool}" enabled.')
+    typer.echo(f'- Found {colorize(inactive)} courses with inactive "{tool}" tab.')
+    typer.echo(f'- Found {colorize(not_found)} courses with no "{tool}" tab.')
 
     if int(error) > 0:
         message = typer.style(
@@ -157,7 +159,7 @@ def print_messages(tool, active, inactive, not_found, error, total):
             fg=typer.colors.RED,
         )
         typer.echo(f"- {message}")
-        typer.echo(f"- Details recorded to result file: {RESULT_PATH}")
+        typer.echo(f"- Details recorded to result file: {result_path}")
 
     typer.secho("FINISHED", fg=typer.colors.YELLOW)
 
@@ -216,6 +218,7 @@ def tool_main(tool, test, verbose, force):
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
     REPORTS, report_display = find_course_report()
+    RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_{tool}_tool_result.csv"
     START = get_start_index(force, RESULT_PATH)
     report, TOTAL = cleanup_report(REPORTS, report_display, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
@@ -226,5 +229,5 @@ def tool_main(tool, test, verbose, force):
     typer.echo(") Processing courses...")
 
     toggle_progress_bar(report, check_tool_usage, CANVAS, verbose, index=True)
-    active, inactive, not_found, error = process_result(tool)
-    print_messages(tool, active, inactive, not_found, error, TOTAL)
+    active, inactive, not_found, error = process_result(tool, RESULT_PATH)
+    print_messages(tool, active, inactive, not_found, error, TOTAL, RESULT_PATH)
