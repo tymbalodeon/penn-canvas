@@ -237,7 +237,7 @@ def tool(
     NOTE: This command accepts multiple input files to allow for checking
     multiple terms at once. Any file whose name contains the current date will
     be included in the task. The results will always be combined into a single
-    output file.#!/usr/bin/env python
+    output file.
     """
 
     tool_main(tool, test, verbose, force)
