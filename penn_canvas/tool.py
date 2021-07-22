@@ -135,11 +135,10 @@ def process_result(tool, result_path):
             (result["found"] != "inactive") & (result["found"] != "not found")
         ]
         result = result[["canvas_account_id", "term_id", "course_id", "found"]]
-        result.loc[
-            (result["found"] == "active")
-            | (result["found"] == "inactive")
-            | (result["found"] == "not found")
-        ] = None
+        found_values_to_clear = ["active", "inactive", "not found"]
+        result["found"] = result["found"].apply(
+            lambda found: None if found in found_values_to_clear else found
+        )
         result.rename(
             columns={
                 "found": "error",
@@ -172,6 +171,7 @@ def process_result(tool, result_path):
 
 
 def print_messages(tool, active, inactive, not_found, error, total, result_path):
+    tool = typer.style(tool, fg=typer.colors.CYAN)
     typer.secho("SUMMARY:", fg=typer.colors.YELLOW)
     typer.echo(f"- Processed {colorize(total)} courses.")
     total_active = typer.style(active, fg=typer.colors.GREEN)
@@ -226,12 +226,14 @@ def tool_main(tool, test, verbose, force):
                     found = "inactive"
 
                     if verbose:
-                        found_display = typer.style(found.upper(), fg=typer.colors.RED)
+                        found_display = typer.style(
+                            found.upper(), fg=typer.colors.YELLOW
+                        )
                         typer.echo(
                             f'- ({index + 1}/{TOTAL}) "{tool}" {found_display} for {course_id}.'
                         )
             elif verbose:
-                found_display = typer.style(found.upper(), fg=typer.colors.RED)
+                found_display = typer.style(found.upper(), fg=typer.colors.YELLOW)
                 typer.echo(
                     f'- ({index + 1}/{TOTAL}) "{tool}" {found_display} for {course_id}.'
                 )
@@ -246,6 +248,7 @@ def tool_main(tool, test, verbose, force):
 
     REPORTS, report_display = find_course_report()
     RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_{tool}_tool_result.csv"
+    tool = typer.style(tool, fg=typer.colors.CYAN)
     START = get_start_index(force, RESULT_PATH)
     report, TOTAL = cleanup_report(REPORTS, report_display, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
