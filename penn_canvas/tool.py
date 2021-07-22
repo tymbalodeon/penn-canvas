@@ -129,8 +129,26 @@ def process_result(tool, result_path):
     INACTIVE_COUNT = str(len(INACTIVE))
     NOT_FOUND_COUNT = str(len(NOT_FOUND))
     ERROR_COUNT = str(len(ERROR))
-    result = result[(result["found"] != "inactive") & (result["found"] != "not found")]
-    result = result[["canvas_account_id", "term_id", "course_id"]]
+
+    if len(ERROR) > 0:
+        result = result[
+            (result["found"] != "inactive") & (result["found"] != "not found")
+        ]
+        result = result[["canvas_account_id", "term_id", "course_id", "found"]]
+        result.loc[
+            (result["found"] == "active")
+            | (result["found"] == "inactive")
+            | (result["found"] == "not found")
+        ] = None
+        result.rename(
+            columns={
+                "found": "error",
+            },
+            inplace=True,
+        )
+    else:
+        result = result[result["found"] == "active"]
+        result = result[["canvas_account_id", "term_id", "course_id"]]
     result = result.groupby(["canvas_account_id", "term_id"], group_keys=False).apply(
         pandas.DataFrame.sort_values, "course_id"
     )
