@@ -185,7 +185,8 @@ def print_messages(tool, active, inactive, not_found, error, total, result_path)
             fg=typer.colors.RED,
         )
         typer.echo(f"- {message}")
-        typer.echo(f"- Details recorded to result file: {result_path}")
+        result_path_display = typer.style(result_path, fg=typer.colors.GREEN)
+        typer.echo(f"- Details recorded to result file: {result_path_display}")
 
     typer.secho("FINISHED", fg=typer.colors.YELLOW)
 
