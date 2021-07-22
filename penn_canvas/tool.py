@@ -1,3 +1,4 @@
+from csv import writer
 from datetime import datetime
 from pathlib import Path
 
@@ -5,6 +6,7 @@ import pandas
 import typer
 
 from .helpers import (
+    colorize,
     colorize_path,
     get_canvas,
     get_command_paths,
@@ -17,7 +19,7 @@ from .helpers import (
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 REPORTS, RESULTS = get_command_paths("tool")
-RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_email_result.csv"
+RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_tool_result.csv"
 HEADERS = [
     "index",
     "canvas_course_id",
@@ -114,6 +116,52 @@ def cleanup_report(reports, report_display, start=0):
     return data_frame, str(TOTAL)
 
 
+def process_result(tool):
+    result = pandas.read_csv(RESULT_PATH)
+    ACTIVE = result[result["found"] == "active"]
+    INACTIVE = result[result["found"] == "inactive"]
+    NOT_FOUND = result[result["found"] == "not found"]
+    ERROR = result[
+        (result["found"] != "active")
+        & (result["found"] != "inactive")
+        & (result["found"] != "not found")
+    ]
+    ACTIVE_COUNT = str(len(ACTIVE))
+    INACTIVE_COUNT = str(len(INACTIVE))
+    NOT_FOUND_COUNT = str(len(NOT_FOUND))
+    ERROR_COUNT = str(len(ERROR))
+    result = result[result["found"] == "active"]
+    result = result[["course_id", "term_id", "canvas_account_id"]]
+    result = result.sort_values(by=["canvas_account_id"])
+
+    with open(RESULT_PATH, "w", newline="") as result_file:
+        writer(result_file).writerow(
+            [f'COURSES WITH "{tool.upper()}" ENABLED', None, None]
+        )
+
+    result.to_csv(RESULT_PATH, mode="a", index=False)
+
+    return ACTIVE_COUNT, INACTIVE_COUNT, NOT_FOUND_COUNT, ERROR_COUNT
+
+
+def print_messages(tool, active, inactive, not_found, error, total):
+    typer.secho("SUMMARY:", fg=typer.colors.YELLOW)
+    typer.echo(f"- Processed {colorize(total)} courses.")
+    typer.echo(f"- Found {colorize(active)} courses with {tool} enabled.")
+    typer.echo(f"- Found {colorize(inactive)} courses with inactive {tool} tab.")
+    typer.echo(f"- Found {colorize(not_found)} courses with no {tool} tab.")
+
+    if int(error) > 0:
+        message = typer.style(
+            f"Encountered errors for {error} courses.",
+            fg=typer.colors.RED,
+        )
+        typer.echo(f"- {message}")
+        typer.echo(f"- Details recorded to result file: {RESULT_PATH}")
+
+    typer.secho("FINISHED", fg=typer.colors.YELLOW)
+
+
 def tool_main(tool, test, verbose, force):
     def check_tool_usage(course, canvas, verbose):
         try:
@@ -126,7 +174,7 @@ def tool_main(tool, test, verbose, force):
                 status,
             ) = course
 
-            found = False
+            found = "not found"
 
             if not pandas.isna(course_id) and status == "active":
                 course = canvas.get_course(canvas_course_id)
@@ -136,16 +184,23 @@ def tool_main(tool, test, verbose, force):
                 if tool_tab and tool_tab.visibility == "public":
                     account = canvas.get_account(canvas_account_id)
                     school = account.name
-                    found = True
+                    found = "active"
 
                     if verbose:
-                        found_display = typer.style("FOUND", fg=typer.colors.GREEN)
+                        found_display = typer.style(
+                            found.upper(), fg=typer.colors.GREEN
+                        )
                         typer.echo(
                             f"- ({index + 1}/{TOTAL}) {tool} {found_display}: {course_id}, {canvas_account_id} ({school})"
                         )
-
+                else:
+                    found = "inactive"
+                    found_display = typer.style(found.upper(), fg=typer.colors.RED)
+                    typer.echo(
+                        f"- ({index + 1}/{TOTAL}) {tool} {found_display} for {course_id}."
+                    )
             elif verbose:
-                found_display = typer.style("NOT FOUND", fg=typer.colors.RED)
+                found_display = typer.style(found.upper(), fg=typer.colors.RED)
                 typer.echo(
                     f"- ({index + 1}/{TOTAL}) {tool} {found_display} for {course_id}."
                 )
@@ -169,5 +224,5 @@ def tool_main(tool, test, verbose, force):
     typer.echo(") Processing courses...")
 
     toggle_progress_bar(report, check_tool_usage, CANVAS, verbose, index=True)
-
-    typer.echo(START)
+    active, inactive, not_found, error = process_result(tool)
+    print_messages(tool, active, inactive, not_found, error, TOTAL)
