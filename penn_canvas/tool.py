@@ -141,16 +141,18 @@ def tool_main(tool, test, verbose, force):
                     if verbose:
                         found_display = typer.style("FOUND", fg=typer.colors.GREEN)
                         typer.echo(
-                            f"- {tool} {found_display}: {course_id}, {canvas_account_id} ({school})"
+                            f"- ({index + 1}/{TOTAL}) {tool} {found_display}: {course_id}, {canvas_account_id} ({school})"
                         )
 
             elif verbose:
                 found_display = typer.style("NOT FOUND", fg=typer.colors.RED)
-                typer.echo(f"- {tool} {found_display} for {course_id}.")
+                typer.echo(
+                    f"- ({index + 1}/{TOTAL}) {tool} {found_display} for {course_id}."
+                )
         except Exception as error:
             if verbose:
                 message = typer.style(f"ERROR: Failed to process {course_id} ({error})")
-                typer.echo(f"- {message}")
+                typer.echo(f"- ({index + 1}/{TOTAL}) {message}")
             found = f"{str(error)}"
 
         report.at[index, "found"] = found
