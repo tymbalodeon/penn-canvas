@@ -130,7 +130,7 @@ def process_result(tool):
     INACTIVE_COUNT = str(len(INACTIVE))
     NOT_FOUND_COUNT = str(len(NOT_FOUND))
     ERROR_COUNT = str(len(ERROR))
-    result = result[result["found"] == "active"]
+    result = result[(result["found"] != "inactive") & (result["found"] != "not found")]
     result = result[["course_id", "term_id", "canvas_account_id"]]
     result = result.sort_values(by=["canvas_account_id"])
 
