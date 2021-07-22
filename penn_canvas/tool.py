@@ -125,12 +125,12 @@ def process_result(tool, result_path):
         & (result["found"] != "inactive")
         & (result["found"] != "not found")
     ]
-    ACTIVE_COUNT = str(len(ACTIVE))
+    ACTIVE_COUNT = len(ACTIVE)
     INACTIVE_COUNT = str(len(INACTIVE))
     NOT_FOUND_COUNT = str(len(NOT_FOUND))
-    ERROR_COUNT = str(len(ERROR))
+    ERROR_COUNT = len(ERROR)
 
-    if len(ERROR) > 0:
+    if ERROR_COUNT:
         result = result[
             (result["found"] != "inactive") & (result["found"] != "not found")
         ]
@@ -145,29 +145,35 @@ def process_result(tool, result_path):
             },
             inplace=True,
         )
-    else:
-        result = result[result["found"] == "active"]
+    elif ACTIVE_COUNT:
         result = result[["canvas_account_id", "term_id", "course_id"]]
-    result = result.groupby(["canvas_account_id", "term_id"], group_keys=False).apply(
-        pandas.DataFrame.sort_values, "course_id"
-    )
-    result.rename(
-        columns={
-            "canvas_account_id": "canvas account id",
-            "term_id": "term id",
-            "course_id": "course id",
-        },
-        inplace=True,
-    )
 
-    with open(result_path, "w", newline="") as result_file:
-        writer(result_file).writerow(
-            [f'COURSES WITH "{tool.upper()}" ENABLED', None, None]
+    result = result[result["found"] == "active"]
+
+    if ERROR_COUNT or ACTIVE_COUNT:
+        result = result.groupby(
+            ["canvas_account_id", "term_id"], group_keys=False
+        ).apply(pandas.DataFrame.sort_values, "course_id")
+        result.rename(
+            columns={
+                "canvas_account_id": "canvas account id",
+                "term_id": "term id",
+                "course_id": "course id",
+            },
+            inplace=True,
         )
 
-    result.to_csv(result_path, mode="a", index=False)
+    if result.empty:
+        with open(result_path, "w", newline="") as result_file:
+            writer(result_file).writerow([f'NO COURSES WITH "{tool.upper()}" ENABLED'])
+    else:
+        with open(result_path, "w", newline="") as result_file:
+            writer(result_file).writerow(
+                [f'COURSES WITH "{tool.upper()}" ENABLED', None, None]
+            )
+        result.to_csv(result_path, mode="a", index=False)
 
-    return ACTIVE_COUNT, INACTIVE_COUNT, NOT_FOUND_COUNT, ERROR_COUNT
+    return str(ACTIVE_COUNT), INACTIVE_COUNT, NOT_FOUND_COUNT, str(ERROR_COUNT)
 
 
 def print_messages(tool, active, inactive, not_found, error, total, result_path):
@@ -192,7 +198,9 @@ def print_messages(tool, active, inactive, not_found, error, total, result_path)
 
 
 def tool_main(tool, test, verbose, force):
-    def check_tool_usage(course, canvas, verbose):
+    def check_tool_usage(course, canvas, verbose, tool):
+        tool = typer.style(tool, fg=typer.colors.CYAN)
+
         try:
             (
                 index,
@@ -248,7 +256,6 @@ def tool_main(tool, test, verbose, force):
 
     REPORTS, report_display = find_course_report()
     RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_{tool}_tool_result.csv"
-    tool = typer.style(tool, fg=typer.colors.CYAN)
     START = get_start_index(force, RESULT_PATH)
     report, TOTAL = cleanup_report(REPORTS, report_display, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
@@ -258,6 +265,8 @@ def tool_main(tool, test, verbose, force):
 
     typer.echo(") Processing courses...")
 
-    toggle_progress_bar(report, check_tool_usage, CANVAS, verbose, index=True)
+    toggle_progress_bar(
+        report, check_tool_usage, CANVAS, verbose, args=tool, index=True
+    )
     active, inactive, not_found, error = process_result(tool, RESULT_PATH)
     print_messages(tool, active, inactive, not_found, error, TOTAL, RESULT_PATH)
