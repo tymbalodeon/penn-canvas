@@ -256,4 +256,4 @@ def tool(
     output file.
     """
 
-    tool_main(tool, use_id, test, verbose, force)
+    tool_main(tool, use_id, enable, test, verbose, force)
