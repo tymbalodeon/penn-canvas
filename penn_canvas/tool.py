@@ -123,6 +123,7 @@ def process_result(tool, enable, result_path):
     NOT_FOUND = result[result["tool status"] == "not found"]
     ERROR = result[
         (result["tool status"] != "enabled")
+        & (result["tool status"] != "already enabled")
         & (result["tool status"] != "disabled")
         & (result["tool status"] != "not found")
     ]
@@ -153,14 +154,14 @@ def process_result(tool, enable, result_path):
             },
             inplace=True,
         )
-    elif enable and ENABLED_COUNT:
+    elif enable:
         result = result[result["tool status"] == "enabled"]
-    elif not enable and ALREADY_ENABLED_COUNT:
+    else:
         result = result[result["tool status"] == "already enabled"]
 
     if ERROR_COUNT:
         result = result[["canvas_account_id", "term_id", "course_id", "error"]]
-    elif (enable and ENABLED_COUNT) or (not enable and ALREADY_ENABLED_COUNT):
+    else:
         result = result[["canvas_account_id", "term_id", "course_id"]]
 
     if (
@@ -184,7 +185,7 @@ def process_result(tool, enable, result_path):
         with open(result_path, "w", newline="") as result_file:
             if enable:
                 writer(result_file).writerow(
-                    [f'NO COURSES ENABLED WITH "{tool.upper()}"']
+                    [f'"{tool.upper()}" NOT ENABLED FOR ANY COURSES']
                 )
             else:
                 writer(result_file).writerow(
@@ -194,7 +195,7 @@ def process_result(tool, enable, result_path):
         with open(result_path, "w", newline="") as result_file:
             if enable:
                 writer(result_file).writerow(
-                    [f'COURSES ENABLED WITH "{tool.upper()}"', None, None]
+                    [f'ENABLED "{tool.upper()}" FOR COURSES', None, None]
                 )
             else:
                 writer(result_file).writerow(
@@ -229,21 +230,29 @@ def print_messages(
     total_enabled = typer.style(enabled, fg=typer.colors.GREEN)
     total_already_enabled = typer.style(already_enabled, fg=typer.colors.GREEN)
 
+    def print_courses_not_found():
+        if int(not_found):
+            message = typer.style(not_found, fg=typer.colors.YELLOW)
+            typer.echo(f"- Found {message} entries with missing course ids.")
+
     if enable:
-        typer.echo(f'- Enabled {total_enabled} courses with "{tool}".')
-        typer.echo(f'- Found {colorize(not_found)} courses not eligible for "{tool}".')
+        typer.echo(f'- Enabled "{tool}" for {total_enabled} courses.')
+        typer.echo(
+            f'- Found {total_already_enabled} courses with "{tool}" already enabled.'
+        )
+        print_courses_not_found()
     else:
         typer.echo(f'- Found {total_already_enabled} courses with "{tool}" enabled.')
         typer.echo(f'- Found {colorize(disabled)} courses with disabled "{tool}" tab.')
-        typer.echo(f'- Found {colorize(not_found)} courses with no "{tool}" tab.')
+        print_courses_not_found()
 
-    if int(error) > 0:
+    if int(error):
         message = typer.style(
             f"Encountered errors for {error} courses.",
             fg=typer.colors.RED,
         )
         typer.echo(f"- {message}")
-        result_path_display = typer.style(result_path, fg=typer.colors.GREEN)
+        result_path_display = typer.style(str(result_path), fg=typer.colors.GREEN)
         typer.echo(f"- Details recorded to result file: {result_path_display}")
 
     typer.secho("FINISHED", fg=typer.colors.YELLOW)
@@ -325,7 +334,10 @@ def tool_main(tool, use_id, enable, test, verbose, force):
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
     REPORTS, report_display = find_course_report()
-    RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_{tool}_tool_result.csv"
+    RESULT_PATH = (
+        RESULTS
+        / f"{TODAY_AS_Y_M_D}_{tool}_tool_{'enable' if enable else 'report'}_result.csv"
+    )
     START = get_start_index(force, RESULT_PATH)
     report, TOTAL = cleanup_report(REPORTS, report_display, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
