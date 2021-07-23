@@ -76,12 +76,12 @@ def find_users_report():
 
         if not TODAYS_REPORT:
             error = typer.style(
-                "- ERROR: A Canvas Provisioning Users CSV report matching today's date"
-                " was not found.",
+                "- ERROR: A Canvas Provisioning (Users) CSV report matching today's"
+                " date was not found.",
                 fg=typer.colors.YELLOW,
             )
             typer.echo(
-                f"{error}\n- Please add a Canvas Users Provisioning report matching"
+                f"{error}\n- Please add a Canvas (Users) Provisioning report matching"
                 " today's date to the following directory and then run this script"
                 f" again: {colorize_path(str(REPORTS))}\n- (If you need instructions"
                 " for generating a Canvas Provisioning report, run this command with"
