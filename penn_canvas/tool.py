@@ -70,6 +70,7 @@ def find_course_report():
             raise typer.Exit(1)
         else:
             total = len(TODAYS_REPORTS)
+
             if total == 1:
                 report = "report"
             else:
