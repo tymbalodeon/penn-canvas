@@ -151,10 +151,11 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
         else:
             student = "student"
 
-        typer.secho(
-            f"- Found {not_enrolled} {student} not enrolled in the course.",
+        message = typer.style(
+            f"Found {not_enrolled} {student} not enrolled in the course.",
             fg=typer.colors.RED,
         )
+        typer.echo(f"- {message}")
         errors = True
 
     if int(not_in_canvas) > 0:
@@ -165,10 +166,10 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
             student = "student"
             account = "a Canvas account"
 
-        typer.secho(
-            f"- Found {not_in_canvas} {student} without {account}.",
-            fg=typer.colors.RED,
+        message = typer.style(
+            f"Found {not_in_canvas} {student} without {account}.", fg=typer.colors.RED
         )
+        typer.echo(f"- {message}")
         errors = True
 
     if int(invalid_pennkey) > 0:
@@ -179,10 +180,11 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
             student = "student"
             pennkey = "pennkey"
 
-        typer.secho(
-            f"- Found {invalid_pennkey} {student} with invalid {pennkey}.",
+        message = typer.style(
+            f"Found {invalid_pennkey} {student} with invalid {pennkey}.",
             fg=typer.colors.RED,
         )
+        typer.echo(f"- {message}")
         errors = True
 
     if int(error) > 0:
@@ -191,10 +193,11 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
         else:
             student = "student"
 
-        typer.secho(
-            f"- Encountered an unknown error for {error} {student}.",
+        message = typer.style(
+            f"Encountered an unknown error for {error} {student}.",
             fg=typer.colors.RED,
         )
+        typer.echo(f"- {message}")
         errors = True
 
     if errors:
@@ -244,8 +247,8 @@ def nso_main(test, verbose, force):
 
                 try:
                     course.get_user(canvas_user)
-                except Exception as error:
-                    status = f"user not enrolled in course ({error})"
+                except Exception:
+                    status = f"user not enrolled in course"
 
             except Exception as error:
                 status = error
