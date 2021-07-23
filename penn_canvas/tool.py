@@ -40,10 +40,10 @@ def find_course_report():
         )
         typer.echo(
             f"{error} \n- Creating one for you at: {colorize_path(str(REPORTS))}\n-"
-            " Please add a Canvas Provisioning (Courses) report for at least one term, and matching today's date,"
-            " to this directory and then run this script again.\n- (If you need"
-            " instructions for generating a Canvas Provisioning report, run this"
-            " command with the '--help' flag.)"
+            " Please add a Canvas Provisioning (Courses) report for at least one term,"
+            " and matching today's date, to this directory and then run this script"
+            " again.\n- (If you need instructions for generating a Canvas Provisioning"
+            " report, run this command with the '--help' flag.)"
         )
 
         raise typer.Exit(1)
@@ -196,8 +196,10 @@ def print_messages(tool, active, inactive, not_found, error, total, result_path)
     typer.secho("FINISHED", fg=typer.colors.YELLOW)
 
 
-def tool_main(tool, test, verbose, force):
-    def check_tool_usage(course, canvas, verbose, tool):
+def tool_main(tool, use_id, test, verbose, force):
+    def check_tool_usage(course, canvas, verbose, args):
+        tool = args[0]
+        use_id = args[1]
         tool_display = typer.style(tool, fg=typer.colors.CYAN)
 
         try:
@@ -215,7 +217,11 @@ def tool_main(tool, test, verbose, force):
             if not pandas.isna(course_id) and status == "active":
                 course = canvas.get_course(canvas_course_id)
                 tabs = course.get_tabs()
-                tool_tab = next(filter(lambda tab: tab.label == tool, tabs), None)
+
+                if use_id:
+                    tool_tab = next(filter(lambda tab: tab.id == tool, tabs), None)
+                else:
+                    tool_tab = next(filter(lambda tab: tab.label == tool, tabs), None)
 
                 if tool_tab:
                     if tool_tab.visibility == "public":
@@ -228,7 +234,9 @@ def tool_main(tool, test, verbose, force):
                                 found.upper(), fg=typer.colors.GREEN
                             )
                             typer.echo(
-                                f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display}: {course_id}, {canvas_account_id} ({school})'
+                                f'- ({index + 1}/{TOTAL}) "{tool_display}"'
+                                f" {found_display}: {course_id},"
+                                f" {canvas_account_id} ({school})"
                             )
                     else:
                         found = "inactive"
@@ -238,17 +246,20 @@ def tool_main(tool, test, verbose, force):
                                 found.upper(), fg=typer.colors.YELLOW
                             )
                             typer.echo(
-                                f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for {course_id}.'
+                                f'- ({index + 1}/{TOTAL}) "{tool_display}"'
+                                f" {found_display} for {course_id}."
                             )
                 else:
                     found_display = typer.style(found.upper(), fg=typer.colors.YELLOW)
                     typer.echo(
-                        f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for {course_id}.'
+                        f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for'
+                        f" {course_id}."
                     )
             elif verbose:
                 found_display = typer.style(found.upper(), fg=typer.colors.YELLOW)
                 typer.echo(
-                    f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for {course_id}.'
+                    f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for'
+                    f" {course_id}."
                 )
         except Exception as error:
             if verbose:
@@ -271,7 +282,7 @@ def tool_main(tool, test, verbose, force):
     typer.echo(") Processing courses...")
 
     toggle_progress_bar(
-        report, check_tool_usage, CANVAS, verbose, args=tool, index=True
+        report, check_tool_usage, CANVAS, verbose, args=[tool, use_id], index=True
     )
     active, inactive, not_found, error = process_result(tool, RESULT_PATH)
     print_messages(tool, active, inactive, not_found, error, TOTAL, RESULT_PATH)

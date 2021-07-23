@@ -1,8 +1,7 @@
-import datetime
+from datetime import datetime
 
-from canvas_shared import *
+from .helpers import get_canvas, find_sub_accounts
 
-# Use this function add_reserves to enable the reserves at Penn Library button on courses
 # Annenberg 99243
 # BGS 128877
 # Design 99244
@@ -15,7 +14,7 @@ from canvas_shared import *
 TESTING = False  # True to run on test site, False to run on the production
 TERM = "2021A"
 
-t = datetime.datetime.now().strftime("%d_%b_%Y")
+t = datetime.now().strftime("%d_%b_%Y")
 
 MASTER_FILE = "data/Reserves_Master_" + TERM + ".csv"
 
@@ -65,7 +64,7 @@ def add_reserves(
     ## build a list of sub account's sub accounts
     SUB_SUB_ACCOUNTS = []
     for sub in SUB_ACCOUNTS:
-        SUB_SUB_ACCOUNTS += find_accounts_subaccounts(canvas, sub)
+        SUB_SUB_ACCOUNTS += find_sub_accounts(canvas, sub)
 
     print(SUB_SUB_ACCOUNTS)
     # return SUB_SUB_ACCOUNTS

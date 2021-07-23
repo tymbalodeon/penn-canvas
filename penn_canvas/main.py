@@ -59,7 +59,7 @@ def email(
         "--test",
         help=(
             "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)"
+            " of production (https://canvas.upenn.edu/)."
         ),
     ),
     include_fixed: bool = typer.Option(
@@ -158,7 +158,7 @@ def storage(
         "--test",
         help=(
             "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)"
+            " of production (https://canvas.upenn.edu/)."
         ),
     ),
     verbose: bool = typer.Option(
@@ -197,13 +197,24 @@ def storage(
 
 @app.command()
 def tool(
-    tool: str = typer.Argument(...),
+    tool: str = typer.Argument(
+        ...,
+        help=(
+            "The Canvas external tool you wish to work with. Must match the tool's"
+            " Canvas tab's label, or id if using --use-id."
+        ),
+    ),
+    use_id: bool = typer.Option(
+        False,
+        "--use-id",
+        help="Check for the tool's existence using the tab's id rather than label.",
+    ),
     test: bool = typer.Option(
         False,
         "--test",
         help=(
             "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)"
+            " of production (https://canvas.upenn.edu/)."
         ),
     ),
     verbose: bool = typer.Option(
@@ -240,4 +251,4 @@ def tool(
     output file.
     """
 
-    tool_main(tool, test, verbose, force)
+    tool_main(tool, use_id, test, verbose, force)
