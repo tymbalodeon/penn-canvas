@@ -26,7 +26,7 @@ HEADERS = [
     "canvas_account_id",
     "term_id",
     "status",
-    "found",
+    "tool status",
 ]
 
 
@@ -117,39 +117,42 @@ def cleanup_report(reports, report_display, start=0):
 
 def process_result(tool, result_path):
     result = pandas.read_csv(result_path)
-    ACTIVE = result[result["found"] == "enabled"]
-    INACTIVE = result[result["found"] == "not enabled"]
-    NOT_FOUND = result[result["found"] == "not found"]
+    ENABLED = result[result["tool status"] == "enabled"]
+    DISABLED = result[result["tool status"] == "disabled"]
+    NOT_FOUND = result[result["tool status"] == "not found"]
     ERROR = result[
-        (result["found"] != "active")
-        & (result["found"] != "inactive")
-        & (result["found"] != "not found")
+        (result["tool status"] != "enabled")
+        & (result["tool status"] != "disabled")
+        & (result["tool status"] != "not found")
     ]
-    ACTIVE_COUNT = len(ACTIVE)
-    INACTIVE_COUNT = str(len(INACTIVE))
+    ENABLED_COUNT = len(ENABLED)
+    DISABLED_COUNT = str(len(DISABLED))
     NOT_FOUND_COUNT = str(len(NOT_FOUND))
     ERROR_COUNT = len(ERROR)
 
     if ERROR_COUNT:
         result = result[
-            (result["found"] != "inactive") & (result["found"] != "not found")
+            (result["tool status"] != "disabled")
+            & (result["tool status"] != "not found")
         ]
-        result = result[["canvas_account_id", "term_id", "course_id", "found"]]
-        found_values_to_clear = ["active", "inactive", "not found"]
-        result["found"] = result["found"].apply(
-            lambda found: None if found in found_values_to_clear else found
+        result = result[["canvas_account_id", "term_id", "course_id", "tool status"]]
+        status_values_to_clear = ["enabled", "disabled", "not found"]
+        result["tool status"] = result["tool status"].apply(
+            lambda tool_status: None
+            if tool_status in status_values_to_clear
+            else tool_status
         )
         result.rename(
             columns={
-                "found": "error",
+                "tool status": "error",
             },
             inplace=True,
         )
-    elif ACTIVE_COUNT:
-        result = result[result["found"] == "active"]
+    elif ENABLED_COUNT:
+        result = result[result["tool status"] == "enabled"]
         result = result[["canvas_account_id", "term_id", "course_id"]]
 
-    if ERROR_COUNT or ACTIVE_COUNT:
+    if ERROR_COUNT or ENABLED_COUNT:
         result = result.groupby(
             ["canvas_account_id", "term_id"], group_keys=False
         ).apply(pandas.DataFrame.sort_values, "course_id")
@@ -172,16 +175,16 @@ def process_result(tool, result_path):
             )
         result.to_csv(result_path, mode="a", index=False)
 
-    return str(ACTIVE_COUNT), INACTIVE_COUNT, NOT_FOUND_COUNT, str(ERROR_COUNT)
+    return str(ENABLED_COUNT), DISABLED_COUNT, NOT_FOUND_COUNT, str(ERROR_COUNT)
 
 
-def print_messages(tool, active, inactive, not_found, error, total, result_path):
+def print_messages(tool, enabled, disabled, not_found, error, total, result_path):
     tool = typer.style(tool, fg=typer.colors.CYAN)
     typer.secho("SUMMARY:", fg=typer.colors.YELLOW)
     typer.echo(f"- Processed {colorize(total)} courses.")
-    total_active = typer.style(active, fg=typer.colors.GREEN)
-    typer.echo(f'- Found {total_active} courses with "{tool}" enabled.')
-    typer.echo(f'- Found {colorize(inactive)} courses with inactive "{tool}" tab.')
+    total_enabled = typer.style(enabled, fg=typer.colors.GREEN)
+    typer.echo(f'- Found {total_enabled} courses with "{tool}" enabled.')
+    typer.echo(f'- Found {colorize(disabled)} courses with disabled "{tool}" tab.')
     typer.echo(f'- Found {colorize(not_found)} courses with no "{tool}" tab.')
 
     if int(error) > 0:
@@ -225,7 +228,7 @@ def tool_main(tool, use_id, test, verbose, force):
 
                 if tool_tab:
                     if tool_tab.visibility == "public":
-                        tool_status = "active"
+                        tool_status = "enabled"
 
                         if verbose:
                             found_display = typer.style(
@@ -237,7 +240,7 @@ def tool_main(tool, use_id, test, verbose, force):
                                 f" {canvas_account_id}"
                             )
                     else:
-                        tool_status = "inactive"
+                        tool_status = "disabled"
 
                         if verbose:
                             found_display = typer.style(
@@ -267,7 +270,7 @@ def tool_main(tool, use_id, test, verbose, force):
                 typer.echo(f"- ({index + 1}/{TOTAL}) {message}")
             tool_status = f"{str(error)}"
 
-        report.at[index, "found"] = tool_status
+        report.at[index, "tool status"] = tool_status
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
     REPORTS, report_display = find_course_report()
@@ -284,5 +287,5 @@ def tool_main(tool, use_id, test, verbose, force):
     toggle_progress_bar(
         report, check_tool_usage, CANVAS, verbose, args=[tool, use_id], index=True
     )
-    active, inactive, not_found, error = process_result(tool, RESULT_PATH)
-    print_messages(tool, active, inactive, not_found, error, TOTAL, RESULT_PATH)
+    enabled, disabled, not_found, error = process_result(tool, RESULT_PATH)
+    print_messages(tool, enabled, disabled, not_found, error, TOTAL, RESULT_PATH)
