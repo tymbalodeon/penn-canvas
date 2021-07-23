@@ -117,8 +117,8 @@ def cleanup_report(reports, report_display, start=0):
 
 def process_result(tool, result_path):
     result = pandas.read_csv(result_path)
-    ACTIVE = result[result["found"] == "active"]
-    INACTIVE = result[result["found"] == "inactive"]
+    ACTIVE = result[result["found"] == "enabled"]
+    INACTIVE = result[result["found"] == "not enabled"]
     NOT_FOUND = result[result["found"] == "not found"]
     ERROR = result[
         (result["found"] != "active")
@@ -212,7 +212,7 @@ def tool_main(tool, use_id, test, verbose, force):
                 status,
             ) = course
 
-            found = "not found"
+            tool_status = "not found"
 
             if not pandas.isna(course_id) and status == "active":
                 course = canvas.get_course(canvas_course_id)
@@ -225,11 +225,11 @@ def tool_main(tool, use_id, test, verbose, force):
 
                 if tool_tab:
                     if tool_tab.visibility == "public":
-                        found = "active"
+                        tool_status = "active"
 
                         if verbose:
                             found_display = typer.style(
-                                found.upper(), fg=typer.colors.GREEN
+                                tool_status.upper(), fg=typer.colors.GREEN
                             )
                             typer.echo(
                                 f'- ({index + 1}/{TOTAL}) "{tool_display}"'
@@ -237,24 +237,26 @@ def tool_main(tool, use_id, test, verbose, force):
                                 f" {canvas_account_id}"
                             )
                     else:
-                        found = "inactive"
+                        tool_status = "inactive"
 
                         if verbose:
                             found_display = typer.style(
-                                found.upper(), fg=typer.colors.YELLOW
+                                tool_status.upper(), fg=typer.colors.YELLOW
                             )
                             typer.echo(
                                 f'- ({index + 1}/{TOTAL}) "{tool_display}"'
                                 f" {found_display} for {course_id}."
                             )
                 else:
-                    found_display = typer.style(found.upper(), fg=typer.colors.YELLOW)
+                    found_display = typer.style(
+                        tool_status.upper(), fg=typer.colors.YELLOW
+                    )
                     typer.echo(
                         f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for'
                         f" {course_id}."
                     )
             elif verbose:
-                found_display = typer.style(found.upper(), fg=typer.colors.YELLOW)
+                found_display = typer.style(tool_status.upper(), fg=typer.colors.YELLOW)
                 typer.echo(
                     f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for'
                     f" {course_id}."
@@ -263,9 +265,9 @@ def tool_main(tool, use_id, test, verbose, force):
             if verbose:
                 message = typer.style(f"ERROR: Failed to process {course_id} ({error})")
                 typer.echo(f"- ({index + 1}/{TOTAL}) {message}")
-            found = f"{str(error)}"
+            tool_status = f"{str(error)}"
 
-        report.at[index, "found"] = found
+        report.at[index, "found"] = tool_status
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
     REPORTS, report_display = find_course_report()

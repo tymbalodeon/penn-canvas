@@ -14,7 +14,7 @@ from .helpers import find_sub_accounts, get_canvas
 TESTING = False  # True to run on test site, False to run on the production
 TERM = "2021A"
 
-t = datetime.now().strftime("%d_%b_%Y")
+term = datetime.now().strftime("%d_%b_%Y")
 
 MASTER_FILE = "data/Reserves_Master_" + TERM + ".csv"
 
@@ -43,7 +43,7 @@ def add_to_master(line):
 
 # canvas_course_id, sis_id, canvas_account_id = line.replace("\n","").split(",")
 def add_reserves(
-    inputfile="reserves_" + t + ".csv", outputfile="RESULT_Reserves_" + t + ".csv"
+    inputfile="reserves_" + term + ".csv", outputfile="RESULT_Reserves_" + term + ".csv"
 ):
     # this script will enable reserves given an input file that contains only one column ( the sis id)
     # if reserves are already enabled it wil note that and not update the site.
@@ -61,7 +61,7 @@ def add_reserves(
         "%s,%s,%s,%s\n" % ("canvas_course_id", "course_id", "account", "Reserves")
     )
 
-    ## build a list of sub account's sub accounts
+    # build a list of sub account's sub accounts
     SUB_SUB_ACCOUNTS = []
     for sub in SUB_ACCOUNTS:
         SUB_SUB_ACCOUNTS += find_sub_accounts(canvas, sub)
@@ -70,7 +70,7 @@ def add_reserves(
     # return SUB_SUB_ACCOUNTS
 
     for line in dataFile:
-        # canvas_course_id	course_id	canvas_account_id
+        # canvas_course_id  course_id   canvas_account_id
         canvas_course_id, sis_id, canvas_account_id = line.replace("\n", "").split(",")
 
         outFile.write("%s, %s, %s" % (canvas_course_id, sis_id, canvas_account_id))

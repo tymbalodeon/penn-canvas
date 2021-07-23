@@ -201,13 +201,18 @@ def tool(
         ...,
         help=(
             "The Canvas external tool you wish to work with. Must match the tool's"
-            " Canvas tab's label, or id if using --use-id."
+            " Canvas tab's label, or id if using --id."
         ),
     ),
     use_id: bool = typer.Option(
         False,
-        "--use-id",
-        help="Check for the tool's existence using the tab's id rather than label.",
+        "--id",
+        help="Locate the specified tool using the tool's tab's id rather than label.",
+    ),
+    enable: bool = typer.Option(
+        False,
+        "--enable",
+        help="Enable the specified tool rather than generate a usage report.",
     ),
     test: bool = typer.Option(
         False,
