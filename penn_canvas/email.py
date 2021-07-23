@@ -330,18 +330,21 @@ def print_messages(
         )
 
     if int(errors) > 0:
-        typer.secho(
-            f"- Failed to activate email(s) for {errors} supported users with (an)"
-            " unconfirmed email account(s). Affected accounts are recorded in the log"
-            f" file: {log_path}",
+        message = typer.style(
+            f"Failed to activate email(s) for {errors} supported users with (an) unconfirmed email account(s).",
             fg=typer.colors.RED,
+        )
+        log_path_display = typer.style(log_path, fg=typer.colors.GREEN)
+        typer.echo(
+            f"- {message}. Affected accounts are recorded in the log file: {log_path_display}"
         )
 
     if int(user_not_found) > 0:
-        typer.secho(
-            f"- Failed to find {user_not_found} users.",
+        message = typer.style(
+            f"Failed to find {user_not_found} users.",
             fg=typer.colors.RED,
         )
+        typer.echo(f"- {message}")
 
     typer.secho("FINISHED", fg=typer.colors.YELLOW)
 
