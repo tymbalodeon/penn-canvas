@@ -233,7 +233,8 @@ def print_messages(
         typer.echo(f'- Enabled "{tool}" for {total_enabled} courses.')
         if int(total_already_enabled):
             typer.echo(
-                f'- Found {total_already_enabled} courses with "{tool}" already enabled.'
+                f'- Found {total_already_enabled} courses with "{tool}" already'
+                " enabled."
             )
     else:
         typer.echo(f'- Found {total_already_enabled} courses with "{tool}" enabled.')
