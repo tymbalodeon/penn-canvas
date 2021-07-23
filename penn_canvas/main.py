@@ -235,7 +235,8 @@ def tool(
     ),
 ):
     """
-    Returns a list of courses with TOOL enabled.
+    Returns a list of courses with TOOL enabled or enables TOOL for a list of
+    courses if using '--enable'.
 
     INPUT: Canvas Provisioning (Courses) report(s)
 
