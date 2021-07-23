@@ -211,7 +211,7 @@ def check_previous_output(result_path):
             )
             typer.secho("FINISHED", fg=typer.colors.YELLOW)
 
-            raise typer.Exit(1)
+            raise typer.Exit()
     else:
         index = 0
 

@@ -225,8 +225,6 @@ def tool_main(tool, use_id, test, verbose, force):
 
                 if tool_tab:
                     if tool_tab.visibility == "public":
-                        account = canvas.get_account(canvas_account_id)
-                        school = account.name
                         found = "active"
 
                         if verbose:
@@ -236,7 +234,7 @@ def tool_main(tool, use_id, test, verbose, force):
                             typer.echo(
                                 f'- ({index + 1}/{TOTAL}) "{tool_display}"'
                                 f" {found_display}: {course_id},"
-                                f" {canvas_account_id} ({school})"
+                                f" {canvas_account_id}"
                             )
                     else:
                         found = "inactive"
