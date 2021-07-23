@@ -23,6 +23,8 @@ HEADERS = [
     "index",
     "canvas_course_id",
     "course_id",
+    "short_name",
+    "long_name",
     "canvas_account_id",
     "term_id",
     "status",
@@ -98,6 +100,8 @@ def cleanup_report(reports, report_display, start=0):
             [
                 "canvas_course_id",
                 "course_id",
+                "short_name",
+                "long_name",
                 "canvas_account_id",
                 "term_id",
                 "status",
@@ -164,22 +168,17 @@ def process_result(tool, enable, result_path):
     else:
         result = result[["canvas_account_id", "term_id", "course_id"]]
 
-    if (
-        ERROR_COUNT
-        or (enable and ENABLED_COUNT)
-        or (not enable and ALREADY_ENABLED_COUNT)
-    ):
-        result = result.groupby(
-            ["canvas_account_id", "term_id"], group_keys=False
-        ).apply(pandas.DataFrame.sort_values, "course_id")
-        result.rename(
-            columns={
-                "canvas_account_id": "canvas account id",
-                "term_id": "term id",
-                "course_id": "course id",
-            },
-            inplace=True,
-        )
+    result = result.groupby(["canvas_account_id", "term_id"], group_keys=False).apply(
+        pandas.DataFrame.sort_values, "course_id"
+    )
+    result.rename(
+        columns={
+            "canvas_account_id": "canvas account id",
+            "term_id": "term id",
+            "course_id": "course id",
+        },
+        inplace=True,
+    )
 
     if result.empty:
         with open(result_path, "w", newline="") as result_file:
@@ -230,21 +229,19 @@ def print_messages(
     total_enabled = typer.style(enabled, fg=typer.colors.GREEN)
     total_already_enabled = typer.style(already_enabled, fg=typer.colors.GREEN)
 
-    def print_courses_not_found():
-        if int(not_found):
-            message = typer.style(not_found, fg=typer.colors.YELLOW)
-            typer.echo(f"- Found {message} entries with missing course ids.")
-
     if enable:
         typer.echo(f'- Enabled "{tool}" for {total_enabled} courses.')
-        typer.echo(
-            f'- Found {total_already_enabled} courses with "{tool}" already enabled.'
-        )
-        print_courses_not_found()
+        if int(total_already_enabled):
+            typer.echo(
+                f'- Found {total_already_enabled} courses with "{tool}" already enabled.'
+            )
     else:
         typer.echo(f'- Found {total_already_enabled} courses with "{tool}" enabled.')
         typer.echo(f'- Found {colorize(disabled)} courses with disabled "{tool}" tab.')
-        print_courses_not_found()
+
+    if int(not_found):
+        message = typer.style(not_found, fg=typer.colors.YELLOW)
+        typer.echo(f'- Found {message} courses with no "{tool}" tab.')
 
     if int(error):
         message = typer.style(
@@ -266,6 +263,8 @@ def tool_main(tool, use_id, enable, test, verbose, force):
             index,
             canvas_course_id,
             course_id,
+            short_name,
+            long_name,
             canvas_account_id,
             term_id,
             status,
@@ -274,9 +273,7 @@ def tool_main(tool, use_id, enable, test, verbose, force):
         tool_status = "not found"
         error = False
 
-        if (pandas.isna(course_id) and verbose) or (
-            not enable and status != "active" and verbose
-        ):
+        if not enable and status != "active" and verbose:
             found_display = typer.style(tool_status.upper(), fg=typer.colors.YELLOW)
         else:
             try:
@@ -296,9 +293,14 @@ def tool_main(tool, use_id, enable, test, verbose, force):
                     tool_status = "already enabled"
 
                     if verbose:
-                        found_display = typer.style(
-                            tool_status.upper(), fg=typer.colors.GREEN
-                        )
+                        if enable:
+                            found_display = typer.style(
+                                tool_status.upper(), fg=typer.colors.GREEN
+                            )
+                        else:
+                            found_display = typer.style(
+                                "ENABLED", fg=typer.colors.GREEN
+                            )
                 elif enable:
                     tool_tab.update(hidden=False, position=3)
                     tool_status = "enabled"
@@ -325,10 +327,17 @@ def tool_main(tool, use_id, enable, test, verbose, force):
                     typer.echo(f"- ({index + 1}/{TOTAL}) {message}")
 
         if not error and verbose:
+            if pandas.isna(course_id):
+                course_display = f"{long_name} ({canvas_course_id})"
+            else:
+                course_display = f"{course_id}"
             typer.echo(
                 f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for'
-                f" {course_id}."
+                f" {course_display}."
             )
+
+        if pandas.isna(course_id):
+            report.at[index, "course_id"] = f"{short_name} ({canvas_account_id})"
 
         report.at[index, "tool status"] = tool_status
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
