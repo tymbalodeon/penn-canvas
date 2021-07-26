@@ -44,7 +44,7 @@ RESERVE_ACCOUNTS = [
 
 
 def check_tool(tool):
-    if tool == "Reserve" or tool == "Reserves":
+    if tool.lower() == "reserve" or tool == "reserves":
         return "Course Materials @ Penn Libraries"
     else:
         return tool
@@ -402,7 +402,10 @@ def tool_main(tool, use_id, enable, test, verbose, force):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
 
-    typer.echo(") Processing courses...")
+    if enable:
+        typer.echo(f') Enabling "{tool}" for courses...')
+    else:
+        typer.echo(f') Checking courses for "{tool}"...')
 
     toggle_progress_bar(
         report,

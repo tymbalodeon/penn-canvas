@@ -6,9 +6,9 @@ import pandas
 import typer
 from canvasapi import Canvas
 
-CANVAS_URL_PROD = "https://canvas.upenn.edu/"
-CANVAS_URL_TEST = "https://upenn.test.instructure.com/"
-CANVAS_URL_OPEN = "https://upenn-catalog.instructure.com/"
+CANVAS_URL_PROD = "https://canvas.upenn.edu"
+CANVAS_URL_TEST = "https://upenn.test.instructure.com"
+CANVAS_URL_OPEN = "https://upenn-catalog.instructure.com"
 CONFIG_DIR = Path.home() / ".config"
 CONFIG_PATH = CONFIG_DIR / "penn-canvas"
 

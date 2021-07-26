@@ -239,9 +239,7 @@ def storage_main(test, verbose, force, increase=1000):
         index = course[0]
         canvas_id = course[1]
         sis_id = course[2]
-
-        total = args[0]
-        increase = args[1]
+        total, increase = args
 
         needs_increase, message = check_percent_storage(course, canvas, verbose, total)
 

@@ -2,13 +2,15 @@ import csv
 
 import requests
 
-from .helpers import API_KEY_PROD
-
-headers = {"Authorization": f"Bearer {API_KEY_PROD}"}
+from .helpers import CANVAS_URL_PROD, check_config
 
 
-def check_user(user, start):
-    url = f"https://canvas.upenn.edu/api/v1/users/{user}/page_views?start_time={start}&per_page=100"
+def check_user(user, start, test, key):
+    headers = {"Authorization": f"Bearer {key}"}
+    url = (
+        f"{CANVAS_URL_PROD}/api/v1/users/{user}/"
+        f"page_views?start_time={start}&per_page=100"
+    )
     result = f"Student_Activity_User_{user}.csv"
     output = csv.writer(open(result, "w+", newline=""))
 
@@ -57,5 +59,8 @@ def check_user(user, start):
 
 
 def integrity_main(test, users, start, end):
+    production, development = check_config()[:2]
+    key = production if not test else development
+
     for user in users:
-        check_user(user, start)
+        check_user(user, start, key)
