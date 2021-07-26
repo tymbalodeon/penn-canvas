@@ -1,5 +1,4 @@
 import typer
-from canvasapi import Canvas
 
 from .helpers import get_canvas
 

@@ -248,7 +248,7 @@ def nso_main(test, verbose, force):
                 try:
                     course.get_user(canvas_user)
                 except Exception:
-                    status = f"user not enrolled in course"
+                    status = "user not enrolled in course"
 
             except Exception as error:
                 status = error

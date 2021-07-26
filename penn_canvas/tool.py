@@ -272,7 +272,8 @@ def print_messages(
     if int(not_participating):
         message = typer.style(not_participating, fg=typer.colors.YELLOW)
         typer.echo(
-            f'- Found {message} courses in schools not participating in automatic enabling of "{tool}".'
+            f"- Found {message} courses in schools not participating in automatic"
+            f' enabling of "{tool}".'
         )
 
     if int(error):

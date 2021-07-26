@@ -1,9 +1,8 @@
 import csv
-import json
 
 import requests
 
-from .helpers import API_KEY_PROD, get_canvas
+from .helpers import API_KEY_PROD
 
 headers = {"Authorization": f"Bearer {API_KEY_PROD}"}
 
@@ -58,5 +57,5 @@ def check_user(user, start):
 
 
 def integrity_main(test, users, start, end):
-    for user in user:
+    for user in users:
         check_user(user, start)

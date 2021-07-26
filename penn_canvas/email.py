@@ -331,12 +331,14 @@ def print_messages(
 
     if int(errors) > 0:
         message = typer.style(
-            f"Failed to activate email(s) for {errors} supported users with (an) unconfirmed email account(s).",
+            f"Failed to activate email(s) for {errors} supported users with (an)"
+            " unconfirmed email account(s).",
             fg=typer.colors.RED,
         )
         log_path_display = typer.style(log_path, fg=typer.colors.GREEN)
         typer.echo(
-            f"- {message}. Affected accounts are recorded in the log file: {log_path_display}"
+            f"- {message}. Affected accounts are recorded in the log file:"
+            f" {log_path_display}"
         )
 
     if int(user_not_found) > 0:
