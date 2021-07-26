@@ -101,7 +101,7 @@ def cleanup_report(report, start=0):
     data = data[["id", "sis id", "account id", "storage used in MB"]]
     data = data[data["storage used in MB"] > 0]
     data.sort_values(by=["storage used in MB"], inplace=True)
-    data = data.astype("string", copy=False)
+    data = data.astype("string", copy=False, errors="ignore")
     data = data[data["account id"].isin(SUB_ACCOUNTS)]
     data.reset_index(drop=True, inplace=True)
     TOTAL = len(data.index)
@@ -169,6 +169,7 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
             use_sis_id=True,
         )
         subaccount_id = canvas_course.account_id
+        subaccount_id = str(subaccount_id)
         error = "none"
     except Exception:
         canvas_course = None

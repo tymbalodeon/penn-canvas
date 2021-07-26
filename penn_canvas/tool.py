@@ -109,7 +109,7 @@ def cleanup_report(reports, report_display, start=0):
             ]
         ]
         data.drop_duplicates(inplace=True)
-        data = data.astype("string", copy=False)
+        data = data.astype("string", copy=False, errors="ignore")
         data_frames.append(data)
 
     data_frame = pandas.concat(data_frames, ignore_index=True)

@@ -99,7 +99,7 @@ def cleanup_report(report, start=0):
     data = pandas.read_csv(report)
     data = data[["canvas_user_id"]]
     data.drop_duplicates(inplace=True)
-    data = data.astype("string", copy=False)
+    data = data.astype("string", copy=False, errors="ignore")
     TOTAL = len(data.index)
     data = data.loc[start:TOTAL, :]
 

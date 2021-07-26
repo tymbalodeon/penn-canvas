@@ -98,7 +98,7 @@ def cleanup_data(input_file, extension, start=0):
 
     data.columns = data.columns.str.lower()
     data["pennkey"] = data["pennkey"].str.lower()
-    data = data.astype("string", copy=False)
+    data = data.astype("string", copy=False, errors="ignore")
     data[list(data)] = data[list(data)].apply(lambda column: column.str.strip())
     TOTAL = len(data.index)
 
