@@ -236,6 +236,14 @@ def tool(
             " pre-existing incomplete result file and overwrite that file."
         ),
     ),
+    clear_processed: bool = typer.Option(
+        False,
+        "--clear-processed",
+        help=(
+            "Clear the list of courses already processed for the term(s). Only runs if"
+            " '--enable' is also used."
+        ),
+    ),
 ):
     """
     Returns a list of courses with TOOL enabled or enables TOOL for a list of
@@ -260,4 +268,4 @@ def tool(
     output file.
     """
 
-    tool_main(tool, use_id, enable, test, verbose, force)
+    tool_main(tool, use_id, enable, test, verbose, force, clear_processed)

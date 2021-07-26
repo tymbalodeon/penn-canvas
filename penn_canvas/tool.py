@@ -1,3 +1,4 @@
+import os
 from csv import writer
 from datetime import datetime
 from pathlib import Path
@@ -139,8 +140,6 @@ def cleanup_report(reports, report_display, start=0):
 
 
 def get_processed_courses(processed_path):
-    typer.echo(") Finding courses already processed...")
-
     if processed_path.is_file():
         result = pandas.read_csv(processed_path)
         result = result.astype("string", copy=False, errors="ignore")
@@ -300,7 +299,7 @@ def print_messages(
     typer.secho("FINISHED", fg=typer.colors.YELLOW)
 
 
-def tool_main(tool, use_id, enable, test, verbose, force):
+def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
     def check_tool_usage(course, canvas, verbose, args):
         if len(args) == 4:
             tool, use_id, enable, PROCESSED_COURSES = args
@@ -420,6 +419,23 @@ def tool_main(tool, use_id, enable, test, verbose, force):
         PROCESSED_PATH = (
             PROCESSED / f"{tool.replace(' ', '_')}_tool_enable_processed_courses.csv"
         )
+
+        if clear_processed:
+            proceed = typer.confirm(
+                "You have asked to clear the list of courses already processed."
+                " This list makes subsequent runs of the command faster. Are you sure"
+                " you want to do this?"
+            )
+        else:
+            proceed = False
+
+        if proceed:
+            typer.echo(") Clearing list of courses already processed...")
+            if PROCESSED_PATH.exists():
+                os.remove(PROCESSED_PATH)
+        else:
+            typer.echo(") Finding courses already processed...")
+
         PROCESSED_COURSES = get_processed_courses(PROCESSED_PATH)
 
     report, TOTAL = cleanup_report(REPORTS, report_display, START)
