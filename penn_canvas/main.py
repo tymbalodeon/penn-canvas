@@ -172,6 +172,9 @@ def storage(
             " pre-existing incomplete result file and overwrite that file."
         ),
     ),
+    increase: int = typer.Option(
+        1000, "--increase", help="The amount in MB to increase a course's storage."
+    ),
 ):
     """
     Increases the storage quota for each course that currently uses 79% or more
@@ -192,7 +195,7 @@ def storage(
     NOTE: Input filename must include the current date in order to be accepted.
     """
 
-    storage_main(test, verbose, force)
+    storage_main(test, verbose, force, increase)
 
 
 @app.command()

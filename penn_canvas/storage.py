@@ -158,7 +158,7 @@ def check_percent_storage(course, canvas, verbose, total):
         return False, "course not found"
 
 
-def increase_quota(sis_id, canvas, verbose, increase=1000):
+def increase_quota(sis_id, canvas, verbose, increase):
     if sis_id[:4] != "SRS_":
         middle = sis_id[:-5][-6:]
         sis_id = f"SRS_{sis_id[:11]}-{middle[:3]}-{middle[3:]} {sis_id[-5:]}"
@@ -168,8 +168,7 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
             sis_id,
             use_sis_id=True,
         )
-        subaccount_id = canvas_course.account_id
-        subaccount_id = str(subaccount_id)
+        subaccount_id = str(canvas_course.account_id)
         error = "none"
     except Exception:
         canvas_course = None
@@ -179,6 +178,8 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
     if canvas_course:
         old_quota = canvas_course.storage_quota_mb
         new_quota = old_quota + increase
+        old_quota = str(int(old_quota))
+        new_quota = str(int(new_quota))
 
         try:
             canvas_course.update(course={"storage_quota_mb": new_quota})
@@ -233,16 +234,19 @@ def print_messages(total, increased, errors):
     typer.secho("FINISHED", fg=typer.colors.YELLOW)
 
 
-def storage_main(test, verbose, force):
-    def check_and_increase_storage(course, canvas, verbose, total):
+def storage_main(test, verbose, force, increase=1000):
+    def check_and_increase_storage(course, canvas, verbose, args):
         index = course[0]
         canvas_id = course[1]
         sis_id = course[2]
 
+        total = args[0]
+        increase = args[1]
+
         needs_increase, message = check_percent_storage(course, canvas, verbose, total)
 
         if needs_increase:
-            row = increase_quota(message, canvas, verbose)
+            row = increase_quota(message, canvas, verbose, increase)
         elif message is None:
             row = [canvas_id, sis_id, "N/A", "N/A", "increase not required"]
         else:
@@ -271,7 +275,12 @@ def storage_main(test, verbose, force):
     typer.echo(") Processing courses...")
 
     toggle_progress_bar(
-        report, check_and_increase_storage, CANVAS, verbose, args=TOTAL, index=True
+        report,
+        check_and_increase_storage,
+        CANVAS,
+        verbose,
+        args=(TOTAL, increase),
+        index=True,
     )
     INCREASED_COUNT, ERROR_COUNT = process_result()
     print_messages(TOTAL, INCREASED_COUNT, ERROR_COUNT)
