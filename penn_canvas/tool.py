@@ -18,7 +18,7 @@ from .helpers import (
 
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
-REPORTS, RESULTS = get_command_paths("tool")
+REPORTS, RESULTS, PROCESSED = get_command_paths("tool", processed=True)
 HEADERS = [
     "index",
     "canvas_course_id",
@@ -136,6 +136,18 @@ def cleanup_report(reports, report_display, start=0):
     data_frame = data_frame.loc[start:TOTAL, :]
 
     return data_frame, str(TOTAL)
+
+
+def get_processed_courses(processed_path):
+    typer.echo(") Finding courses already processed...")
+
+    if processed_path.is_file():
+        result = pandas.read_csv(processed_path)
+        result = result.astype("string", copy=False, errors="ignore")
+        return result["canvas_course_id"].tolist()
+    else:
+        make_csv_paths(PROCESSED, processed_path, ["canvas_course_id"])
+        return list()
 
 
 def process_result(tool, enable, result_path):
@@ -290,7 +302,11 @@ def print_messages(
 
 def tool_main(tool, use_id, enable, test, verbose, force):
     def check_tool_usage(course, canvas, verbose, args):
-        tool, use_id, enable = args
+        if len(args) == 4:
+            tool, use_id, enable, PROCESSED_COURSES = args
+        else:
+            tool, use_id, enable = args
+
         tool_display = typer.style(tool, fg=typer.colors.CYAN)
         (
             index,
@@ -306,13 +322,18 @@ def tool_main(tool, use_id, enable, test, verbose, force):
         tool_status = "not found"
         error = False
 
-        if (
+        if enable and canvas_course_id in PROCESSED_COURSES:
+            tool_status = "already processed"
+            found_display = typer.style(tool_status.upper(), fg=typer.colors.YELLOW)
+        elif (
             enable
             and tool == "Course Materials @ Penn Libraries"
             and canvas_account_id not in RESERVE_ACCOUNTS
         ):
             tool_status = "school not participating"
-            found_display = typer.style(tool_status.upper(), fg=typer.colors.YELLOW)
+            found_display = typer.style(
+                f"NOT ENABLED ({tool_status.upper()})", fg=typer.colors.YELLOW
+            )
         elif not enable and status != "active" and verbose:
             found_display = typer.style(tool_status.upper(), fg=typer.colors.YELLOW)
         else:
@@ -335,7 +356,7 @@ def tool_main(tool, use_id, enable, test, verbose, force):
                     if verbose:
                         if enable:
                             found_display = typer.style(
-                                tool_status.upper(), fg=typer.colors.GREEN
+                                tool_status.upper(), fg=typer.colors.YELLOW
                             )
                         else:
                             found_display = typer.style(
@@ -372,16 +393,10 @@ def tool_main(tool, use_id, enable, test, verbose, force):
             else:
                 course_display = f"{course_id}"
 
-            if tool_status != "school not participating":
-                typer.echo(
-                    f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for'
-                    f" {course_display}."
-                )
-            else:
-                typer.echo(
-                    f'- ({index + 1}/{TOTAL}) "{tool_display}" not enabled for'
-                    f" {course_display}: {found_display}."
-                )
+            typer.echo(
+                f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for'
+                f" {course_display}."
+            )
 
         if pandas.isna(course_id):
             report.at[index, "course_id"] = f"{short_name} ({canvas_account_id})"
@@ -389,13 +404,24 @@ def tool_main(tool, use_id, enable, test, verbose, force):
         report.at[index, "tool status"] = tool_status
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
+        if tool_status != "already processed":
+            with open(PROCESSED_PATH, "a+", newline="") as processed_file:
+                writer(processed_file).writerow([canvas_course_id])
+
     tool = check_tool(tool)
     REPORTS, report_display = find_course_report()
     RESULT_PATH = (
         RESULTS
-        / f"{TODAY_AS_Y_M_D}_{tool}_tool_{'enable' if enable else 'report'}_result.csv"
+        / f"{TODAY_AS_Y_M_D}_{tool.replace(' ', '_')}_tool_{'enable' if enable else 'report'}_result.csv"
     )
     START = get_start_index(force, RESULT_PATH)
+
+    if enable:
+        PROCESSED_PATH = (
+            PROCESSED / f"{tool.replace(' ', '_')}_tool_enable_processed_courses.csv"
+        )
+        PROCESSED_COURSES = get_processed_courses(PROCESSED_PATH)
+
     report, TOTAL = cleanup_report(REPORTS, report_display, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_skip_message(START, "course")
@@ -404,20 +430,28 @@ def tool_main(tool, use_id, enable, test, verbose, force):
 
     if enable:
         if tool == "Course Materials @ Penn Libraries":
-            typer.echo(
-                f') Enabling "{tool}" for courses in {", ".join(RESERVE_ACCOUNTS)}...'
+            ACCOUNTS_DISPLAY = map(
+                lambda account: typer.style(account, fg=typer.colors.MAGENTA),
+                RESERVE_ACCOUNTS,
             )
+            ACCOUNTS = f"{', '.join(ACCOUNTS_DISPLAY)}"
+            typer.echo(f') Enabling "{tool}" for courses in {ACCOUNTS}...')
         else:
             typer.echo(f') Enabling "{tool}" for courses...')
     else:
         typer.echo(f') Checking courses for "{tool}"...')
+
+    if enable:
+        ARGS = (tool, use_id, enable, PROCESSED_COURSES)
+    else:
+        ARGS = (tool, use_id, enable)
 
     toggle_progress_bar(
         report,
         check_tool_usage,
         CANVAS,
         verbose,
-        args=(tool, use_id, enable),
+        args=ARGS,
         index=True,
     )
     (

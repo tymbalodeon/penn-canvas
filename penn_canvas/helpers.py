@@ -173,17 +173,23 @@ def make_csv_paths(csv_dir, csv_file, headers):
             writer(result).writerow(headers)
 
 
-def get_command_paths(command, logs=False, input_dir=False):
+def get_command_paths(command, logs=False, processed=False, input_dir=False):
     COMMAND_DIRECTORY = Path.home() / f"penn-canvas/{command}"
     input_name = "input" if input_dir else "reports"
     REPORTS = COMMAND_DIRECTORY / input_name
     RESULTS = COMMAND_DIRECTORY / "results"
     LOGS = COMMAND_DIRECTORY / "logs"
+    PROCESSED = COMMAND_DIRECTORY / "processed"
+
+    PATHS = [REPORTS, RESULTS]
 
     if logs:
-        return REPORTS, RESULTS, LOGS
-    else:
-        return REPORTS, RESULTS
+        PATHS.append(LOGS)
+
+    if processed:
+        PATHS.append(PROCESSED)
+
+    return tuple(PATHS)
 
 
 def check_previous_output(result_path):
