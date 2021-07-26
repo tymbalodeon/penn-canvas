@@ -31,6 +31,17 @@ HEADERS = [
     "tool status",
 ]
 
+RESERVE_ACCOUNTS = [
+    "99243",
+    "128877",
+    "99244",
+    "99239",
+    "99242",
+    "99237",
+    "99238",
+    "99240",
+]
+
 
 def find_course_report():
     typer.echo(") Finding Canvas Provisioning (Courses) report(s)...")
