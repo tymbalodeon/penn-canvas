@@ -403,7 +403,12 @@ def tool_main(tool, use_id, enable, test, verbose, force):
     CANVAS = get_canvas(INSTANCE)
 
     if enable:
-        typer.echo(f') Enabling "{tool}" for courses...')
+        if tool == "Course Materials @ Penn Libraries":
+            typer.echo(
+                f') Enabling "{tool}" for courses in {", ".join(RESERVE_ACCOUNTS)}...'
+            )
+        else:
+            typer.echo(f') Enabling "{tool}" for courses...')
     else:
         typer.echo(f') Checking courses for "{tool}"...')
 
