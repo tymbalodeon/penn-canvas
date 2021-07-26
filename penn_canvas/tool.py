@@ -428,6 +428,8 @@ def tool_main(tool, use_id, enable, test, verbose, force):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
 
+    tool_display = typer.style(tool, fg=typer.colors.CYAN)
+
     if enable:
         if tool == "Course Materials @ Penn Libraries":
             ACCOUNTS_DISPLAY = map(
@@ -435,11 +437,11 @@ def tool_main(tool, use_id, enable, test, verbose, force):
                 RESERVE_ACCOUNTS,
             )
             ACCOUNTS = f"{', '.join(ACCOUNTS_DISPLAY)}"
-            typer.echo(f') Enabling "{tool}" for courses in {ACCOUNTS}...')
+            typer.echo(f') Enabling "{tool_display}" for courses in {ACCOUNTS}...')
         else:
-            typer.echo(f') Enabling "{tool}" for courses...')
+            typer.echo(f') Enabling "{tool_display}" for courses...')
     else:
-        typer.echo(f') Checking courses for "{tool}"...')
+        typer.echo(f') Checking courses for "{tool_display}"...')
 
     if enable:
         ARGS = (tool, use_id, enable, PROCESSED_COURSES)
