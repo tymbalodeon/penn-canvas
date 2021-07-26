@@ -132,11 +132,11 @@ def cleanup_report(reports, report_display, start=0):
         data_frames.append(data)
 
     data_frame = pandas.concat(data_frames, ignore_index=True)
-
     TOTAL = len(data_frame.index)
     data_frame = data_frame.loc[start:TOTAL, :]
+    TERMS = data_frame["term_id"].drop_duplicates().tolist()
 
-    return data_frame, str(TOTAL)
+    return data_frame, str(TOTAL), TERMS
 
 
 def get_processed_courses(processed_path):
@@ -403,7 +403,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         report.at[index, "tool status"] = tool_status
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
-        if tool_status != "already processed":
+        if enable and tool_status != "already processed":
             with open(PROCESSED_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow([canvas_course_id])
 
@@ -438,7 +438,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
 
         PROCESSED_COURSES = get_processed_courses(PROCESSED_PATH)
 
-    report, TOTAL = cleanup_report(REPORTS, report_display, START)
+    report, TOTAL, TERMS = cleanup_report(REPORTS, report_display, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
@@ -446,18 +446,27 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
 
     tool_display = typer.style(tool, fg=typer.colors.CYAN)
 
+    TERMS_DISPLAY = map(
+        lambda term: typer.style(term, fg=typer.colors.BLUE),
+        TERMS,
+    )
+    STYLED_TERMS = f"{', '.join(TERMS_DISPLAY)}"
+
     if enable:
+
         if tool == "Course Materials @ Penn Libraries":
             ACCOUNTS_DISPLAY = map(
                 lambda account: typer.style(account, fg=typer.colors.MAGENTA),
                 RESERVE_ACCOUNTS,
             )
             ACCOUNTS = f"{', '.join(ACCOUNTS_DISPLAY)}"
-            typer.echo(f') Enabling "{tool_display}" for courses in {ACCOUNTS}...')
+            typer.echo(
+                f') Enabling "{tool_display}" for {STYLED_TERMS} courses in {ACCOUNTS}...'
+            )
         else:
-            typer.echo(f') Enabling "{tool_display}" for courses...')
+            typer.echo(f') Enabling "{tool_display}" for {STYLED_TERMS} courses...')
     else:
-        typer.echo(f') Checking courses for "{tool_display}"...')
+        typer.echo(f') Checking {STYLED_TERMS} courses for "{tool_display}"...')
 
     if enable:
         ARGS = (tool, use_id, enable, PROCESSED_COURSES)
