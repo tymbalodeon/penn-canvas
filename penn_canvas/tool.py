@@ -43,6 +43,13 @@ RESERVE_ACCOUNTS = [
 ]
 
 
+def check_tool(tool):
+    if tool == "Reserve" or tool == "Reserves":
+        return "Course Materials @ Penn Libraries"
+    else:
+        return tool
+
+
 def find_course_report():
     typer.echo(") Finding Canvas Provisioning (Courses) report(s)...")
 
@@ -137,22 +144,26 @@ def process_result(tool, enable, result_path):
     ALREADY_ENABLED = result[result["tool status"] == "already enabled"]
     DISABLED = result[result["tool status"] == "disabled"]
     NOT_FOUND = result[result["tool status"] == "not found"]
+    NOT_PARTICIPATING = result[result["tool status"] == "school not participating"]
     ERROR = result[
         (result["tool status"] != "enabled")
         & (result["tool status"] != "already enabled")
         & (result["tool status"] != "disabled")
         & (result["tool status"] != "not found")
+        & (result["tool status"] != "school not participating")
     ]
     ENABLED_COUNT = len(ENABLED)
     ALREADY_ENABLED_COUNT = len(ALREADY_ENABLED)
     DISABLED_COUNT = str(len(DISABLED))
     NOT_FOUND_COUNT = str(len(NOT_FOUND))
+    NOT_PARTICIPATING_COUNT = str(len(NOT_PARTICIPATING))
     ERROR_COUNT = len(ERROR)
 
     if ERROR_COUNT:
         result = result[
             (result["tool status"] != "disabled")
             & (result["tool status"] != "not found")
+            & (result["tool status"] != "school not participating")
         ]
 
         if enable:
@@ -220,6 +231,7 @@ def process_result(tool, enable, result_path):
         str(ALREADY_ENABLED_COUNT),
         DISABLED_COUNT,
         NOT_FOUND_COUNT,
+        NOT_PARTICIPATING_COUNT,
         str(ERROR_COUNT),
     )
 
@@ -231,6 +243,7 @@ def print_messages(
     already_enabled,
     disabled,
     not_found,
+    not_participating,
     error,
     total,
     result_path,
@@ -255,6 +268,12 @@ def print_messages(
     if int(not_found):
         message = typer.style(not_found, fg=typer.colors.YELLOW)
         typer.echo(f'- Found {message} courses with no "{tool}" tab.')
+
+    if int(not_participating):
+        message = typer.style(not_participating, fg=typer.colors.YELLOW)
+        typer.echo(
+            f'- Found {message} courses in schools not participating in automatic enabling of "{tool}".'
+        )
 
     if int(error):
         message = typer.style(
@@ -286,7 +305,14 @@ def tool_main(tool, use_id, enable, test, verbose, force):
         tool_status = "not found"
         error = False
 
-        if not enable and status != "active" and verbose:
+        if (
+            enable
+            and tool == "Course Materials @ Penn Libraries"
+            and canvas_account_id not in RESERVE_ACCOUNTS
+        ):
+            tool_status = "school not participating"
+            found_display = typer.style(tool_status.upper(), fg=typer.colors.YELLOW)
+        elif not enable and status != "active" and verbose:
             found_display = typer.style(tool_status.upper(), fg=typer.colors.YELLOW)
         else:
             try:
@@ -329,25 +355,32 @@ def tool_main(tool, use_id, enable, test, verbose, force):
                         found_display = typer.style(
                             tool_status.upper(), fg=typer.colors.YELLOW
                         )
-            except Exception as error:
-                tool_status = f"{str(error)}"
+            except Exception as error_message:
+                tool_status = f"{str(error_message)}"
                 error = True
 
                 if verbose:
                     message = typer.style(
-                        f"ERROR: Failed to process {course_id} ({error})"
+                        f"ERROR: Failed to process {course_id} ({error_message})"
                     )
                     typer.echo(f"- ({index + 1}/{TOTAL}) {message}")
 
-        if not error and verbose:
+        if verbose and not error:
             if pandas.isna(course_id):
                 course_display = f"{long_name} ({canvas_course_id})"
             else:
                 course_display = f"{course_id}"
-            typer.echo(
-                f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for'
-                f" {course_display}."
-            )
+
+            if tool_status != "school not participating":
+                typer.echo(
+                    f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for'
+                    f" {course_display}."
+                )
+            else:
+                typer.echo(
+                    f'- ({index + 1}/{TOTAL}) "{tool_display}" not enabled for'
+                    f" {course_display}: {found_display}."
+                )
 
         if pandas.isna(course_id):
             report.at[index, "course_id"] = f"{short_name} ({canvas_account_id})"
@@ -355,6 +388,7 @@ def tool_main(tool, use_id, enable, test, verbose, force):
         report.at[index, "tool status"] = tool_status
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
+    tool = check_tool(tool)
     REPORTS, report_display = find_course_report()
     RESULT_PATH = (
         RESULTS
@@ -377,9 +411,14 @@ def tool_main(tool, use_id, enable, test, verbose, force):
         args=(tool, use_id, enable),
         index=True,
     )
-    enabled, already_enabled, disabled, not_found, error = process_result(
-        tool, enable, RESULT_PATH
-    )
+    (
+        enabled,
+        already_enabled,
+        disabled,
+        not_found,
+        not_participating,
+        error,
+    ) = process_result(tool, enable, RESULT_PATH)
     print_messages(
         tool,
         enable,
@@ -387,6 +426,7 @@ def tool_main(tool, use_id, enable, test, verbose, force):
         already_enabled,
         disabled,
         not_found,
+        not_participating,
         error,
         TOTAL,
         RESULT_PATH,
