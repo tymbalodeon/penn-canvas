@@ -70,7 +70,7 @@ def find_course_report():
         raise typer.Exit(1)
     else:
         CSV_FILES = Path(REPORTS).glob("*.csv")
-        TODAYS_REPORTS = list(filter(lambda file: TODAY in file.name, CSV_FILES))
+        TODAYS_REPORTS = list(filter(lambda report: TODAY in report.name, CSV_FILES))
 
         if not len(TODAYS_REPORTS):
             error = typer.style(
@@ -414,6 +414,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         / f"{TODAY_AS_Y_M_D}_{tool.replace(' ', '_')}_tool_{'enable' if enable else 'report'}_result.csv"
     )
     START = get_start_index(force, RESULT_PATH)
+    report, TOTAL, TERMS = cleanup_report(REPORTS, report_display, START)
 
     if enable:
         PROCESSED_PATH = (
@@ -438,14 +439,11 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
 
         PROCESSED_COURSES = get_processed_courses(PROCESSED_PATH)
 
-    report, TOTAL, TERMS = cleanup_report(REPORTS, report_display, START)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-
     tool_display = typer.style(tool, fg=typer.colors.CYAN)
-
     TERMS_DISPLAY = map(
         lambda term: typer.style(term, fg=typer.colors.BLUE),
         TERMS,
