@@ -2,7 +2,8 @@ import csv
 import json
 
 import requests
-from canvas_shared import *
+
+from .helpers import API_KEY_PROD, API_KEY_TEST, get_canvas, make_data_dir
 
 TESTING = False
 
