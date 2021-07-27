@@ -70,32 +70,35 @@ def make_config():
 
 
 def display_config():
-    (
-        production,
-        development,
-        open_canvas,
-        data_warehouse_user,
-        data_warehouse_password,
-        data_warehouse_dsn,
-    ) = check_config(CONFIG_PATH)
+    if confirm(
+        "This command will display sensitive information on your screen. Are you sure you want to proceed?"
+    ):
+        (
+            production,
+            development,
+            open_canvas,
+            data_warehouse_user,
+            data_warehouse_password,
+            data_warehouse_dsn,
+        ) = check_config(CONFIG_PATH)
 
-    production = style(f"{production}", fg=colors.YELLOW)
-    development = style(f"{development}", fg=colors.YELLOW)
-    open_canvas = style(f"{open_canvas}", fg=colors.YELLOW)
-    data_warehouse_user = style(f"{data_warehouse_user}", fg=colors.YELLOW)
-    data_warehouse_password = style(f"{data_warehouse_password}", fg=colors.YELLOW)
-    data_warehouse_dsn = style(f"{data_warehouse_dsn}", fg=colors.YELLOW)
-    config_path = style(f"{CONFIG_PATH}", fg=colors.GREEN)
+        production = style(f"{production}", fg=colors.YELLOW)
+        development = style(f"{development}", fg=colors.YELLOW)
+        open_canvas = style(f"{open_canvas}", fg=colors.YELLOW)
+        data_warehouse_user = style(f"{data_warehouse_user}", fg=colors.YELLOW)
+        data_warehouse_password = style(f"{data_warehouse_password}", fg=colors.YELLOW)
+        data_warehouse_dsn = style(f"{data_warehouse_dsn}", fg=colors.YELLOW)
+        config_path = style(f"{CONFIG_PATH}", fg=colors.GREEN)
 
-    echo(
-        f"\nCONFIG: {config_path}\n"
-        f"\nCANVAS_KEY_PROD: {production}"
-        f"\nCANVAS_KEY_DEV: {development}"
-        f"\nCANVAS_KEY_OPEN: {open_canvas}"
-        f"\nDATA_WAREHOUSE_USER: {data_warehouse_user}"
-        f"\nDATA_WAREHOUSE_PASSWORD: {data_warehouse_password}"
-        f"\nDATA_WAREHOUSE_DSN: {data_warehouse_dsn}"
-    )
+        echo(
+            f"\nCONFIG: {config_path}\n"
+            f"\nCANVAS_KEY_PROD: {production}"
+            f"\nCANVAS_KEY_DEV: {development}"
+            f"\nCANVAS_KEY_OPEN: {open_canvas}"
+            f"\nDATA_WAREHOUSE_USER: {data_warehouse_user}"
+            f"\nDATA_WAREHOUSE_PASSWORD: {data_warehouse_password}"
+            f"\nDATA_WAREHOUSE_DSN: {data_warehouse_dsn}"
+        )
 
 
 def check_config(config):
