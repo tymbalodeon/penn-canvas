@@ -238,7 +238,7 @@ def process_result(tool, terms, enable, result_path):
 
         result.to_csv(result_path, mode="a", index=False)
         final_path = (
-            RESULTS / f"{result_path.stem}_{'_'.join(terms).replace('/', '')}.csv"
+            RESULTS / f"{'_'.join(terms).replace('/', '')}_{result_path.stem}.csv"
         )
         result_path = result_path.rename(final_path)
 
@@ -406,8 +406,8 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
     tool = check_tool(tool)
     REPORTS, report_display = find_course_report()
     RESULT_FILE_NAME = (
-        f"{tool.replace(' ', '_')}_tool_{'enable' if enable else 'report'}_"
-        f"result_{TODAY_AS_Y_M_D}.csv"
+        f"{tool.replace(' ', '_')}_tool_{'enable' if enable else 'report'}"
+        f"_{TODAY_AS_Y_M_D}.csv"
     )
     RESULT_PATH = RESULTS / RESULT_FILE_NAME
     START = get_start_index(force, RESULT_PATH)
