@@ -150,7 +150,7 @@ def get_processed_courses(processed_path):
         return list()
 
 
-def process_result(tool, enable, result_path):
+def process_result(tool, terms, enable, result_path):
     result = pandas.read_csv(result_path)
     ENABLED = result[result["tool status"] == "enabled"]
     ALREADY_ENABLED = result[result["tool status"] == "already enabled"]
@@ -237,6 +237,10 @@ def process_result(tool, enable, result_path):
                 )
 
         result.to_csv(result_path, mode="a", index=False)
+        final_path = (
+            RESULTS / f"{result_path.stem}_{'_'.join(terms).replace('/', '')}.csv"
+        )
+        result_path = result_path.rename(final_path)
 
     return (
         str(ENABLED_COUNT),
@@ -245,6 +249,7 @@ def process_result(tool, enable, result_path):
         NOT_FOUND_COUNT,
         NOT_PARTICIPATING_COUNT,
         str(ERROR_COUNT),
+        result_path,
     )
 
 
@@ -519,7 +524,8 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         not_found,
         not_participating,
         error,
-    ) = process_result(tool, enable, RESULT_PATH)
+        result_path,
+    ) = process_result(tool, terms, enable, RESULT_PATH)
     print_messages(
         tool,
         enable,
@@ -530,5 +536,5 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         not_participating,
         error,
         total,
-        RESULT_PATH,
+        result_path,
     )
