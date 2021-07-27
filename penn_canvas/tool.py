@@ -443,7 +443,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
             )
             typer.echo(f"- {message}")
             run_again = typer.confirm(
-                f"Would you like to generate a new report for term {term} (y) or skip (N) [recommended]"
+                f"Would you like to generate a report for term {term} again?"
             )
             if not run_again:
                 TERMS_TO_RUN.append(term)
@@ -452,8 +452,15 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
             for term in TERMS_TO_RUN:
                 report = report[report["term_id"] != term]
 
+            report.reset_index(inplace=True)
+            report.drop(["index"], axis=1, inplace=True)
             total = str(len(report.index))
             terms = report["term_id"].drop_duplicates().tolist()
+
+            if not terms:
+                typer.echo("NO NEW TERMS TO PROCESS")
+                typer.secho("FINISHED", fg=typer.colors.YELLOW)
+                raise typer.Exit()
 
     if enable:
         PROCESSED_PATH = (
