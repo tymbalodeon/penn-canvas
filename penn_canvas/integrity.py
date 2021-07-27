@@ -1,6 +1,6 @@
-import csv
+from csv import writer
 
-import requests
+from requests import get
 
 from .helpers import CANVAS_URL_PROD, check_config
 
@@ -12,7 +12,7 @@ def check_user(user, start, test, key):
         f"page_views?start_time={start}&per_page=100"
     )
     result = f"Student_Activity_User_{user}.csv"
-    output = csv.writer(open(result, "w+", newline=""))
+    output = writer(open(result, "w+", newline=""))
 
     output.writerow(
         [
@@ -44,7 +44,7 @@ def check_user(user, start, test, key):
     last_page = False
 
     while not last_page:
-        response = requests.get(url, headers=headers)
+        response = get(url, headers=headers)
         response_json = response.json()
         links = response.links
 

@@ -3,8 +3,8 @@ from datetime import datetime
 from os import remove
 from pathlib import Path
 
-import pandas
-import typer
+from pandas import DataFrame, concat, isna, read_csv
+from typer import Exit, colors, confirm, echo, secho, style
 
 from .helpers import (
     colorize,
@@ -52,14 +52,14 @@ def check_tool(tool):
 
 
 def find_course_report():
-    typer.echo(") Finding Canvas Provisioning (Courses) report(s)...")
+    echo(") Finding Canvas Provisioning (Courses) report(s)...")
 
     if not REPORTS.exists():
         Path.mkdir(REPORTS, parents=True)
-        error = typer.style(
-            "- ERROR: Canvas tool reports directory not found.", fg=typer.colors.YELLOW
+        error = style(
+            "- ERROR: Canvas tool reports directory not found.", fg=colors.YELLOW
         )
-        typer.echo(
+        echo(
             f"{error} \n- Creating one for you at: {colorize_path(str(REPORTS))}\n-"
             " Please add a Canvas Provisioning (Courses) report for at least one term,"
             " and matching today's date, to this directory and then run this script"
@@ -67,18 +67,18 @@ def find_course_report():
             " report, run this command with the '--help' flag.)"
         )
 
-        raise typer.Exit(1)
+        raise Exit(1)
     else:
         CSV_FILES = [report for report in Path(REPORTS).glob("*.csv")]
         TODAYS_REPORTS = list(filter(lambda report: TODAY in report.name, CSV_FILES))
 
         if not len(TODAYS_REPORTS):
-            error = typer.style(
+            error = style(
                 "- ERROR: A Canvas Provisioning (Courses) CSV report matching today's"
                 " date was not found.",
-                fg=typer.colors.YELLOW,
+                fg=colors.YELLOW,
             )
-            typer.echo(
+            echo(
                 f"{error}\n- Please add a Canvas (Courses) Provisioning report for at"
                 " least one term, matching today's date, to the following directory"
                 f" and then run this script again: {colorize_path(str(REPORTS))}\n- (If"
@@ -86,7 +86,7 @@ def find_course_report():
                 " run this command with the '--help' flag.)"
             )
 
-            raise typer.Exit(1)
+            raise Exit(1)
         else:
             total = len(TODAYS_REPORTS)
 
@@ -95,27 +95,27 @@ def find_course_report():
             else:
                 report_display = "reports"
 
-            typer.echo(f"- Found {total} {report_display}:")
+            echo(f"- Found {total} {report_display}:")
 
             FOUND_PATHS = list()
 
             for path in TODAYS_REPORTS:
-                path = typer.style(path.stem, fg=typer.colors.GREEN)
+                path = style(path.stem, fg=colors.GREEN)
                 FOUND_PATHS.append(path)
 
             for path in FOUND_PATHS:
-                typer.echo(f"- {path}")
+                echo(f"- {path}")
 
             return TODAYS_REPORTS, report_display
 
 
 def cleanup_report(reports, report_display, start=0):
-    typer.echo(f") Preparing {report_display}...")
+    echo(f") Preparing {report_display}...")
 
     data_frames = list()
 
     for report in reports:
-        data = pandas.read_csv(report)
+        data = read_csv(report)
         data = data[
             [
                 "canvas_course_id",
@@ -131,7 +131,7 @@ def cleanup_report(reports, report_display, start=0):
         data = data.astype("string", copy=False, errors="ignore")
         data_frames.append(data)
 
-    data_frame = pandas.concat(data_frames, ignore_index=True)
+    data_frame = concat(data_frames, ignore_index=True)
     total = len(data_frame.index)
     data_frame = data_frame.loc[start:total, :]
     data_frame["term_id"].fillna("N/A", inplace=True)
@@ -142,7 +142,7 @@ def cleanup_report(reports, report_display, start=0):
 
 def get_processed_courses(processed_path):
     if processed_path.is_file():
-        result = pandas.read_csv(processed_path)
+        result = read_csv(processed_path)
         result = result.astype("string", copy=False, errors="ignore")
         return result["canvas_course_id"].tolist()
     else:
@@ -151,7 +151,7 @@ def get_processed_courses(processed_path):
 
 
 def process_result(tool, terms, enable, result_path):
-    result = pandas.read_csv(result_path)
+    result = read_csv(result_path)
     ENABLED = result[result["tool status"] == "enabled"]
     ALREADY_ENABLED = result[result["tool status"] == "already enabled"]
     DISABLED = result[result["tool status"] == "disabled"]
@@ -204,7 +204,7 @@ def process_result(tool, terms, enable, result_path):
         result = result[["canvas_account_id", "term_id", "course_id"]]
 
     result = result.groupby(["canvas_account_id", "term_id"], group_keys=False).apply(
-        pandas.DataFrame.sort_values, "course_id"
+        DataFrame.sort_values, "course_id"
     )
     result.rename(
         columns={
@@ -265,44 +265,44 @@ def print_messages(
     total,
     result_path,
 ):
-    tool = typer.style(tool, fg=typer.colors.CYAN)
-    typer.secho("SUMMARY:", fg=typer.colors.YELLOW)
-    typer.echo(f"- Processed {colorize(total)} courses.")
-    total_enabled = typer.style(enabled, fg=typer.colors.GREEN)
-    total_already_enabled = typer.style(already_enabled, fg=typer.colors.GREEN)
+    tool = style(tool, fg=colors.CYAN)
+    secho("SUMMARY:", fg=colors.YELLOW)
+    echo(f"- Processed {colorize(total)} courses.")
+    total_enabled = style(enabled, fg=colors.GREEN)
+    total_already_enabled = style(already_enabled, fg=colors.GREEN)
 
     if enable:
-        typer.echo(f'- Enabled "{tool}" for {total_enabled} courses.')
+        echo(f'- Enabled "{tool}" for {total_enabled} courses.')
         if int(total_already_enabled):
-            typer.echo(
+            echo(
                 f'- Found {total_already_enabled} courses with "{tool}" already'
                 " enabled."
             )
     else:
-        typer.echo(f'- Found {total_already_enabled} courses with "{tool}" enabled.')
-        typer.echo(f'- Found {colorize(disabled)} courses with disabled "{tool}" tab.')
+        echo(f'- Found {total_already_enabled} courses with "{tool}" enabled.')
+        echo(f'- Found {colorize(disabled)} courses with disabled "{tool}" tab.')
 
     if int(not_found):
-        message = typer.style(not_found, fg=typer.colors.YELLOW)
-        typer.echo(f'- Found {message} courses with no "{tool}" tab.')
+        message = style(not_found, fg=colors.YELLOW)
+        echo(f'- Found {message} courses with no "{tool}" tab.')
 
     if int(not_participating):
-        message = typer.style(not_participating, fg=typer.colors.YELLOW)
-        typer.echo(
+        message = style(not_participating, fg=colors.YELLOW)
+        echo(
             f"- Found {message} courses in schools not participating in automatic"
             f' enabling of "{tool}".'
         )
 
     if int(error):
-        message = typer.style(
+        message = style(
             f"Encountered errors for {error} courses.",
-            fg=typer.colors.RED,
+            fg=colors.RED,
         )
-        typer.echo(f"- {message}")
-        result_path_display = typer.style(str(result_path), fg=typer.colors.GREEN)
-        typer.echo(f"- Details recorded to result file: {result_path_display}")
+        echo(f"- {message}")
+        result_path_display = style(str(result_path), fg=colors.GREEN)
+        echo(f"- Details recorded to result file: {result_path_display}")
 
-    typer.secho("FINISHED", fg=typer.colors.YELLOW)
+    secho("FINISHED", fg=colors.YELLOW)
 
 
 def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
@@ -312,7 +312,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         else:
             tool, use_id, enable = args
 
-        tool_display = typer.style(tool, fg=typer.colors.CYAN)
+        tool_display = style(tool, fg=colors.CYAN)
         (
             index,
             canvas_course_id,
@@ -329,18 +329,18 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
 
         if enable and canvas_course_id in PROCESSED_COURSES:
             tool_status = "already processed"
-            found_display = typer.style(tool_status.upper(), fg=typer.colors.YELLOW)
+            found_display = style(tool_status.upper(), fg=colors.YELLOW)
         elif (
             enable
             and tool == "Course Materials @ Penn Libraries"
             and canvas_account_id not in RESERVE_ACCOUNTS
         ):
             tool_status = "school not participating"
-            found_display = typer.style(
-                f"NOT ENABLED ({tool_status.upper()})", fg=typer.colors.YELLOW
+            found_display = style(
+                f"NOT ENABLED ({tool_status.upper()})", fg=colors.YELLOW
             )
         elif not enable and status != "active" and verbose:
-            found_display = typer.style(tool_status.upper(), fg=typer.colors.YELLOW)
+            found_display = style(tool_status.upper(), fg=colors.YELLOW)
         else:
             try:
                 course = canvas.get_course(canvas_course_id)
@@ -352,58 +352,48 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
                     tool_tab = next(filter(lambda tab: tab.label == tool, tabs), None)
 
                 if not tool_tab:
-                    found_display = typer.style(
-                        tool_status.upper(), fg=typer.colors.YELLOW
-                    )
+                    found_display = style(tool_status.upper(), fg=colors.YELLOW)
                 elif tool_tab.visibility == "public":
                     tool_status = "already enabled"
 
                     if verbose:
                         if enable:
-                            found_display = typer.style(
-                                tool_status.upper(), fg=typer.colors.YELLOW
-                            )
+                            found_display = style(tool_status.upper(), fg=colors.YELLOW)
                         else:
-                            found_display = typer.style(
-                                "ENABLED", fg=typer.colors.GREEN
-                            )
+                            found_display = style("ENABLED", fg=colors.GREEN)
                 elif enable:
                     tool_tab.update(hidden=False, position=3)
                     tool_status = "enabled"
 
                     if verbose:
-                        found_display = typer.style(
-                            tool_status.upper(), fg=typer.colors.GREEN
-                        )
+                        found_display = style(tool_status.upper(), fg=colors.GREEN)
                 else:
                     tool_status = "disabled"
 
                     if verbose:
-                        found_display = typer.style(
-                            tool_status.upper(), fg=typer.colors.YELLOW
-                        )
+                        found_display = style(tool_status.upper(), fg=colors.YELLOW)
             except Exception as error_message:
                 tool_status = f"{str(error_message)}"
                 error = True
 
                 if verbose:
-                    message = typer.style(
+                    message = style(
                         f"ERROR: Failed to process {course_id} ({error_message})"
                     )
-                    typer.echo(f"- ({index + 1}/{total}) {message}")
+                    echo(f"- ({index + 1}/{total}) {message}")
 
         if verbose and not error:
-            if pandas.isna(course_id):
+            if isna(course_id):
                 course_display = f"{long_name} ({canvas_course_id})"
             else:
                 course_display = f"{course_id}"
 
-            typer.echo(
+            echo(
                 f'- ({index + 1}/{total}) "{tool_display}" {found_display} for'
                 f" {course_display}."
             )
 
-        if pandas.isna(course_id):
+        if isna(course_id):
             report.at[index, "course_id"] = f"{short_name} ({canvas_account_id})"
 
         report.at[index, "tool status"] = tool_status
@@ -415,10 +405,11 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
 
     tool = check_tool(tool)
     REPORTS, report_display = find_course_report()
-    RESULT_PATH = (
-        RESULTS
-        / f"{TODAY_AS_Y_M_D}_{tool.replace(' ', '_')}_tool_{'enable' if enable else 'report'}_result.csv"
+    RESULT_FILE_NAME = (
+        f"{TODAY_AS_Y_M_D}_{tool.replace(' ', '_')}"
+        f"_tool_{'enable' if enable else 'report'}_result.csv"
     )
+    RESULT_PATH = RESULTS / RESULT_FILE_NAME
     START = get_start_index(force, RESULT_PATH)
     report, total, terms = cleanup_report(REPORTS, report_display, START)
 
@@ -434,15 +425,14 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         TERMS_TO_RUN = list()
 
         for term in PREVIOUS_RESULTS_FOR_TERM:
-            path_display = typer.style(
-                str(PREVIOUS_RESULTS_FOR_TERM[term]), fg=typer.colors.GREEN
+            path_display = style(str(PREVIOUS_RESULTS_FOR_TERM[term]), fg=colors.GREEN)
+            message = style(
+                f"REPORT FOR {tool.upper()} HAS ALREADY BEEN GENERATED FOR TERM"
+                f" {term.upper()}: {path_display}",
+                fg=colors.YELLOW,
             )
-            message = typer.style(
-                f"REPORT FOR {tool.upper()} HAS ALREADY BEEN GENERATED FOR TERM {term.upper()}: {path_display}",
-                fg=typer.colors.YELLOW,
-            )
-            typer.echo(f"- {message}")
-            run_again = typer.confirm(
+            echo(f"- {message}")
+            run_again = confirm(
                 f"Would you like to generate a report for term {term} again?"
             )
             if not run_again:
@@ -458,9 +448,9 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
             terms = report["term_id"].drop_duplicates().tolist()
 
             if not terms:
-                typer.echo("NO NEW TERMS TO PROCESS")
-                typer.secho("FINISHED", fg=typer.colors.YELLOW)
-                raise typer.Exit()
+                echo("NO NEW TERMS TO PROCESS")
+                secho("FINISHED", fg=colors.YELLOW)
+                raise Exit()
 
     if enable:
         PROCESSED_PATH = (
@@ -468,7 +458,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         )
 
         if clear_processed:
-            proceed = typer.confirm(
+            proceed = confirm(
                 "You have asked to clear the list of courses already processed."
                 " This list makes subsequent runs of the command faster. Are you sure"
                 " you want to do this?"
@@ -477,12 +467,12 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
             proceed = False
 
         if proceed:
-            typer.echo(") Clearing list of courses already processed...")
+            echo(") Clearing list of courses already processed...")
 
             if PROCESSED_PATH.exists():
                 remove(PROCESSED_PATH)
         else:
-            typer.echo(") Finding courses already processed...")
+            echo(") Finding courses already processed...")
 
         PROCESSED_COURSES = get_processed_courses(PROCESSED_PATH)
 
@@ -490,9 +480,9 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
     make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-    tool_display = typer.style(tool, fg=typer.colors.CYAN)
+    tool_display = style(tool, fg=colors.CYAN)
     TERMS_DISPLAY = map(
-        lambda term: typer.style(term, fg=typer.colors.BLUE),
+        lambda term: style(term, fg=colors.BLUE),
         terms,
     )
     STYLED_TERMS = f"{', '.join(TERMS_DISPLAY)}"
@@ -500,17 +490,18 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
     if enable:
         if tool == "Course Materials @ Penn Libraries":
             ACCOUNTS_DISPLAY = map(
-                lambda account: typer.style(account, fg=typer.colors.MAGENTA),
+                lambda account: style(account, fg=colors.MAGENTA),
                 RESERVE_ACCOUNTS,
             )
             ACCOUNTS = f"{', '.join(ACCOUNTS_DISPLAY)}"
-            typer.echo(
-                f') Enabling "{tool_display}" for {STYLED_TERMS} courses in {ACCOUNTS}...'
+            echo(
+                f') Enabling "{tool_display}" for {STYLED_TERMS} courses in'
+                f" {ACCOUNTS}..."
             )
         else:
-            typer.echo(f') Enabling "{tool_display}" for {STYLED_TERMS} courses...')
+            echo(f') Enabling "{tool_display}" for {STYLED_TERMS} courses...')
     else:
-        typer.echo(f') Checking {STYLED_TERMS} courses for "{tool_display}"...')
+        echo(f') Checking {STYLED_TERMS} courses for "{tool_display}"...')
 
     if enable:
         ARGS = (tool, use_id, enable, PROCESSED_COURSES)

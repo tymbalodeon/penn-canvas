@@ -1,4 +1,4 @@
-import typer
+from typer import Argument, Option, Typer
 
 from .email import email_main
 from .helpers import display_config, make_config
@@ -6,7 +6,7 @@ from .nso import nso_main
 from .storage import storage_main
 from .tool import tool_main
 
-app = typer.Typer(
+app = Typer(
     help=(
         "Welcome to Penn-Canvas -- working with Penn's Canvas instances has never been"
         " easier!"
@@ -16,7 +16,7 @@ app = typer.Typer(
 
 @app.command()
 def config(
-    view: bool = typer.Option(
+    view: bool = Option(
         False,
         "--view",
         help=(
@@ -54,7 +54,7 @@ def config(
 
 @app.command()
 def email(
-    test: bool = typer.Option(
+    test: bool = Option(
         False,
         "--test",
         help=(
@@ -62,7 +62,7 @@ def email(
             " of production (https://canvas.upenn.edu/)."
         ),
     ),
-    include_fixed: bool = typer.Option(
+    include_fixed: bool = Option(
         False,
         "--include-fixed",
         help=(
@@ -70,10 +70,10 @@ def email(
             " automatically activated by the script"
         ),
     ),
-    verbose: bool = typer.Option(
+    verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
     ),
-    force: bool = typer.Option(
+    force: bool = Option(
         False,
         "--force",
         help=(
@@ -113,7 +113,7 @@ def email(
 
 @app.command()
 def nso(
-    test: bool = typer.Option(
+    test: bool = Option(
         False,
         "--test",
         help=(
@@ -121,10 +121,10 @@ def nso(
             " of production (https://canvas.upenn.edu/)"
         ),
     ),
-    verbose: bool = typer.Option(
+    verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
     ),
-    force: bool = typer.Option(
+    force: bool = Option(
         False,
         "--force",
         help=(
@@ -132,7 +132,7 @@ def nso(
             " pre-existing incomplete result file and overwrite that file."
         ),
     ),
-    clear_processed: bool = typer.Option(
+    clear_processed: bool = Option(
         False,
         "--clear-processed",
         help="Clear the list of students already processed for the current year.",
@@ -158,7 +158,7 @@ def nso(
 
 @app.command()
 def storage(
-    test: bool = typer.Option(
+    test: bool = Option(
         False,
         "--test",
         help=(
@@ -166,10 +166,10 @@ def storage(
             " of production (https://canvas.upenn.edu/)."
         ),
     ),
-    verbose: bool = typer.Option(
+    verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
     ),
-    force: bool = typer.Option(
+    force: bool = Option(
         False,
         "--force",
         help=(
@@ -177,7 +177,7 @@ def storage(
             " pre-existing incomplete result file and overwrite that file."
         ),
     ),
-    increase: int = typer.Option(
+    increase: int = Option(
         1000, "--increase", help="The amount in MB to increase a course's storage."
     ),
 ):
@@ -205,24 +205,24 @@ def storage(
 
 @app.command()
 def tool(
-    tool: str = typer.Argument(
+    tool: str = Argument(
         ...,
         help=(
             "The Canvas external tool you wish to work with. Must match the tool's"
             " Canvas tab's label, or id if using --id."
         ),
     ),
-    use_id: bool = typer.Option(
+    use_id: bool = Option(
         False,
         "--id",
         help="Locate the specified tool using the tool's tab's id rather than label.",
     ),
-    enable: bool = typer.Option(
+    enable: bool = Option(
         False,
         "--enable",
         help="Enable the specified tool rather than generate a usage report.",
     ),
-    test: bool = typer.Option(
+    test: bool = Option(
         False,
         "--test",
         help=(
@@ -230,10 +230,10 @@ def tool(
             " of production (https://canvas.upenn.edu/)."
         ),
     ),
-    verbose: bool = typer.Option(
+    verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
     ),
-    force: bool = typer.Option(
+    force: bool = Option(
         False,
         "--force",
         help=(
@@ -241,7 +241,7 @@ def tool(
             " pre-existing incomplete result file and overwrite that file."
         ),
     ),
-    clear_processed: bool = typer.Option(
+    clear_processed: bool = Option(
         False,
         "--clear-processed",
         help=(

@@ -1,7 +1,7 @@
-import csv
-import json
+from csv import writer
+from json import dumps
 
-import requests
+from requests import get
 
 from .helpers import API_KEY_PROD, API_KEY_TEST, get_canvas, make_data_dir
 
@@ -20,10 +20,10 @@ headers = {"Authorization": "Bearer %s" % use_API_KEY}
 outputFile = "data/{0}_{1}.csv".format(course_id, course_date)
 
 try:
-    output = csv.writer(open(outputFile, "w+", newline=""))
+    output = writer(open(outputFile, "w+", newline=""))
 except FileNotFoundError:
     make_data_dir()
-    output = csv.writer(open(outputFile, "w+", newline=""))
+    output = writer(open(outputFile, "w+", newline=""))
 
 for s in students:
     user = s.id
@@ -64,11 +64,11 @@ for s in students:
 
     while not last_page:
 
-        response = requests.get(url, headers=headers)
+        response = get(url, headers=headers)
         r = response.json()
 
         print(response.url)
-        print(json.dumps(r))
+        print(dumps(r))
 
         links = response.links
         print(links)

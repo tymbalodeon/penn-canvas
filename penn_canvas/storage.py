@@ -1,8 +1,8 @@
 from datetime import datetime
 from pathlib import Path
 
-import pandas
-import typer
+from pandas import isna, read_csv
+from typer import Exit, colors, echo, secho, style
 
 from .helpers import (
     colorize,
@@ -50,15 +50,15 @@ SUB_ACCOUNTS = [
 
 
 def find_storage_report():
-    typer.echo(") Finding storage report...")
+    echo(") Finding storage report...")
 
     if not REPORTS.exists():
         Path.mkdir(REPORTS, parents=True)
-        error = typer.style(
+        error = style(
             "- ERROR: Canvas storage reports directory not found.",
-            fg=typer.colors.YELLOW,
+            fg=colors.YELLOW,
         )
-        typer.echo(
+        echo(
             f"{error} \n- Creating one for you at:"
             f" {colorize_path(str(REPORTS))}\n- Please add a Canvas storage report"
             " matching today's date to this directory and then run this script"
@@ -66,7 +66,7 @@ def find_storage_report():
             " report, run this command with the '--help' flag.)"
         )
 
-        raise typer.Exit(1)
+        raise Exit(1)
     else:
         TODAYS_REPORT = ""
         CSV_FILES = [report for report in Path(REPORTS).glob("*.csv")]
@@ -76,12 +76,12 @@ def find_storage_report():
                 TODAYS_REPORT = report
 
         if not TODAYS_REPORT:
-            error = typer.style(
+            error = style(
                 "- ERROR: A Canvas Course Storage report matching today's date was not"
                 " found.",
-                fg=typer.colors.YELLOW,
+                fg=colors.YELLOW,
             )
-            typer.echo(
+            echo(
                 f"{error}\n- Please add a Canvas storage report matching today's date"
                 " to the following directory and then run this script again:"
                 f" {colorize_path(str(REPORTS))}\n- (If you need instructions for"
@@ -89,15 +89,15 @@ def find_storage_report():
                 " '--help' flag.)"
             )
 
-            raise typer.Exit(1)
+            raise Exit(1)
         else:
             return TODAYS_REPORT
 
 
 def cleanup_report(report, start=0):
-    typer.echo(") Preparing report...")
+    echo(") Preparing report...")
 
-    data = pandas.read_csv(report)
+    data = read_csv(report)
     data = data[["id", "sis id", "account id", "storage used in MB"]]
     data = data[data["storage used in MB"] > 0]
     data.sort_values(by=["storage used in MB"], inplace=True)
@@ -119,29 +119,29 @@ def check_percent_storage(course, canvas, verbose, total):
 
         if verbose:
             if percentage_used >= 0.79:
-                percentage_display = typer.style(
-                    f"{int(percentage_used * 100)}%", fg=typer.colors.YELLOW
+                percentage_display = style(
+                    f"{int(percentage_used * 100)}%", fg=colors.YELLOW
                 )
             else:
-                percentage_display = typer.style(
-                    f"{int(percentage_used * 100)}%", fg=typer.colors.GREEN
+                percentage_display = style(
+                    f"{int(percentage_used * 100)}%", fg=colors.GREEN
                 )
 
-            typer.echo(
+            echo(
                 f"- ({index + 1}/{total}) {sis_id} ({canvas_id}): {percentage_display}"
             )
 
         if percentage_used >= 0.79:
             if verbose:
-                typer.secho("\t* INCREASE REQUIRED", fg=typer.colors.YELLOW)
-            if pandas.isna(sis_id):
+                secho("\t* INCREASE REQUIRED", fg=colors.YELLOW)
+            if isna(sis_id):
                 if verbose:
-                    message = typer.style(
+                    message = style(
                         "- ACTION REQUIRED: A SIS ID must be added for course:"
                         f" {canvas_id}",
-                        fg=typer.colors.YELLOW,
+                        fg=colors.YELLOW,
                     )
-                    typer.echo(f"({index + 1}/{total}) {message}")
+                    echo(f"({index + 1}/{total}) {message}")
 
                 return False, "missing sis id"
             else:
@@ -150,11 +150,11 @@ def check_percent_storage(course, canvas, verbose, total):
             return False, None
     except Exception:
         if verbose:
-            message = typer.style(
+            message = style(
                 f"ERROR: {sis_id} ({canvas_id}) NOT FOUND",
-                fg=typer.colors.RED,
+                fg=colors.RED,
             )
-            typer.echo(f"- ({index + 1}/{total}) {message}")
+            echo(f"- ({index + 1}/{total}) {message}")
         return False, "course not found"
 
 
@@ -185,16 +185,14 @@ def increase_quota(sis_id, canvas, verbose, increase):
             canvas_course.update(course={"storage_quota_mb": new_quota})
 
             if verbose:
-                typer.echo(
-                    f"\t* Increased storage from {old_quota} MB to {new_quota} MB"
-                )
+                echo(f"\t* Increased storage from {old_quota} MB to {new_quota} MB")
         except Exception:
             new_quota = "ERROR"
 
             if verbose:
-                typer.secho(
+                secho(
                     f"\t* Failed to increase quota for Canvas course ID: {sis_id}",
-                    fg=typer.colors.YELLOW,
+                    fg=colors.YELLOW,
                 )
     else:
         old_quota = "N/A"
@@ -204,7 +202,7 @@ def increase_quota(sis_id, canvas, verbose, increase):
 
 
 def process_result():
-    result = pandas.read_csv(RESULT_PATH)
+    result = read_csv(RESULT_PATH)
     increased_count = len(result[result["error"] == "none"].index)
     result.drop(result[result["error"] == "increase not required"].index, inplace=True)
     error_count = len(result[result["error"] != "none"].index)
@@ -221,17 +219,15 @@ def process_result():
 
 
 def print_messages(total, increased, errors):
-    typer.secho("SUMMARY:", fg=typer.colors.YELLOW)
-    typer.echo(f"- Processed {colorize(str(total))} courses.")
-    typer.echo(f"- Increased storage quota for {colorize(str(increased))} courses.")
+    secho("SUMMARY:", fg=colors.YELLOW)
+    echo(f"- Processed {colorize(str(total))} courses.")
+    echo(f"- Increased storage quota for {colorize(str(increased))} courses.")
 
     if errors > 0:
-        message = typer.style(
-            f"Failed to find {str(errors)} courses.", fg=typer.colors.RED
-        )
-        typer.echo(f"- {message}")
+        message = style(f"Failed to find {str(errors)} courses.", fg=colors.RED)
+        echo(f"- {message}")
 
-    typer.secho("FINISHED", fg=typer.colors.YELLOW)
+    secho("FINISHED", fg=colors.YELLOW)
 
 
 def storage_main(test, verbose, force, increase=1000):
@@ -270,7 +266,7 @@ def storage_main(test, verbose, force, increase=1000):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
 
-    typer.echo(") Processing courses...")
+    echo(") Processing courses...")
 
     toggle_progress_bar(
         report,

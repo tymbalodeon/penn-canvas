@@ -1,10 +1,10 @@
-import os
 from csv import writer
+from os import remove
 from pathlib import Path
 
-import pandas
-import typer
 from canvasapi import Canvas
+from pandas import read_csv
+from typer import Abort, Exit, colors, confirm, echo, progressbar, prompt, secho, style
 
 CANVAS_URL_PROD = "https://canvas.upenn.edu"
 CANVAS_URL_TEST = "https://upenn.test.instructure.com"
@@ -26,39 +26,39 @@ def make_config():
         data_warehouse_dsn,
     ) = read_config(CONFIG_PATH)
 
-    use_production = typer.confirm("Input an Access Token for PRODUCTION?")
+    use_production = confirm("Input an Access Token for PRODUCTION?")
 
     if use_production:
-        production = typer.prompt(
+        production = prompt(
             "Please enter your Access Token for the PRODUCTION instance of Penn Canvas",
             hide_input=True,
         )
 
-    use_development = typer.confirm("Input an Access Token for DEVELOPMENT?")
+    use_development = confirm("Input an Access Token for DEVELOPMENT?")
 
     if use_development:
-        development = typer.prompt(
+        development = prompt(
             "Please enter your Access Token for the TEST instance of Penn Canvas",
             hide_input=True,
         )
 
-    use_open = typer.confirm("Input an Access Token for OPEN canvas?")
+    use_open = confirm("Input an Access Token for OPEN canvas?")
 
     if use_open:
-        open_canvas = typer.prompt(
+        open_canvas = prompt(
             "Please enter your Access Token for OPEN Canvas",
             hide_input=True,
         )
 
-    use_data_warehouse = typer.confirm("Input DATA WAREHOUSE credentials?")
+    use_data_warehouse = confirm("Input DATA WAREHOUSE credentials?")
 
     if use_data_warehouse:
-        data_warehouse_user = typer.prompt("Please enter your DATA WAREHOUSE USER")
-        data_warehouse_password = typer.prompt(
+        data_warehouse_user = prompt("Please enter your DATA WAREHOUSE USER")
+        data_warehouse_password = prompt(
             "Please enter your DATA WAREHOUSE PASSWORD",
             hide_input=True,
         )
-        data_warehouse_dsn = typer.prompt("Please enter your DATA WAREHOUSE DSN")
+        data_warehouse_dsn = prompt("Please enter your DATA WAREHOUSE DSN")
 
     with open(CONFIG_PATH, "w+") as config:
         config.write(f"CANVAS_KEY_PROD={production}")
@@ -79,17 +79,15 @@ def display_config():
         data_warehouse_dsn,
     ) = check_config(CONFIG_PATH)
 
-    production = typer.style(f"{production}", fg=typer.colors.YELLOW)
-    development = typer.style(f"{development}", fg=typer.colors.YELLOW)
-    open_canvas = typer.style(f"{open_canvas}", fg=typer.colors.YELLOW)
-    data_warehouse_user = typer.style(f"{data_warehouse_user}", fg=typer.colors.YELLOW)
-    data_warehouse_password = typer.style(
-        f"{data_warehouse_password}", fg=typer.colors.YELLOW
-    )
-    data_warehouse_dsn = typer.style(f"{data_warehouse_dsn}", fg=typer.colors.YELLOW)
-    config_path = typer.style(f"{CONFIG_PATH}", fg=typer.colors.GREEN)
+    production = style(f"{production}", fg=colors.YELLOW)
+    development = style(f"{development}", fg=colors.YELLOW)
+    open_canvas = style(f"{open_canvas}", fg=colors.YELLOW)
+    data_warehouse_user = style(f"{data_warehouse_user}", fg=colors.YELLOW)
+    data_warehouse_password = style(f"{data_warehouse_password}", fg=colors.YELLOW)
+    data_warehouse_dsn = style(f"{data_warehouse_dsn}", fg=colors.YELLOW)
+    config_path = style(f"{CONFIG_PATH}", fg=colors.GREEN)
 
-    typer.echo(
+    echo(
         f"\nCONFIG: {config_path}\n"
         f"\nCANVAS_KEY_PROD: {production}"
         f"\nCANVAS_KEY_DEV: {development}"
@@ -102,15 +100,15 @@ def display_config():
 
 def check_config(config):
     if not config.exists():
-        error = typer.style(
+        error = style(
             "- ERROR: No config file ($HOME/.config/penn-canvas) exists for"
             " Penn-Canvas.",
-            fg=typer.colors.YELLOW,
+            fg=colors.YELLOW,
         )
-        create = typer.confirm(f"{error} \n- Would you like to create one?")
+        create = confirm(f"{error} \n- Would you like to create one?")
 
         if not create:
-            typer.echo(
+            echo(
                 ") NOT creating...\n"
                 "- Please create a config file at: $HOME/.config/penn-canvas"
                 "\n- Place your Canvas Access Tokens in this file using the following"
@@ -119,7 +117,7 @@ def check_config(config):
                 "\n\tCANVAS_KEY_DEV=your-canvas-test-key-here"
                 "\n\tCANVAS_KEY_OPEN=your-open-canvas-key-here"
             )
-            raise typer.Abort()
+            raise Abort()
         else:
             make_config()
 
@@ -193,10 +191,10 @@ def get_command_paths(command, logs=False, processed=False, input_dir=False):
 
 
 def check_previous_output(result_path):
-    typer.echo(") Checking for previous results...")
+    echo(") Checking for previous results...")
 
     if result_path.is_file():
-        INCOMPLETE = pandas.read_csv(result_path)
+        INCOMPLETE = read_csv(result_path)
 
         if "index" in INCOMPLETE.columns:
             try:
@@ -208,16 +206,16 @@ def check_previous_output(result_path):
             except Exception:
                 index = 0
         else:
-            typer.secho("TASK ALREADY COMPLETE", fg=typer.colors.YELLOW)
-            result_path_display = typer.style(str(result_path), fg=typer.colors.GREEN)
-            typer.echo(f"- Output available at: {result_path_display}")
-            typer.echo(
+            secho("TASK ALREADY COMPLETE", fg=colors.YELLOW)
+            result_path_display = style(str(result_path), fg=colors.GREEN)
+            echo(f"- Output available at: {result_path_display}")
+            echo(
                 "- To re-run the task, overwriting previous results, run this command"
                 " with the '--force' option"
             )
-            typer.secho("FINISHED", fg=typer.colors.YELLOW)
+            secho("FINISHED", fg=colors.YELLOW)
 
-            raise typer.Exit()
+            raise Exit()
     else:
         index = 0
 
@@ -227,7 +225,7 @@ def check_previous_output(result_path):
 def get_start_index(force, result_path):
     if force:
         if result_path.exists():
-            os.remove(result_path)
+            remove(result_path)
 
         return 0
     else:
@@ -242,11 +240,11 @@ def make_skip_message(start, item):
     else:
         item = f"{item.upper()}S"
 
-    message = typer.style(
+    message = style(
         f"SKIPPING {start} PREVIOUSLY PROCESSED {item}...",
-        fg=typer.colors.YELLOW,
+        fg=colors.YELLOW,
     )
-    typer.echo(f") {message}")
+    echo(f") {message}")
 
 
 def toggle_progress_bar(data, callback, canvas, verbose, args=None, index=False):
@@ -259,14 +257,14 @@ def toggle_progress_bar(data, callback, canvas, verbose, args=None, index=False)
             callback(item, canvas, verbose, args)
 
     def progress_bar_mode():
-        with typer.progressbar(
+        with progressbar(
             data.itertuples(index=index), length=len(data.index)
         ) as progress:
             for item in progress:
                 callback(item, canvas, verbose)
 
     def progress_bar_mode_with_args():
-        with typer.progressbar(
+        with progressbar(
             data.itertuples(index=index), length=len(data.index)
         ) as progress:
             for item in progress:
@@ -285,7 +283,7 @@ def toggle_progress_bar(data, callback, canvas, verbose, args=None, index=False)
 
 
 def get_canvas(instance="test"):
-    typer.echo(") Reading Canvas Access Tokens from config file...")
+    echo(") Reading Canvas Access Tokens from config file...")
 
     production, development, open_canvas = check_config(CONFIG_PATH)[0:3]
     url = CANVAS_URL_TEST
@@ -302,7 +300,7 @@ def get_canvas(instance="test"):
 
 
 def get_data_warehouse_config():
-    typer.echo(") Reading Data Warehouse credentials from config file...")
+    echo(") Reading Data Warehouse credentials from config file...")
 
     return check_config(CONFIG_PATH)[3:]
 
@@ -319,8 +317,8 @@ def find_sub_accounts(canvas, account_id):
 
 
 def colorize(text):
-    return typer.style(text, fg=typer.colors.MAGENTA)
+    return style(text, fg=colors.MAGENTA)
 
 
 def colorize_path(text):
-    return typer.style(text, fg=typer.colors.GREEN)
+    return style(text, fg=colors.GREEN)

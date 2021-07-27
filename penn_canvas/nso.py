@@ -3,9 +3,9 @@ from datetime import datetime
 from os import remove
 from pathlib import Path
 
-import pandas
-import typer
 from cx_Oracle import connect, init_oracle_client
+from pandas import concat, read_csv, read_excel
+from typer import Exit, colors, confirm, echo, secho, style
 
 from .helpers import (
     colorize,
@@ -27,11 +27,12 @@ init_oracle_client(
 )
 
 TODAY = datetime.now().strftime("%d_%b_%Y")
+YEAR = datetime.now().strftime("%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
 INPUT, RESULTS, PROCESSED = get_command_paths("nso", input_dir=True, processed=True)
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_nso_result.csv"
-PROCESSED_PATH = PROCESSED / f"nso_processed_students.csv"
+PROCESSED_PATH = PROCESSED / f"nso_processed_students_{YEAR}.csv"
 HEADERS = [
     "index",
     "canvas course id",
@@ -43,15 +44,15 @@ HEADERS = [
 
 
 def find_nso_file():
-    typer.echo(") Finding NSO file...")
+    echo(") Finding NSO file...")
 
     if not INPUT.exists():
         Path.mkdir(INPUT, parents=True)
-        error = typer.style(
+        error = style(
             "- ERROR: NSO input directory not found.",
-            fg=typer.colors.YELLOW,
+            fg=colors.YELLOW,
         )
-        typer.echo(
+        echo(
             f"{error}\n- Creating one for you at: {colorize_path(str(INPUT))}\n- Please"
             " add an NSO input file matching the graduation year of this year's"
             " incoming freshmen to this directory and then run this script again.\n-"
@@ -59,7 +60,7 @@ def find_nso_file():
             " flag.)"
         )
 
-        raise typer.Exit(1)
+        raise Exit(1)
     else:
         CURRENT_FILE = ""
         EXTENSIONS = ["*.csv", "*.xlsx"]
@@ -77,12 +78,12 @@ def find_nso_file():
                 CURRENT_EXTENSION = input_file.suffix
 
         if not CURRENT_FILE:
-            error = typer.style(
+            error = style(
                 "- ERROR: A nso file matching the graduation year of this"
                 " year's incoming freshmen was not found.",
-                fg=typer.colors.YELLOW,
+                fg=colors.YELLOW,
             )
-            typer.echo(
+            echo(
                 f"{error}\n- Please add a NSO input file matching the"
                 " graduation year of this year's incoming freshmen to the following"
                 " directory and then run this script again:"
@@ -90,18 +91,18 @@ def find_nso_file():
                 " run this command with the '--help' flag.)"
             )
 
-            raise typer.Exit(1)
+            raise Exit(1)
         else:
             return CURRENT_FILE, CURRENT_EXTENSION
 
 
 def cleanup_data(input_file, extension, start=0):
-    typer.echo(") Preparing NSO file...")
+    echo(") Preparing NSO file...")
 
     if extension == ".csv":
-        data = pandas.read_csv(input_file)
+        data = read_csv(input_file)
     else:
-        data = pandas.read_excel(input_file, engine="openpyxl")
+        data = read_excel(input_file, engine="openpyxl")
 
     data.columns = data.columns.str.lower()
     data["pennkey"] = data["pennkey"].str.lower()
@@ -123,7 +124,7 @@ def make_find_group_name(group_name):
 
 def get_processed_students(processed_path):
     if processed_path.is_file():
-        result = pandas.read_csv(processed_path)
+        result = read_csv(processed_path)
         result = result.astype("string", copy=False, errors="ignore")
         return result["pennkey"].tolist()
     else:
@@ -132,7 +133,7 @@ def get_processed_students(processed_path):
 
 
 def process_result():
-    result = pandas.read_csv(RESULT_PATH)
+    result = read_csv(RESULT_PATH)
     NOT_ENROLLED = result[result["status"] == "user not enrolled in course"]
     NOT_IN_CANVAS = result[result["status"] == "user not found in canvas"]
     INVALID_PENNKEY = result[result["status"] == "invalid pennkey"]
@@ -141,7 +142,7 @@ def process_result():
     NOT_IN_CANVAS_COUNT = str(len(NOT_IN_CANVAS.index))
     INVALID_PENNKEY_COUNT = str(len(INVALID_PENNKEY.index))
     ERROR_COUNT = str(len(ERROR.index))
-    result = pandas.concat([NOT_ENROLLED, NOT_IN_CANVAS, INVALID_PENNKEY, ERROR])
+    result = concat([NOT_ENROLLED, NOT_IN_CANVAS, INVALID_PENNKEY, ERROR])
     result.drop("index", axis=1, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
 
@@ -149,16 +150,16 @@ def process_result():
 
 
 def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
-    typer.secho("SUMMARY:", fg=typer.colors.YELLOW)
-    typer.echo(f"- Processed {colorize(total)} accounts.")
+    secho("SUMMARY:", fg=colors.YELLOW)
+    echo(f"- Processed {colorize(total)} accounts.")
     TOTAL_ERRORS = (
         int(not_enrolled) + int(not_in_canvas) + int(invalid_pennkey) + int(error)
     )
-    accepted_count = typer.style(
+    accepted_count = style(
         str(int(total) - TOTAL_ERRORS),
-        fg=typer.colors.GREEN,
+        fg=colors.GREEN,
     )
-    typer.echo(f"- Successfully added {accepted_count} students to groups")
+    echo(f"- Successfully added {accepted_count} students to groups")
 
     errors = False
 
@@ -168,11 +169,11 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
         else:
             student = "student"
 
-        message = typer.style(
+        message = style(
             f"Found {not_enrolled} {student} not enrolled in the course.",
-            fg=typer.colors.RED,
+            fg=colors.RED,
         )
-        typer.echo(f"- {message}")
+        echo(f"- {message}")
         errors = True
 
     if int(not_in_canvas) > 0:
@@ -183,10 +184,10 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
             student = "student"
             account = "a Canvas account"
 
-        message = typer.style(
-            f"Found {not_in_canvas} {student} without {account}.", fg=typer.colors.RED
+        message = style(
+            f"Found {not_in_canvas} {student} without {account}.", fg=colors.RED
         )
-        typer.echo(f"- {message}")
+        echo(f"- {message}")
         errors = True
 
     if int(invalid_pennkey) > 0:
@@ -197,11 +198,11 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
             student = "student"
             pennkey = "pennkey"
 
-        message = typer.style(
+        message = style(
             f"Found {invalid_pennkey} {student} with invalid {pennkey}.",
-            fg=typer.colors.RED,
+            fg=colors.RED,
         )
-        typer.echo(f"- {message}")
+        echo(f"- {message}")
         errors = True
 
     if int(error) > 0:
@@ -210,18 +211,18 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
         else:
             student = "student"
 
-        message = typer.style(
+        message = style(
             f"Encountered an unknown error for {error} {student}.",
-            fg=typer.colors.RED,
+            fg=colors.RED,
         )
-        typer.echo(f"- {message}")
+        echo(f"- {message}")
         errors = True
 
     if errors:
-        result_path = typer.style(f"{RESULT_PATH}", fg=typer.colors.GREEN)
-        typer.echo(f"- Details recorded to result file: {result_path}")
+        result_path = style(f"{RESULT_PATH}", fg=colors.GREEN)
+        echo(f"- Details recorded to result file: {result_path}")
 
-    typer.secho("FINISHED", fg=typer.colors.YELLOW)
+    secho("FINISHED", fg=colors.YELLOW)
 
 
 def nso_main(test, verbose, force, clear_processed):
@@ -245,7 +246,7 @@ def nso_main(test, verbose, force, clear_processed):
 
                 if not group_set:
                     if verbose:
-                        typer.echo(f") Creating group set {group_set_name}...")
+                        echo(f") Creating group set {group_set_name}...")
                     group_set = course.create_group_category(group_set_name)
 
                 group_filter = make_find_group_name(group_name)
@@ -253,7 +254,7 @@ def nso_main(test, verbose, force, clear_processed):
 
                 if not group:
                     if verbose:
-                        typer.echo(f") Creating group {group_name}...")
+                        echo(f") Creating group {group_name}...")
                     group = group_set.create_group(name=group_name)
 
                 canvas_user = canvas.get_user(penn_key, "sis_login_id")
@@ -275,10 +276,8 @@ def nso_main(test, verbose, force, clear_processed):
 
                     try:
                         if verbose:
-                            penn_key_display = typer.style(
-                                penn_key, fg=typer.colors.CYAN
-                            )
-                            typer.echo(
+                            penn_key_display = style(penn_key, fg=colors.CYAN)
+                            echo(
                                 ") Checking the Data Warehouse for pennkey:"
                                 f" {penn_key_display}..."
                             )
@@ -314,16 +313,16 @@ def nso_main(test, verbose, force, clear_processed):
             status_display = str(status).upper()
 
             if status_display == "ADDED":
-                status_display = typer.style(status_display, fg=typer.colors.GREEN)
+                status_display = style(status_display, fg=colors.GREEN)
             elif status_display == "ALREADY PROCESSED":
-                status_display = typer.style(status_display, fg=typer.colors.YELLOW)
+                status_display = style(status_display, fg=colors.YELLOW)
             else:
-                status_display = typer.style(status_display, fg=typer.colors.RED)
+                status_display = style(status_display, fg=colors.RED)
 
-            penn_key_display = typer.style(penn_key, fg=typer.colors.MAGENTA)
-            typer.echo(
-                f"- ({index + 1}/{total}) {penn_key_display}, {group_set_name}, {group_name}:"
-                f" {status_display}"
+            penn_key_display = style(penn_key, fg=colors.MAGENTA)
+            echo(
+                f"- ({index + 1}/{total}) {penn_key_display}, {group_set_name},"
+                f" {group_name}: {status_display}"
             )
 
         if status == "added" and penn_key not in processed_students:
@@ -340,7 +339,7 @@ def nso_main(test, verbose, force, clear_processed):
     data, TOTAL = cleanup_data(data, EXTENSION, START)
 
     if clear_processed:
-        proceed = typer.confirm(
+        proceed = confirm(
             "You have asked to clear the list of students already processed."
             " This list makes subsequent runs of the command faster. Are you sure"
             " you want to do this?"
@@ -349,12 +348,12 @@ def nso_main(test, verbose, force, clear_processed):
         proceed = False
 
     if proceed:
-        typer.echo(") Clearing list of students already processed...")
+        echo(") Clearing list of students already processed...")
 
         if PROCESSED_PATH.exists():
             remove(PROCESSED_PATH)
     else:
-        typer.echo(") Finding students already processed...")
+        echo(") Finding students already processed...")
 
     PROCESSED_STUDENTS = get_processed_students(PROCESSED_PATH)
 
@@ -363,7 +362,7 @@ def nso_main(test, verbose, force, clear_processed):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
 
-    typer.echo(") Processing students...")
+    echo(") Processing students...")
 
     toggle_progress_bar(
         data,

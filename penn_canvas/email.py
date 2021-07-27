@@ -1,10 +1,10 @@
-import shutil
 from csv import writer
 from datetime import datetime
 from pathlib import Path
+from shutil import rmtree
 
-import pandas
-import typer
+from pandas import concat, read_csv
+from typer import Exit, colors, echo, secho, style
 
 from .helpers import (
     colorize,
@@ -50,14 +50,14 @@ def get_subaccounts(canvas):
 
 
 def find_users_report():
-    typer.echo(") Finding Canvas Provisioning (Users) report...")
+    echo(") Finding Canvas Provisioning (Users) report...")
 
     if not REPORTS.exists():
         Path.mkdir(REPORTS, parents=True)
-        error = typer.style(
-            "- ERROR: Canvas email reports directory not found.", fg=typer.colors.YELLOW
+        error = style(
+            "- ERROR: Canvas email reports directory not found.", fg=colors.YELLOW
         )
-        typer.echo(
+        echo(
             f"{error} \n- Creating one for you at: {colorize_path(str(REPORTS))}\n-"
             " Please add a Canvas Provisioning (Users) report matching today's date to"
             " this directory and then run this script again.\n- (If you need"
@@ -65,7 +65,7 @@ def find_users_report():
             " command with the '--help' flag.)"
         )
 
-        raise typer.Exit(1)
+        raise Exit(1)
     else:
         TODAYS_REPORT = ""
         CSV_FILES = [report for report in Path(REPORTS).glob("*.csv")]
@@ -75,12 +75,12 @@ def find_users_report():
                 TODAYS_REPORT = report
 
         if not TODAYS_REPORT:
-            error = typer.style(
+            error = style(
                 "- ERROR: A Canvas Provisioning (Users) CSV report matching today's"
                 " date was not found.",
-                fg=typer.colors.YELLOW,
+                fg=colors.YELLOW,
             )
-            typer.echo(
+            echo(
                 f"{error}\n- Please add a Canvas (Users) Provisioning report matching"
                 " today's date to the following directory and then run this script"
                 f" again: {colorize_path(str(REPORTS))}\n- (If you need instructions"
@@ -88,15 +88,15 @@ def find_users_report():
                 " the '--help' flag.)"
             )
 
-            raise typer.Exit(1)
+            raise Exit(1)
         else:
             return TODAYS_REPORT
 
 
 def cleanup_report(report, start=0):
-    typer.echo(") Preparing report...")
+    echo(") Preparing report...")
 
-    data = pandas.read_csv(report)
+    data = read_csv(report)
     data = data[["canvas_user_id"]]
     data.drop_duplicates(inplace=True)
     data = data.astype("string", copy=False, errors="ignore")
@@ -116,8 +116,8 @@ def get_email_status(user, email, verbose, current_count=False):
 
     if email_status == "active":
         if verbose:
-            status = typer.style(f"{email_status}", fg=typer.colors.GREEN)
-            typer.echo(f"- {current_count if current_count else ''}{user}: {status}")
+            status = style(f"{email_status}", fg=colors.GREEN)
+            echo(f"- {current_count if current_count else ''}{user}: {status}")
         return True
     elif email_status == "unconfirmed":
         return False
@@ -130,11 +130,11 @@ def find_unconfirmed_emails(user, canvas, verbose, index, total):
         canvas_user = canvas.get_user(user_id)
     except Exception:
         if verbose:
-            message = typer.style(
+            message = style(
                 f"ERROR: User NOT FOUND ({user_id})",
-                fg=typer.colors.RED,
+                fg=colors.RED,
             )
-            typer.echo(f"- ({index + 1}/{total}) {message}")
+            echo(f"- ({index + 1}/{total}) {message}")
         return False, "user not found"
     emails = get_user_emails(canvas_user)
     email = next(emails, None)
@@ -147,8 +147,8 @@ def find_unconfirmed_emails(user, canvas, verbose, index, total):
             next_email = next(emails, None)
             if not next_email:
                 if verbose:
-                    status = typer.style("UNCONFIRMED", fg=typer.colors.YELLOW)
-                    typer.echo(
+                    status = style("UNCONFIRMED", fg=colors.YELLOW)
+                    echo(
                         f"- {current_count if current_count else ''}{canvas_user}:"
                         f" {status}"
                     )
@@ -163,10 +163,8 @@ def find_unconfirmed_emails(user, canvas, verbose, index, total):
 
     else:
         if verbose:
-            status = typer.style("NOT FOUND", fg=typer.colors.YELLOW)
-            typer.echo(
-                f"- {current_count if current_count else ''}{canvas_user}: {status}"
-            )
+            status = style("NOT FOUND", fg=colors.YELLOW)
+            echo(f"- {current_count if current_count else ''}{canvas_user}: {status}")
         return True, "not found"
 
 
@@ -189,13 +187,13 @@ def check_schools(user, sub_accounts, canvas, verbose):
 
     if fixable_id:
         if verbose:
-            supported = typer.style("supported", fg=typer.colors.GREEN)
-            typer.secho(f"\t* Enrollment status: {supported}", fg=typer.colors.CYAN)
+            supported = style("supported", fg=colors.GREEN)
+            secho(f"\t* Enrollment status: {supported}", fg=colors.CYAN)
         return True
     else:
         if verbose:
-            supported = typer.style("UNSUPPORTED", fg=typer.colors.YELLOW)
-            typer.secho(f"\t* Enrollment status: {supported}", fg=typer.colors.CYAN)
+            supported = style("UNSUPPORTED", fg=colors.YELLOW)
+            secho(f"\t* Enrollment status: {supported}", fg=colors.CYAN)
         return False
 
 
@@ -232,9 +230,9 @@ def activate_fixable_emails(
 
         if not next_email:
             if verbose:
-                typer.secho(
+                secho(
                     f"\t* ERROR: failed to activate email(s) for {user_id}!",
-                    fg=typer.colors.RED,
+                    fg=colors.RED,
                 )
 
             return False, "failed to activate"
@@ -242,9 +240,9 @@ def activate_fixable_emails(
 
     if is_active:
         if verbose:
-            typer.secho(f"\t* Email(s) activated for {user_id}", fg=typer.colors.GREEN)
+            secho(f"\t* Email(s) activated for {user_id}", fg=colors.GREEN)
 
-        log = pandas.read_csv(log_path)
+        log = read_csv(log_path)
         log.drop(index=log.index[-1:], inplace=True)
         log.to_csv(log_path, index=False)
 
@@ -253,15 +251,15 @@ def activate_fixable_emails(
 
 def remove_empty_log(log_path):
     if log_path.is_file():
-        log = pandas.read_csv(log_path)
+        log = read_csv(log_path)
 
         if log.empty:
-            typer.echo(") Removing empty log file...")
-            shutil.rmtree(LOGS, ignore_errors=True)
+            echo(") Removing empty log file...")
+            rmtree(LOGS, ignore_errors=True)
 
 
 def process_result(include_fixed):
-    result = pandas.read_csv(RESULT_PATH)
+    result = read_csv(RESULT_PATH)
 
     not_fixable = result[result["supported school(s)"] == "N"]
     not_fixable = not_fixable.sort_values(by=["email status"])
@@ -274,14 +272,14 @@ def process_result(include_fixed):
     fixed = len(FIXABLE[FIXABLE["email status"] == "auto-activated"].index)
     error = len(FIXABLE[FIXABLE["email status"] == "failed to activate"].index)
 
-    result = pandas.concat([SUPPORTED_NOT_FOUND, USERS_NOT_FOUND, not_fixable])
+    result = concat([SUPPORTED_NOT_FOUND, USERS_NOT_FOUND, not_fixable])
 
     if include_fixed:
         FIXABLE.sort_values(by=["email status"], inplace=True)
-        result = pandas.concat([FIXABLE, result])
+        result = concat([FIXABLE, result])
     else:
         ERRORS = FIXABLE[FIXABLE["email status"] == "failed to activate"]
-        result = pandas.concat([ERRORS, result])
+        result = concat([ERRORS, result])
 
     result.drop("index", axis=1, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
@@ -310,45 +308,45 @@ def print_messages(
     log_path,
     user_not_found,
 ):
-    typer.secho("SUMMARY:", fg=typer.colors.YELLOW)
-    typer.echo(f"- Processed {colorize(total)} accounts.")
-    typer.echo(
+    secho("SUMMARY:", fg=colors.YELLOW)
+    echo(f"- Processed {colorize(total)} accounts.")
+    echo(
         f"- Activated {colorize(fixed)} supported users with unconfirmed email"
         " accounts."
     )
 
     if int(supported_not_found) > 0:
-        typer.echo(
+        echo(
             f"- Found {colorize(supported_not_found)} supported users with no email"
             " account."
         )
 
     if int(unsupported) > 0:
-        typer.echo(
+        echo(
             f"- Found {colorize(unsupported)} unsupported users with missing or"
             " unconfirmed email accounts."
         )
 
     if int(errors) > 0:
-        message = typer.style(
+        message = style(
             f"Failed to activate email(s) for {errors} supported users with (an)"
             " unconfirmed email account(s).",
-            fg=typer.colors.RED,
+            fg=colors.RED,
         )
-        log_path_display = typer.style(log_path, fg=typer.colors.GREEN)
-        typer.echo(
+        log_path_display = style(log_path, fg=colors.GREEN)
+        echo(
             f"- {message}. Affected accounts are recorded in the log file:"
             f" {log_path_display}"
         )
 
     if int(user_not_found) > 0:
-        message = typer.style(
+        message = style(
             f"Failed to find {user_not_found} users.",
-            fg=typer.colors.RED,
+            fg=colors.RED,
         )
-        typer.echo(f"- {message}")
+        echo(f"- {message}")
 
-    typer.secho("FINISHED", fg=typer.colors.YELLOW)
+    secho("FINISHED", fg=colors.YELLOW)
 
 
 def email_main(test, include_fixed, verbose, force):
@@ -393,7 +391,7 @@ def email_main(test, include_fixed, verbose, force):
     CANVAS = get_canvas(INSTANCE)
     SUB_ACCOUNTS = get_subaccounts(CANVAS)
 
-    typer.echo(") Processing users...")
+    echo(") Processing users...")
 
     toggle_progress_bar(
         report, check_and_activate_emails, CANVAS, verbose, args=ARGS, index=True
