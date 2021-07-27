@@ -417,7 +417,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
     START = get_start_index(force, RESULT_PATH)
     report, total, terms = cleanup_report(REPORTS, report_display, START)
 
-    if not force:
+    if not enable and not force:
         PREVIOUS_RESULTS = [result_file for result_file in Path(RESULTS).glob("*.csv")]
         PREVIOUS_RESULTS_FOR_TERM = dict()
 
