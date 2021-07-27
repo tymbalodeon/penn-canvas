@@ -229,7 +229,7 @@ def nso_main(test, verbose, force, clear_processed):
         total, processed_students = args
         index, course_id, group_set_name, group_name, penn_key = student
 
-        if penn_key in processed_students:
+        if force and penn_key in processed_students:
             status = "already processed"
         else:
             try:
@@ -326,7 +326,7 @@ def nso_main(test, verbose, force, clear_processed):
                 f" {status_display}"
             )
 
-        if status == "added":
+        if status == "added" and penn_key not in processed_students:
             with open(PROCESSED_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow([penn_key])
 
