@@ -1,6 +1,6 @@
-import os
 from csv import writer
 from datetime import datetime
+from os import remove
 from pathlib import Path
 
 import pandas
@@ -478,8 +478,9 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
 
         if proceed:
             typer.echo(") Clearing list of courses already processed...")
+
             if PROCESSED_PATH.exists():
-                os.remove(PROCESSED_PATH)
+                remove(PROCESSED_PATH)
         else:
             typer.echo(") Finding courses already processed...")
 

@@ -132,6 +132,11 @@ def nso(
             " pre-existing incomplete result file and overwrite that file."
         ),
     ),
+    clear_processed: bool = typer.Option(
+        False,
+        "--clear-processed",
+        help="Clear the list of students already processed for the current year.",
+    ),
 ):
     """
     Enrolls incoming freshmen into Canvas Groups as part of the 'Thrive at Penn'
@@ -148,7 +153,7 @@ def nso(
     not be accepted.
     """
 
-    nso_main(test, verbose, force)
+    nso_main(test, verbose, force, clear_processed)
 
 
 @app.command()

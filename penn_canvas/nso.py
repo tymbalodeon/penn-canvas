@@ -1,4 +1,6 @@
+from csv import writer
 from datetime import datetime
+from os import remove
 from pathlib import Path
 
 import pandas
@@ -27,8 +29,9 @@ init_oracle_client(
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
-INPUT, RESULTS = get_command_paths("nso", input_dir=True)
+INPUT, RESULTS, PROCESSED = get_command_paths("nso", input_dir=True, processed=True)
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_nso_result.csv"
+PROCESSED_PATH = PROCESSED / f"nso_processed_students.csv"
 HEADERS = [
     "index",
     "canvas course id",
@@ -116,6 +119,16 @@ def make_find_group_name(group_name):
         return group.name == group_name
 
     return find_group_name
+
+
+def get_processed_students(processed_path):
+    if processed_path.is_file():
+        result = pandas.read_csv(processed_path)
+        result = result.astype("string", copy=False, errors="ignore")
+        return result["pennkey"].tolist()
+    else:
+        make_csv_paths(PROCESSED, processed_path, ["pennkey"])
+        return list()
 
 
 def process_result():
@@ -211,81 +224,88 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
     typer.secho("FINISHED", fg=typer.colors.YELLOW)
 
 
-def nso_main(test, verbose, force):
-    def create_enrollments(student, canvas, verbose, total=0):
+def nso_main(test, verbose, force, clear_processed):
+    def create_enrollments(student, canvas, verbose, args):
+        total, processed_students = args
         index, course_id, group_set_name, group_name, penn_key = student
 
-        try:
-            course = canvas.get_course(course_id)
-            group_set_filter = make_find_group_name(group_set_name)
-            group_set = next(
-                filter(
-                    group_set_filter,
-                    course.get_group_categories(),
-                ),
-                None,
-            )
-
-            if not group_set:
-                if verbose:
-                    typer.echo(f") Creating group set {group_set_name}...")
-                group_set = course.create_group_category(group_set_name)
-
-            group_filter = make_find_group_name(group_name)
-            group = next(filter(group_filter, group_set.get_groups()), None)
-
-            if not group:
-                if verbose:
-                    typer.echo(f") Creating group {group_name}...")
-                group = group_set.create_group(name=group_name)
-
-            canvas_user = canvas.get_user(penn_key, "sis_login_id")
-            group.create_membership(canvas_user)
-
-            status = "added"
-        except Exception as error:
+        if penn_key in processed_students:
+            status = "already processed"
+        else:
             try:
                 course = canvas.get_course(course_id)
-                canvas_user = canvas.get_user(penn_key, "sis_login_id")
-                status = error
+                group_set_filter = make_find_group_name(group_set_name)
+                group_set = next(
+                    filter(
+                        group_set_filter,
+                        course.get_group_categories(),
+                    ),
+                    None,
+                )
 
-                try:
-                    course.get_user(canvas_user)
-                except Exception:
-                    status = "user not enrolled in course"
-
-            except Exception as error:
-                status = error
-
-                try:
+                if not group_set:
                     if verbose:
-                        penn_key_display = typer.style(penn_key, fg=typer.colors.CYAN)
-                        typer.echo(
-                            ") Checking the Data Warehouse for pennkey:"
-                            f" {penn_key_display}..."
-                        )
+                        typer.echo(f") Creating group set {group_set_name}...")
+                    group_set = course.create_group_category(group_set_name)
 
-                    cursor = connect(
-                        DATA_WAREHOUSE_USER, DATA_WAREHOUSE_PASSWORD, DATA_WAREHOUSE_DSN
-                    ).cursor()
-                    cursor.execute(
-                        """
-                        SELECT
-                            pennkey
-                        FROM dwadmin.person_all_v
-                        WHERE pennkey= :penn_key
-                        """,
-                        penn_key=penn_key,
-                    )
+                group_filter = make_find_group_name(group_name)
+                group = next(filter(group_filter, group_set.get_groups()), None)
 
-                    status = "invalid pennkey"
+                if not group:
+                    if verbose:
+                        typer.echo(f") Creating group {group_name}...")
+                    group = group_set.create_group(name=group_name)
 
-                    for student in cursor:
-                        if len(student) > 0:
-                            status = "user not found in canvas"
-                            break
+                canvas_user = canvas.get_user(penn_key, "sis_login_id")
+                group.create_membership(canvas_user)
+
+                status = "added"
+            except Exception as error:
+                try:
+                    course = canvas.get_course(course_id)
+                    canvas_user = canvas.get_user(penn_key, "sis_login_id")
+                    status = error
+
+                    try:
+                        course.get_user(canvas_user)
+                    except Exception:
+                        status = "user not enrolled in course"
                 except Exception as error:
                     status = error
+
+                    try:
+                        if verbose:
+                            penn_key_display = typer.style(
+                                penn_key, fg=typer.colors.CYAN
+                            )
+                            typer.echo(
+                                ") Checking the Data Warehouse for pennkey:"
+                                f" {penn_key_display}..."
+                            )
+
+                        cursor = connect(
+                            DATA_WAREHOUSE_USER,
+                            DATA_WAREHOUSE_PASSWORD,
+                            DATA_WAREHOUSE_DSN,
+                        ).cursor()
+                        cursor.execute(
+                            """
+                            SELECT
+                                pennkey
+                            FROM dwadmin.person_all_v
+                            WHERE pennkey= :penn_key
+                            """,
+                            penn_key=penn_key,
+                        )
+
+                        status = "invalid pennkey"
+
+                        for student in cursor:
+                            if len(student) > 0:
+                                status = "user not found in canvas"
+                                break
+                    except Exception as error:
+                        status = error
 
         data.at[index, "status"] = status
         data.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
@@ -295,14 +315,20 @@ def nso_main(test, verbose, force):
 
             if status_display == "ADDED":
                 status_display = typer.style(status_display, fg=typer.colors.GREEN)
+            elif status_display == "ALREADY PROCESSED":
+                status_display = typer.style(status_display, fg=typer.colors.YELLOW)
             else:
                 status_display = typer.style(status_display, fg=typer.colors.RED)
 
-            penn_key = typer.style(penn_key, fg=typer.colors.MAGENTA)
+            penn_key_display = typer.style(penn_key, fg=typer.colors.MAGENTA)
             typer.echo(
-                f"- ({index + 1}/{total}) {penn_key}, {group_set_name}, {group_name}:"
+                f"- ({index + 1}/{total}) {penn_key_display}, {group_set_name}, {group_name}:"
                 f" {status_display}"
             )
+
+        if status == "added":
+            with open(PROCESSED_PATH, "a+", newline="") as processed_file:
+                writer(processed_file).writerow([penn_key])
 
     data, EXTENSION = find_nso_file()
     (
@@ -312,6 +338,26 @@ def nso_main(test, verbose, force):
     ) = get_data_warehouse_config()
     START = get_start_index(force, RESULT_PATH)
     data, TOTAL = cleanup_data(data, EXTENSION, START)
+
+    if clear_processed:
+        proceed = typer.confirm(
+            "You have asked to clear the list of students already processed."
+            " This list makes subsequent runs of the command faster. Are you sure"
+            " you want to do this?"
+        )
+    else:
+        proceed = False
+
+    if proceed:
+        typer.echo(") Clearing list of students already processed...")
+
+        if PROCESSED_PATH.exists():
+            remove(PROCESSED_PATH)
+    else:
+        typer.echo(") Finding students already processed...")
+
+    PROCESSED_STUDENTS = get_processed_students(PROCESSED_PATH)
+
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_skip_message(START, "student")
     INSTANCE = "test" if test else "prod"
@@ -324,7 +370,7 @@ def nso_main(test, verbose, force):
         create_enrollments,
         CANVAS,
         verbose,
-        args=TOTAL,
+        args=(TOTAL, PROCESSED_STUDENTS),
         index=True,
     )
     not_enrolled, not_in_canvas, invalid_pennkey, error = process_result()
