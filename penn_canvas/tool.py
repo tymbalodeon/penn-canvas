@@ -69,7 +69,7 @@ def find_course_report():
 
         raise typer.Exit(1)
     else:
-        CSV_FILES = Path(REPORTS).glob("*.csv")
+        CSV_FILES = [report for report in Path(REPORTS).glob("*.csv")]
         TODAYS_REPORTS = list(filter(lambda report: TODAY in report.name, CSV_FILES))
 
         if not len(TODAYS_REPORTS):
@@ -91,11 +91,11 @@ def find_course_report():
             total = len(TODAYS_REPORTS)
 
             if total == 1:
-                report = "report"
+                report_display = "report"
             else:
-                report = "reports"
+                report_display = "reports"
 
-            typer.echo(f"- Found {total} {report}:")
+            typer.echo(f"- Found {total} {report_display}:")
 
             FOUND_PATHS = list()
 
@@ -106,7 +106,7 @@ def find_course_report():
             for path in FOUND_PATHS:
                 typer.echo(f"- {path}")
 
-            return TODAYS_REPORTS, report
+            return TODAYS_REPORTS, report_display
 
 
 def cleanup_report(reports, report_display, start=0):
@@ -132,11 +132,12 @@ def cleanup_report(reports, report_display, start=0):
         data_frames.append(data)
 
     data_frame = pandas.concat(data_frames, ignore_index=True)
-    TOTAL = len(data_frame.index)
-    data_frame = data_frame.loc[start:TOTAL, :]
-    TERMS = data_frame["term_id"].drop_duplicates().tolist()
+    total = len(data_frame.index)
+    data_frame = data_frame.loc[start:total, :]
+    data_frame["term_id"].fillna("N/A", inplace=True)
+    terms = data_frame["term_id"].drop_duplicates().tolist()
 
-    return data_frame, str(TOTAL), TERMS
+    return data_frame, str(total), terms
 
 
 def get_processed_courses(processed_path):
@@ -384,7 +385,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
                     message = typer.style(
                         f"ERROR: Failed to process {course_id} ({error_message})"
                     )
-                    typer.echo(f"- ({index + 1}/{TOTAL}) {message}")
+                    typer.echo(f"- ({index + 1}/{total}) {message}")
 
         if verbose and not error:
             if pandas.isna(course_id):
@@ -393,7 +394,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
                 course_display = f"{course_id}"
 
             typer.echo(
-                f'- ({index + 1}/{TOTAL}) "{tool_display}" {found_display} for'
+                f'- ({index + 1}/{total}) "{tool_display}" {found_display} for'
                 f" {course_display}."
             )
 
@@ -414,7 +415,40 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         / f"{TODAY_AS_Y_M_D}_{tool.replace(' ', '_')}_tool_{'enable' if enable else 'report'}_result.csv"
     )
     START = get_start_index(force, RESULT_PATH)
-    report, TOTAL, TERMS = cleanup_report(REPORTS, report_display, START)
+    report, total, terms = cleanup_report(REPORTS, report_display, START)
+
+    if not force:
+        PREVIOUS_RESULTS = [result_file for result_file in Path(RESULTS).glob("*.csv")]
+        PREVIOUS_RESULTS_FOR_TERM = dict()
+
+        for term in terms:
+            for result_file in PREVIOUS_RESULTS:
+                if term in result_file.name:
+                    PREVIOUS_RESULTS_FOR_TERM[term] = result_file
+
+        TERMS_TO_RUN = list()
+
+        for term in PREVIOUS_RESULTS_FOR_TERM:
+            path_display = typer.style(
+                str(PREVIOUS_RESULTS_FOR_TERM[term]), fg=typer.colors.GREEN
+            )
+            message = typer.style(
+                f"REPORT FOR {tool.upper()} HAS ALREADY BEEN GENERATED FOR TERM {term.upper()}: {path_display}",
+                fg=typer.colors.YELLOW,
+            )
+            typer.echo(f"- {message}")
+            run_again = typer.confirm(
+                f"Would you like to generate a new report for term {term} (y) or skip (N) [recommended]"
+            )
+            if not run_again:
+                TERMS_TO_RUN.append(term)
+
+        if len(TERMS_TO_RUN):
+            for term in TERMS_TO_RUN:
+                report = report[report["term_id"] != term]
+
+            total = str(len(report.index))
+            terms = report["term_id"].drop_duplicates().tolist()
 
     if enable:
         PROCESSED_PATH = (
@@ -446,12 +480,11 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
     tool_display = typer.style(tool, fg=typer.colors.CYAN)
     TERMS_DISPLAY = map(
         lambda term: typer.style(term, fg=typer.colors.BLUE),
-        TERMS,
+        terms,
     )
     STYLED_TERMS = f"{', '.join(TERMS_DISPLAY)}"
 
     if enable:
-
         if tool == "Course Materials @ Penn Libraries":
             ACCOUNTS_DISPLAY = map(
                 lambda account: typer.style(account, fg=typer.colors.MAGENTA),
@@ -496,6 +529,6 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         not_found,
         not_participating,
         error,
-        TOTAL,
+        total,
         RESULT_PATH,
     )

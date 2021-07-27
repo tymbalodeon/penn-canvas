@@ -62,7 +62,9 @@ def find_nso_file():
         INPUT_FILES = list()
 
         for extension in EXTENSIONS:
-            INPUT_FILES.extend(Path(INPUT).glob(extension))
+            INPUT_FILES.extend(
+                [input_file for input_file in Path(INPUT).glob(extension)]
+            )
 
         for input_file in INPUT_FILES:
             if GRADUATION_YEAR in input_file.name:
