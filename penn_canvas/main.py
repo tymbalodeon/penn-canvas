@@ -59,7 +59,7 @@ def email(
         "--test",
         help=(
             "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)"
+            " of production (https://canvas.upenn.edu/)."
         ),
     ),
     include_fixed: bool = typer.Option(
@@ -158,7 +158,7 @@ def storage(
         "--test",
         help=(
             "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)"
+            " of production (https://canvas.upenn.edu/)."
         ),
     ),
     verbose: bool = typer.Option(
@@ -171,6 +171,9 @@ def storage(
             "Force the task to start from the beginning despite the presence of a"
             " pre-existing incomplete result file and overwrite that file."
         ),
+    ),
+    increase: int = typer.Option(
+        1000, "--increase", help="The amount in MB to increase a course's storage."
     ),
 ):
     """
@@ -192,18 +195,34 @@ def storage(
     NOTE: Input filename must include the current date in order to be accepted.
     """
 
-    storage_main(test, verbose, force)
+    storage_main(test, verbose, force, increase)
 
 
 @app.command()
 def tool(
-    tool: str = typer.Argument(...),
+    tool: str = typer.Argument(
+        ...,
+        help=(
+            "The Canvas external tool you wish to work with. Must match the tool's"
+            " Canvas tab's label, or id if using --id."
+        ),
+    ),
+    use_id: bool = typer.Option(
+        False,
+        "--id",
+        help="Locate the specified tool using the tool's tab's id rather than label.",
+    ),
+    enable: bool = typer.Option(
+        False,
+        "--enable",
+        help="Enable the specified tool rather than generate a usage report.",
+    ),
     test: bool = typer.Option(
         False,
         "--test",
         help=(
             "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)"
+            " of production (https://canvas.upenn.edu/)."
         ),
     ),
     verbose: bool = typer.Option(
@@ -217,9 +236,18 @@ def tool(
             " pre-existing incomplete result file and overwrite that file."
         ),
     ),
+    clear_processed: bool = typer.Option(
+        False,
+        "--clear-processed",
+        help=(
+            "Clear the list of courses already processed for the term(s). Only runs if"
+            " '--enable' is also used."
+        ),
+    ),
 ):
     """
-    Returns a list of courses with TOOL enabled.
+    Returns a list of courses with TOOL enabled or enables TOOL for a list of
+    courses if using '--enable'.
 
     INPUT: Canvas Provisioning (Courses) report(s)
 
@@ -240,4 +268,4 @@ def tool(
     output file.
     """
 
-    tool_main(tool, test, verbose, force)
+    tool_main(tool, use_id, enable, test, verbose, force, clear_processed)

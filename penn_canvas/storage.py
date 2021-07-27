@@ -60,7 +60,7 @@ def find_storage_report():
         )
         typer.echo(
             f"{error} \n- Creating one for you at:"
-            f" {colorize_path(str(REPORTS))}\n\tPlease add a Canvas storage report"
+            f" {colorize_path(str(REPORTS))}\n- Please add a Canvas storage report"
             " matching today's date to this directory and then run this script"
             " again.\n- (If you need instructions for generating a Canvas storage"
             " report, run this command with the '--help' flag.)"
@@ -69,7 +69,7 @@ def find_storage_report():
         raise typer.Exit(1)
     else:
         TODAYS_REPORT = ""
-        CSV_FILES = Path(REPORTS).glob("*.csv")
+        CSV_FILES = [report for report in Path(REPORTS).glob("*.csv")]
 
         for report in CSV_FILES:
             if TODAY in report.name:
@@ -101,7 +101,7 @@ def cleanup_report(report, start=0):
     data = data[["id", "sis id", "account id", "storage used in MB"]]
     data = data[data["storage used in MB"] > 0]
     data.sort_values(by=["storage used in MB"], inplace=True)
-    data = data.astype("string", copy=False)
+    data = data.astype("string", copy=False, errors="ignore")
     data = data[data["account id"].isin(SUB_ACCOUNTS)]
     data.reset_index(drop=True, inplace=True)
     TOTAL = len(data.index)
@@ -158,7 +158,7 @@ def check_percent_storage(course, canvas, verbose, total):
         return False, "course not found"
 
 
-def increase_quota(sis_id, canvas, verbose, increase=1000):
+def increase_quota(sis_id, canvas, verbose, increase):
     if sis_id[:4] != "SRS_":
         middle = sis_id[:-5][-6:]
         sis_id = f"SRS_{sis_id[:11]}-{middle[:3]}-{middle[3:]} {sis_id[-5:]}"
@@ -168,7 +168,7 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
             sis_id,
             use_sis_id=True,
         )
-        subaccount_id = canvas_course.account_id
+        subaccount_id = str(canvas_course.account_id)
         error = "none"
     except Exception:
         canvas_course = None
@@ -178,6 +178,8 @@ def increase_quota(sis_id, canvas, verbose, increase=1000):
     if canvas_course:
         old_quota = canvas_course.storage_quota_mb
         new_quota = old_quota + increase
+        old_quota = str(int(old_quota))
+        new_quota = str(int(new_quota))
 
         try:
             canvas_course.update(course={"storage_quota_mb": new_quota})
@@ -232,16 +234,17 @@ def print_messages(total, increased, errors):
     typer.secho("FINISHED", fg=typer.colors.YELLOW)
 
 
-def storage_main(test, verbose, force):
-    def check_and_increase_storage(course, canvas, verbose, total):
+def storage_main(test, verbose, force, increase=1000):
+    def check_and_increase_storage(course, canvas, verbose, args):
         index = course[0]
         canvas_id = course[1]
         sis_id = course[2]
+        total, increase = args
 
         needs_increase, message = check_percent_storage(course, canvas, verbose, total)
 
         if needs_increase:
-            row = increase_quota(message, canvas, verbose)
+            row = increase_quota(message, canvas, verbose, increase)
         elif message is None:
             row = [canvas_id, sis_id, "N/A", "N/A", "increase not required"]
         else:
@@ -270,7 +273,12 @@ def storage_main(test, verbose, force):
     typer.echo(") Processing courses...")
 
     toggle_progress_bar(
-        report, check_and_increase_storage, CANVAS, verbose, args=TOTAL, index=True
+        report,
+        check_and_increase_storage,
+        CANVAS,
+        verbose,
+        args=(TOTAL, increase),
+        index=True,
     )
     INCREASED_COUNT, ERROR_COUNT = process_result()
     print_messages(TOTAL, INCREASED_COUNT, ERROR_COUNT)

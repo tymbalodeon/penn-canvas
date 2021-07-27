@@ -6,9 +6,9 @@ import pandas
 import typer
 from canvasapi import Canvas
 
-CANVAS_URL_PROD = "https://canvas.upenn.edu/"
-CANVAS_URL_TEST = "https://upenn.test.instructure.com/"
-CANVAS_URL_OPEN = "https://upenn-catalog.instructure.com/"
+CANVAS_URL_PROD = "https://canvas.upenn.edu"
+CANVAS_URL_TEST = "https://upenn.test.instructure.com"
+CANVAS_URL_OPEN = "https://upenn-catalog.instructure.com"
 CONFIG_DIR = Path.home() / ".config"
 CONFIG_PATH = CONFIG_DIR / "penn-canvas"
 
@@ -30,27 +30,33 @@ def make_config():
 
     if use_production:
         production = typer.prompt(
-            "Please enter your Access Token for the PRODUCTION instance of Penn Canvas"
+            "Please enter your Access Token for the PRODUCTION instance of Penn Canvas",
+            hide_input=True,
         )
 
     use_development = typer.confirm("Input an Access Token for DEVELOPMENT?")
 
     if use_development:
         development = typer.prompt(
-            "Please enter your Access Token for the TEST instance of Penn Canvas"
+            "Please enter your Access Token for the TEST instance of Penn Canvas",
+            hide_input=True,
         )
 
     use_open = typer.confirm("Input an Access Token for OPEN canvas?")
 
     if use_open:
-        open_canvas = typer.prompt("Please enter your Access Token for OPEN Canvas")
+        open_canvas = typer.prompt(
+            "Please enter your Access Token for OPEN Canvas",
+            hide_input=True,
+        )
 
     use_data_warehouse = typer.confirm("Input DATA WAREHOUSE credentials?")
 
     if use_data_warehouse:
         data_warehouse_user = typer.prompt("Please enter your DATA WAREHOUSE USER")
         data_warehouse_password = typer.prompt(
-            "Please enter your DATA WAREHOUSE PASSWORD"
+            "Please enter your DATA WAREHOUSE PASSWORD",
+            hide_input=True,
         )
         data_warehouse_dsn = typer.prompt("Please enter your DATA WAREHOUSE DSN")
 
@@ -167,17 +173,23 @@ def make_csv_paths(csv_dir, csv_file, headers):
             writer(result).writerow(headers)
 
 
-def get_command_paths(command, logs=False, input_dir=False):
+def get_command_paths(command, logs=False, processed=False, input_dir=False):
     COMMAND_DIRECTORY = Path.home() / f"penn-canvas/{command}"
     input_name = "input" if input_dir else "reports"
     REPORTS = COMMAND_DIRECTORY / input_name
     RESULTS = COMMAND_DIRECTORY / "results"
     LOGS = COMMAND_DIRECTORY / "logs"
+    PROCESSED = COMMAND_DIRECTORY / "processed"
+
+    PATHS = [REPORTS, RESULTS]
 
     if logs:
-        return REPORTS, RESULTS, LOGS
-    else:
-        return REPORTS, RESULTS
+        PATHS.append(LOGS)
+
+    if processed:
+        PATHS.append(PROCESSED)
+
+    return tuple(PATHS)
 
 
 def check_previous_output(result_path):
@@ -205,7 +217,7 @@ def check_previous_output(result_path):
             )
             typer.secho("FINISHED", fg=typer.colors.YELLOW)
 
-            raise typer.Exit(1)
+            raise typer.Exit()
     else:
         index = 0
 

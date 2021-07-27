@@ -47,7 +47,7 @@ def find_nso_file():
             fg=typer.colors.YELLOW,
         )
         typer.echo(
-            f"{error}\n- Creating one for you at: {colorize_path(str(INPUT))}\n\tPlease"
+            f"{error}\n- Creating one for you at: {colorize_path(str(INPUT))}\n- Please"
             " add an NSO input file matching the graduation year of this year's"
             " incoming freshmen to this directory and then run this script again.\n-"
             " (If you need detailed instructions, run this command with the '--help'"
@@ -62,7 +62,9 @@ def find_nso_file():
         INPUT_FILES = list()
 
         for extension in EXTENSIONS:
-            INPUT_FILES.extend(Path(INPUT).glob(extension))
+            INPUT_FILES.extend(
+                [input_file for input_file in Path(INPUT).glob(extension)]
+            )
 
         for input_file in INPUT_FILES:
             if GRADUATION_YEAR in input_file.name:
@@ -98,7 +100,7 @@ def cleanup_data(input_file, extension, start=0):
 
     data.columns = data.columns.str.lower()
     data["pennkey"] = data["pennkey"].str.lower()
-    data = data.astype("string", copy=False)
+    data = data.astype("string", copy=False, errors="ignore")
     data[list(data)] = data[list(data)].apply(lambda column: column.str.strip())
     TOTAL = len(data.index)
 
@@ -151,10 +153,11 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
         else:
             student = "student"
 
-        typer.secho(
-            f"- Found {not_enrolled} {student} not enrolled in the course.",
+        message = typer.style(
+            f"Found {not_enrolled} {student} not enrolled in the course.",
             fg=typer.colors.RED,
         )
+        typer.echo(f"- {message}")
         errors = True
 
     if int(not_in_canvas) > 0:
@@ -165,10 +168,10 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
             student = "student"
             account = "a Canvas account"
 
-        typer.secho(
-            f"- Found {not_enrolled} {student} without {account}.",
-            fg=typer.colors.RED,
+        message = typer.style(
+            f"Found {not_in_canvas} {student} without {account}.", fg=typer.colors.RED
         )
+        typer.echo(f"- {message}")
         errors = True
 
     if int(invalid_pennkey) > 0:
@@ -179,10 +182,11 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
             student = "student"
             pennkey = "pennkey"
 
-        typer.secho(
-            f"- Found {invalid_pennkey} {student} with invalid {pennkey}.",
+        message = typer.style(
+            f"Found {invalid_pennkey} {student} with invalid {pennkey}.",
             fg=typer.colors.RED,
         )
+        typer.echo(f"- {message}")
         errors = True
 
     if int(error) > 0:
@@ -191,10 +195,11 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
         else:
             student = "student"
 
-        typer.secho(
-            f"- Encountered an unknown error for {error} {student}.",
+        message = typer.style(
+            f"Encountered an unknown error for {error} {student}.",
             fg=typer.colors.RED,
         )
+        typer.echo(f"- {message}")
         errors = True
 
     if errors:
@@ -236,16 +241,20 @@ def nso_main(test, verbose, force):
             group.create_membership(canvas_user)
 
             status = "added"
-        except Exception:
+        except Exception as error:
             try:
                 course = canvas.get_course(course_id)
                 canvas_user = canvas.get_user(penn_key, "sis_login_id")
+                status = error
 
                 try:
                     course.get_user(canvas_user)
                 except Exception:
                     status = "user not enrolled in course"
-            except Exception:
+
+            except Exception as error:
+                status = error
+
                 try:
                     if verbose:
                         penn_key_display = typer.style(penn_key, fg=typer.colors.CYAN)
@@ -273,14 +282,14 @@ def nso_main(test, verbose, force):
                         if len(student) > 0:
                             status = "user not found in canvas"
                             break
-                except Exception:
-                    status = "error"
+                except Exception as error:
+                    status = error
 
         data.at[index, "status"] = status
         data.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
         if verbose:
-            status_display = status.upper()
+            status_display = str(status).upper()
 
             if status_display == "ADDED":
                 status_display = typer.style(status_display, fg=typer.colors.GREEN)
