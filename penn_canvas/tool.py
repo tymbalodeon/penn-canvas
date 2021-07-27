@@ -406,8 +406,8 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
     tool = check_tool(tool)
     REPORTS, report_display = find_course_report()
     RESULT_FILE_NAME = (
-        f"{TODAY_AS_Y_M_D}_{tool.replace(' ', '_')}"
-        f"_tool_{'enable' if enable else 'report'}_result.csv"
+        f"{tool.replace(' ', '_')}_tool_{'enable' if enable else 'report'}_"
+        f"result_{TODAY_AS_Y_M_D}.csv"
     )
     RESULT_PATH = RESULTS / RESULT_FILE_NAME
     START = get_start_index(force, RESULT_PATH)
