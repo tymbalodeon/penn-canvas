@@ -105,7 +105,7 @@ def cleanup_data(input_file, extension, start=0):
         data = read_excel(input_file, engine="openpyxl")
 
     data.columns = data.columns.str.lower()
-    data["pennkey"] = data["pennkey"].str.lower()
+    data["user (pennkey)"] = data["user (pennkey)"].str.lower()
     data = data.astype("string", copy=False, errors="ignore")
     data[list(data)] = data[list(data)].apply(lambda column: column.str.strip())
     TOTAL = len(data.index)
