@@ -115,6 +115,25 @@ def cleanup_data(input_file, extension, start=0):
     return data, str(TOTAL)
 
 
+def handle_clear_processed(clear_processed, processed_path):
+    if clear_processed:
+        proceed = confirm(
+            "You have asked to clear the list of students already processed."
+            " This list makes subsequent runs of the command faster. Are you sure"
+            " you want to do this?"
+        )
+    else:
+        proceed = False
+
+    if proceed:
+        echo(") Clearing list of students already processed...")
+
+        if processed_path.exists():
+            remove(processed_path)
+    else:
+        echo(") Finding students already processed...")
+
+
 def make_find_group_name(group_name):
     def find_group_name(group):
         return group.name == group_name
@@ -337,26 +356,8 @@ def nso_main(test, verbose, force, clear_processed):
     ) = get_data_warehouse_config()
     START = get_start_index(force, RESULT_PATH)
     data, TOTAL = cleanup_data(data, EXTENSION, START)
-
-    if clear_processed:
-        proceed = confirm(
-            "You have asked to clear the list of students already processed."
-            " This list makes subsequent runs of the command faster. Are you sure"
-            " you want to do this?"
-        )
-    else:
-        proceed = False
-
-    if proceed:
-        echo(") Clearing list of students already processed...")
-
-        if PROCESSED_PATH.exists():
-            remove(PROCESSED_PATH)
-    else:
-        echo(") Finding students already processed...")
-
+    handle_clear_processed(clear_processed, PROCESSED_PATH)
     PROCESSED_STUDENTS = get_processed_students(PROCESSED_PATH)
-
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_skip_message(START, "student")
     INSTANCE = "test" if test else "prod"
