@@ -32,7 +32,7 @@ TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
 INPUT, RESULTS, PROCESSED = get_command_paths("nso", input_dir=True, processed=True)
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_nso_result.csv"
-PROCESSED_PATH = PROCESSED / f"nso_processed_students_{YEAR}.csv"
+PROCESSED_PATH = PROCESSED / f"nso_processed_users_{YEAR}.csv"
 HEADERS = [
     "index",
     "canvas course id",
@@ -118,7 +118,7 @@ def cleanup_data(input_file, extension, start=0):
 def handle_clear_processed(clear_processed, processed_path):
     if clear_processed:
         proceed = confirm(
-            "You have asked to clear the list of students already processed."
+            "You have asked to clear the list of users already processed."
             " This list makes subsequent runs of the command faster. Are you sure"
             " you want to do this?"
         )
@@ -126,12 +126,12 @@ def handle_clear_processed(clear_processed, processed_path):
         proceed = False
 
     if proceed:
-        echo(") Clearing list of students already processed...")
+        echo(") Clearing list of users already processed...")
 
         if processed_path.exists():
             remove(processed_path)
     else:
-        echo(") Finding students already processed...")
+        echo(") Finding users already processed...")
 
 
 def make_find_group_name(group_name):
@@ -141,7 +141,7 @@ def make_find_group_name(group_name):
     return find_group_name
 
 
-def get_processed_students(processed_path):
+def get_processed_users(processed_path):
     if processed_path.is_file():
         result = read_csv(processed_path)
         result = result.astype("string", copy=False, errors="ignore")
@@ -170,7 +170,7 @@ def process_result():
 
 def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
     secho("SUMMARY:", fg=colors.YELLOW)
-    echo(f"- Processed {colorize(total)} accounts.")
+    echo(f"- Processed {colorize(total)} users.")
     TOTAL_ERRORS = (
         int(not_enrolled) + int(not_in_canvas) + int(invalid_pennkey) + int(error)
     )
@@ -178,18 +178,18 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
         str(int(total) - TOTAL_ERRORS),
         fg=colors.GREEN,
     )
-    echo(f"- Successfully added {accepted_count} students to groups")
+    echo(f"- Successfully added {accepted_count} users to groups.")
 
     errors = False
 
     if int(not_enrolled) > 0:
         if int(not_enrolled) > 1:
-            student = "students"
+            user = "users"
         else:
-            student = "student"
+            user = "user"
 
         message = style(
-            f"Found {not_enrolled} {student} not enrolled in the course.",
+            f"Found {not_enrolled} {user} not enrolled in the course.",
             fg=colors.RED,
         )
         echo(f"- {message}")
@@ -197,28 +197,28 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
 
     if int(not_in_canvas) > 0:
         if int(not_in_canvas) > 1:
-            student = "students"
+            user = "users"
             account = "Canvas accounts"
         else:
-            student = "student"
+            user = "user"
             account = "a Canvas account"
 
         message = style(
-            f"Found {not_in_canvas} {student} without {account}.", fg=colors.RED
+            f"Found {not_in_canvas} {user} without {account}.", fg=colors.RED
         )
         echo(f"- {message}")
         errors = True
 
     if int(invalid_pennkey) > 0:
         if int(invalid_pennkey) > 1:
-            student = "students"
+            user = "users"
             pennkey = "pennkeys"
         else:
-            student = "student"
+            user = "user"
             pennkey = "pennkey"
 
         message = style(
-            f"Found {invalid_pennkey} {student} with invalid {pennkey}.",
+            f"Found {invalid_pennkey} {user} with invalid {pennkey}.",
             fg=colors.RED,
         )
         echo(f"- {message}")
@@ -226,12 +226,12 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
 
     if int(error) > 0:
         if int(error) > 1:
-            student = "students"
+            user = "users"
         else:
-            student = "student"
+            user = "user"
 
         message = style(
-            f"Encountered an unknown error for {error} {student}.",
+            f"Encountered an unknown error for {error} {user}.",
             fg=colors.RED,
         )
         echo(f"- {message}")
@@ -245,11 +245,11 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
 
 
 def nso_main(test, verbose, force, clear_processed):
-    def create_enrollments(student, canvas, verbose, args):
-        total, processed_students = args
-        index, course_id, group_set_name, group_name, penn_key = student
+    def create_enrollments(user, canvas, verbose, args):
+        total, processed_users = args
+        index, course_id, group_set_name, group_name, penn_key = user
 
-        if force and penn_key in processed_students:
+        if force and penn_key in processed_users:
             status = "already processed"
         else:
             try:
@@ -318,8 +318,8 @@ def nso_main(test, verbose, force, clear_processed):
 
                         status = "invalid pennkey"
 
-                        for student in cursor:
-                            if len(student) > 0:
+                        for user in cursor:
+                            if len(user) > 0:
                                 status = "user not found in canvas"
                                 break
                     except Exception as error:
@@ -344,7 +344,7 @@ def nso_main(test, verbose, force, clear_processed):
                 f" {group_name}: {status_display}"
             )
 
-        if status == "added" and penn_key not in processed_students:
+        if status == "added" and penn_key not in processed_users:
             with open(PROCESSED_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow([penn_key])
 
@@ -357,20 +357,20 @@ def nso_main(test, verbose, force, clear_processed):
     START = get_start_index(force, RESULT_PATH)
     data, TOTAL = cleanup_data(data, EXTENSION, START)
     handle_clear_processed(clear_processed, PROCESSED_PATH)
-    PROCESSED_STUDENTS = get_processed_students(PROCESSED_PATH)
+    PROCESSED_USERS = get_processed_users(PROCESSED_PATH)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
-    make_skip_message(START, "student")
+    make_skip_message(START, "user")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
 
-    echo(") Processing students...")
+    echo(") Processing users...")
 
     toggle_progress_bar(
         data,
         create_enrollments,
         CANVAS,
         verbose,
-        args=(TOTAL, PROCESSED_STUDENTS),
+        args=(TOTAL, PROCESSED_USERS),
         index=True,
     )
     not_enrolled, not_in_canvas, invalid_pennkey, error = process_result()
