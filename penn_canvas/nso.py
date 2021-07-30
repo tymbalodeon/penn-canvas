@@ -4,7 +4,7 @@ from os import remove
 from pathlib import Path
 
 from cx_Oracle import connect, init_oracle_client
-from pandas import concat, read_csv, read_excel
+from pandas import concat, read_csv, read_excel, DataFrame
 from typer import Exit, colors, confirm, echo, secho, style
 
 from .helpers import (
@@ -32,6 +32,7 @@ TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
 INPUT, RESULTS, PROCESSED = get_command_paths("nso", input_dir=True, processed=True)
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_nso_result.csv"
+FINAL_LIST_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_nso_final_list.csv"
 PROCESSED_PATH = PROCESSED / f"nso_processed_users_{YEAR}.csv"
 HEADERS = [
     "index",
@@ -62,20 +63,15 @@ def find_nso_file():
 
         raise Exit(1)
     else:
-        CURRENT_FILE = ""
-        EXTENSIONS = ["*.csv", "*.xlsx"]
-
-        INPUT_FILES = list()
-
-        for extension in EXTENSIONS:
-            INPUT_FILES.extend(
-                [input_file for input_file in Path(INPUT).glob(extension)]
-            )
-
-        for input_file in INPUT_FILES:
-            if GRADUATION_YEAR in input_file.name:
-                CURRENT_FILE = input_file
-                CURRENT_EXTENSION = input_file.suffix
+        XLSX_FILES = [input_file for input_file in Path(INPUT).glob("*.xlsx")]
+        CURRENT_FILE = next(
+            filter(
+                lambda input_file: GRADUATION_YEAR in input_file.name
+                and "~$" not in input_file.name,
+                XLSX_FILES,
+            ),
+            None,
+        )
 
         if not CURRENT_FILE:
             error = style(
@@ -93,17 +89,43 @@ def find_nso_file():
 
             raise Exit(1)
         else:
-            return CURRENT_FILE, CURRENT_EXTENSION
+            return CURRENT_FILE
 
 
-def cleanup_data(input_file, extension, start=0):
+def cleanup_data(input_file, start=0):
     echo(") Preparing NSO file...")
 
-    if extension == ".csv":
-        data = read_csv(input_file)
-    else:
-        data = read_excel(input_file, engine="openpyxl")
+    data = read_excel(input_file, engine="openpyxl", sheet_name=None)
 
+    try:
+        facilitators = data["PHINS Groups"]
+        students = data["First-Year PennKey"]
+    except Exception:
+        facilitators = data[0]
+        students = data[1]
+
+    group_numbers = facilitators["Group Name"].to_list()
+    group_numbers = map(
+        lambda group_number: int(group_number.replace("Group ", "")), group_numbers
+    )
+    number_of_groups = max(group_numbers)
+    canvas_course_id = facilitators["Canvas Course ID"].drop_duplicates().tolist()[0]
+    group_set_name = facilitators["Group Set Name"].drop_duplicates().tolist()[0]
+    students = students["PennKey"].tolist()
+
+    for index, student in enumerate(students):
+        students[index] = [
+            canvas_course_id,
+            group_set_name,
+            f"Group {(index % number_of_groups) + 1}",
+            student,
+        ]
+
+    students = DataFrame(
+        students,
+        columns=["Canvas Course ID", "Group Set Name", "Group Name", "User (Pennkey)"],
+    )
+    data = concat([facilitators, students], ignore_index=True)
     data.columns = data.columns.str.lower()
     data["user (pennkey)"] = data["user (pennkey)"].str.lower()
     data = data.astype("string", copy=False, errors="ignore")
@@ -153,10 +175,18 @@ def get_processed_users(processed_path):
 
 def process_result():
     result = read_csv(RESULT_PATH)
-    NOT_ENROLLED = result[result["status"] == "user not enrolled in course"]
+    ALREADY_PROCESSED = result[result["status"] == "already processed"]
+    ADDED = result[result["status"] == "added"]
+    ENROLLED = result[result["status"] == "enrolled and added"]
+    NOT_ENROLLED = result[result["status"] == "failed to enroll user in course"]
     NOT_IN_CANVAS = result[result["status"] == "user not found in canvas"]
     INVALID_PENNKEY = result[result["status"] == "invalid pennkey"]
-    ERROR = result[result["status"] == "error"]
+    ERROR = result[
+        (result["status"] != "failed to enroll user in course")
+        & (result["status"] != "user not found in canvas")
+        & (result["status"] != "invalid pennkey")
+    ]
+    ENROLLED_COUNT = str(len(ENROLLED.index))
     NOT_ENROLLED_COUNT = str(len(NOT_ENROLLED.index))
     NOT_IN_CANVAS_COUNT = str(len(NOT_IN_CANVAS.index))
     INVALID_PENNKEY_COUNT = str(len(INVALID_PENNKEY.index))
@@ -164,11 +194,22 @@ def process_result():
     result = concat([NOT_ENROLLED, NOT_IN_CANVAS, INVALID_PENNKEY, ERROR])
     result.drop("index", axis=1, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
+    final_list = concat([ALREADY_PROCESSED, ADDED, ENROLLED])
+    final_list.drop(["index", "status"], axis=1, inplace=True)
+    final_list.to_csv(FINAL_LIST_PATH, index=False)
 
-    return NOT_ENROLLED_COUNT, NOT_IN_CANVAS_COUNT, INVALID_PENNKEY_COUNT, ERROR_COUNT
+    return (
+        ENROLLED_COUNT,
+        NOT_ENROLLED_COUNT,
+        NOT_IN_CANVAS_COUNT,
+        INVALID_PENNKEY_COUNT,
+        ERROR_COUNT,
+    )
 
 
-def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
+def print_messages(
+    enrolled, not_enrolled, not_in_canvas, invalid_pennkey, error, total
+):
     secho("SUMMARY:", fg=colors.YELLOW)
     echo(f"- Processed {colorize(total)} users.")
     TOTAL_ERRORS = (
@@ -181,6 +222,18 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
     echo(f"- Successfully added {accepted_count} users to groups.")
 
     errors = False
+
+    if int(enrolled) > 0:
+        if int(enrolled) > 1:
+            user = "users"
+        else:
+            user = "user"
+
+        message = style(
+            f"Automatically enrolled {enrolled} {user} in the course.",
+            fg=colors.YELLOW,
+        )
+        echo(f"- {message}")
 
     if int(not_enrolled) > 0:
         if int(not_enrolled) > 1:
@@ -245,41 +298,47 @@ def print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, total):
 
 
 def nso_main(test, verbose, force, clear_processed):
-    def create_enrollments(user, canvas, verbose, args):
+    def create_memberships(user, canvas, verbose, args):
         total, processed_users = args
         index, course_id, group_set_name, group_name, penn_key = user
+
+        def create_group_membership(enroll_in_course=False):
+            course = canvas.get_course(course_id)
+            group_set_filter = make_find_group_name(group_set_name)
+            group_set = next(
+                filter(
+                    group_set_filter,
+                    course.get_group_categories(),
+                ),
+                None,
+            )
+
+            if not group_set:
+                if verbose:
+                    echo(f") Creating group set {group_set_name}...")
+                group_set = course.create_group_category(group_set_name)
+
+            group_filter = make_find_group_name(group_name)
+            group = next(filter(group_filter, group_set.get_groups()), None)
+
+            if not group:
+                if verbose:
+                    echo(f") Creating group {group_name}...")
+                group = group_set.create_group(name=group_name)
+
+            canvas_user = canvas.get_user(penn_key, "sis_login_id")
+            group.create_membership(canvas_user)
+
+            if enroll_in_course:
+                return "enrolled and added"
+            else:
+                return "added"
 
         if force and penn_key in processed_users:
             status = "already processed"
         else:
             try:
-                course = canvas.get_course(course_id)
-                group_set_filter = make_find_group_name(group_set_name)
-                group_set = next(
-                    filter(
-                        group_set_filter,
-                        course.get_group_categories(),
-                    ),
-                    None,
-                )
-
-                if not group_set:
-                    if verbose:
-                        echo(f") Creating group set {group_set_name}...")
-                    group_set = course.create_group_category(group_set_name)
-
-                group_filter = make_find_group_name(group_name)
-                group = next(filter(group_filter, group_set.get_groups()), None)
-
-                if not group:
-                    if verbose:
-                        echo(f") Creating group {group_name}...")
-                    group = group_set.create_group(name=group_name)
-
-                canvas_user = canvas.get_user(penn_key, "sis_login_id")
-                group.create_membership(canvas_user)
-
-                status = "added"
+                status = create_group_membership()
             except Exception as error:
                 try:
                     course = canvas.get_course(course_id)
@@ -289,7 +348,11 @@ def nso_main(test, verbose, force, clear_processed):
                     try:
                         course.get_user(canvas_user)
                     except Exception:
-                        status = "user not enrolled in course"
+                        try:
+                            course.enroll_user(canvas_user)
+                            status = create_group_membership(True)
+                        except Exception:
+                            status = "failed to enroll user in course"
                 except Exception as error:
                     status = error
 
@@ -331,7 +394,7 @@ def nso_main(test, verbose, force, clear_processed):
         if verbose:
             status_display = str(status).upper()
 
-            if status_display == "ADDED":
+            if status_display == "ADDED" or status_display == "ENROLLED AND ADDED":
                 status_display = style(status_display, fg=colors.GREEN)
             elif status_display == "ALREADY PROCESSED":
                 status_display = style(status_display, fg=colors.YELLOW)
@@ -344,18 +407,20 @@ def nso_main(test, verbose, force, clear_processed):
                 f" {group_name}: {status_display}"
             )
 
-        if status == "added" and penn_key not in processed_users:
+        if (
+            status == "added" or status == "enrolled and added"
+        ) and penn_key not in processed_users:
             with open(PROCESSED_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow([penn_key])
 
-    data, EXTENSION = find_nso_file()
+    data = find_nso_file()
     (
         DATA_WAREHOUSE_USER,
         DATA_WAREHOUSE_PASSWORD,
         DATA_WAREHOUSE_DSN,
     ) = get_data_warehouse_config()
     START = get_start_index(force, RESULT_PATH)
-    data, TOTAL = cleanup_data(data, EXTENSION, START)
+    data, TOTAL = cleanup_data(data, START)
     handle_clear_processed(clear_processed, PROCESSED_PATH)
     PROCESSED_USERS = get_processed_users(PROCESSED_PATH)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
@@ -367,11 +432,11 @@ def nso_main(test, verbose, force, clear_processed):
 
     toggle_progress_bar(
         data,
-        create_enrollments,
+        create_memberships,
         CANVAS,
         verbose,
         args=(TOTAL, PROCESSED_USERS),
         index=True,
     )
-    not_enrolled, not_in_canvas, invalid_pennkey, error = process_result()
-    print_messages(not_enrolled, not_in_canvas, invalid_pennkey, error, TOTAL)
+    enrolled, not_enrolled, not_in_canvas, invalid_pennkey, error = process_result()
+    print_messages(enrolled, not_enrolled, not_in_canvas, invalid_pennkey, error, TOTAL)

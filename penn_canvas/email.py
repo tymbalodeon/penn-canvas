@@ -67,12 +67,10 @@ def find_users_report():
 
         raise Exit(1)
     else:
-        TODAYS_REPORT = ""
         CSV_FILES = [report for report in Path(REPORTS).glob("*.csv")]
-
-        for report in CSV_FILES:
-            if TODAY in report.name:
-                TODAYS_REPORT = report
+        TODAYS_REPORT = next(
+            filter(lambda report: TODAY in report.name, CSV_FILES), None
+        )
 
         if not TODAYS_REPORT:
             error = style(
