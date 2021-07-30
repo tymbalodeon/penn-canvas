@@ -213,6 +213,7 @@ def process_result():
     result.fillna("N/A", inplace=True)
     result.drop(columns=["index", "account id", "storage used in MB"], inplace=True)
     result.rename(columns={"id": "subaccount id", "sis id": "course id"}, inplace=True)
+    result = result.astype("string", copy=False, errors="ignore")
     result.to_csv(RESULT_PATH, index=False)
 
     return increased_count, error_count
