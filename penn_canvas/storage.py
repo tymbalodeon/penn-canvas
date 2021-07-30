@@ -202,7 +202,7 @@ def increase_quota(sis_id, canvas, verbose, increase):
 
 
 def process_result():
-    result = read_csv(RESULT_PATH)
+    result = read_csv(RESULT_PATH, dtype=str)
     increased_count = len(result[result["error"] == "none"].index)
     result.drop(result[result["error"] == "increase not required"].index, inplace=True)
     error_count = len(result[result["error"] != "none"].index)
@@ -213,7 +213,6 @@ def process_result():
     result.fillna("N/A", inplace=True)
     result.drop(columns=["index", "account id", "storage used in MB"], inplace=True)
     result.rename(columns={"id": "subaccount id", "sis id": "course id"}, inplace=True)
-    result = result.astype("string", copy=False, errors="ignore")
     result.to_csv(RESULT_PATH, index=False)
 
     return increased_count, error_count
