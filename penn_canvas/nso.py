@@ -4,7 +4,8 @@ from os import remove
 from pathlib import Path
 
 from cx_Oracle import connect, init_oracle_client
-from pandas import concat, read_csv, read_excel, DataFrame
+from natsort import natsorted
+from pandas import Categorical, DataFrame, concat, read_csv, read_excel
 from typer import Exit, colors, confirm, echo, secho, style
 
 from .helpers import (
@@ -130,6 +131,7 @@ def cleanup_data(input_file, start=0):
     data["user (pennkey)"] = data["user (pennkey)"].str.lower()
     data = data.astype("string", copy=False, errors="ignore")
     data[list(data)] = data[list(data)].apply(lambda column: column.str.strip())
+    data.dropna(subset=["user (pennkey)"], inplace=True)
     TOTAL = len(data.index)
 
     data = data.loc[start:TOTAL, :]
@@ -182,10 +184,15 @@ def process_result():
     NOT_IN_CANVAS = result[result["status"] == "user not found in canvas"]
     INVALID_PENNKEY = result[result["status"] == "invalid pennkey"]
     ERROR = result[
-        (result["status"] != "failed to enroll user in course")
+        (result["status"] != "already processed")
+        & (result["status"] != "added")
+        & (result["status"] != "enrolled and added")
+        & (result["status"] != "failed to enroll user in course")
         & (result["status"] != "user not found in canvas")
         & (result["status"] != "invalid pennkey")
     ]
+    ALREADY_PROCESSED_COUNT = str(len(ALREADY_PROCESSED))
+    ADDED_COUNT = str(len(ADDED))
     ENROLLED_COUNT = str(len(ENROLLED.index))
     NOT_ENROLLED_COUNT = str(len(NOT_ENROLLED.index))
     NOT_IN_CANVAS_COUNT = str(len(NOT_IN_CANVAS.index))
@@ -196,9 +203,17 @@ def process_result():
     result.to_csv(RESULT_PATH, index=False)
     final_list = concat([ALREADY_PROCESSED, ADDED, ENROLLED])
     final_list.drop(["index", "status"], axis=1, inplace=True)
+    final_list["group name"] = Categorical(
+        final_list["group name"],
+        ordered=True,
+        categories=natsorted(final_list["group name"].unique()),
+    )
+    final_list = final_list.sort_values("group name")
     final_list.to_csv(FINAL_LIST_PATH, index=False)
 
     return (
+        ALREADY_PROCESSED_COUNT,
+        ADDED_COUNT,
         ENROLLED_COUNT,
         NOT_ENROLLED_COUNT,
         NOT_IN_CANVAS_COUNT,
@@ -208,18 +223,22 @@ def process_result():
 
 
 def print_messages(
-    enrolled, not_enrolled, not_in_canvas, invalid_pennkey, error, total
+    already_processed,
+    added,
+    enrolled,
+    not_enrolled,
+    not_in_canvas,
+    invalid_pennkey,
+    error,
+    total,
 ):
     secho("SUMMARY:", fg=colors.YELLOW)
     echo(f"- Processed {colorize(total)} users.")
-    TOTAL_ERRORS = (
-        int(not_enrolled) + int(not_in_canvas) + int(invalid_pennkey) + int(error)
-    )
-    accepted_count = style(
-        str(int(total) - TOTAL_ERRORS),
+    added_count = style(
+        str(int(added) + int(enrolled)),
         fg=colors.GREEN,
     )
-    echo(f"- Successfully added {accepted_count} users to groups.")
+    echo(f"- Successfully added {added_count} users to groups.")
 
     errors = False
 
@@ -231,6 +250,18 @@ def print_messages(
 
         message = style(
             f"Automatically enrolled {enrolled} {user} in the course.",
+            fg=colors.YELLOW,
+        )
+        echo(f"- {message}")
+
+    if int(already_processed) > 0:
+        if int(already_processed) > 1:
+            user = "users"
+        else:
+            user = "user"
+
+        message = style(
+            f"{already_processed} {user} already added to group.",
             fg=colors.YELLOW,
         )
         echo(f"- {message}")
@@ -292,8 +323,10 @@ def print_messages(
 
     if errors:
         result_path = style(f"{RESULT_PATH}", fg=colors.GREEN)
-        echo(f"- Details recorded to result file: {result_path}")
+        echo(f"- Details recorded to: {result_path}")
 
+    final_list_path = style(f"{FINAL_LIST_PATH}", fg=colors.GREEN)
+    echo(f"- Final Group membership assignments recorded to: {final_list_path}")
     secho("FINISHED", fg=colors.YELLOW)
 
 
@@ -438,5 +471,22 @@ def nso_main(test, verbose, force, clear_processed):
         args=(TOTAL, PROCESSED_USERS),
         index=True,
     )
-    enrolled, not_enrolled, not_in_canvas, invalid_pennkey, error = process_result()
-    print_messages(enrolled, not_enrolled, not_in_canvas, invalid_pennkey, error, TOTAL)
+    (
+        already_processed,
+        added,
+        enrolled,
+        not_enrolled,
+        not_in_canvas,
+        invalid_pennkey,
+        error,
+    ) = process_result()
+    print_messages(
+        already_processed,
+        added,
+        enrolled,
+        not_enrolled,
+        not_in_canvas,
+        invalid_pennkey,
+        error,
+        TOTAL,
+    )

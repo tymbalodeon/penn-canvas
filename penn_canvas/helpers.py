@@ -71,7 +71,8 @@ def make_config():
 
 def display_config():
     if confirm(
-        "This command will display sensitive information on your screen. Are you sure you want to proceed?"
+        "This command will display sensitive information on your screen. Are you sure"
+        " you want to proceed?"
     ):
         (
             production,
