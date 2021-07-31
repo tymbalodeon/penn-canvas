@@ -45,7 +45,7 @@ RESERVE_ACCOUNTS = [
 
 
 def check_tool(tool):
-    if tool.lower() == "reserve" or tool == "reserves":
+    if tool.lower() in ["reserve", "reserves"]:
         return "Course Materials @ Penn Libraries"
     else:
         return tool
