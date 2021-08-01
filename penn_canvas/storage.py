@@ -66,7 +66,6 @@ def find_storage_report():
 
         raise Exit(1)
     else:
-        TODAYS_REPORT = ""
         CSV_FILES = [report for report in Path(REPORTS).glob("*.csv")]
         TODAYS_REPORT = next(
             filter(lambda report: TODAY in report.name, CSV_FILES), None
