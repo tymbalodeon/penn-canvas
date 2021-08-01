@@ -7,7 +7,7 @@ def module_main(test, course_id, module_id):
     canvas = get_canvas(test)
     course = canvas.get_course(course_id)
     modules = course.get_modules()
-    module = next(filter(lambda module: module.id == module_id, modules), None)
+    module = next((module for module in modules if module.id == module_id), None)
 
     module_id, course_id = tuple(
         colorize(identifier, "magenta") for identifier in [module_id, course_id]

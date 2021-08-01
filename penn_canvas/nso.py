@@ -61,10 +61,10 @@ def find_nso_file():
     else:
         XLSX_FILES = [input_file for input_file in Path(INPUT).glob("*.xlsx")]
         CURRENT_FILE = next(
-            filter(
-                lambda input_file: GRADUATION_YEAR in input_file.name
-                and "~$" not in input_file.name,
-                XLSX_FILES,
+            (
+                input_file
+                for input_file in XLSX_FILES
+                if GRADUATION_YEAR in input_file.name and "~$" not in input_file.name
             ),
             None,
         )
@@ -152,13 +152,6 @@ def handle_clear_processed(clear_processed, processed_path):
             remove(processed_path)
     else:
         echo(") Finding users already processed...")
-
-
-def make_find_group_name(group_name):
-    def find_group_name(group):
-        return group.name == group_name
-
-    return find_group_name
 
 
 def get_processed_users(processed_path):
@@ -321,22 +314,24 @@ def nso_main(test, verbose, force, clear_processed):
 
         def create_group_membership(enroll_in_course=False):
             course = canvas.get_course(course_id)
-            group_set_filter = make_find_group_name(group_set_name)
+
             group_set = next(
-                filter(
-                    group_set_filter,
-                    course.get_group_categories(),
+                (
+                    group_set
+                    for group_set in course.get_group_categories()
+                    if group_set.name == group_set_name
                 ),
                 None,
             )
-
             if not group_set:
                 if verbose:
                     echo(f") Creating group set {group_set_name}...")
                 group_set = course.create_group_category(group_set_name)
 
-            group_filter = make_find_group_name(group_name)
-            group = next(filter(group_filter, group_set.get_groups()), None)
+            group = next(
+                (group for group in group_set.get_groups() if group.name == group_name),
+                None,
+            )
 
             if not group:
                 if verbose:

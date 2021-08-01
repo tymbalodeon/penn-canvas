@@ -345,9 +345,9 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
                 tabs = course.get_tabs()
 
                 if use_id:
-                    tool_tab = next(filter(lambda tab: tab.id == tool, tabs), None)
+                    tool_tab = next((tab for tab in tabs if tab.id == tool), None)
                 else:
-                    tool_tab = next(filter(lambda tab: tab.label == tool, tabs), None)
+                    tool_tab = next((tab for tab in tabs if tab.label == tool), None)
 
                 if not tool_tab:
                     found = tool_status.upper()
