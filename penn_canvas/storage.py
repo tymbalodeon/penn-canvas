@@ -258,12 +258,7 @@ def storage_main(test, verbose, force, increase=1000):
     echo(") Processing courses...")
 
     toggle_progress_bar(
-        report,
-        check_and_increase_storage,
-        CANVAS,
-        verbose,
-        args=(TOTAL, increase),
-        index=True,
+        report, check_and_increase_storage, CANVAS, verbose, args=(TOTAL, increase)
     )
     INCREASED_COUNT, ERROR_COUNT = process_result()
     print_messages(TOTAL, INCREASED_COUNT, ERROR_COUNT)

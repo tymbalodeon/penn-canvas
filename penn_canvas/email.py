@@ -387,9 +387,7 @@ def email_main(test, include_fixed, verbose, force):
 
     echo(") Processing users...")
 
-    toggle_progress_bar(
-        report, check_and_activate_emails, CANVAS, verbose, args=ARGS, index=True
-    )
+    toggle_progress_bar(report, check_and_activate_emails, CANVAS, verbose, args=ARGS)
     remove_empty_log(LOG_PATH)
     (
         fixed_count,

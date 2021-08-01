@@ -445,12 +445,7 @@ def nso_main(test, verbose, force, clear_processed):
     echo(") Processing users...")
 
     toggle_progress_bar(
-        data,
-        create_memberships,
-        CANVAS,
-        verbose,
-        args=(TOTAL, PROCESSED_USERS),
-        index=True,
+        data, create_memberships, CANVAS, verbose, args=(TOTAL, PROCESSED_USERS)
     )
     (
         already_processed,

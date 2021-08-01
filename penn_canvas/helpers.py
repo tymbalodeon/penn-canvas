@@ -251,39 +251,20 @@ def make_skip_message(start, item):
     echo(f") {message}")
 
 
-def toggle_progress_bar(data, callback, canvas, verbose, args=None, index=False):
+def toggle_progress_bar(data, callback, canvas, verbose, args):
     def verbose_mode():
-        for item in data.itertuples(index=index):
-            callback(item, canvas, verbose)
-
-    def verbose_mode_with_args():
-        for item in data.itertuples(index=index):
+        for item in data.itertuples():
             callback(item, canvas, verbose, args)
 
     def progress_bar_mode():
-        with progressbar(
-            data.itertuples(index=index), length=len(data.index)
-        ) as progress:
-            for item in progress:
-                callback(item, canvas, verbose)
-
-    def progress_bar_mode_with_args():
-        with progressbar(
-            data.itertuples(index=index), length=len(data.index)
-        ) as progress:
+        with progressbar(data.itertuples(), length=len(data.index)) as progress:
             for item in progress:
                 callback(item, canvas, verbose, args)
 
     if verbose:
-        if args:
-            verbose_mode_with_args()
-        else:
-            verbose_mode()
+        verbose_mode()
     else:
-        if args:
-            progress_bar_mode_with_args()
-        else:
-            progress_bar_mode()
+        progress_bar_mode()
 
 
 def get_canvas(instance="test"):

@@ -514,14 +514,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
     else:
         ARGS = (tool, use_id, enable)
 
-    toggle_progress_bar(
-        report,
-        check_tool_usage,
-        CANVAS,
-        verbose,
-        args=ARGS,
-        index=True,
-    )
+    toggle_progress_bar(report, check_tool_usage, CANVAS, verbose, args=ARGS)
     (
         enabled,
         already_enabled,
