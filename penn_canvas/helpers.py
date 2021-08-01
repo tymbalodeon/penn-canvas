@@ -12,6 +12,8 @@ CANVAS_URL_TEST = "https://upenn.test.instructure.com"
 CANVAS_URL_OPEN = "https://upenn-catalog.instructure.com"
 CONFIG_DIR = Path.home() / ".config"
 CONFIG_PATH = CONFIG_DIR / "penn-canvas"
+TODAY = datetime.now().strftime("%d_%b_%Y")
+TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 
 
 def make_config():
@@ -84,13 +86,16 @@ def display_config():
             data_warehouse_dsn,
         ) = check_config(CONFIG_PATH)
 
-        production = style(f"{production}", fg=colors.YELLOW)
-        development = style(f"{development}", fg=colors.YELLOW)
-        open_canvas = style(f"{open_canvas}", fg=colors.YELLOW)
-        data_warehouse_user = style(f"{data_warehouse_user}", fg=colors.YELLOW)
-        data_warehouse_password = style(f"{data_warehouse_password}", fg=colors.YELLOW)
-        data_warehouse_dsn = style(f"{data_warehouse_dsn}", fg=colors.YELLOW)
-        config_path = style(f"{CONFIG_PATH}", fg=colors.GREEN)
+        config_value_color = "yellow"
+        production = colorize(f"{production}", config_value_color)
+        development = colorize(f"{development}", config_value_color)
+        open_canvas = colorize(f"{open_canvas}", config_value_color)
+        data_warehouse_user = colorize(f"{data_warehouse_user}", config_value_color)
+        data_warehouse_password = colorize(
+            f"{data_warehouse_password}", config_value_color
+        )
+        data_warehouse_dsn = colorize(f"{data_warehouse_dsn}", config_value_color)
+        config_path = colorize(f"{CONFIG_PATH}", "green")
 
         echo(
             f"\nCONFIG: {config_path}\n"
@@ -105,10 +110,10 @@ def display_config():
 
 def check_config(config):
     if not config.exists():
-        error = style(
+        error = colorize(
             "- ERROR: No config file ($HOME/.config/penn-canvas) exists for"
             " Penn-Canvas.",
-            fg=colors.YELLOW,
+            "yellow",
         )
         create = confirm(f"{error} \n- Would you like to create one?")
 
@@ -217,14 +222,14 @@ def check_previous_output(result_path):
             except Exception:
                 index = 0
         else:
-            secho("TASK ALREADY COMPLETE", fg=colors.YELLOW)
-            result_path_display = style(str(result_path), fg=colors.GREEN)
+            colorize("TASK ALREADY COMPLETE", "yellow", True)
+            result_path_display = colorize(result_path, "green")
             echo(f"- Output available at: {result_path_display}")
             echo(
                 "- To re-run the task, overwriting previous results, run this command"
                 " with the '--force' option"
             )
-            secho("FINISHED", fg=colors.YELLOW)
+            colorize("FINISHED", "yellow", True)
 
             raise Exit()
     else:
@@ -251,14 +256,11 @@ def make_skip_message(start, item):
     else:
         item = f"{item.upper()}S"
 
-    message = style(
-        f"SKIPPING {start} PREVIOUSLY PROCESSED {item}...",
-        fg=colors.YELLOW,
-    )
+    message = colorize(f"SKIPPING {start} PREVIOUSLY PROCESSED {item}...", "yellow")
     echo(f") {message}")
 
 
-def get_canvas(instance="test"):
+def et_canvas(instance="test"):
     echo(") Reading Canvas Access Tokens from config file...")
 
     production, development, open_canvas = check_config(CONFIG_PATH)[0:3]
@@ -316,7 +318,3 @@ def toggle_progress_bar(data, callback, canvas, verbose, args):
         verbose_mode()
     else:
         progress_bar_mode()
-
-
-TODAY = datetime.now().strftime("%d_%b_%Y")
-TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")

@@ -175,7 +175,7 @@ def check_schools(user, sub_accounts, canvas, verbose):
         except Exception:
             return ""
 
-    account_ids = map(get_account_id, user_enrollments)
+    account_ids = [get_account_id(course) for course in user_enrollments]
     fixable_id = next(
         filter(lambda account: account in sub_accounts, account_ids), None
     )

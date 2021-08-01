@@ -486,18 +486,14 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
     tool_display = colorize(tool, "cyan")
-    TERMS_DISPLAY = map(
-        lambda term: colorize(term, "blue"),
-        terms,
-    )
+    TERMS_DISPLAY = [colorize(term, "blue") for term in terms]
     STYLED_TERMS = f"{', '.join(TERMS_DISPLAY)}"
 
     if enable:
         if tool == "Course Materials @ Penn Libraries":
-            ACCOUNTS_DISPLAY = map(
-                lambda account: colorize(account, "magenta"),
-                RESERVE_ACCOUNTS,
-            )
+            ACCOUNTS_DISPLAY = [
+                colorize(account, "magenta") for account in RESERVE_ACCOUNTS
+            ]
             ACCOUNTS = f"{', '.join(ACCOUNTS_DISPLAY)}"
             echo(
                 f') Enabling "{tool_display}" for {STYLED_TERMS} courses in'

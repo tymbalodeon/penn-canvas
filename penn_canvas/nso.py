@@ -101,21 +101,22 @@ def cleanup_data(input_file, start=0):
         students = data[1]
 
     group_numbers = facilitators["Group Name"].to_list()
-    group_numbers = map(
-        lambda group_number: int(group_number.replace("Group ", "")), group_numbers
-    )
+    group_numbers = [
+        int(group_number.replace("Group ", "")) for group_number in group_numbers
+    ]
     number_of_groups = max(group_numbers)
     canvas_course_id = facilitators["Canvas Course ID"].drop_duplicates().tolist()[0]
     group_set_name = facilitators["Group Set Name"].drop_duplicates().tolist()[0]
     students = students["PennKey"].tolist()
-
-    for index, student in enumerate(students):
-        students[index] = [
+    students = [
+        [
             canvas_course_id,
             group_set_name,
             f"Group {(index % number_of_groups) + 1}",
             student,
         ]
+        for index, student in enumerate(students)
+    ]
 
     students = DataFrame(
         students,
