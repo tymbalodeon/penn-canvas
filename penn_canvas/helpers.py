@@ -260,7 +260,7 @@ def make_skip_message(start, item):
     echo(f") {message}")
 
 
-def et_canvas(instance="test"):
+def get_canvas(instance="test"):
     echo(") Reading Canvas Access Tokens from config file...")
 
     production, development, open_canvas = check_config(CONFIG_PATH)[0:3]
