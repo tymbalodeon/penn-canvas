@@ -9,6 +9,7 @@ from pandas import Categorical, DataFrame, concat, read_csv, read_excel
 from typer import Exit, confirm, echo
 
 from .helpers import (
+    TODAY_AS_Y_M_D,
     colorize,
     get_canvas,
     get_command_paths,
@@ -26,9 +27,7 @@ init_oracle_client(
     config_dir=str(config_dir),
 )
 
-TODAY = datetime.now().strftime("%d_%b_%Y")
 YEAR = datetime.now().strftime("%Y")
-TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
 INPUT, RESULTS, PROCESSED = get_command_paths("nso", input_dir=True, processed=True)
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_nso_result.csv"

@@ -1,10 +1,11 @@
-from datetime import datetime
 from pathlib import Path
 
 from pandas import isna, read_csv
 from typer import Exit, echo
 
 from .helpers import (
+    TODAY,
+    TODAY_AS_Y_M_D,
     colorize,
     get_canvas,
     get_command_paths,
@@ -14,8 +15,6 @@ from .helpers import (
     toggle_progress_bar,
 )
 
-TODAY = datetime.now().strftime("%d_%b_%Y")
-TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 REPORTS, RESULTS = get_command_paths("storage")
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result.csv"
 HEADERS = [

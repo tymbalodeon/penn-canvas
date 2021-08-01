@@ -1,5 +1,4 @@
 from csv import writer
-from datetime import datetime
 from os import remove
 from pathlib import Path
 
@@ -7,6 +6,8 @@ from pandas import DataFrame, concat, isna, read_csv
 from typer import Exit, confirm, echo
 
 from .helpers import (
+    TODAY,
+    TODAY_AS_Y_M_D,
     colorize,
     get_canvas,
     get_command_paths,
@@ -16,8 +17,6 @@ from .helpers import (
     toggle_progress_bar,
 )
 
-TODAY = datetime.now().strftime("%d_%b_%Y")
-TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 REPORTS, RESULTS, PROCESSED = get_command_paths("tool", processed=True)
 HEADERS = [
     "index",

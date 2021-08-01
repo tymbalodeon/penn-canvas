@@ -1,4 +1,5 @@
 from csv import writer
+from datetime import datetime
 from os import remove
 from pathlib import Path
 
@@ -166,6 +167,12 @@ def read_config(config):
     )
 
 
+def get_data_warehouse_config():
+    echo(") Reading Data Warehouse credentials from config file...")
+
+    return check_config(CONFIG_PATH)[3:]
+
+
 def make_csv_paths(csv_dir, csv_file, headers):
     if not csv_dir.exists():
         Path.mkdir(csv_dir)
@@ -251,22 +258,6 @@ def make_skip_message(start, item):
     echo(f") {message}")
 
 
-def toggle_progress_bar(data, callback, canvas, verbose, args):
-    def verbose_mode():
-        for item in data.itertuples():
-            callback(item, canvas, verbose, args)
-
-    def progress_bar_mode():
-        with progressbar(data.itertuples(), length=len(data.index)) as progress:
-            for item in progress:
-                callback(item, canvas, verbose, args)
-
-    if verbose:
-        verbose_mode()
-    else:
-        progress_bar_mode()
-
-
 def get_canvas(instance="test"):
     echo(") Reading Canvas Access Tokens from config file...")
 
@@ -282,12 +273,6 @@ def get_canvas(instance="test"):
         access_token = open_canvas
 
     return Canvas(url, access_token)
-
-
-def get_data_warehouse_config():
-    echo(") Reading Data Warehouse credentials from config file...")
-
-    return check_config(CONFIG_PATH)[3:]
 
 
 def find_sub_accounts(canvas, account_id):
@@ -315,3 +300,23 @@ def colorize(text, color, echo=False):
         return secho(str(text), fg=typer_colors[color])
     else:
         return style(str(text), fg=typer_colors[color])
+
+
+def toggle_progress_bar(data, callback, canvas, verbose, args):
+    def verbose_mode():
+        for item in data.itertuples():
+            callback(item, canvas, verbose, args)
+
+    def progress_bar_mode():
+        with progressbar(data.itertuples(), length=len(data.index)) as progress:
+            for item in progress:
+                callback(item, canvas, verbose, args)
+
+    if verbose:
+        verbose_mode()
+    else:
+        progress_bar_mode()
+
+
+TODAY = datetime.now().strftime("%d_%b_%Y")
+TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")

@@ -1,5 +1,4 @@
 from csv import writer
-from datetime import datetime
 from pathlib import Path
 from shutil import rmtree
 
@@ -7,6 +6,8 @@ from pandas import concat, read_csv
 from typer import Exit, echo
 
 from .helpers import (
+    TODAY,
+    TODAY_AS_Y_M_D,
     colorize,
     find_sub_accounts,
     get_canvas,
@@ -17,8 +18,6 @@ from .helpers import (
     toggle_progress_bar,
 )
 
-TODAY = datetime.now().strftime("%d_%b_%Y")
-TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 REPORTS, RESULTS, LOGS = get_command_paths("email", True)
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_email_result.csv"
 HEADERS = ["index", "canvas user id", "email status", "supported school(s)"]
