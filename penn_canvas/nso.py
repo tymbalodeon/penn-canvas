@@ -6,11 +6,10 @@ from pathlib import Path
 from cx_Oracle import connect, init_oracle_client
 from natsort import natsorted
 from pandas import Categorical, DataFrame, concat, read_csv, read_excel
-from typer import Exit, colors, confirm, echo, secho, style
+from typer import Exit, confirm, echo
 
 from .helpers import (
     colorize,
-    colorize_path,
     get_canvas,
     get_command_paths,
     get_data_warehouse_config,
@@ -50,12 +49,9 @@ def find_nso_file():
 
     if not INPUT.exists():
         Path.mkdir(INPUT, parents=True)
-        error = style(
-            "- ERROR: NSO input directory not found.",
-            fg=colors.YELLOW,
-        )
+        error = colorize("- ERROR: NSO input directory not found.", "yellow")
         echo(
-            f"{error}\n- Creating one for you at: {colorize_path(str(INPUT))}\n- Please"
+            f"{error}\n- Creating one for you at: {colorize(INPUT, 'green')}\n- Please"
             " add an NSO input file matching the graduation year of this year's"
             " incoming freshmen to this directory and then run this script again.\n-"
             " (If you need detailed instructions, run this command with the '--help'"
@@ -75,16 +71,16 @@ def find_nso_file():
         )
 
         if not CURRENT_FILE:
-            error = style(
+            error = colorize(
                 "- ERROR: A nso file matching the graduation year of this"
                 " year's incoming freshmen was not found.",
-                fg=colors.YELLOW,
+                "yellow",
             )
             echo(
                 f"{error}\n- Please add a NSO input file matching the"
                 " graduation year of this year's incoming freshmen to the following"
                 " directory and then run this script again:"
-                f" {colorize_path(str(INPUT))}\n- (If you need detailed instructions,"
+                f" {colorize(INPUT, 'green')}\n- (If you need detailed instructions,"
                 " run this command with the '--help' flag.)"
             )
 
@@ -232,12 +228,9 @@ def print_messages(
     error,
     total,
 ):
-    secho("SUMMARY:", fg=colors.YELLOW)
+    colorize("SUMMARY:", "yellow")
     echo(f"- Processed {colorize(total)} users.")
-    added_count = style(
-        str(int(added) + int(enrolled)),
-        fg=colors.GREEN,
-    )
+    added_count = colorize(int(added) + int(enrolled), "green")
     echo(f"- Successfully added {added_count} users to groups.")
 
     errors = False
@@ -248,9 +241,8 @@ def print_messages(
         else:
             user = "user"
 
-        message = style(
-            f"Automatically enrolled {enrolled} {user} in the course.",
-            fg=colors.YELLOW,
+        message = colorize(
+            f"Automatically enrolled {enrolled} {user} in the course.", "yellow"
         )
         echo(f"- {message}")
 
@@ -260,9 +252,8 @@ def print_messages(
         else:
             user = "user"
 
-        message = style(
-            f"{already_processed} {user} already added to group.",
-            fg=colors.YELLOW,
+        message = colorize(
+            f"{already_processed} {user} already added to group.", "yellow"
         )
         echo(f"- {message}")
 
@@ -272,9 +263,8 @@ def print_messages(
         else:
             user = "user"
 
-        message = style(
-            f"Found {not_enrolled} {user} not enrolled in the course.",
-            fg=colors.RED,
+        message = colorize(
+            f"Found {not_enrolled} {user} not enrolled in the course.", "red"
         )
         echo(f"- {message}")
         errors = True
@@ -287,9 +277,7 @@ def print_messages(
             user = "user"
             account = "a Canvas account"
 
-        message = style(
-            f"Found {not_in_canvas} {user} without {account}.", fg=colors.RED
-        )
+        message = colorize(f"Found {not_in_canvas} {user} without {account}.", "red")
         echo(f"- {message}")
         errors = True
 
@@ -301,9 +289,8 @@ def print_messages(
             user = "user"
             pennkey = "pennkey"
 
-        message = style(
-            f"Found {invalid_pennkey} {user} with invalid {pennkey}.",
-            fg=colors.RED,
+        message = colorize(
+            f"Found {invalid_pennkey} {user} with invalid {pennkey}.", "red"
         )
         echo(f"- {message}")
         errors = True
@@ -314,20 +301,17 @@ def print_messages(
         else:
             user = "user"
 
-        message = style(
-            f"Encountered an unknown error for {error} {user}.",
-            fg=colors.RED,
-        )
+        message = colorize(f"Encountered an unknown error for {error} {user}.", "red")
         echo(f"- {message}")
         errors = True
 
     if errors:
-        result_path = style(f"{RESULT_PATH}", fg=colors.GREEN)
+        result_path = colorize(RESULT_PATH, "green")
         echo(f"- Details recorded to: {result_path}")
 
-    final_list_path = style(f"{FINAL_LIST_PATH}", fg=colors.GREEN)
+    final_list_path = colorize(FINAL_LIST_PATH, "green")
     echo(f"- Final Group membership assignments recorded to: {final_list_path}")
-    secho("FINISHED", fg=colors.YELLOW)
+    colorize("FINISHED", "yellow", True)
 
 
 def nso_main(test, verbose, force, clear_processed):
@@ -363,35 +347,38 @@ def nso_main(test, verbose, force, clear_processed):
             group.create_membership(canvas_user)
 
             if enroll_in_course:
-                return "enrolled and added"
+                return "enrolled and added", "cyan"
             else:
-                return "added"
+                return "added", "green"
 
         if force and penn_key in processed_users:
             status = "already processed"
+            color = "yellow"
         else:
             try:
-                status = create_group_membership()
+                status, color = create_group_membership()
             except Exception as error:
                 try:
                     course = canvas.get_course(course_id)
                     canvas_user = canvas.get_user(penn_key, "sis_login_id")
                     status = error
+                    color = "red"
 
                     try:
                         course.get_user(canvas_user)
                     except Exception:
                         try:
                             course.enroll_user(canvas_user)
-                            status = create_group_membership(True)
+                            status, color = create_group_membership(True)
                         except Exception:
                             status = "failed to enroll user in course"
                 except Exception as error:
                     status = error
+                    color = "red"
 
                     try:
                         if verbose:
-                            penn_key_display = style(penn_key, fg=colors.CYAN)
+                            penn_key_display = colorize(penn_key, "cyan")
                             echo(
                                 ") Checking the Data Warehouse for pennkey:"
                                 f" {penn_key_display}..."
@@ -417,6 +404,7 @@ def nso_main(test, verbose, force, clear_processed):
                         for user in cursor:
                             if len(user) > 0:
                                 status = "user not found in canvas"
+
                                 break
                     except Exception as error:
                         status = error
@@ -426,15 +414,8 @@ def nso_main(test, verbose, force, clear_processed):
 
         if verbose:
             status_display = str(status).upper()
-
-            if status_display == "ADDED" or status_display == "ENROLLED AND ADDED":
-                status_display = style(status_display, fg=colors.GREEN)
-            elif status_display == "ALREADY PROCESSED":
-                status_display = style(status_display, fg=colors.YELLOW)
-            else:
-                status_display = style(status_display, fg=colors.RED)
-
-            penn_key_display = style(penn_key, fg=colors.MAGENTA)
+            status_display = colorize(status_display, color)
+            penn_key_display = colorize(penn_key, "magenta")
             echo(
                 f"- ({index + 1}/{total}) {penn_key_display}, {group_set_name},"
                 f" {group_name}: {status_display}"

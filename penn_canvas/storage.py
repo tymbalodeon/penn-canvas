@@ -2,11 +2,10 @@ from datetime import datetime
 from pathlib import Path
 
 from pandas import isna, read_csv
-from typer import Exit, colors, echo, secho, style
+from typer import Exit, echo
 
 from .helpers import (
     colorize,
-    colorize_path,
     get_canvas,
     get_command_paths,
     get_start_index,
@@ -54,16 +53,15 @@ def find_storage_report():
 
     if not REPORTS.exists():
         Path.mkdir(REPORTS, parents=True)
-        error = style(
-            "- ERROR: Canvas storage reports directory not found.",
-            fg=colors.YELLOW,
+        error = colorize(
+            "- ERROR: Canvas storage reports directory not found.", "yellow"
         )
         echo(
-            f"{error} \n- Creating one for you at:"
-            f" {colorize_path(str(REPORTS))}\n- Please add a Canvas storage report"
-            " matching today's date to this directory and then run this script"
-            " again.\n- (If you need instructions for generating a Canvas storage"
-            " report, run this command with the '--help' flag.)"
+            f"{error} \n-"
+            f" Creating one for you at: {colorize(REPORTS, 'green')}\n- Please add a"
+            " Canvas storage report matching today's date to this directory and then"
+            " run this script again.\n- (If you need instructions for generating a"
+            " Canvas storage report, run this command with the '--help' flag.)"
         )
 
         raise Exit(1)
@@ -75,17 +73,16 @@ def find_storage_report():
         )
 
         if not TODAYS_REPORT:
-            error = style(
+            error = (
                 "- ERROR: A Canvas Course Storage report matching today's date was not"
-                " found.",
-                fg=colors.YELLOW,
+                " found."
             )
             echo(
-                f"{error}\n- Please add a Canvas storage report matching today's date"
-                " to the following directory and then run this script again:"
-                f" {colorize_path(str(REPORTS))}\n- (If you need instructions for"
-                " generating a Canvas storage report, run this command with the"
-                " '--help' flag.)"
+                f"{colorize(error, 'yellow')}\n- Please add a Canvas storage report"
+                " matching today's date to the following directory and then run this"
+                f" script again: {colorize(REPORTS, 'green')}\n- (If you need"
+                " instructions for generating a Canvas storage report, run this"
+                " command with the '--help' flag.)"
             )
 
             raise Exit(1)
@@ -118,27 +115,24 @@ def check_percent_storage(course, canvas, verbose, total):
 
         if verbose:
             if percentage_used >= 0.79:
-                percentage_display = style(
-                    f"{int(percentage_used * 100)}%", fg=colors.YELLOW
-                )
+                color = "yellow"
             else:
-                percentage_display = style(
-                    f"{int(percentage_used * 100)}%", fg=colors.GREEN
-                )
+                color = "green"
 
             echo(
-                f"- ({index + 1}/{total}) {sis_id} ({canvas_id}): {percentage_display}"
+                f"- ({index + 1}/{total}) {sis_id} ({canvas_id}):"
+                f" {colorize(f'{int(percentage_used * 100)}%', color)}"
             )
 
         if percentage_used >= 0.79:
             if verbose:
-                secho("\t* INCREASE REQUIRED", fg=colors.YELLOW)
+                colorize("\t* INCREASE REQUIRED", "yellow", True)
             if isna(sis_id):
                 if verbose:
-                    message = style(
+                    message = colorize(
                         "- ACTION REQUIRED: A SIS ID must be added for course:"
                         f" {canvas_id}",
-                        fg=colors.YELLOW,
+                        "yellow",
                     )
                     echo(f"({index + 1}/{total}) {message}")
 
@@ -149,10 +143,7 @@ def check_percent_storage(course, canvas, verbose, total):
             return False, None
     except Exception:
         if verbose:
-            message = style(
-                f"ERROR: {sis_id} ({canvas_id}) NOT FOUND",
-                fg=colors.RED,
-            )
+            message = colorize(f"ERROR: {sis_id} ({canvas_id}) NOT FOUND", "red")
             echo(f"- ({index + 1}/{total}) {message}")
         return False, "course not found"
 
@@ -189,9 +180,10 @@ def increase_quota(sis_id, canvas, verbose, increase):
             new_quota = "ERROR"
 
             if verbose:
-                secho(
+                colorize(
                     f"\t* Failed to increase quota for Canvas course ID: {sis_id}",
-                    fg=colors.YELLOW,
+                    "yellow",
+                    True,
                 )
     else:
         old_quota = "N/A"
@@ -218,15 +210,14 @@ def process_result():
 
 
 def print_messages(total, increased, errors):
-    secho("SUMMARY:", fg=colors.YELLOW)
-    echo(f"- Processed {colorize(str(total))} courses.")
-    echo(f"- Increased storage quota for {colorize(str(increased))} courses.")
+    colorize("SUMMARY:", "yellow", True)
+    echo(f"- Processed {colorize(total, 'magenta')} courses.")
+    echo(f"- Increased storage quota for {colorize(increased, 'magenta')} courses.")
 
     if errors > 0:
-        message = style(f"Failed to find {str(errors)} courses.", fg=colors.RED)
-        echo(f"- {message}")
+        echo(f"- {colorize(f'Failed to find {str(errors)} courses.', 'red')}")
 
-    secho("FINISHED", fg=colors.YELLOW)
+    colorize("FINISHED", "yellow", True)
 
 
 def storage_main(test, verbose, force, increase=1000):

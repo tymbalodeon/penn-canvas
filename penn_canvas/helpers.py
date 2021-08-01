@@ -320,9 +320,17 @@ def find_sub_accounts(canvas, account_id):
     return ACCOUNTS
 
 
-def colorize(text):
-    return style(text, fg=colors.MAGENTA)
+def colorize(text, color, echo=False):
+    typer_colors = {
+        "blue": colors.BLUE,
+        "cyan": colors.CYAN,
+        "green": colors.GREEN,
+        "magenta": colors.MAGENTA,
+        "red": colors.RED,
+        "yellow": colors.YELLOW,
+    }
 
-
-def colorize_path(text):
-    return style(text, fg=colors.GREEN)
+    if echo:
+        return secho(str(text), fg=typer_colors[color])
+    else:
+        return style(str(text), fg=typer_colors[color])

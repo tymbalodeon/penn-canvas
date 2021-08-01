@@ -1,6 +1,6 @@
-from typer import colors, echo, style
+from typer import echo
 
-from .helpers import get_canvas
+from .helpers import colorize, get_canvas
 
 
 def module_main(test, course_id, module_id):
@@ -9,8 +9,8 @@ def module_main(test, course_id, module_id):
     modules = course.get_modules()
     module = next(filter(lambda module: module.id == module_id, modules), None)
 
-    module_id = style(module_id, fg=colors.MAGENTA)
-    course_id = style(course_id, fg=colors.MAGENTA)
+    module_id = colorize(module_id, "magenta")
+    course_id = colorize(course_id, "magenta")
 
     if module:
         module.relock()

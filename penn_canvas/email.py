@@ -4,11 +4,10 @@ from pathlib import Path
 from shutil import rmtree
 
 from pandas import concat, read_csv
-from typer import Exit, colors, echo, secho, style
+from typer import Exit, echo
 
 from .helpers import (
     colorize,
-    colorize_path,
     find_sub_accounts,
     get_canvas,
     get_command_paths,
@@ -54,11 +53,9 @@ def find_users_report():
 
     if not REPORTS.exists():
         Path.mkdir(REPORTS, parents=True)
-        error = style(
-            "- ERROR: Canvas email reports directory not found.", fg=colors.YELLOW
-        )
+        error = colorize("- ERROR: Canvas email reports directory not found.", "yellow")
         echo(
-            f"{error} \n- Creating one for you at: {colorize_path(str(REPORTS))}\n-"
+            f"{error} \n- Creating one for you at: {colorize(REPORTS, 'green')}\n-"
             " Please add a Canvas Provisioning (Users) report matching today's date to"
             " this directory and then run this script again.\n- (If you need"
             " instructions for generating a Canvas Provisioning report, run this"
@@ -73,15 +70,15 @@ def find_users_report():
         )
 
         if not TODAYS_REPORT:
-            error = style(
+            error = colorize(
                 "- ERROR: A Canvas Provisioning (Users) CSV report matching today's"
                 " date was not found.",
-                fg=colors.YELLOW,
+                "yellow",
             )
             echo(
                 f"{error}\n- Please add a Canvas (Users) Provisioning report matching"
                 " today's date to the following directory and then run this script"
-                f" again: {colorize_path(str(REPORTS))}\n- (If you need instructions"
+                f" again: {colorize(REPORTS,'green')}\n- (If you need instructions"
                 " for generating a Canvas Provisioning report, run this command with"
                 " the '--help' flag.)"
             )
@@ -114,7 +111,7 @@ def get_email_status(user, email, verbose, current_count=False):
 
     if email_status == "active":
         if verbose:
-            status = style(f"{email_status}", fg=colors.GREEN)
+            status = colorize(f"{email_status}", "green")
             echo(f"- {current_count if current_count else ''}{user}: {status}")
         return True
     elif email_status == "unconfirmed":
@@ -128,12 +125,11 @@ def find_unconfirmed_emails(user, canvas, verbose, index, total):
         canvas_user = canvas.get_user(user_id)
     except Exception:
         if verbose:
-            message = style(
-                f"ERROR: User NOT FOUND ({user_id})",
-                fg=colors.RED,
-            )
+            message = colorize(f"ERROR: User NOT FOUND ({user_id})", "red")
             echo(f"- ({index + 1}/{total}) {message}")
+
         return False, "user not found"
+
     emails = get_user_emails(canvas_user)
     email = next(emails, None)
     current_count = f"({index + 1}/{total}) "
@@ -143,15 +139,16 @@ def find_unconfirmed_emails(user, canvas, verbose, index, total):
 
         while not is_active:
             next_email = next(emails, None)
+
             if not next_email:
                 if verbose:
-                    status = style("UNCONFIRMED", fg=colors.YELLOW)
+                    status = colorize("UNCONFIRMED", "yellow")
                     echo(
                         f"- {current_count if current_count else ''}{canvas_user}:"
                         f" {status}"
                     )
+
                 return True, "unconfirmed"
-                break
             is_active = get_email_status(
                 canvas_user, next_email, verbose, current_count
             )
@@ -161,8 +158,9 @@ def find_unconfirmed_emails(user, canvas, verbose, index, total):
 
     else:
         if verbose:
-            status = style("NOT FOUND", fg=colors.YELLOW)
+            status = colorize("NOT FOUND", "yellow")
             echo(f"- {current_count if current_count else ''}{canvas_user}: {status}")
+
         return True, "not found"
 
 
@@ -185,13 +183,13 @@ def check_schools(user, sub_accounts, canvas, verbose):
 
     if fixable_id:
         if verbose:
-            supported = style("supported", fg=colors.GREEN)
-            secho(f"\t* Enrollment status: {supported}", fg=colors.CYAN)
+            supported = colorize("supported", "green")
+            colorize(f"\t* Enrollment status: {supported}", "cyan", True)
         return True
     else:
         if verbose:
-            supported = style("UNSUPPORTED", fg=colors.YELLOW)
-            secho(f"\t* Enrollment status: {supported}", fg=colors.CYAN)
+            supported = colorize("UNSUPPORTED", "yellow")
+            colorize(f"\t* Enrollment status: {supported}", "cyan", True)
         return False
 
 
@@ -228,9 +226,10 @@ def activate_fixable_emails(
 
         if not next_email:
             if verbose:
-                secho(
+                colorize(
                     f"\t* ERROR: failed to activate email(s) for {user_id}!",
-                    fg=colors.RED,
+                    "red",
+                    True,
                 )
 
             return False, "failed to activate"
@@ -238,7 +237,7 @@ def activate_fixable_emails(
 
     if is_active:
         if verbose:
-            secho(f"\t* Email(s) activated for {user_id}", fg=colors.GREEN)
+            colorize(f"\t* Email(s) activated for {user_id}", "green", True)
 
         log = read_csv(log_path)
         log.drop(index=log.index[-1:], inplace=True)
@@ -306,45 +305,42 @@ def print_messages(
     log_path,
     user_not_found,
 ):
-    secho("SUMMARY:", fg=colors.YELLOW)
-    echo(f"- Processed {colorize(total)} accounts.")
+    colorize("SUMMARY:", "yellow", True)
+    echo(f"- Processed {colorize(total, 'magenta')} accounts.")
     echo(
-        f"- Activated {colorize(fixed)} supported users with unconfirmed email"
+        f"- Activated {colorize(fixed, 'green')} supported users with unconfirmed email"
         " accounts."
     )
 
     if int(supported_not_found) > 0:
         echo(
-            f"- Found {colorize(supported_not_found)} supported users with no email"
-            " account."
+            f"- Found {colorize(supported_not_found, 'red')} supported users with no"
+            " email account."
         )
 
     if int(unsupported) > 0:
         echo(
-            f"- Found {colorize(unsupported)} unsupported users with missing or"
-            " unconfirmed email accounts."
+            f"- Found {colorize(unsupported, 'yellow')} unsupported users with missing"
+            " or unconfirmed email accounts."
         )
 
     if int(errors) > 0:
-        message = style(
+        message = colorize(
             f"Failed to activate email(s) for {errors} supported users with (an)"
             " unconfirmed email account(s).",
-            fg=colors.RED,
+            "red",
         )
-        log_path_display = style(log_path, fg=colors.GREEN)
+        log_path_display = colorize(log_path, "green")
         echo(
             f"- {message}. Affected accounts are recorded in the log file:"
             f" {log_path_display}"
         )
 
     if int(user_not_found) > 0:
-        message = style(
-            f"Failed to find {user_not_found} users.",
-            fg=colors.RED,
-        )
+        message = colorize(f"Failed to find {user_not_found} users.", "red")
         echo(f"- {message}")
 
-    secho("FINISHED", fg=colors.YELLOW)
+    colorize("FINISHED", "yellow", True)
 
 
 def email_main(test, include_fixed, verbose, force):

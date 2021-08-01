@@ -4,11 +4,10 @@ from os import remove
 from pathlib import Path
 
 from pandas import DataFrame, concat, isna, read_csv
-from typer import Exit, colors, confirm, echo, secho, style
+from typer import Exit, confirm, echo
 
 from .helpers import (
     colorize,
-    colorize_path,
     get_canvas,
     get_command_paths,
     get_start_index,
@@ -56,11 +55,9 @@ def find_course_report():
 
     if not REPORTS.exists():
         Path.mkdir(REPORTS, parents=True)
-        error = style(
-            "- ERROR: Canvas tool reports directory not found.", fg=colors.YELLOW
-        )
+        error = colorize("- ERROR: Canvas tool reports directory not found.", "yellow")
         echo(
-            f"{error} \n- Creating one for you at: {colorize_path(str(REPORTS))}\n-"
+            f"{error} \n- Creating one for you at: {colorize(REPORTS, 'green')}\n-"
             " Please add a Canvas Provisioning (Courses) report for at least one term,"
             " and matching today's date, to this directory and then run this script"
             " again.\n- (If you need instructions for generating a Canvas Provisioning"
@@ -73,15 +70,15 @@ def find_course_report():
         TODAYS_REPORTS = list(filter(lambda report: TODAY in report.name, CSV_FILES))
 
         if not len(TODAYS_REPORTS):
-            error = style(
+            error = colorize(
                 "- ERROR: A Canvas Provisioning (Courses) CSV report matching today's"
                 " date was not found.",
-                fg=colors.YELLOW,
+                "yellow",
             )
             echo(
                 f"{error}\n- Please add a Canvas (Courses) Provisioning report for at"
                 " least one term, matching today's date, to the following directory"
-                f" and then run this script again: {colorize_path(str(REPORTS))}\n- (If"
+                f" and then run this script again: {colorize(REPORTS, 'green')}\n- (If"
                 " you need instructions for generating a Canvas Provisioning report,"
                 " run this command with the '--help' flag.)"
             )
@@ -100,8 +97,7 @@ def find_course_report():
             FOUND_PATHS = list()
 
             for path in TODAYS_REPORTS:
-                path = style(path.stem, fg=colors.GREEN)
-                FOUND_PATHS.append(path)
+                FOUND_PATHS.append(colorize(path.stem, "green"))
 
             for path in FOUND_PATHS:
                 echo(f"- {path}")
@@ -265,11 +261,11 @@ def print_messages(
     total,
     result_path,
 ):
-    tool = style(tool, fg=colors.CYAN)
-    secho("SUMMARY:", fg=colors.YELLOW)
-    echo(f"- Processed {colorize(total)} courses.")
-    total_enabled = style(enabled, fg=colors.GREEN)
-    total_already_enabled = style(already_enabled, fg=colors.GREEN)
+    tool = colorize(tool, "cyan")
+    colorize("SUMMARY:", "yellow", True)
+    echo(f"- Processed {colorize(total, 'magenta')} courses.")
+    total_enabled = colorize(enabled, "green")
+    total_already_enabled = colorize(already_enabled, "green")
 
     if enable:
         echo(f'- Enabled "{tool}" for {total_enabled} courses.')
@@ -280,29 +276,29 @@ def print_messages(
             )
     else:
         echo(f'- Found {total_already_enabled} courses with "{tool}" enabled.')
-        echo(f'- Found {colorize(disabled)} courses with disabled "{tool}" tab.')
+        echo(
+            f'- Found {colorize(disabled, "magenta")} courses with disabled "{tool}"'
+            " tab."
+        )
 
     if int(not_found):
-        message = style(not_found, fg=colors.YELLOW)
+        message = colorize(not_found, "yellow")
         echo(f'- Found {message} courses with no "{tool}" tab.')
 
     if int(not_participating):
-        message = style(not_participating, fg=colors.YELLOW)
+        message = colorize(not_participating, "yellow")
         echo(
             f"- Found {message} courses in schools not participating in automatic"
             f' enabling of "{tool}".'
         )
 
     if int(error):
-        message = style(
-            f"Encountered errors for {error} courses.",
-            fg=colors.RED,
-        )
+        message = colorize(f"Encountered errors for {error} courses.", "red")
         echo(f"- {message}")
-        result_path_display = style(str(result_path), fg=colors.GREEN)
+        result_path_display = colorize(result_path, "green")
         echo(f"- Details recorded to result file: {result_path_display}")
 
-    secho("FINISHED", fg=colors.YELLOW)
+    colorize("FINISHED", "yellow", True)
 
 
 def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
@@ -312,7 +308,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         else:
             tool, use_id, enable = args
 
-        tool_display = style(tool, fg=colors.CYAN)
+        tool_display = colorize(tool, "cyan")
         (
             index,
             canvas_course_id,
@@ -325,22 +321,25 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         ) = course
 
         tool_status = "not found"
+        found = tool_status.upper()
+        color = "red"
         error = False
 
         if enable and canvas_course_id in PROCESSED_COURSES:
             tool_status = "already processed"
-            found_display = style(tool_status.upper(), fg=colors.YELLOW)
+            found = tool_status.upper()
+            color = "yellow"
         elif (
             enable
             and tool == "Course Materials @ Penn Libraries"
             and canvas_account_id not in RESERVE_ACCOUNTS
         ):
             tool_status = "school not participating"
-            found_display = style(
-                f"NOT ENABLED ({tool_status.upper()})", fg=colors.YELLOW
-            )
+            found = f"NOT ENABLED ({tool_status.upper()})"
+            color = "yellow"
         elif not enable and status != "active" and verbose:
-            found_display = style(tool_status.upper(), fg=colors.YELLOW)
+            found = tool_status.upper()
+            color = "yellow"
         else:
             try:
                 course = canvas.get_course(canvas_course_id)
@@ -352,33 +351,38 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
                     tool_tab = next(filter(lambda tab: tab.label == tool, tabs), None)
 
                 if not tool_tab:
-                    found_display = style(tool_status.upper(), fg=colors.YELLOW)
+                    found = tool_status.upper()
+                    color = "yellow"
                 elif tool_tab.visibility == "public":
                     tool_status = "already enabled"
 
                     if verbose:
                         if enable:
-                            found_display = style(tool_status.upper(), fg=colors.YELLOW)
+                            found = tool_status.upper()
+                            color = "yellow"
                         else:
-                            found_display = style("ENABLED", fg=colors.GREEN)
+                            found = "ENABLED"
+                            color = "green"
                 elif enable:
                     tool_tab.update(hidden=False, position=3)
                     tool_status = "enabled"
 
                     if verbose:
-                        found_display = style(tool_status.upper(), fg=colors.GREEN)
+                        found = tool_status.upper()
+                        color = "green"
                 else:
                     tool_status = "disabled"
 
                     if verbose:
-                        found_display = style(tool_status.upper(), fg=colors.YELLOW)
+                        found = tool_status.upper()
+                        color = "yellow"
             except Exception as error_message:
                 tool_status = f"{str(error_message)}"
                 error = True
 
                 if verbose:
-                    message = style(
-                        f"ERROR: Failed to process {course_id} ({error_message})"
+                    message = colorize(
+                        f"ERROR: Failed to process {course_id} ({error_message})", "red"
                     )
                     echo(f"- ({index + 1}/{total}) {message}")
 
@@ -388,6 +392,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
             else:
                 course_display = f"{course_id}"
 
+            found_display = colorize(found, color)
             echo(
                 f'- ({index + 1}/{total}) "{tool_display}" {found_display} for'
                 f" {course_display}."
@@ -425,11 +430,11 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         TERMS_TO_RUN = list()
 
         for term in PREVIOUS_RESULTS_FOR_TERM:
-            path_display = style(str(PREVIOUS_RESULTS_FOR_TERM[term]), fg=colors.GREEN)
-            message = style(
+            path_display = colorize(PREVIOUS_RESULTS_FOR_TERM[term], "green")
+            message = colorize(
                 f"REPORT FOR {tool.upper()} HAS ALREADY BEEN GENERATED FOR TERM"
                 f" {term.upper()}: {path_display}",
-                fg=colors.YELLOW,
+                "yellow",
             )
             echo(f"- {message}")
             run_again = confirm(
@@ -449,7 +454,8 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
 
             if not terms:
                 echo("NO NEW TERMS TO PROCESS")
-                secho("FINISHED", fg=colors.YELLOW)
+                colorize("FINISHED", "yellow", True)
+
                 raise Exit()
 
     if enable:
@@ -480,9 +486,9 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
     make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-    tool_display = style(tool, fg=colors.CYAN)
+    tool_display = colorize(tool, "cyan")
     TERMS_DISPLAY = map(
-        lambda term: style(term, fg=colors.BLUE),
+        lambda term: colorize(term, "blue"),
         terms,
     )
     STYLED_TERMS = f"{', '.join(TERMS_DISPLAY)}"
@@ -490,7 +496,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
     if enable:
         if tool == "Course Materials @ Penn Libraries":
             ACCOUNTS_DISPLAY = map(
-                lambda account: style(account, fg=colors.MAGENTA),
+                lambda account: colorize(account, "magenta"),
                 RESERVE_ACCOUNTS,
             )
             ACCOUNTS = f"{', '.join(ACCOUNTS_DISPLAY)}"
