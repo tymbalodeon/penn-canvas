@@ -39,12 +39,7 @@ ACCOUNTS = [
 
 
 def get_subaccounts(canvas):
-    SUB_ACCOUNTS = list()
-
-    for account in ACCOUNTS:
-        SUB_ACCOUNTS += find_sub_accounts(canvas, account)
-
-    return SUB_ACCOUNTS
+    return [find_sub_accounts(canvas, account) for account in ACCOUNTS]
 
 
 def find_users_report():
@@ -65,7 +60,7 @@ def find_users_report():
     else:
         CSV_FILES = [report for report in Path(REPORTS).glob("*.csv")]
         TODAYS_REPORT = next(
-            filter(lambda report: TODAY in report.name, CSV_FILES), None
+            (report for report in CSV_FILES if TODAY in report.name), None
         )
 
         if not TODAYS_REPORT:
@@ -102,7 +97,8 @@ def cleanup_report(report, start=0):
 
 def get_user_emails(user):
     communication_channels = user.get_communication_channels()
-    return filter(lambda channel: channel.type == "email", communication_channels)
+
+    return (channel for channel in communication_channels if channel.type == "email")
 
 
 def get_email_status(user, email, verbose, current_count=False):
@@ -177,7 +173,7 @@ def check_schools(user, sub_accounts, canvas, verbose):
 
     account_ids = [get_account_id(course) for course in user_enrollments]
     fixable_id = next(
-        filter(lambda account: account in sub_accounts, account_ids), None
+        (account for account in account_ids if account in sub_accounts), None
     )
 
     if fixable_id:

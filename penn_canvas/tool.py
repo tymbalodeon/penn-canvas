@@ -66,7 +66,7 @@ def find_course_report():
         raise Exit(1)
     else:
         CSV_FILES = [report for report in Path(REPORTS).glob("*.csv")]
-        TODAYS_REPORTS = list(filter(lambda report: TODAY in report.name, CSV_FILES))
+        TODAYS_REPORTS = [report for report in CSV_FILES if TODAY in report.name]
 
         if not len(TODAYS_REPORTS):
             error = colorize(

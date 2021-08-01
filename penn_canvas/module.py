@@ -9,8 +9,9 @@ def module_main(test, course_id, module_id):
     modules = course.get_modules()
     module = next(filter(lambda module: module.id == module_id, modules), None)
 
-    module_id = colorize(module_id, "magenta")
-    course_id = colorize(course_id, "magenta")
+    module_id, course_id = tuple(
+        colorize(identifier, "magenta") for identifier in [module_id, course_id]
+    )
 
     if module:
         module.relock()
