@@ -180,13 +180,13 @@ def process_result():
         & (result["status"] != "user not found in canvas")
         & (result["status"] != "invalid pennkey")
     ]
-    ALREADY_PROCESSED_COUNT = str(len(ALREADY_PROCESSED))
-    ADDED_COUNT = str(len(ADDED))
-    ENROLLED_COUNT = str(len(ENROLLED.index))
-    NOT_ENROLLED_COUNT = str(len(NOT_ENROLLED.index))
-    NOT_IN_CANVAS_COUNT = str(len(NOT_IN_CANVAS.index))
-    INVALID_PENNKEY_COUNT = str(len(INVALID_PENNKEY.index))
-    ERROR_COUNT = str(len(ERROR.index))
+    ALREADY_PROCESSED_COUNT = len(ALREADY_PROCESSED.index)
+    ADDED_COUNT = len(ADDED.index)
+    ENROLLED_COUNT = len(ENROLLED.index)
+    NOT_ENROLLED_COUNT = len(NOT_ENROLLED.index)
+    NOT_IN_CANVAS_COUNT = len(NOT_IN_CANVAS.index)
+    INVALID_PENNKEY_COUNT = len(INVALID_PENNKEY.index)
+    ERROR_COUNT = len(ERROR.index)
     result = concat([NOT_ENROLLED, NOT_IN_CANVAS, INVALID_PENNKEY, ERROR])
     result.drop("index", axis=1, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
@@ -223,13 +223,13 @@ def print_messages(
 ):
     colorize("SUMMARY:", "yellow")
     echo(f"- Processed {colorize(total)} users.")
-    added_count = colorize(int(added) + int(enrolled), "green")
+    added_count = colorize(added + enrolled, "green")
     echo(f"- Successfully added {added_count} users to groups.")
 
     errors = False
 
-    if int(enrolled) > 0:
-        if int(enrolled) > 1:
+    if enrolled > 0:
+        if enrolled > 1:
             user = "users"
         else:
             user = "user"
@@ -239,8 +239,8 @@ def print_messages(
         )
         echo(f"- {message}")
 
-    if int(already_processed) > 0:
-        if int(already_processed) > 1:
+    if already_processed > 0:
+        if already_processed > 1:
             user = "users"
         else:
             user = "user"
@@ -250,8 +250,8 @@ def print_messages(
         )
         echo(f"- {message}")
 
-    if int(not_enrolled) > 0:
-        if int(not_enrolled) > 1:
+    if not_enrolled > 0:
+        if not_enrolled > 1:
             user = "users"
         else:
             user = "user"
@@ -262,8 +262,8 @@ def print_messages(
         echo(f"- {message}")
         errors = True
 
-    if int(not_in_canvas) > 0:
-        if int(not_in_canvas) > 1:
+    if not_in_canvas > 0:
+        if not_in_canvas > 1:
             user = "users"
             account = "Canvas accounts"
         else:
@@ -274,8 +274,8 @@ def print_messages(
         echo(f"- {message}")
         errors = True
 
-    if int(invalid_pennkey) > 0:
-        if int(invalid_pennkey) > 1:
+    if invalid_pennkey > 0:
+        if invalid_pennkey > 1:
             user = "users"
             pennkey = "pennkeys"
         else:
@@ -288,8 +288,8 @@ def print_messages(
         echo(f"- {message}")
         errors = True
 
-    if int(error) > 0:
-        if int(error) > 1:
+    if error > 0:
+        if error > 1:
             user = "users"
         else:
             user = "user"

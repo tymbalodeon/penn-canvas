@@ -161,9 +161,9 @@ def process_result(tool, terms, enable, result_path):
     ]
     ENABLED_COUNT = len(ENABLED)
     ALREADY_ENABLED_COUNT = len(ALREADY_ENABLED)
-    DISABLED_COUNT = str(len(DISABLED))
-    NOT_FOUND_COUNT = str(len(NOT_FOUND))
-    NOT_PARTICIPATING_COUNT = str(len(NOT_PARTICIPATING))
+    DISABLED_COUNT = len(DISABLED)
+    NOT_FOUND_COUNT = len(NOT_FOUND)
+    NOT_PARTICIPATING_COUNT = len(NOT_PARTICIPATING)
     ERROR_COUNT = len(ERROR)
 
     if ERROR_COUNT:
@@ -238,12 +238,12 @@ def process_result(tool, terms, enable, result_path):
         result_path = result_path.rename(final_path)
 
     return (
-        str(ENABLED_COUNT),
-        str(ALREADY_ENABLED_COUNT),
+        ENABLED_COUNT,
+        ALREADY_ENABLED_COUNT,
         DISABLED_COUNT,
         NOT_FOUND_COUNT,
         NOT_PARTICIPATING_COUNT,
-        str(ERROR_COUNT),
+        ERROR_COUNT,
         result_path,
     )
 
@@ -268,7 +268,7 @@ def print_messages(
 
     if enable:
         echo(f'- Enabled "{tool}" for {total_enabled} courses.')
-        if int(total_already_enabled):
+        if total_already_enabled:
             echo(
                 f'- Found {total_already_enabled} courses with "{tool}" already'
                 " enabled."
@@ -280,18 +280,18 @@ def print_messages(
             " tab."
         )
 
-    if int(not_found):
+    if not_found:
         message = colorize(not_found, "yellow")
         echo(f'- Found {message} courses with no "{tool}" tab.')
 
-    if int(not_participating):
+    if not_participating:
         message = colorize(not_participating, "yellow")
         echo(
             f"- Found {message} courses in schools not participating in automatic"
             f' enabling of "{tool}".'
         )
 
-    if int(error):
+    if error:
         message = colorize(f"Encountered errors for {error} courses.", "red")
         echo(f"- {message}")
         result_path_display = colorize(result_path, "green")

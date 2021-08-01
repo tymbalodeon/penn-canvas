@@ -92,7 +92,7 @@ def cleanup_report(report, start=0):
     TOTAL = len(data.index)
     data = data.loc[start:TOTAL, :]
 
-    return data, str(TOTAL)
+    return data, TOTAL
 
 
 def get_user_emails(user):
@@ -276,18 +276,16 @@ def process_result(include_fixed):
     result.drop("index", axis=1, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
 
-    fixed_count = str(fixed)
-    error_count = str(error)
-    unsupported_count = str(len(not_fixable.index))
-    supported_not_found_count = str(len(SUPPORTED_NOT_FOUND.index))
-    user_not_found_count = str(len(USERS_NOT_FOUND.index))
+    unsupported = len(not_fixable.index)
+    supported_not_found = len(SUPPORTED_NOT_FOUND.index)
+    user_not_found = len(USERS_NOT_FOUND.index)
 
     return (
-        fixed_count,
-        error_count,
-        unsupported_count,
-        supported_not_found_count,
-        user_not_found_count,
+        fixed,
+        error,
+        unsupported,
+        supported_not_found,
+        user_not_found,
     )
 
 
@@ -307,19 +305,19 @@ def print_messages(
         " accounts."
     )
 
-    if int(supported_not_found) > 0:
+    if supported_not_found > 0:
         echo(
             f"- Found {colorize(supported_not_found, 'red')} supported users with no"
             " email account."
         )
 
-    if int(unsupported) > 0:
+    if unsupported > 0:
         echo(
             f"- Found {colorize(unsupported, 'yellow')} unsupported users with missing"
             " or unconfirmed email accounts."
         )
 
-    if int(errors) > 0:
+    if errors > 0:
         message = colorize(
             f"Failed to activate email(s) for {errors} supported users with (an)"
             " unconfirmed email account(s).",
@@ -331,7 +329,7 @@ def print_messages(
             f" {log_path_display}"
         )
 
-    if int(user_not_found) > 0:
+    if user_not_found > 0:
         message = colorize(f"Failed to find {user_not_found} users.", "red")
         echo(f"- {message}")
 
