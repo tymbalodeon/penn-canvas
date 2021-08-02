@@ -194,7 +194,7 @@ def process_result(test, result_path):
     ERROR_COUNT = len(ERROR.index)
     result = concat([NOT_ENROLLED, NOT_IN_CANVAS, INVALID_PENNKEY, ERROR])
     result.drop("index", axis=1, inplace=True)
-    result.to_csv(RESULT_PATH, index=False)
+    result.to_csv(result_path, index=False)
     final_list = concat([ALREADY_PROCESSED, ADDED, ENROLLED])
     final_list.drop(["index", "status"], axis=1, inplace=True)
     final_list["group name"] = Categorical(
@@ -229,6 +229,7 @@ def print_messages(
     invalid_pennkey,
     error,
     total,
+    result_path,
 ):
     colorize("SUMMARY:", "yellow")
     echo(f"- Processed {colorize(total)} users.")
@@ -308,7 +309,7 @@ def print_messages(
         errors = True
 
     if errors:
-        result_path = colorize(RESULT_PATH, "green")
+        result_path = colorize(result_path, "green")
         echo(f"- Details recorded to: {result_path}")
 
     final_list_path = colorize(FINAL_LIST_PATH, "green")
@@ -475,4 +476,5 @@ def nso_main(test, verbose, force, clear_processed):
         invalid_pennkey,
         error,
         TOTAL,
+        RESULT_PATH,
     )
