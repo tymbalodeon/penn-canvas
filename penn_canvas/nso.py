@@ -30,7 +30,6 @@ init_oracle_client(
 YEAR = datetime.now().strftime("%Y")
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
 INPUT, RESULTS, PROCESSED = get_command_paths("nso", input_dir=True, processed=True)
-RESULT_PATH = RESULTS / f"{YEAR}_nso_result_{TODAY_AS_Y_M_D}.csv"
 FINAL_LIST_PATH = RESULTS / f"{YEAR}_nso_final_list.csv"
 HEADERS = [
     "index",
@@ -170,8 +169,8 @@ def get_processed_users(processed_path):
         return list()
 
 
-def process_result(test):
-    result = read_csv(RESULT_PATH)
+def process_result(test, result_path):
+    result = read_csv(result_path)
     ALREADY_PROCESSED = result[result["status"] == "already processed"]
     ADDED = result[result["status"] == "added"]
     ENROLLED = result[result["status"] == "enrolled and added"]
@@ -207,9 +206,7 @@ def process_result(test):
     final_list.to_csv(FINAL_LIST_PATH, index=False)
 
     if test:
-        test_result_path = RESULTS / f"{RESULT_PATH}_test.csv"
         test_final_list = RESULTS / f"{FINAL_LIST_PATH}_test.csv"
-        RESULT_PATH.rename(test_result_path)
         FINAL_LIST_PATH.rename(test_final_list)
 
     return (
@@ -434,6 +431,9 @@ def nso_main(test, verbose, force, clear_processed):
             with open(PROCESSED_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow([penn_key])
 
+    RESULT_PATH = (
+        RESULTS / f"{YEAR}_nso_result_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
+    )
     PROCESSED_PATH = (
         PROCESSED / f"nso_processed_users_{YEAR}{'_test' if test else ''}.csv"
     )
@@ -465,7 +465,7 @@ def nso_main(test, verbose, force, clear_processed):
         not_in_canvas,
         invalid_pennkey,
         error,
-    ) = process_result(test)
+    ) = process_result(test, RESULT_PATH)
     print_messages(
         already_processed,
         added,
