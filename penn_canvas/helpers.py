@@ -288,7 +288,7 @@ def find_sub_accounts(canvas, account_id):
     return ACCOUNTS
 
 
-def colorize(text, color, echo=False):
+def colorize(text, color="magenta", echo=False):
     typer_colors = {
         "blue": colors.BLUE,
         "cyan": colors.CYAN,
