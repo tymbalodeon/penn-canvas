@@ -32,7 +32,6 @@ GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
 INPUT, RESULTS, PROCESSED = get_command_paths("nso", input_dir=True, processed=True)
 RESULT_PATH = RESULTS / f"{YEAR}_nso_result_{TODAY_AS_Y_M_D}.csv"
 FINAL_LIST_PATH = RESULTS / f"{YEAR}_nso_final_list.csv"
-PROCESSED_PATH = PROCESSED / f"nso_processed_users_{YEAR}.csv"
 HEADERS = [
     "index",
     "canvas course id",
@@ -428,6 +427,9 @@ def nso_main(test, verbose, force, clear_processed):
             with open(PROCESSED_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow([penn_key])
 
+    PROCESSED_PATH = (
+        PROCESSED / f"nso_processed_users_{YEAR}{'_test' if test else ''}.csv"
+    )
     data = find_nso_file()
     (
         DATA_WAREHOUSE_USER,
