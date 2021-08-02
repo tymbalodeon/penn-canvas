@@ -99,6 +99,13 @@ def cleanup_data(input_file, start=0):
         facilitators = data[0]
         students = data[1]
 
+    facilitators["Group Name"] = Categorical(
+        facilitators["Group Name"],
+        ordered=True,
+        categories=natsorted(facilitators["Group Name"].unique()),
+    )
+    facilitators = facilitators.sort_values("Group Name")
+
     group_numbers = facilitators["Group Name"].to_list()
     group_numbers = [
         int(group_number.replace("Group ", "")) for group_number in group_numbers
