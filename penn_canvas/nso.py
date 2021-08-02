@@ -185,13 +185,6 @@ def process_result(test, result_path):
         & (result["status"] != "user not found in canvas")
         & (result["status"] != "invalid pennkey")
     ]
-    ALREADY_PROCESSED_COUNT = len(ALREADY_PROCESSED.index)
-    ADDED_COUNT = len(ADDED.index)
-    ENROLLED_COUNT = len(ENROLLED.index)
-    NOT_ENROLLED_COUNT = len(NOT_ENROLLED.index)
-    NOT_IN_CANVAS_COUNT = len(NOT_IN_CANVAS.index)
-    INVALID_PENNKEY_COUNT = len(INVALID_PENNKEY.index)
-    ERROR_COUNT = len(ERROR.index)
     result = concat([NOT_ENROLLED, NOT_IN_CANVAS, INVALID_PENNKEY, ERROR])
     result.drop("index", axis=1, inplace=True)
     result.to_csv(result_path, index=False)
@@ -210,13 +203,13 @@ def process_result(test, result_path):
         FINAL_LIST_PATH.rename(test_final_list)
 
     return (
-        ALREADY_PROCESSED_COUNT,
-        ADDED_COUNT,
-        ENROLLED_COUNT,
-        NOT_ENROLLED_COUNT,
-        NOT_IN_CANVAS_COUNT,
-        INVALID_PENNKEY_COUNT,
-        ERROR_COUNT,
+        len(ALREADY_PROCESSED.index),
+        len(ADDED.index),
+        len(ENROLLED.index),
+        len(NOT_ENROLLED.index),
+        len(NOT_IN_CANVAS.index),
+        len(INVALID_PENNKEY.index),
+        len(ERROR.index),
     )
 
 
