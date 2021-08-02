@@ -311,50 +311,54 @@ def print_messages(
 
 
 def nso_main(test, verbose, force, clear_processed):
+    def create_group_membership(
+        canvas, course_id, group_set_name, group_name, penn_key, enroll_in_course=False
+    ):
+        course = canvas.get_course(course_id)
+
+        group_set = next(
+            (
+                group_set
+                for group_set in course.get_group_categories()
+                if group_set.name == group_set_name
+            ),
+            None,
+        )
+        if not group_set:
+            if verbose:
+                echo(f") Creating group set {group_set_name}...")
+            group_set = course.create_group_category(group_set_name)
+
+        group = next(
+            (group for group in group_set.get_groups() if group.name == group_name),
+            None,
+        )
+
+        if not group:
+            if verbose:
+                echo(f") Creating group {group_name}...")
+            group = group_set.create_group(name=group_name)
+
+        canvas_user = canvas.get_user(penn_key, "sis_login_id")
+        group.create_membership(canvas_user)
+
+        if enroll_in_course:
+            return "enrolled and added", "cyan"
+        else:
+            return "added", "green"
+
     def create_memberships(user, canvas, verbose, args):
         total, processed_users = args
         index, course_id, group_set_name, group_name, penn_key = user
-
-        def create_group_membership(enroll_in_course=False):
-            course = canvas.get_course(course_id)
-
-            group_set = next(
-                (
-                    group_set
-                    for group_set in course.get_group_categories()
-                    if group_set.name == group_set_name
-                ),
-                None,
-            )
-            if not group_set:
-                if verbose:
-                    echo(f") Creating group set {group_set_name}...")
-                group_set = course.create_group_category(group_set_name)
-
-            group = next(
-                (group for group in group_set.get_groups() if group.name == group_name),
-                None,
-            )
-
-            if not group:
-                if verbose:
-                    echo(f") Creating group {group_name}...")
-                group = group_set.create_group(name=group_name)
-
-            canvas_user = canvas.get_user(penn_key, "sis_login_id")
-            group.create_membership(canvas_user)
-
-            if enroll_in_course:
-                return "enrolled and added", "cyan"
-            else:
-                return "added", "green"
 
         if force and penn_key in processed_users:
             status = "already processed"
             color = "yellow"
         else:
             try:
-                status, color = create_group_membership()
+                status, color = create_group_membership(
+                    canvas, course_id, group_set_name, group_name, penn_key
+                )
             except Exception as error:
                 try:
                     course = canvas.get_course(course_id)
@@ -367,7 +371,14 @@ def nso_main(test, verbose, force, clear_processed):
                     except Exception:
                         try:
                             course.enroll_user(canvas_user)
-                            status, color = create_group_membership(True)
+                            status, color = create_group_membership(
+                                canvas,
+                                course_id,
+                                group_set_name,
+                                group_name,
+                                penn_key,
+                                True,
+                            )
                         except Exception:
                             status = "failed to enroll user in course"
                 except Exception as error:
