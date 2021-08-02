@@ -30,8 +30,8 @@ init_oracle_client(
 YEAR = datetime.now().strftime("%Y")
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
 INPUT, RESULTS, PROCESSED = get_command_paths("nso", input_dir=True, processed=True)
-RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_nso_result.csv"
-FINAL_LIST_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_nso_final_list.csv"
+RESULT_PATH = RESULTS / f"{YEAR}_nso_result_{TODAY_AS_Y_M_D}.csv"
+FINAL_LIST_PATH = RESULTS / f"{YEAR}_nso_final_list.csv"
 PROCESSED_PATH = PROCESSED / f"nso_processed_users_{YEAR}.csv"
 HEADERS = [
     "index",
@@ -132,7 +132,7 @@ def cleanup_data(input_file, start=0):
 
     data = data.loc[start:TOTAL, :]
 
-    return data, str(TOTAL)
+    return data, TOTAL
 
 
 def handle_clear_processed(clear_processed, processed_path):
@@ -164,7 +164,7 @@ def get_processed_users(processed_path):
         return list()
 
 
-def process_result():
+def process_result(test):
     result = read_csv(RESULT_PATH)
     ALREADY_PROCESSED = result[result["status"] == "already processed"]
     ADDED = result[result["status"] == "added"]
@@ -199,6 +199,12 @@ def process_result():
     )
     final_list = final_list.sort_values("group name")
     final_list.to_csv(FINAL_LIST_PATH, index=False)
+
+    if test:
+        test_result_path = RESULTS / f"{RESULT_PATH}_test.csv"
+        test_final_list = RESULTS / f"{FINAL_LIST_PATH}_test.csv"
+        RESULT_PATH.rename(test_result_path)
+        FINAL_LIST_PATH.rename(test_final_list)
 
     return (
         ALREADY_PROCESSED_COUNT,
@@ -450,7 +456,7 @@ def nso_main(test, verbose, force, clear_processed):
         not_in_canvas,
         invalid_pennkey,
         error,
-    ) = process_result()
+    ) = process_result(test)
     print_messages(
         already_processed,
         added,
