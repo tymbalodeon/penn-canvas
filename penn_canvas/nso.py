@@ -225,7 +225,7 @@ def print_messages(
     result_path,
 ):
     colorize("SUMMARY:", "yellow")
-    echo(f"- Processed {colorize(total)} users.")
+    echo(f"- Processed {colorize(total, 'magenta')} users.")
     added_count = colorize(added + enrolled, "green")
     echo(f"- Successfully added {added_count} users to groups.")
 
