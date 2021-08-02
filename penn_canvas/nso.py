@@ -185,7 +185,7 @@ def process_result(test, result_path):
         & (result["status"] != "user not found in canvas")
         & (result["status"] != "invalid pennkey")
     ]
-    result = concat([NOT_ENROLLED, NOT_IN_CANVAS, INVALID_PENNKEY, ERROR])
+    result = concat([ENROLLED, NOT_ENROLLED, NOT_IN_CANVAS, INVALID_PENNKEY, ERROR])
     result.drop("index", axis=1, inplace=True)
     result.to_csv(result_path, index=False)
     final_list = concat([ALREADY_PROCESSED, ADDED, ENROLLED])
