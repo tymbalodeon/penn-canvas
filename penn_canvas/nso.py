@@ -6,7 +6,7 @@ from pathlib import Path
 from cx_Oracle import connect, init_oracle_client
 from natsort import natsorted
 from pandas import Categorical, DataFrame, concat, isna, read_csv, read_excel
-from typer import Exit, confirm, echo
+from typer import Abort, Exit, confirm, echo
 
 from .helpers import (
     TODAY_AS_Y_M_D,
@@ -92,11 +92,18 @@ def cleanup_data(input_file, start=0):
     data = read_excel(input_file, engine="openpyxl", sheet_name=None)
 
     try:
-        facilitators = data["PHINS Groups"]
-        students = data["First-Year PennKey"]
-    except Exception:
         facilitators = data[0]
         students = data[1]
+    except Exception:
+        echo(
+            colorize(
+                "- ERROR: input file does not contain two sheets. A sheet for"
+                " facilitators and a sheet for students is required. Please provide a"
+                " valid input file and try again.",
+                "yellow",
+            )
+        )
+        raise Abort()
 
     facilitators["Group Name"] = Categorical(
         facilitators["Group Name"],
