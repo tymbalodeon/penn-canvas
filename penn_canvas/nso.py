@@ -235,9 +235,9 @@ def print_messages(
     result_path,
 ):
     colorize("SUMMARY:", "yellow")
-    echo(f"- Processed {colorize(total, 'magenta')} users.")
+    echo(f"- Processed {colorize(total, 'magenta'):,} users.")
     added_count = colorize(added + enrolled, "green")
-    echo(f"- Successfully added {added_count} users to groups.")
+    echo(f"- Successfully added {added_count:,} users to groups.")
 
     errors = False
 
@@ -248,7 +248,7 @@ def print_messages(
             user = "user"
 
         message = colorize(
-            f"Automatically enrolled {enrolled} {user} in the course.", "yellow"
+            f"Automatically enrolled {enrolled:,} {user} in the course.", "yellow"
         )
         echo(f"- {message}")
 
@@ -259,7 +259,7 @@ def print_messages(
             user = "user"
 
         message = colorize(
-            f"{already_processed} {user} already added to group.", "yellow"
+            f"{already_processed:,} {user} already added to group.", "yellow"
         )
         echo(f"- {message}")
 
@@ -270,7 +270,7 @@ def print_messages(
             user = "user"
 
         message = colorize(
-            f"Found {not_enrolled} {user} not enrolled in the course.", "red"
+            f"Found {not_enrolled:,} {user} not enrolled in the course.", "red"
         )
         echo(f"- {message}")
         errors = True
@@ -283,7 +283,7 @@ def print_messages(
             user = "user"
             account = "a Canvas account"
 
-        message = colorize(f"Found {not_in_canvas} {user} without {account}.", "red")
+        message = colorize(f"Found {not_in_canvas:,} {user} without {account}.", "red")
         echo(f"- {message}")
         errors = True
 
@@ -296,7 +296,7 @@ def print_messages(
             pennkey = "pennkey"
 
         message = colorize(
-            f"Found {invalid_pennkey} {user} with invalid {pennkey}.", "red"
+            f"Found {invalid_pennkey:,} {user} with invalid {pennkey}.", "red"
         )
         echo(f"- {message}")
         errors = True
@@ -307,7 +307,7 @@ def print_messages(
         else:
             user = "user"
 
-        message = colorize(f"Encountered an unknown error for {error} {user}.", "red")
+        message = colorize(f"Encountered an unknown error for {error:,} {user}.", "red")
         echo(f"- {message}")
         errors = True
 
