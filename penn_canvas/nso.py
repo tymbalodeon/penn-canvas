@@ -5,7 +5,7 @@ from pathlib import Path
 
 from cx_Oracle import connect, init_oracle_client
 from natsort import natsorted
-from pandas import Categorical, DataFrame, concat, read_csv, read_excel
+from pandas import Categorical, DataFrame, concat, isna, read_csv, read_excel
 from typer import Exit, confirm, echo
 
 from .helpers import (
@@ -104,20 +104,31 @@ def cleanup_data(input_file, start=0):
         categories=natsorted(facilitators["Group Name"].unique()),
     )
     facilitators = facilitators.sort_values("Group Name")
-
-    group_numbers = facilitators["Group Name"].to_list()
+    group_names = facilitators["Group Name"].to_list()
     group_numbers = [
-        int(group_number.replace("Group ", "")) for group_number in group_numbers
+        int(
+            (
+                "".join(
+                    character for character in group_name if not character.isalpha()
+                )
+            ).strip()
+        )
+        for group_name in group_names
     ]
     number_of_groups = max(group_numbers)
     canvas_course_id = facilitators["Canvas Course ID"].drop_duplicates().tolist()[0]
     group_set_name = facilitators["Group Set Name"].drop_duplicates().tolist()[0]
     students = students["PennKey"].tolist()
+    group_name_base = "".join(
+        character
+        for character in group_names[0]
+        if character.isalpha() or character.isspace()
+    )
     students = [
         [
             canvas_course_id,
             group_set_name,
-            f"Group {(index % number_of_groups) + 1}",
+            f"{group_name_base}{(index % number_of_groups) + 1}",
             student,
         ]
         for index, student in enumerate(students)
@@ -132,7 +143,6 @@ def cleanup_data(input_file, start=0):
     data["user (pennkey)"] = data["user (pennkey)"].str.lower()
     data = data.astype("string", copy=False, errors="ignore")
     data[list(data)] = data[list(data)].apply(lambda column: column.str.strip())
-    data.dropna(subset=["user (pennkey)"], inplace=True)
     TOTAL = len(data.index)
 
     data = data.loc[start:TOTAL, :]
@@ -351,7 +361,10 @@ def nso_main(test, verbose, force, clear_processed):
         total, processed_users = args
         index, course_id, group_set_name, group_name, penn_key = user
 
-        if force and penn_key in processed_users:
+        if isna(penn_key):
+            status = "invalid pennkey"
+            color = "red"
+        elif force and penn_key in processed_users:
             status = "already processed"
             color = "yellow"
         else:
