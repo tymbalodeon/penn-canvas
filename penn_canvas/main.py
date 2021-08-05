@@ -22,8 +22,7 @@ def archive(
     ),
     instance: str = Argument(
         "open",
-        "--instance",
-        help=("The Canvas instance to use."),
+        help="The Canvas instance to use.",
     ),
     verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
