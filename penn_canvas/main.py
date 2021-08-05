@@ -20,15 +20,28 @@ def archive(
     course: int = Argument(
         ..., help="The course whose discussions you want to archive."
     ),
+    instance: str = Argument(
+        "open",
+        "--instance",
+        help=("The Canvas instance to use."),
+    ),
     verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
+    ),
+    force: bool = Option(
+        False,
+        "--force",
+        help=(
+            "Force the task to start from the beginning despite the presence of a"
+            " pre-existing incomplete result file and overwrite that file."
+        ),
     ),
 ):
     """
     Archive script
     """
 
-    archive_main(course, verbose)
+    archive_main(course, instance, verbose, force)
 
 
 @app.command()
