@@ -60,7 +60,9 @@ def get_discussions(course_id, instance):
 
 def archive_main(course_id, instance, verbose, force):
     def archive_discussion(discussion, verbose=False, index=0, total=0):
-        discussion_path = RESULTS / f"{discussion.title.strip().replace(' ', '_')}.csv"
+        discussion_path = (
+            RESULTS / f"{discussion.title.replace('- ', '').replace(' ', '_')}.csv"
+        )
         entries = discussion.get_topic_entries()
         total_entries = 0
 
@@ -90,7 +92,7 @@ def archive_main(course_id, instance, verbose, force):
                 echo(
                     f"- [{discussion_index + 1}/{total_discussions}]"
                     f" ({entry_index + 1}/{total_entries})"
-                    f" {discussion_display} {user_display} {timestamp_display} {message[:88]}"
+                    f" {discussion_display} {user_display} {timestamp_display} {message[:40]}"
                 )
 
             return [user, timestamp, message]
