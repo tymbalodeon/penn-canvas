@@ -340,11 +340,11 @@ def email_main(test, include_fixed, verbose, force):
     def check_and_activate_emails(user, canvas, verbose, args):
         index = user[0]
         result_path, log_path = args
-        needs_support_check, message = find_unconfirmed_emails(
+        needs_school_check, message = find_unconfirmed_emails(
             user, canvas, verbose, index, TOTAL
         )
 
-        if needs_support_check:
+        if needs_school_check:
             report.at[index, "email status"] = message
             is_supported = check_schools(user, SUB_ACCOUNTS, canvas, verbose)
 

@@ -95,15 +95,14 @@ def cleanup_data(input_file, start=0):
         facilitators = data[0]
         students = data[1]
     except Exception:
-        echo(
-            colorize(
-                "- ERROR: input file does not contain two sheets. A sheet for"
-                " facilitators and a sheet for students is required. Please provide a"
-                " valid input file and try again.",
-                "yellow",
-            )
+        colorize(
+            "- ERROR: input file does not contain two sheets. A sheet for"
+            " facilitators and a sheet for students is required. Please provide a"
+            " valid input file and try again.",
+            "yellow",
+            True,
         )
-        raise Abort()
+    raise Abort()
 
     facilitators["Group Name"] = Categorical(
         facilitators["Group Name"],
