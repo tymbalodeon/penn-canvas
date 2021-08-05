@@ -1,5 +1,6 @@
 from typer import Argument, Option, Typer
 
+from .archive import archive_main
 from .email import email_main
 from .helpers import display_config, make_config
 from .nso import nso_main
@@ -12,6 +13,22 @@ app = Typer(
         " easier!"
     )
 )
+
+
+@app.command()
+def archive(
+    course: int = Argument(
+        ..., help="The course whose discussions you want to archive."
+    ),
+    verbose: bool = Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
+):
+    """
+    Archive script
+    """
+
+    archive_main(course, verbose)
 
 
 @app.command()
