@@ -153,7 +153,8 @@ def process_result(tool, terms, enable, result_path):
     NOT_FOUND = result[result["tool status"] == "not found"]
     NOT_PARTICIPATING = result[result["tool status"] == "school not participating"]
     ERROR = result[
-        (result["tool status"] != "enabled")
+        (result["tool status"] != "already processed")
+        & (result["tool status"] != "enabled")
         & (result["tool status"] != "already enabled")
         & (result["tool status"] != "disabled")
         & (result["tool status"] != "not found")
