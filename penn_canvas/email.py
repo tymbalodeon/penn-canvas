@@ -8,17 +8,22 @@ from typer import Exit, echo
 from .helpers import (
     TODAY,
     TODAY_AS_Y_M_D,
+    YEAR,
     colorize,
     find_sub_accounts,
     get_canvas,
     get_command_paths,
+    get_processed_users,
     get_start_index,
+    handle_clear_processed,
     make_csv_paths,
     make_skip_message,
     toggle_progress_bar,
 )
 
-REPORTS, RESULTS, LOGS = get_command_paths("email", True)
+REPORTS, RESULTS, LOGS, PROCESSED = get_command_paths(
+    "email", logs=True, processed=True
+)
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_email_result.csv"
 HEADERS = ["index", "canvas user id", "email status", "supported school(s)"]
 LOG_PATH = LOGS / f"{TODAY_AS_Y_M_D}_email_log.csv"
@@ -228,6 +233,7 @@ def activate_fixable_emails(
                 )
 
             return False, "failed to activate"
+
         is_active = get_email_status(user_id, next_email, False)
 
     if is_active:
@@ -336,44 +342,72 @@ def print_messages(
     colorize("FINISHED", "yellow", True)
 
 
-def email_main(test, include_fixed, verbose, force):
+def email_main(test, include_fixed, verbose, force, clear_processed):
     def check_and_activate_emails(user, canvas, verbose, args):
         index = user[0]
-        result_path, log_path = args
-        needs_school_check, message = find_unconfirmed_emails(
-            user, canvas, verbose, index, TOTAL
-        )
+        user_id = user[1]
+        result_path, log_path, processed_users, total = args
 
-        if needs_school_check:
-            report.at[index, "email status"] = message
-            is_supported = check_schools(user, SUB_ACCOUNTS, canvas, verbose)
-
-            if is_supported:
-                report.at[index, "supported school(s)"] = "Y"
-
-                if message == "unconfirmed":
-                    activated, activate_message = activate_fixable_emails(
-                        user, canvas, result_path, log_path, include_fixed, verbose
-                    )
-                    report.at[index, "email status"] = activate_message
-            else:
-                report.at[index, "supported school(s)"] = "N"
-
-            report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
-        elif message == "user not found":
-            report.at[index, "email status"] = "ERROR: user not found"
-            report.at[index, "supported school(s)"] = "ERROR: user not found"
-            report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
-        else:
+        if user_id in processed_users:
             report.drop(index=index, inplace=True)
+            message = colorize("ALREADY PROCESSED", "yellow")
+            echo(f"- ({index + 1}/{total}) {message}")
+        else:
+            needs_school_check, message = find_unconfirmed_emails(
+                user, canvas, verbose, index, TOTAL
+            )
 
+            if needs_school_check:
+                report.at[index, "email status"] = message
+                is_supported = check_schools(user, SUB_ACCOUNTS, canvas, verbose)
+
+                if is_supported:
+                    report.at[index, "supported school(s)"] = "Y"
+
+                    if message == "unconfirmed":
+                        activated, activate_message = activate_fixable_emails(
+                            user, canvas, result_path, log_path, include_fixed, verbose
+                        )
+                        report.at[index, "email status"] = activate_message
+
+                        if activated:
+                            with open(
+                                PROCESSED_PATH, "a+", newline=""
+                            ) as processed_file:
+                                writer(processed_file).writerow([user_id])
+                else:
+                    report.at[index, "supported school(s)"] = "N"
+
+                    with open(PROCESSED_PATH, "a+", newline="") as processed_file:
+                        writer(processed_file).writerow([user_id])
+
+                report.loc[index].to_frame().T.to_csv(
+                    RESULT_PATH, mode="a", header=False
+                )
+            elif message == "user not found":
+                report.at[index, "email status"] = "ERROR: user not found"
+                report.at[index, "supported school(s)"] = "ERROR: user not found"
+                report.loc[index].to_frame().T.to_csv(
+                    RESULT_PATH, mode="a", header=False
+                )
+            else:
+                report.drop(index=index, inplace=True)
+
+                with open(PROCESSED_PATH, "a+", newline="") as processed_file:
+                    writer(processed_file).writerow([user_id])
+
+    PROCESSED_PATH = (
+        PROCESSED / f"email_processed_users_{YEAR}{'_test' if test else ''}.csv"
+    )
     report = find_users_report()
     START = get_start_index(force, RESULT_PATH)
     report, TOTAL = cleanup_report(report, START)
+    handle_clear_processed(clear_processed, PROCESSED_PATH)
+    PROCESSED_USERS = get_processed_users(PROCESSED, PROCESSED_PATH, "user id")
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
-    ARGS = RESULT_PATH, LOG_PATH
-    make_skip_message(START, "student")
+    ARGS = RESULT_PATH, LOG_PATH, PROCESSED_USERS, TOTAL
+    make_skip_message(START, "user")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
     SUB_ACCOUNTS = get_subaccounts(CANVAS)

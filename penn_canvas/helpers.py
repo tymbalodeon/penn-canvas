@@ -10,15 +10,17 @@ from typer import Abort, Exit, colors, confirm, echo, progressbar, prompt, secho
 CANVAS_URL_PROD = "https://canvas.upenn.edu"
 CANVAS_URL_TEST = "https://upenn.test.instructure.com"
 CANVAS_URL_OPEN = "https://upenn-catalog.instructure.com"
-CONFIG_DIR = Path.home() / ".config"
-CONFIG_PATH = CONFIG_DIR / "penn-canvas"
+CONFIG_DIRECTORY = Path.home() / ".config"
+CONFIG_PATH = CONFIG_DIRECTORY / "penn-canvas"
+COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
+YEAR = datetime.now().strftime("%Y")
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 
 
 def make_config():
-    if not CONFIG_DIR.exists():
-        Path.mkdir(CONFIG_DIR, parents=True)
+    if not CONFIG_DIRECTORY.exists():
+        Path.mkdir(CONFIG_DIRECTORY, parents=True)
 
     (
         production,
@@ -188,7 +190,7 @@ def make_csv_paths(csv_dir, csv_file, headers):
 
 
 def get_command_paths(command, logs=False, processed=False, input_dir=False):
-    COMMAND_DIRECTORY = Path.home() / f"penn-canvas/{command}"
+    COMMAND_DIRECTORY = COMMAND_DIRECTORY_BASE / f"{command}"
     input_name = "input" if input_dir else "reports"
     REPORTS = COMMAND_DIRECTORY / input_name
     RESULTS = COMMAND_DIRECTORY / "results"
@@ -258,6 +260,37 @@ def make_skip_message(start, item):
 
     message = colorize(f"SKIPPING {start} PREVIOUSLY PROCESSED {item}...", "yellow")
     echo(f") {message}")
+
+
+def handle_clear_processed(clear_processed, processed_path, item_plural="users"):
+    if clear_processed:
+        proceed = confirm(
+            f"You have asked to clear the list of {item_plural} already processed."
+            " This list makes subsequent runs of the command faster. Are you sure"
+            " you want to do this?"
+        )
+    else:
+        proceed = False
+
+    if proceed:
+        echo(f") Clearing list of {item_plural} already processed...")
+
+        if processed_path.exists():
+            remove(processed_path)
+    else:
+        echo(f") Finding {item_plural} already processed...")
+
+
+def get_processed_users(processed_directory, processed_path, column="pennkey"):
+    if processed_path.is_file():
+        result = read_csv(processed_path)
+        result = result.astype("string", copy=False, errors="ignore")
+
+        return result[column].tolist()
+    else:
+        make_csv_paths(processed_directory, processed_path, [column])
+
+        return list()
 
 
 def get_canvas(instance="test"):

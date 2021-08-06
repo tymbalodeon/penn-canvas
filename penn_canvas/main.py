@@ -1,5 +1,6 @@
 from typer import Argument, Option, Typer
 
+from .archive import archive_main
 from .email import email_main
 from .helpers import display_config, make_config
 from .nso import nso_main
@@ -12,6 +13,34 @@ app = Typer(
         " easier!"
     )
 )
+
+
+@app.command()
+def archive(
+    course: int = Argument(
+        ..., help="The course whose discussions you want to archive."
+    ),
+    instance: str = Argument(
+        "open",
+        help="The Canvas instance to use.",
+    ),
+    verbose: bool = Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
+    force: bool = Option(
+        False,
+        "--force",
+        help=(
+            "Force the task to start from the beginning despite the presence of a"
+            " pre-existing incomplete result file and overwrite that file."
+        ),
+    ),
+):
+    """
+    Archive script
+    """
+
+    archive_main(course, instance, verbose, force)
 
 
 @app.command()
@@ -81,6 +110,11 @@ def email(
             " pre-existing incomplete result file and overwrite that file."
         ),
     ),
+    clear_processed: bool = Option(
+        False,
+        "--clear-processed",
+        help="Clear the list of users already processed for the current year.",
+    ),
 ):
     """
     Checks the email status of users and activates any unconfirmed email
@@ -108,7 +142,7 @@ def email(
     NOTE: Input filename must include the current date in order to be accepted.
     """
 
-    email_main(test, include_fixed, verbose, force)
+    email_main(test, include_fixed, verbose, force, clear_processed)
 
 
 @app.command()
@@ -135,7 +169,7 @@ def nso(
     clear_processed: bool = Option(
         False,
         "--clear-processed",
-        help="Clear the list of students already processed for the current year.",
+        help="Clear the list of users already processed for the current year.",
     ),
 ):
     """
