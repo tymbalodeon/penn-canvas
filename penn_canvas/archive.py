@@ -56,13 +56,13 @@ def get_discussions(course_id, instance):
     for discussion in discussions:
         total += 1
 
-    return discussions, total
+    return course, discussions, total
 
 
 def archive_main(course_id, instance, verbose, force):
     def archive_discussion(discussion, verbose=False, index=0, total=0):
         discussion_path = (
-            RESULTS / f"{discussion.title.replace('- ', '').replace(' ', '_')}.csv"
+            COURSE / f"{discussion.title.replace('- ', '').replace(' ', '_')}.csv"
         )
         entries = discussion.get_topic_entries()
         total_entries = 0
@@ -109,13 +109,18 @@ def archive_main(course_id, instance, verbose, force):
         entries = DataFrame(entries, columns=["user", "timestamp", "post"])
         entries.to_csv(discussion_path, index=False)
 
-    discussions, total = get_discussions(course_id, instance)
+    course, discussions, total = get_discussions(course_id, instance)
+
+    COURSE = RESULTS / f"{course.name}"
 
     if not COMMAND_DIRECTORY.exists():
         Path.mkdir(COMMAND_DIRECTORY)
 
         if not RESULTS.exists():
             Path.mkdir(RESULTS)
+
+    if not COURSE.exists():
+        Path.mkdir(COURSE)
 
     echo(") Processing discussions...")
 
