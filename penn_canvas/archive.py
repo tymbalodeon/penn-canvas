@@ -134,6 +134,6 @@ def archive_main(course_id, instance, verbose, force):
 
     colorize("SUMMARY", "yellow", True)
     echo(
-        f"Archived {colorize(total, 'magenta')} discussions for {colorize(course.name, 'blue')}."
+        f"- Archived {colorize(total, 'magenta')} discussions for {colorize(course.name, 'blue')}."
     )
     colorize("FINISHED", "yellow", True)
