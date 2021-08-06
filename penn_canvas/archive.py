@@ -1,4 +1,5 @@
 from html.parser import HTMLParser
+from datetime import datetime
 from io import StringIO
 from pathlib import Path
 
@@ -78,8 +79,12 @@ def archive_main(course_id, instance, verbose, force):
             total_entries,
         ):
             user = " ".join(entry.user["display_name"].split())
-            timestamp = entry.created_at
-            message = strip_tags(entry.message.replace("\n", " ")).strip()
+            timestamp = datetime.strptime(
+                entry.created_at, "%Y-%m-%dT%H:%M:%SZ"
+            ).strftime("%m/%d/%Y, %H:%M:%S")
+            message = " ".join(
+                strip_tags(entry.message.replace("\n", " ")).strip().split()
+            )
 
             if verbose:
                 user_display = colorize(user, "cyan")
