@@ -10,15 +10,16 @@ from typer import Abort, Exit, colors, confirm, echo, progressbar, prompt, secho
 CANVAS_URL_PROD = "https://canvas.upenn.edu"
 CANVAS_URL_TEST = "https://upenn.test.instructure.com"
 CANVAS_URL_OPEN = "https://upenn-catalog.instructure.com"
-CONFIG_DIR = Path.home() / ".config"
-CONFIG_PATH = CONFIG_DIR / "penn-canvas"
+CONFIG_DIRECTORY = Path.home() / ".config"
+CONFIG_PATH = CONFIG_DIRECTORY / "penn-canvas"
+COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 
 
 def make_config():
-    if not CONFIG_DIR.exists():
-        Path.mkdir(CONFIG_DIR, parents=True)
+    if not CONFIG_DIRECTORY.exists():
+        Path.mkdir(CONFIG_DIRECTORY, parents=True)
 
     (
         production,
@@ -188,7 +189,7 @@ def make_csv_paths(csv_dir, csv_file, headers):
 
 
 def get_command_paths(command, logs=False, processed=False, input_dir=False):
-    COMMAND_DIRECTORY = Path.home() / f"penn-canvas/{command}"
+    COMMAND_DIRECTORY = COMMAND_DIRECTORY_BASE / f"{command}"
     input_name = "input" if input_dir else "reports"
     REPORTS = COMMAND_DIRECTORY / input_name
     RESULTS = COMMAND_DIRECTORY / "results"

@@ -1,20 +1,12 @@
-from html.parser import HTMLParser
 from datetime import datetime
+from html.parser import HTMLParser
 from io import StringIO
 from pathlib import Path
 
 from pandas import DataFrame
 from typer import echo, progressbar
 
-from .helpers import (
-    TODAY_AS_Y_M_D,
-    colorize,
-    get_canvas,
-    get_start_index,
-    make_csv_paths,
-    make_skip_message,
-    toggle_progress_bar,
-)
+from .helpers import COMMAND_DIRECTORY_BASE, colorize, get_canvas
 
 
 class HTMLStripper(HTMLParser):
@@ -39,7 +31,7 @@ def strip_tags(html):
     return stripper.get_data()
 
 
-COMMAND_DIRECTORY = Path.home() / f"penn-canvas/archive"
+COMMAND_DIRECTORY = COMMAND_DIRECTORY_BASE / "archive"
 RESULTS = COMMAND_DIRECTORY / "results"
 HEADERS = ["index", "user", "timestamp", "post"]
 
@@ -96,8 +88,8 @@ def archive_main(course_id, instance, verbose, force):
 
                 echo(
                     f"- [{discussion_index + 1}/{total_discussions}]"
-                    f" ({entry_index + 1}/{total_entries})"
-                    f" {discussion_display} {user_display} {timestamp_display} {message[:40]}"
+                    f" ({entry_index + 1}/{total_entries}) {discussion_display}"
+                    f" {user_display} {timestamp_display} {message[:40]}"
                 )
 
             return [user, timestamp, message]
@@ -134,6 +126,7 @@ def archive_main(course_id, instance, verbose, force):
 
     colorize("SUMMARY", "yellow", True)
     echo(
-        f"- Archived {colorize(total, 'magenta')} discussions for {colorize(course.name, 'blue')}."
+        f"- Archived {colorize(total, 'magenta')} discussions for"
+        f" {colorize(course.name, 'blue')}."
     )
     colorize("FINISHED", "yellow", True)
