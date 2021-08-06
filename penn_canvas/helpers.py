@@ -265,7 +265,7 @@ def make_skip_message(start, item):
 def handle_clear_processed(clear_processed, processed_path, item_plural="users"):
     if clear_processed:
         proceed = confirm(
-            f"You have asked to clear the list of {item_plural} already processed."
+            f"- You have asked to clear the list of {item_plural} already processed."
             " This list makes subsequent runs of the command faster. Are you sure"
             " you want to do this?"
         )

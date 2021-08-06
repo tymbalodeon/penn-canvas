@@ -24,8 +24,14 @@ from .helpers import (
 REPORTS, RESULTS, LOGS, PROCESSED = get_command_paths(
     "email", logs=True, processed=True
 )
-RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_email_result.csv"
-HEADERS = ["index", "canvas user id", "email status", "supported school(s)"]
+HEADERS = [
+    "index",
+    "canvas user id",
+    "login id",
+    "full name",
+    "email status",
+    "supported school(s)",
+]
 LOG_PATH = LOGS / f"{TODAY_AS_Y_M_D}_email_log.csv"
 LOG_HEADERS = ["canvas user id", "email address"]
 ACCOUNTS = [
@@ -91,7 +97,7 @@ def cleanup_report(report, start=0):
     echo(") Preparing report...")
 
     data = read_csv(report)
-    data = data[["canvas_user_id"]]
+    data = data[["canvas_user_id", "login_id", "full_name"]]
     data.drop_duplicates(inplace=True)
     data = data.astype("string", copy=False, errors="ignore")
     TOTAL = len(data.index)
@@ -106,61 +112,41 @@ def get_user_emails(user):
     return (channel for channel in communication_channels if channel.type == "email")
 
 
-def get_email_status(user, email, verbose, current_count=False):
+def get_email_status(user, email, verbose):
     email_status = email.workflow_state
 
     if email_status == "active":
-        if verbose:
-            status = colorize(f"{email_status}", "green")
-            echo(f"- {current_count if current_count else ''}{user}: {status}")
         return True
     elif email_status == "unconfirmed":
         return False
 
 
-def find_unconfirmed_emails(user, canvas, verbose, index, total):
+def find_unconfirmed_emails(user, canvas, verbose, index):
     user_id = user[1]
 
     try:
         canvas_user = canvas.get_user(user_id)
     except Exception:
-        if verbose:
-            message = colorize(f"ERROR: User NOT FOUND ({user_id})", "red")
-            echo(f"- ({index + 1}/{total}) {message}")
-
         return False, "user not found"
 
     emails = get_user_emails(canvas_user)
     email = next(emails, None)
-    current_count = f"({index + 1}/{total}) "
 
     if email:
-        is_active = get_email_status(canvas_user, email, verbose, current_count)
+        is_active = get_email_status(canvas_user, email, verbose)
 
         while not is_active:
             next_email = next(emails, None)
 
             if not next_email:
-                if verbose:
-                    status = colorize("UNCONFIRMED", "yellow")
-                    echo(
-                        f"- {current_count if current_count else ''}{canvas_user}:"
-                        f" {status}"
-                    )
-
                 return True, "unconfirmed"
-            is_active = get_email_status(
-                canvas_user, next_email, verbose, current_count
-            )
+
+            is_active = get_email_status(canvas_user, next_email, verbose)
 
         if is_active:
             return False, None
 
     else:
-        if verbose:
-            status = colorize("NOT FOUND", "yellow")
-            echo(f"- {current_count if current_count else ''}{canvas_user}: {status}")
-
         return True, "not found"
 
 
@@ -181,16 +167,7 @@ def check_schools(user, sub_accounts, canvas, verbose):
         (account for account in account_ids if account in sub_accounts), None
     )
 
-    if fixable_id:
-        if verbose:
-            supported = colorize("supported", "green")
-            colorize(f"\t* Enrollment status: {supported}", "cyan", True)
-        return True
-    else:
-        if verbose:
-            supported = colorize("UNSUPPORTED", "yellow")
-            colorize(f"\t* Enrollment status: {supported}", "cyan", True)
-        return False
+    return bool(fixable_id)
 
 
 def activate_fixable_emails(
@@ -256,8 +233,8 @@ def remove_empty_log(log_path):
             rmtree(LOGS, ignore_errors=True)
 
 
-def process_result(include_fixed):
-    result = read_csv(RESULT_PATH)
+def process_result(include_fixed, result_path):
+    result = read_csv(result_path)
 
     not_fixable = result[result["supported school(s)"] == "N"]
     not_fixable = not_fixable.sort_values(by=["email status"])
@@ -280,7 +257,7 @@ def process_result(include_fixed):
         result = concat([ERRORS, result])
 
     result.drop("index", axis=1, inplace=True)
-    result.to_csv(RESULT_PATH, index=False)
+    result.to_csv(result_path, index=False)
 
     unsupported = len(not_fixable.index)
     supported_not_found = len(SUPPORTED_NOT_FOUND.index)
@@ -307,7 +284,7 @@ def print_messages(
     colorize("SUMMARY:", "yellow", True)
     echo(f"- Processed {colorize(total, 'magenta')} accounts.")
     echo(
-        f"- Activated {colorize(fixed, 'green')} supported users with unconfirmed email"
+        f"- Activated {fixed if fixed == 0 else colorize(fixed, 'green')} supported users with unconfirmed email"
         " accounts."
     )
 
@@ -344,18 +321,18 @@ def print_messages(
 
 def email_main(test, include_fixed, verbose, force, clear_processed):
     def check_and_activate_emails(user, canvas, verbose, args):
-        index = user[0]
-        user_id = user[1]
-        result_path, log_path, processed_users, total = args
+        index, user_id, login_id, full_name = user
+        result_path, log_path, processed_users = args
 
         if user_id in processed_users:
-            report.drop(index=index, inplace=True)
-            message = colorize("ALREADY PROCESSED", "yellow")
-            echo(f"- ({index + 1}/{total}) {message}")
+            status = "already processed"
+            color = "yellow"
         else:
             needs_school_check, message = find_unconfirmed_emails(
-                user, canvas, verbose, index, TOTAL
+                user, canvas, verbose, index
             )
+            status = "already active"
+            color = "cyan"
 
             if needs_school_check:
                 report.at[index, "email status"] = message
@@ -363,6 +340,8 @@ def email_main(test, include_fixed, verbose, force, clear_processed):
 
                 if is_supported:
                     report.at[index, "supported school(s)"] = "Y"
+                    status = "already active"
+                    color = "yellow"
 
                     if message == "unconfirmed":
                         activated, activate_message = activate_fixable_emails(
@@ -371,31 +350,39 @@ def email_main(test, include_fixed, verbose, force, clear_processed):
                         report.at[index, "email status"] = activate_message
 
                         if activated:
-                            with open(
-                                PROCESSED_PATH, "a+", newline=""
-                            ) as processed_file:
-                                writer(processed_file).writerow([user_id])
+                            status = "activated"
+                            color = "green"
+                        else:
+                            status = "failed to activate"
+                            color = "red"
                 else:
                     report.at[index, "supported school(s)"] = "N"
-
-                    with open(PROCESSED_PATH, "a+", newline="") as processed_file:
-                        writer(processed_file).writerow([user_id])
-
-                report.loc[index].to_frame().T.to_csv(
-                    RESULT_PATH, mode="a", header=False
-                )
-            elif message == "user not found":
+                    status = "not supported"
+                    color = "yellow"
+            elif message:
                 report.at[index, "email status"] = "ERROR: user not found"
                 report.at[index, "supported school(s)"] = "ERROR: user not found"
-                report.loc[index].to_frame().T.to_csv(
-                    RESULT_PATH, mode="a", header=False
-                )
-            else:
-                report.drop(index=index, inplace=True)
+                status = "user not found"
+                color = "red"
 
-                with open(PROCESSED_PATH, "a+", newline="") as processed_file:
-                    writer(processed_file).writerow([user_id])
+        report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
+        if verbose:
+            status_display = colorize(str(status).upper(), color)
+            user_display = colorize(f"{full_name} ({login_id})", "magenta")
+            echo(f"- ({index + 1}/{TOTAL}) {user_display}: {status_display}")
+
+        if (
+            status == "activated"
+            or status == "not supported"
+            or status == "already active"
+        ) and user_id not in processed_users:
+            with open(PROCESSED_PATH, "a+", newline="") as processed_file:
+                writer(processed_file).writerow([user_id])
+
+    RESULT_PATH = (
+        RESULTS / f"{YEAR}_email_result_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
+    )
     PROCESSED_PATH = (
         PROCESSED / f"email_processed_users_{YEAR}{'_test' if test else ''}.csv"
     )
@@ -406,7 +393,7 @@ def email_main(test, include_fixed, verbose, force, clear_processed):
     PROCESSED_USERS = get_processed_users(PROCESSED, PROCESSED_PATH, "user id")
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
-    ARGS = RESULT_PATH, LOG_PATH, PROCESSED_USERS, TOTAL
+    ARGS = RESULT_PATH, LOG_PATH, PROCESSED_USERS
     make_skip_message(START, "user")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
@@ -422,7 +409,7 @@ def email_main(test, include_fixed, verbose, force, clear_processed):
         unsupported_count,
         supported_not_found_count,
         user_not_found_count,
-    ) = process_result(include_fixed)
+    ) = process_result(include_fixed, RESULT_PATH)
     print_messages(
         TOTAL,
         fixed_count,
