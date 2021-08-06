@@ -131,3 +131,9 @@ def archive_main(course_id, instance, verbose, force):
         with progressbar(discussions, length=total) as progress:
             for discussion in progress:
                 archive_discussion(discussion)
+
+    colorize("SUMMARY", "yellow", True)
+    echo(
+        f"Archived {colorize(total, 'magenta')} discussions for {colorize(course.name, 'blue')}."
+    )
+    colorize("FINISHED", "yellow", True)
