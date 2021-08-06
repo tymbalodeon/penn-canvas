@@ -171,7 +171,7 @@ def check_schools(user, sub_accounts, canvas, verbose):
 
 
 def activate_fixable_emails(
-    user, canvas, result_path, log_path, include_fixed, verbose
+    user, canvas, result_path, log_path, include_activated, verbose
 ):
     canvas_user_id = user[1]
     user_id = canvas.get_user(canvas_user_id)
