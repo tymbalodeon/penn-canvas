@@ -89,7 +89,7 @@ def archive_main(course_id, instance, verbose, force):
                 echo(
                     f"- [{discussion_index + 1}/{total_discussions}]"
                     f" ({entry_index + 1}/{total_entries}) {discussion_display}"
-                    f" {user_display} {timestamp_display} {message[:40]}"
+                    f" {user_display} {timestamp_display} {message[:40]}..."
                 )
 
             return [user, timestamp, message]
