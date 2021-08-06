@@ -13,6 +13,7 @@ CANVAS_URL_OPEN = "https://upenn-catalog.instructure.com"
 CONFIG_DIRECTORY = Path.home() / ".config"
 CONFIG_PATH = CONFIG_DIRECTORY / "penn-canvas"
 COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
+YEAR = datetime.now().strftime("%Y")
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 
@@ -259,6 +260,37 @@ def make_skip_message(start, item):
 
     message = colorize(f"SKIPPING {start} PREVIOUSLY PROCESSED {item}...", "yellow")
     echo(f") {message}")
+
+
+def handle_clear_processed(clear_processed, processed_path, item_plural="users"):
+    if clear_processed:
+        proceed = confirm(
+            f"You have asked to clear the list of {item_plural} already processed."
+            " This list makes subsequent runs of the command faster. Are you sure"
+            " you want to do this?"
+        )
+    else:
+        proceed = False
+
+    if proceed:
+        echo(f") Clearing list of {item_plural} already processed...")
+
+        if processed_path.exists():
+            remove(processed_path)
+    else:
+        echo(f") Finding {item_plural} already processed...")
+
+
+def get_processed_users(processed_directory, processed_path, column="pennkey"):
+    if processed_path.is_file():
+        result = read_csv(processed_path)
+        result = result.astype("string", copy=False, errors="ignore")
+
+        return result[column].tolist()
+    else:
+        make_csv_paths(processed_directory, processed_path, [column])
+
+        return list()
 
 
 def get_canvas(instance="test"):

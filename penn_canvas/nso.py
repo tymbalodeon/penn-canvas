@@ -1,20 +1,22 @@
 from csv import writer
 from datetime import datetime
-from os import remove
 from pathlib import Path
 
 from cx_Oracle import connect, init_oracle_client
 from natsort import natsorted
 from pandas import Categorical, DataFrame, concat, isna, read_csv, read_excel
-from typer import Abort, Exit, confirm, echo
+from typer import Abort, Exit, echo
 
 from .helpers import (
     TODAY_AS_Y_M_D,
+    YEAR,
     colorize,
     get_canvas,
     get_command_paths,
     get_data_warehouse_config,
+    get_processed_users,
     get_start_index,
+    handle_clear_processed,
     make_csv_paths,
     make_skip_message,
     toggle_progress_bar,
@@ -27,7 +29,6 @@ init_oracle_client(
     config_dir=str(config_dir),
 )
 
-YEAR = datetime.now().strftime("%Y")
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
 INPUT, RESULTS, PROCESSED = get_command_paths("nso", input_dir=True, processed=True)
 FINAL_LIST_PATH = RESULTS / f"{YEAR}_nso_final_list.csv"
@@ -154,35 +155,6 @@ def cleanup_data(input_file, start=0):
     data = data.loc[start:TOTAL, :]
 
     return data, TOTAL
-
-
-def handle_clear_processed(clear_processed, processed_path):
-    if clear_processed:
-        proceed = confirm(
-            "You have asked to clear the list of users already processed."
-            " This list makes subsequent runs of the command faster. Are you sure"
-            " you want to do this?"
-        )
-    else:
-        proceed = False
-
-    if proceed:
-        echo(") Clearing list of users already processed...")
-
-        if processed_path.exists():
-            remove(processed_path)
-    else:
-        echo(") Finding users already processed...")
-
-
-def get_processed_users(processed_path):
-    if processed_path.is_file():
-        result = read_csv(processed_path)
-        result = result.astype("string", copy=False, errors="ignore")
-        return result["pennkey"].tolist()
-    else:
-        make_csv_paths(PROCESSED, processed_path, ["pennkey"])
-        return list()
 
 
 def process_result(test, result_path):
@@ -470,7 +442,7 @@ def nso_main(test, verbose, force, clear_processed):
     START = get_start_index(force, RESULT_PATH)
     data, TOTAL = cleanup_data(data, START)
     handle_clear_processed(clear_processed, PROCESSED_PATH)
-    PROCESSED_USERS = get_processed_users(PROCESSED_PATH)
+    PROCESSED_USERS = get_processed_users(PROCESSED, PROCESSED_PATH)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_skip_message(START, "user")
     INSTANCE = "test" if test else "prod"

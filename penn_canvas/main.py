@@ -110,6 +110,11 @@ def email(
             " pre-existing incomplete result file and overwrite that file."
         ),
     ),
+    clear_processed: bool = Option(
+        False,
+        "--clear-processed",
+        help="Clear the list of users already processed for the current year.",
+    ),
 ):
     """
     Checks the email status of users and activates any unconfirmed email
@@ -137,7 +142,7 @@ def email(
     NOTE: Input filename must include the current date in order to be accepted.
     """
 
-    email_main(test, include_fixed, verbose, force)
+    email_main(test, include_fixed, verbose, force, clear_processed)
 
 
 @app.command()
@@ -164,7 +169,7 @@ def nso(
     clear_processed: bool = Option(
         False,
         "--clear-processed",
-        help="Clear the list of students already processed for the current year.",
+        help="Clear the list of users already processed for the current year.",
     ),
 ):
     """
