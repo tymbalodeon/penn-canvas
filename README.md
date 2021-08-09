@@ -14,10 +14,9 @@ The `penn-canvas` command will then be globally available in your shell.
 
 ### Development
 
-To see changes avialable immediately without having to build:
+Code changes can be tested quickly without having to build the app by running commands through `poetry run`:
 
-1. `poetry shell`
-2. `poetry run penn-canvas [OPTIONS] COMMAND [ARGS]`
+> `poetry run penn-canvas [OPTIONS] COMMAND [ARGS]`
 
 ### Non-Poetry
 
