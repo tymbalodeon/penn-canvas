@@ -407,6 +407,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
             "failed to activate": "red",
             "not supported": "yellow",
             "user not found": "red",
+            "not found": "red",
         }
 
     echo(") Processing users...")
