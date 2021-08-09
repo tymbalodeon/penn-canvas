@@ -166,9 +166,7 @@ def check_schools(user, sub_accounts, canvas, verbose):
     return bool(fixable_id)
 
 
-def activate_fixable_emails(
-    user, canvas, result_path, log_path, include_activated, verbose
-):
+def activate_fixable_emails(user, canvas, log_path):
     canvas_user_id = user[1]
     user_id = canvas.get_user(canvas_user_id)
     emails = get_user_emails(user_id)
@@ -341,10 +339,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
                         activated, activate_message = activate_fixable_emails(
                             user,
                             canvas,
-                            result_path,
                             log_path,
-                            include_activated,
-                            verbose,
                         )
                         email_status = activate_message
                         status = "activated" if activated else "failed to activate"
