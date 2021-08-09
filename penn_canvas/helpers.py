@@ -331,10 +331,12 @@ def colorize(text, color="magenta", echo=False):
         "yellow": colors.YELLOW,
     }
 
+    text = f"{text:,}" if type(text) == int else str(text)
+
     if echo:
-        return secho(str(text), fg=typer_colors[color])
+        return secho(text, fg=typer_colors[color])
     else:
-        return style(str(text), fg=typer_colors[color])
+        return style(text, fg=typer_colors[color])
 
 
 def toggle_progress_bar(data, callback, canvas, verbose, args):
