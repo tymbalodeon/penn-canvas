@@ -96,12 +96,11 @@ def find_users_report():
 def cleanup_report(report, start=0):
     echo(") Preparing report...")
 
-    data = read_csv(report, dtype=str)
+    data = read_csv(report)
     data = data[["canvas_user_id", "login_id", "full_name"]]
     data.drop_duplicates(subset=["canvas_user_id"], inplace=True)
-    data.sort_values(
-        by="canvas_user_id", ascending=False, inplace=True, ignore_index=True
-    )
+    data.sort_values("canvas_user_id", ascending=False, inplace=True, ignore_index=True)
+    data = data.astype("string", copy=False, errors="ignore")
     TOTAL = len(data.index)
     data = data.loc[start:TOTAL, :]
 
