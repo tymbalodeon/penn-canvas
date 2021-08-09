@@ -1,4 +1,6 @@
 from csv import writer
+from os import remove
+from datetime import datetime
 from pathlib import Path
 from shutil import rmtree
 
@@ -243,9 +245,11 @@ def process_result(include_fixed, result_path):
         (result["supported school(s)"] == "Y") & (result["email status"] == "not found")
     ]
     USERS_NOT_FOUND = result[result["email status"] == "ERROR: user not found"]
-
     fixed = len(FIXABLE[FIXABLE["email status"] == "auto-activated"].index)
     error = len(FIXABLE[FIXABLE["email status"] == "failed to activate"].index)
+    unsupported = len(not_fixable.index)
+    supported_not_found = len(SUPPORTED_NOT_FOUND.index)
+    user_not_found = len(USERS_NOT_FOUND.index)
 
     result = concat([SUPPORTED_NOT_FOUND, USERS_NOT_FOUND, not_fixable])
 
@@ -257,11 +261,12 @@ def process_result(include_fixed, result_path):
         result = concat([ERRORS, result])
 
     result.drop("index", axis=1, inplace=True)
-    result.to_csv(result_path, index=False)
-
-    unsupported = len(not_fixable.index)
-    supported_not_found = len(SUPPORTED_NOT_FOUND.index)
-    user_not_found = len(USERS_NOT_FOUND.index)
+    complete_result_path = (
+        RESULTS
+        / f"{result_path.stem}_{datetime.now().strftime('%H_%M_%S')}_COMPLETE.csv"
+    )
+    result.to_csv(complete_result_path, index=False)
+    remove(result_path)
 
     return (
         fixed,
@@ -385,7 +390,7 @@ def email_main(test, include_fixed, verbose, force, clear_processed):
         RESULTS / f"{YEAR}_email_result_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
     )
     PROCESSED_PATH = (
-        PROCESSED / f"email_processed_users_{YEAR}{'_test' if test else ''}.csv"
+        PROCESSED / f"{YEAR}_email_processed_users{'_test' if test else ''}.csv"
     )
     report = find_users_report()
     START = get_start_index(force, RESULT_PATH)
