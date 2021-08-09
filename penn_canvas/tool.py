@@ -1,4 +1,5 @@
 from csv import writer
+from datetime import datetime
 from os import remove
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from typer import Exit, confirm, echo
 from .helpers import (
     TODAY,
     TODAY_AS_Y_M_D,
+    YEAR,
     colorize,
     get_canvas,
     get_command_paths,
@@ -56,7 +58,7 @@ def check_tool(tool):
         return tool
 
 
-def find_course_report():
+def find_course_report(enable):
     echo(") Finding Canvas Provisioning (Courses) report(s)...")
 
     if not REPORTS.exists():
@@ -98,25 +100,24 @@ def find_course_report():
             else:
                 report_display = "reports"
 
-            echo(f"- Found {total} {report_display}:")
+            if not enable:
+                echo(f"- Found {total} {report_display}:")
 
-            FOUND_PATHS = list()
+                FOUND_PATHS = list()
 
-            for path in TODAYS_REPORTS:
-                FOUND_PATHS.append(colorize(path.stem, "green"))
+                for path in TODAYS_REPORTS:
+                    FOUND_PATHS.append(colorize(path.stem, "green"))
 
-            for path in FOUND_PATHS:
-                echo(f"- {path}")
+                for path in FOUND_PATHS:
+                    echo(f"- {path}")
 
             return TODAYS_REPORTS, report_display
 
 
-def cleanup_report(reports, report_display, start=0):
+def cleanup_reports(reports, report_display, enable, start=0):
     echo(f") Preparing {report_display}...")
 
-    data_frames = list()
-
-    for report in reports:
+    def cleanup_report(report):
         data = read_csv(report)
         data = data[
             [
@@ -130,16 +131,26 @@ def cleanup_report(reports, report_display, start=0):
             ]
         ]
         data.drop_duplicates(inplace=True)
-        data = data.astype("string", copy=False, errors="ignore")
-        data_frames.append(data)
 
-    data_frame = concat(data_frames, ignore_index=True)
+        return data.astype("string", copy=False, errors="ignore")
+
+    if not enable:
+        data_frames = list()
+
+        for report in reports:
+            data = cleanup_report(report)
+            data_frames.append(data)
+
+        data_frame = concat(data_frames, ignore_index=True)
+    else:
+        data_frame = cleanup_report(reports)
+
     total = len(data_frame.index)
     data_frame = data_frame.loc[start:total, :]
     data_frame["term_id"].fillna("N/A", inplace=True)
     terms = data_frame["term_id"].drop_duplicates().tolist()
 
-    return data_frame, str(total), terms
+    return data_frame, f"{total:,}", terms
 
 
 def get_processed_courses(processed_path):
@@ -240,10 +251,19 @@ def process_result(tool, terms, enable, result_path):
                 )
 
         result.to_csv(result_path, mode="a", index=False)
-        final_path = (
-            RESULTS / f"{'_'.join(terms).replace('/', '')}_{result_path.stem}.csv"
-        )
-        result_path = result_path.rename(final_path)
+
+        if not enable:
+            final_path = (
+                RESULTS
+                / f"{'_'.join(terms).replace('/', '')}_{result_path.stem}_COMPLETE.csv"
+            )
+            result_path = result_path.rename(final_path)
+        else:
+            final_path = (
+                RESULTS
+                / f"{result_path.stem}_{datetime.now().strftime('%H_%M_%S')}_COMPLETE.csv"
+            )
+            result_path = result_path.rename(final_path)
 
     return (
         ENABLED_COUNT,
@@ -276,13 +296,14 @@ def print_messages(
 
     if enable:
         echo(f'- Enabled "{tool}" for {total_enabled} courses.')
+
         if total_already_enabled:
             echo(
                 f'- Found {total_already_enabled} courses with "{tool}" already'
                 " enabled."
             )
     else:
-        echo(f'- Found {total_already_enabled} courses with "{tool}" enabled.')
+        echo(f'- Found {total_enabled} courses with "{tool}" enabled.')
         echo(
             f'- Found {colorize(disabled, "magenta")} courses with disabled "{tool}"'
             " tab."
@@ -366,7 +387,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
                     message = colorize(
                         f"ERROR: Failed to process {course_id} ({error_message})", "red"
                     )
-                    echo(f"- ({index + 1}/{total}) {message}")
+                    echo(f"- ({(index + 1):,}/{total}) {message}")
 
         if verbose and not error:
             if isna(course_id):
@@ -380,10 +401,11 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
                 "not supported": "yellow",
                 "already enabled": "cyan",
                 "enabled": "green",
+                "disabled": "yellow",
             }.get(tool_status)
             found_display = colorize(tool_status.upper(), color)
             echo(
-                f'- ({index + 1}/{total}) "{tool_display}" {found_display} for'
+                f'- ({(index + 1):,}/{total}) "{tool_display}" {found_display} for'
                 f" {course_display}."
             )
 
@@ -398,14 +420,14 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
                 writer(processed_file).writerow([canvas_course_id])
 
     tool = check_tool(tool)
-    REPORTS, report_display = find_course_report()
+    REPORTS, report_display = find_course_report(enable)
     RESULT_FILE_NAME = (
-        f"{tool.replace(' ', '_')}_tool_{'enable' if enable else 'report'}"
-        f"_{TODAY_AS_Y_M_D}.csv"
+        f"{f'{YEAR}_' if enable else ''}{tool.replace(' ', '_')}_tool_{'enable' if enable else 'report'}"
+        f"_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
     )
     RESULT_PATH = RESULTS / RESULT_FILE_NAME
     START = get_start_index(force, RESULT_PATH)
-    report, total, terms = cleanup_report(REPORTS, report_display, START)
+    report, total, terms = cleanup_reports(REPORTS, report_display, START)
 
     if not enable and not force:
         PREVIOUS_RESULTS = [result_file for result_file in Path(RESULTS).glob("*.csv")]
@@ -438,7 +460,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
 
             report.reset_index(inplace=True)
             report.drop(["index"], axis=1, inplace=True)
-            total = str(len(report.index))
+            total = f"{len(report.index):,}"
             terms = report["term_id"].drop_duplicates().tolist()
 
             if not terms:
@@ -449,7 +471,8 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
 
     if enable:
         PROCESSED_PATH = (
-            PROCESSED / f"{tool.replace(' ', '_')}_tool_enable_processed_courses.csv"
+            PROCESSED
+            / f"{tool.replace(' ', '_')}_tool_enable_processed_courses{'_test' if test else ''}.csv"
         )
 
         if clear_processed:

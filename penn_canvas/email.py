@@ -1,5 +1,4 @@
 from csv import writer
-from os import remove
 from datetime import datetime
 from pathlib import Path
 from shutil import rmtree
@@ -260,12 +259,12 @@ def process_result(include_fixed, result_path):
         result = concat([ERRORS, result])
 
     result.drop("index", axis=1, inplace=True)
-    complete_result_path = (
+    result.to_csv(result_path, index=False)
+    final_path = (
         RESULTS
         / f"{result_path.stem}_{datetime.now().strftime('%H_%M_%S')}_COMPLETE.csv"
     )
-    result.to_csv(complete_result_path, index=False)
-    remove(result_path)
+    result_path.rename(final_path)
 
     return (
         fixed,
