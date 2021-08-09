@@ -42,6 +42,13 @@ RESERVE_ACCOUNTS = [
 ]
 
 
+def get_account_names(accounts, canvas):
+    return [
+        account.name
+        for account in [canvas.get_account(account) for account in accounts]
+    ]
+
+
 def check_tool(tool):
     if tool.lower() in {"reserve", "reserves"}:
         return "Course Materials @ Penn Libraries"
@@ -151,14 +158,14 @@ def process_result(tool, terms, enable, result_path):
     ALREADY_ENABLED = result[result["tool status"] == "already enabled"]
     DISABLED = result[result["tool status"] == "disabled"]
     NOT_FOUND = result[result["tool status"] == "not found"]
-    NOT_PARTICIPATING = result[result["tool status"] == "school not participating"]
+    NOT_PARTICIPATING = result[result["tool status"] == "not supported"]
     ERROR = result[
         (result["tool status"] != "already processed")
         & (result["tool status"] != "enabled")
         & (result["tool status"] != "already enabled")
         & (result["tool status"] != "disabled")
         & (result["tool status"] != "not found")
-        & (result["tool status"] != "school not participating")
+        & (result["tool status"] != "not supported")
     ]
     ENABLED_COUNT = len(ENABLED)
     ALREADY_ENABLED_COUNT = len(ALREADY_ENABLED)
@@ -171,7 +178,7 @@ def process_result(tool, terms, enable, result_path):
         result = result[
             (result["tool status"] != "disabled")
             & (result["tool status"] != "not found")
-            & (result["tool status"] != "school not participating")
+            & (result["tool status"] != "not supported")
         ]
 
         if enable:
@@ -261,7 +268,7 @@ def print_messages(
     total,
     result_path,
 ):
-    tool = colorize(tool, "cyan")
+    tool = colorize(tool, "blue")
     colorize("SUMMARY:", "yellow", True)
     echo(f"- Processed {colorize(total, 'magenta')} courses.")
     total_enabled = colorize(enabled, "green")
@@ -308,7 +315,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         else:
             tool, use_id, enable = args
 
-        tool_display = colorize(tool, "cyan")
+        tool_display = colorize(tool, "blue")
         (
             index,
             canvas_course_id,
@@ -321,25 +328,16 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         ) = course
 
         tool_status = "not found"
-        found = tool_status.upper()
-        color = "red"
         error = False
 
         if enable and canvas_course_id in PROCESSED_COURSES:
             tool_status = "already processed"
-            found = tool_status.upper()
-            color = "yellow"
         elif (
             enable
             and tool == "Course Materials @ Penn Libraries"
             and canvas_account_id not in RESERVE_ACCOUNTS
         ):
-            tool_status = "school not participating"
-            found = f"NOT ENABLED ({tool_status.upper()})"
-            color = "yellow"
-        elif not enable and status != "active" and verbose:
-            found = tool_status.upper()
-            color = "yellow"
+            tool_status = "not supported"
         else:
             try:
                 course = canvas.get_course(canvas_course_id)
@@ -350,32 +348,16 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
                 else:
                     tool_tab = next((tab for tab in tabs if tab.label == tool), None)
 
-                if not tool_tab:
-                    found = tool_status.upper()
-                    color = "yellow"
-                elif tool_tab.visibility == "public":
+                if tool_tab and tool_tab.visibility == "public":
                     tool_status = "already enabled"
 
-                    if verbose:
-                        if enable:
-                            found = tool_status.upper()
-                            color = "yellow"
-                        else:
-                            found = "ENABLED"
-                            color = "green"
+                    if verbose and not enable:
+                        tool_status = "enabled"
                 elif enable:
                     tool_tab.update(hidden=False, position=3)
                     tool_status = "enabled"
-
-                    if verbose:
-                        found = tool_status.upper()
-                        color = "green"
                 else:
                     tool_status = "disabled"
-
-                    if verbose:
-                        found = tool_status.upper()
-                        color = "yellow"
             except Exception as error_message:
                 tool_status = f"{str(error_message)}"
                 error = True
@@ -392,7 +374,14 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
             else:
                 course_display = f"{course_id}"
 
-            found_display = colorize(found, color)
+            color = {
+                "not found": "red",
+                "already processed": "yellow",
+                "not supported": "yellow",
+                "already enabled": "cyan",
+                "enabled": "green",
+            }.get(tool_status)
+            found_display = colorize(tool_status.upper(), color)
             echo(
                 f'- ({index + 1}/{total}) "{tool_display}" {found_display} for'
                 f" {course_display}."
@@ -486,19 +475,20 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
     make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-    tool_display = colorize(tool, "cyan")
-    TERMS_DISPLAY = [colorize(term, "blue") for term in terms]
+    tool_display = colorize(tool, "blue")
+    TERMS_DISPLAY = [colorize(term, "yellow") for term in terms]
     STYLED_TERMS = f"{', '.join(TERMS_DISPLAY)}"
 
     if enable:
         if tool == "Course Materials @ Penn Libraries":
             ACCOUNTS_DISPLAY = [
-                colorize(account, "magenta") for account in RESERVE_ACCOUNTS
+                colorize(f"\n\t* {account}", "magenta")
+                for account in get_account_names(RESERVE_ACCOUNTS, CANVAS)
             ]
-            ACCOUNTS = f"{', '.join(ACCOUNTS_DISPLAY)}"
+            ACCOUNTS = f"{''.join(ACCOUNTS_DISPLAY)}"
             echo(
-                f') Enabling "{tool_display}" for {STYLED_TERMS} courses in'
-                f" {ACCOUNTS}..."
+                f') Enabling "{tool_display}" for {STYLED_TERMS} courses in:'
+                f" {ACCOUNTS}"
             )
         else:
             echo(f') Enabling "{tool_display}" for {STYLED_TERMS} courses...')
