@@ -37,7 +37,12 @@ def archive(
     ),
 ):
     """
-    Archive script
+    Archives a Canvas course's discussions.
+
+    INPUT: Canvas course id whose discussions you want to archive
+
+    OUTPUT: Folder with the course name containing csv files for each discussion, listing the user, timestamp, and
+    post
     """
 
     archive_main(course, instance, verbose, force)
@@ -176,8 +181,8 @@ def nso(
     Enrolls incoming freshmen into Canvas Groups as part of the 'Thrive at Penn'
     site.
 
-    INPUT: A csv or xlsx file (assumes graduation year is in the file name) with
-    the columns [Canvas Course Id | Group Set Name | Group Name | Pennkey]
+    INPUT: An xlsx file (assumes graduation year is in the file name) with
+    the columns [Canvas Course ID | Group Set Name | Group Name | User (Pennkey)]
 
     OUPUT: A csv file listing students who were not successfully added to a
     Group
