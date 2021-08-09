@@ -377,7 +377,7 @@ def email_main(test, include_fixed, verbose, force, clear_processed):
             user_display = colorize(
                 f"{' '.join(full_name.split())} ({login_id})", "magenta"
             )
-            echo(f"- ({index + 1}/{TOTAL}) {user_display}: {status_display}")
+            echo(f"- ({(index + 1):,}/{TOTAL}) {user_display}: {status_display}")
 
         if (
             status == "activated"
