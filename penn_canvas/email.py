@@ -98,14 +98,13 @@ def find_users_report():
 def cleanup_report(report, start=0):
     echo(") Preparing report...")
 
-    data = read_csv(report)
+    data = read_csv(report, dtype=str)
     data = data[["canvas_user_id", "login_id", "full_name"]]
-    data.drop_duplicates(inplace=True)
-    data = data.astype("string", copy=False, errors="ignore")
+    data.drop_duplicates(subset=["canvas_user_id"], inplace=True)
     TOTAL = len(data.index)
     data = data.loc[start:TOTAL, :]
 
-    return data, TOTAL
+    return data, f"{TOTAL:,}"
 
 
 def get_user_emails(user):
@@ -368,14 +367,16 @@ def email_main(test, include_fixed, verbose, force, clear_processed):
         if verbose:
             color = {
                 "already processed": "yellow",
-                "already active": "yellow",
+                "already active": "cyan",
                 "activated": "green",
                 "failed to activate": "red",
-                "not supported": "red",
+                "not supported": "yellow",
                 "user not found": "red",
             }.get(status)
             status_display = colorize(str(status).upper(), color)
-            user_display = colorize(f"{full_name} ({login_id})", "magenta")
+            user_display = colorize(
+                f"{' '.join(full_name.split())} ({login_id})", "magenta"
+            )
             echo(f"- ({index + 1}/{TOTAL}) {user_display}: {status_display}")
 
         if (
