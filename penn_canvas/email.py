@@ -99,6 +99,9 @@ def cleanup_report(report, start=0):
     data = read_csv(report, dtype=str)
     data = data[["canvas_user_id", "login_id", "full_name"]]
     data.drop_duplicates(subset=["canvas_user_id"], inplace=True)
+    data.sort_values(
+        by="canvas_user_id", ascending=False, inplace=True, ignore_index=True
+    )
     TOTAL = len(data.index)
     data = data.loc[start:TOTAL, :]
 
@@ -111,13 +114,8 @@ def get_user_emails(user):
     return (channel for channel in communication_channels if channel.type == "email")
 
 
-def get_email_status(user, email, verbose):
-    email_status = email.workflow_state
-
-    if email_status == "active":
-        return True
-    elif email_status == "unconfirmed":
-        return False
+def get_email_status(email):
+    return email.workflow_state == "active"
 
 
 def find_unconfirmed_emails(user, canvas, verbose, index):
@@ -132,7 +130,7 @@ def find_unconfirmed_emails(user, canvas, verbose, index):
     email = next(emails, None)
 
     if email:
-        is_active = get_email_status(canvas_user, email, verbose)
+        is_active = get_email_status(email)
 
         while not is_active:
             next_email = next(emails, None)
@@ -140,11 +138,10 @@ def find_unconfirmed_emails(user, canvas, verbose, index):
             if not next_email:
                 return True, "unconfirmed"
 
-            is_active = get_email_status(canvas_user, next_email, verbose)
+            is_active = get_email_status(next_email)
 
         if is_active:
             return False, None
-
     else:
         return True, "not found"
 
@@ -191,7 +188,7 @@ def activate_fixable_emails(
 
     emails = get_user_emails(user_id)
     email = next(emails, None)
-    is_active = get_email_status(user_id, email, False)
+    is_active = get_email_status(email)
 
     while not is_active:
         next_email = next(emails, None)
@@ -199,7 +196,7 @@ def activate_fixable_emails(
         if not next_email:
             return False, "failed to activate"
 
-        is_active = get_email_status(user_id, next_email, False)
+        is_active = get_email_status(next_email)
 
     if is_active:
         log = read_csv(log_path)
@@ -330,15 +327,15 @@ def email_main(test, include_activated, verbose, force, clear_processed):
             needs_school_check, message = find_unconfirmed_emails(
                 user, canvas, verbose, index
             )
-            email_status = status = "already active"
+            status = "already active"
+            email_status = message
 
             if needs_school_check:
-                email_status = message
                 is_supported = check_schools(user, SUB_ACCOUNTS, canvas, verbose)
 
                 if is_supported:
                     supported = "Y"
-                    email_status = status = "already active"
+                    status = "not found"
 
                     if message == "unconfirmed":
                         activated, activate_message = activate_fixable_emails(
@@ -350,17 +347,12 @@ def email_main(test, include_activated, verbose, force, clear_processed):
                             verbose,
                         )
                         email_status = activate_message
-
-                        if activated:
-                            status = "activated"
-                        else:
-                            status = "failed to activate"
+                        status = "activated" if activated else "failed to activate"
                 else:
                     supported = "N"
                     status = "not supported"
             elif message:
-                email_status = "ERROR: user not found"
-                supported = "ERROR: user not found"
+                supported = email_status = "ERROR: user not found"
                 status = "user not found"
 
         report.at[index, ["email status", "supported school(s)"]] = [
@@ -375,7 +367,15 @@ def email_main(test, include_activated, verbose, force, clear_processed):
             user_display = colorize(
                 f"{' '.join(full_name.split())} ({login_id})", "magenta"
             )
-            echo(f"- ({(index + 1):,}/{TOTAL}) {user_display}: {status_display}")
+
+            if status == "not supported":
+                email_status_display = colorize(
+                    f" ({str(email_status).upper()})", color
+                )
+
+            echo(
+                f"- ({(index + 1):,}/{TOTAL}) {user_display}: {status_display}{email_status_display if status == 'not supported' else ''}"
+            )
 
         if (
             status == "activated"
