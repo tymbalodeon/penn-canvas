@@ -326,13 +326,11 @@ def email_main(test, include_fixed, verbose, force, clear_processed):
 
         if user_id in processed_users:
             status = "already processed"
-            color = "yellow"
         else:
             needs_school_check, message = find_unconfirmed_emails(
                 user, canvas, verbose, index
             )
             status = "already active"
-            color = "cyan"
 
             if needs_school_check:
                 report.at[index, "email status"] = message
@@ -341,7 +339,6 @@ def email_main(test, include_fixed, verbose, force, clear_processed):
                 if is_supported:
                     report.at[index, "supported school(s)"] = "Y"
                     status = "already active"
-                    color = "yellow"
 
                     if message == "unconfirmed":
                         activated, activate_message = activate_fixable_emails(
@@ -351,23 +348,27 @@ def email_main(test, include_fixed, verbose, force, clear_processed):
 
                         if activated:
                             status = "activated"
-                            color = "green"
                         else:
                             status = "failed to activate"
-                            color = "red"
                 else:
                     report.at[index, "supported school(s)"] = "N"
                     status = "not supported"
-                    color = "yellow"
             elif message:
                 report.at[index, "email status"] = "ERROR: user not found"
                 report.at[index, "supported school(s)"] = "ERROR: user not found"
                 status = "user not found"
-                color = "red"
 
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
         if verbose:
+            color = {
+                "already processed": "yellow",
+                "already active": "yellow",
+                "activated": "green",
+                "failed to activate": "red",
+                "not supported": "red",
+                "user not found": "red",
+            }.get(status)
             status_display = colorize(str(status).upper(), color)
             user_display = colorize(f"{full_name} ({login_id})", "magenta")
             echo(f"- ({index + 1}/{TOTAL}) {user_display}: {status_display}")
