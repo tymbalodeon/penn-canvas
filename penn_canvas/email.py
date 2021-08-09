@@ -33,7 +33,6 @@ HEADERS = [
     "email status",
     "supported school(s)",
 ]
-LOG_PATH = LOGS / f"{TODAY_AS_Y_M_D}_email_log.csv"
 LOG_HEADERS = ["canvas user id", "email address"]
 ACCOUNTS = [
     "99243",
@@ -179,10 +178,6 @@ def activate_fixable_emails(
 
     for email in emails:
         address = email.address
-
-        if not LOGS.exists():
-            Path.mkdir(LOGS)
-
         user_info = [user_id, address]
 
         with open(log_path, "a", newline="") as result:
@@ -218,19 +213,16 @@ def activate_fixable_emails(
             colorize(f"\t* Email(s) activated for {user_id}", "green", True)
 
         log = read_csv(log_path)
-        log.drop(index=log.index[-1:], inplace=True)
+        log = log[log["canvas user id"] != user_id]
         log.to_csv(log_path, index=False)
 
         return True, "auto-activated"
 
 
 def remove_empty_log(log_path):
-    if log_path.is_file():
-        log = read_csv(log_path)
-
-        if log.empty:
-            echo(") Removing empty log file...")
-            rmtree(LOGS, ignore_errors=True)
+    if log_path.is_file() and read_csv(log_path).empty:
+        echo(") Removing empty log file...")
+        rmtree(LOGS, ignore_errors=True)
 
 
 def process_result(include_activated, result_path):
@@ -299,8 +291,8 @@ def print_messages(
 
     if already_active > 0:
         echo(
-            f"- Found {colorize(already_active, 'cyan')} users with email accounts"
-            " already active."
+            f"- Found {colorize(already_active, 'cyan')} supported and unsupported"
+            " users with email accounts already active."
         )
 
     if supported_not_found > 0:
@@ -388,14 +380,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
         if verbose:
-            color = {
-                "already processed": "yellow",
-                "already active": "cyan",
-                "activated": "green",
-                "failed to activate": "red",
-                "not supported": "yellow",
-                "user not found": "red",
-            }.get(status)
+            color = PRINT_COLOR_MAPS.get(status)
             status_display = colorize(str(status).upper(), color)
             user_display = colorize(
                 f"{' '.join(full_name.split())} ({login_id})", "magenta"
@@ -416,6 +401,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
     PROCESSED_PATH = (
         PROCESSED / f"{YEAR}_email_processed_users{'_test' if test else ''}.csv"
     )
+    LOG_PATH = LOGS / f"{YEAR}_email_log_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
     report = find_users_report()
     START = get_start_index(force, RESULT_PATH)
     report, TOTAL = cleanup_report(report, START)
@@ -428,6 +414,16 @@ def email_main(test, include_activated, verbose, force, clear_processed):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
     SUB_ACCOUNTS = get_subaccounts(CANVAS)
+
+    if verbose:
+        PRINT_COLOR_MAPS = {
+            "already processed": "yellow",
+            "already active": "cyan",
+            "activated": "green",
+            "failed to activate": "red",
+            "not supported": "yellow",
+            "user not found": "red",
+        }
 
     echo(") Processing users...")
 

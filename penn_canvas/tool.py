@@ -395,14 +395,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
             else:
                 course_display = f"{course_id}"
 
-            color = {
-                "not found": "red",
-                "already processed": "yellow",
-                "not supported": "yellow",
-                "already enabled": "cyan",
-                "enabled": "green",
-                "disabled": "yellow",
-            }.get(tool_status)
+            color = PRINT_COLOR_MAPS.get(tool_status)
             found_display = colorize(tool_status.upper(), color)
             echo(
                 f'- ({(index + 1):,}/{total}) "{tool_display}" {found_display} for'
@@ -523,6 +516,16 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         ARGS = (tool, use_id, enable, PROCESSED_COURSES)
     else:
         ARGS = (tool, use_id, enable)
+
+    if verbose:
+        PRINT_COLOR_MAPS = {
+            "not found": "red",
+            "already processed": "yellow",
+            "not supported": "yellow",
+            "already enabled": "cyan",
+            "enabled": "green",
+            "disabled": "yellow",
+        }
 
     toggle_progress_bar(report, check_tool_usage, CANVAS, verbose, args=ARGS)
     (
