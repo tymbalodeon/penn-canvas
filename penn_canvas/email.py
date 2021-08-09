@@ -197,21 +197,11 @@ def activate_fixable_emails(
         next_email = next(emails, None)
 
         if not next_email:
-            if verbose:
-                colorize(
-                    f"\t* ERROR: failed to activate email(s) for {user_id}!",
-                    "red",
-                    True,
-                )
-
             return False, "failed to activate"
 
         is_active = get_email_status(user_id, next_email, False)
 
     if is_active:
-        if verbose:
-            colorize(f"\t* Email(s) activated for {user_id}", "green", True)
-
         log = read_csv(log_path)
         log = log[log["canvas user id"] != user_id]
         log.to_csv(log_path, index=False)
