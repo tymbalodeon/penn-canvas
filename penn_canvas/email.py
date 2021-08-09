@@ -256,10 +256,11 @@ def process_result(include_activated, result_path):
 
     if include_activated:
         FIXABLE.sort_values(by=["email status"], inplace=True)
-        fixed_path = (
-            RESULTS
-            / f"{result_path.stem}_{datetime.now().strftime('%H_%M_%S')}_fixed_COMPLETE.csv"
+        fixed_stem = (
+            f"{result_path.stem}_{datetime.now().strftime('%H_%M_%S')}"
+            "_fixed_COMPLETE.csv"
         )
+        fixed_path = RESULTS / fixed_stem
         result.to_csv(fixed_path, index=False)
 
     result.to_csv(result_path, index=False)
@@ -292,13 +293,14 @@ def print_messages(
     colorize("SUMMARY:", "yellow", True)
     echo(f"- Processed {colorize(total, 'magenta')} accounts.")
     echo(
-        f"- Activated {fixed if fixed == 0 else colorize(fixed, 'green')} supported users with unconfirmed email"
-        " accounts."
+        f"- Activated {fixed if fixed == 0 else colorize(fixed, 'green')} supported"
+        " users with unconfirmed email accounts."
     )
 
     if already_active > 0:
         echo(
-            f"- Found {colorize(already_active, 'cyan')} users with email accounts already active."
+            f"- Found {colorize(already_active, 'cyan')} users with email accounts"
+            " already active."
         )
 
     if supported_not_found > 0:

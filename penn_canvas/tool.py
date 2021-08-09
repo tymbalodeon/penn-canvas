@@ -259,10 +259,10 @@ def process_result(tool, terms, enable, result_path):
             )
             result_path = result_path.rename(final_path)
         else:
-            final_path = (
-                RESULTS
-                / f"{result_path.stem}_{datetime.now().strftime('%H_%M_%S')}_COMPLETE.csv"
+            final_stem = (
+                f"{result_path.stem}_{datetime.now().strftime('%H_%M_%S')}_COMPLETE.csv"
             )
+            final_path = RESULTS / final_stem
             result_path = result_path.rename(final_path)
 
     return (
@@ -422,7 +422,8 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
     tool = check_tool(tool)
     REPORTS, report_display = find_course_report(enable)
     RESULT_FILE_NAME = (
-        f"{f'{YEAR}_' if enable else ''}{tool.replace(' ', '_')}_tool_{'enable' if enable else 'report'}"
+        f"{f'{YEAR}_' if enable else ''}{tool.replace(' ', '_')}"
+        f"_tool_{'enable' if enable else 'report'}"
         f"_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
     )
     RESULT_PATH = RESULTS / RESULT_FILE_NAME
@@ -470,10 +471,11 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
                 raise Exit()
 
     if enable:
-        PROCESSED_PATH = (
-            PROCESSED
-            / f"{tool.replace(' ', '_')}_tool_enable_processed_courses{'_test' if test else ''}.csv"
+        PROCESSED_STEM = (
+            f"{tool.replace(' ', '_')}_tool_enable_processed_courses"
+            f"{'_test' if test else ''}.csv"
         )
+        PROCESSED_PATH = PROCESSED / PROCESSED_STEM
 
         if clear_processed:
             proceed = confirm(
@@ -510,8 +512,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
             ]
             ACCOUNTS = f"{''.join(ACCOUNTS_DISPLAY)}"
             echo(
-                f') Enabling "{tool_display}" for {STYLED_TERMS} courses in:'
-                f" {ACCOUNTS}"
+                f') Enabling "{tool_display}" for {STYLED_TERMS} courses in: {ACCOUNTS}'
             )
         else:
             echo(f') Enabling "{tool_display}" for {STYLED_TERMS} courses...')
