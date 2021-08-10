@@ -6,6 +6,7 @@ from .helpers import display_config, make_config
 from .nso import nso_main
 from .storage import storage_main
 from .tool import tool_main
+from .count_sites import count_sites_main
 
 app = Typer(
     help=(
@@ -13,6 +14,36 @@ app = Typer(
         " easier!"
     )
 )
+
+
+@app.command()
+def count_sites(
+    year_and_term: str = Argument(
+        ...,
+        help="The term to limit the count to, in the form of year (YYYY) plus term code (A for spring, B for summer, C for fall) - e.g. '2021C'",
+    ),
+    separate: bool = Option(
+        False,
+        "--separate-graduate",
+        help="Separate the count into undergraduate and graduate courses.",
+    ),
+    graduate_course_minimum_number: int = Argument(
+        500, help="The course number at which or above designates a graduate course."
+    ),
+    test: bool = Option(
+        False,
+        "--test",
+        help=(
+            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
+            " of production (https://canvas.upenn.edu/)."
+        ),
+    ),
+):
+    """
+    Counts the number of unique course numbers that have a Canvas site.
+    """
+
+    count_sites(year_and_term, separate, graduate_course_minimum_number, test)
 
 
 @app.command()
