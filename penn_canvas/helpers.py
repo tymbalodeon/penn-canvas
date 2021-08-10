@@ -16,6 +16,7 @@ COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
 YEAR = datetime.now().strftime("%Y")
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
+MAIN_ACCOUNT_ID = 96678
 
 
 def make_config():
@@ -284,13 +285,16 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
 
 
 def get_processed_users(processed_directory, processed_path, column="pennkey"):
+    if type(column) != list:
+        column = [column]
+
     if processed_path.is_file():
         result = read_csv(processed_path)
         result = result.astype("string", copy=False, errors="ignore")
 
-        return result[column].tolist()
+        return result[column[0]].tolist()
     else:
-        make_csv_paths(processed_directory, processed_path, [column])
+        make_csv_paths(processed_directory, processed_path, column)
 
         return list()
 
@@ -310,17 +314,6 @@ def get_canvas(instance="test"):
         access_token = open_canvas
 
     return Canvas(url, access_token)
-
-
-def find_sub_accounts(canvas, account_id):
-    ACCOUNT = canvas.get_account(account_id)
-    sub_accounts = ACCOUNT.get_subaccounts(recursive=True)
-    ACCOUNTS = [account_id]
-
-    for account in sub_accounts:
-        ACCOUNTS.append(account.id)
-
-    return ACCOUNTS
 
 
 def colorize(text, color="magenta", echo=False):

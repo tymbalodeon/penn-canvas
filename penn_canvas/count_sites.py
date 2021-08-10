@@ -1,7 +1,6 @@
-from .helpers import get_canvas, colorize
 from typer import echo
 
-ACCOUNT_ID = 96678
+from .helpers import MAIN_ACCOUNT_ID, colorize, get_canvas
 
 
 def is_grad_course(course_number, graduate_course_minimum_number):
@@ -46,7 +45,7 @@ def print_summary(summary):
 
 def count_sites_main(year_and_term, separate, graduate_course_minimum_number, test):
     CANVAS = get_canvas(test)
-    ACCOUNT = CANVAS.get_account(ACCOUNT_ID)
+    ACCOUNT = CANVAS.get_account(MAIN_ACCOUNT_ID)
     TERM = next(
         (
             term.id

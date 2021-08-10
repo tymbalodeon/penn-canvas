@@ -11,7 +11,6 @@ from .helpers import (
     TODAY_AS_Y_M_D,
     YEAR,
     colorize,
-    find_sub_accounts,
     get_canvas,
     get_command_paths,
     get_processed_users,
@@ -33,24 +32,20 @@ HEADERS = [
     "email status",
     "supported school(s)",
 ]
-LOG_HEADERS = ["canvas user id", "email address"]
+LOG_HEADERS = ["canvas user id", "name", "email address"]
 ACCOUNTS = [
-    "99243",
-    "99237",
-    "128877",
-    "99241",
-    "99244",
-    "99238",
-    "99239",
-    "131428",
-    "99240",
-    "132153",
-    "82192",
+    99243,
+    99237,
+    128877,
+    99241,
+    99244,
+    99238,
+    99239,
+    131428,
+    99240,
+    132153,
+    82192,
 ]
-
-
-def get_subaccounts(canvas):
-    return [find_sub_accounts(canvas, account) for account in ACCOUNTS]
 
 
 def find_users_report():
@@ -107,6 +102,23 @@ def cleanup_report(report, start=0):
     return data, f"{TOTAL:,}"
 
 
+def find_sub_accounts(canvas, account_id):
+    ACCOUNT = canvas.get_account(account_id)
+    sub_accounts = ACCOUNT.get_subaccounts(recursive=True)
+    ACCOUNTS = [account_id]
+    ACCOUNTS.extend([account.id for account in sub_accounts])
+
+    return ACCOUNTS
+
+
+def get_sub_accounts(canvas):
+    return [
+        account
+        for accounts in (find_sub_accounts(canvas, account) for account in ACCOUNTS)
+        for account in accounts
+    ]
+
+
 def get_user_emails(user):
     communication_channels = user.get_communication_channels()
 
@@ -117,7 +129,7 @@ def get_email_status(email):
     return email.workflow_state == "active"
 
 
-def find_unconfirmed_emails(user, canvas, verbose, index):
+def is_already_active(user, canvas, verbose, index):
     user_id = user[1]
 
     try:
@@ -165,25 +177,25 @@ def check_schools(user, sub_accounts, canvas, verbose):
     return bool(fixable_id)
 
 
-def activate_fixable_emails(user, canvas, log_path):
+def activate_user_email(user, canvas, log_path):
     canvas_user_id = user[1]
-    user_id = canvas.get_user(canvas_user_id)
-    emails = get_user_emails(user_id)
+    canvas_user = canvas.get_user(canvas_user_id)
+    emails = get_user_emails(canvas_user)
 
     for email in emails:
         address = email.address
-        user_info = [user_id, address]
+        user_info = [canvas_user_id, canvas_user.name, address]
 
         with open(log_path, "a", newline="") as result:
             writer(result).writerow(user_info)
 
         email.delete()
-        user_id.create_communication_channel(
+        canvas_user.create_communication_channel(
             communication_channel={"address": address, "type": "email"},
             skip_confirmation=True,
         )
 
-    emails = get_user_emails(user_id)
+    emails = get_user_emails(canvas_user)
     email = next(emails, None)
     is_active = get_email_status(email)
 
@@ -197,10 +209,10 @@ def activate_fixable_emails(user, canvas, log_path):
 
     if is_active:
         log = read_csv(log_path)
-        log = log[log["canvas user id"] != user_id]
+        log.drop(index=log.index[-1:], inplace=True)
         log.to_csv(log_path, index=False)
 
-        return True, "auto-activated"
+        return True, "activated"
 
 
 def remove_empty_log(log_path):
@@ -219,7 +231,7 @@ def process_result(include_activated, result_path):
         (result["supported school(s)"] == "Y") & (result["email status"] == "not found")
     ]
     USERS_NOT_FOUND = result[result["email status"] == "ERROR: user not found"]
-    fixed = len(FIXABLE[FIXABLE["email status"] == "auto-activated"].index)
+    fixed = len(FIXABLE[FIXABLE["email status"] == "activated"].index)
     ALREADY_ACTIVE = len(result[result["email status"] == "already active"].index)
     error = len(FIXABLE[FIXABLE["email status"] == "failed to activate"].index)
     unsupported = len(not_fixable.index)
@@ -321,7 +333,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
         if user_id in processed_users:
             status = "already processed"
         else:
-            needs_school_check, message = find_unconfirmed_emails(
+            needs_school_check, message = is_already_active(
                 user, canvas, verbose, index
             )
             status = "already active"
@@ -335,7 +347,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
                     status = "not found"
 
                     if message == "unconfirmed":
-                        activated, activate_message = activate_fixable_emails(
+                        activated, activate_message = activate_user_email(
                             user,
                             canvas,
                             log_path,
@@ -344,7 +356,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
                         status = "activated" if activated else "failed to activate"
                 else:
                     supported = "N"
-                    status = "not supported"
+                    status = "unsupported"
             elif message:
                 supported = email_status = "ERROR: user not found"
                 status = "user not found"
@@ -356,28 +368,28 @@ def email_main(test, include_activated, verbose, force, clear_processed):
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
         if verbose:
-            color = PRINT_COLOR_MAPS.get(status)
+            color = PRINT_COLOR_MAPS.get(status, "magenta")
             status_display = colorize(str(status).upper(), color)
             user_display = colorize(
                 f"{' '.join(full_name.split())} ({login_id})", "magenta"
             )
 
-            if status == "not supported":
+            if status == "unsupported":
                 email_status_display = colorize(
                     f" ({str(email_status).upper()})", color
                 )
 
             echo(
-                f"- ({(index + 1):,}/{TOTAL}) {user_display}: {status_display}{email_status_display if status == 'not supported' else ''}"
+                f"- ({(index + 1):,}/{TOTAL}) {user_display}: {status_display}{email_status_display if status == 'unsupported' else ''}"
             )
 
         if (
             status == "activated"
-            or status == "not supported"
+            or status == "unsupported"
             or status == "already active"
         ) and user_id not in processed_users:
             with open(PROCESSED_PATH, "a+", newline="") as processed_file:
-                writer(processed_file).writerow([user_id])
+                writer(processed_file).writerow([user_id, status])
 
     RESULT_PATH = (
         RESULTS / f"{YEAR}_email_result_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
@@ -390,14 +402,16 @@ def email_main(test, include_activated, verbose, force, clear_processed):
     START = get_start_index(force, RESULT_PATH)
     report, TOTAL = cleanup_report(report, START)
     handle_clear_processed(clear_processed, PROCESSED_PATH)
-    PROCESSED_USERS = get_processed_users(PROCESSED, PROCESSED_PATH, "user id")
+    PROCESSED_USERS = get_processed_users(
+        PROCESSED, PROCESSED_PATH, ["user id", "status"]
+    )
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
     ARGS = RESULT_PATH, LOG_PATH, PROCESSED_USERS
     make_skip_message(START, "user")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-    SUB_ACCOUNTS = get_subaccounts(CANVAS)
+    SUB_ACCOUNTS = get_sub_accounts(CANVAS)
 
     if verbose:
         PRINT_COLOR_MAPS = {
@@ -405,7 +419,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
             "already active": "cyan",
             "activated": "green",
             "failed to activate": "red",
-            "not supported": "yellow",
+            "unsupported": "yellow",
             "user not found": "red",
             "not found": "red",
         }
