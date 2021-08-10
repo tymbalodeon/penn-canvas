@@ -152,7 +152,7 @@ def is_already_active(user, canvas, verbose, index):
             is_active = get_email_status(next_email)
 
         if is_active:
-            return False, None
+            return False, "already active"
     else:
         return True, "not found"
 
@@ -224,26 +224,32 @@ def remove_empty_log(log_path):
 def process_result(include_activated, result_path):
     result = read_csv(result_path)
 
-    not_fixable = result[result["supported school(s)"] == "N"]
-    not_fixable = not_fixable.sort_values(by=["email status"])
-    FIXABLE = result[result["supported school(s)"] == "Y"]
+    ALREADY_PROCESSED_COUNT = len(
+        result[result["email status"] == "already processed"].index
+    )
+    unsupported = result[result["supported school(s)"] == "N"]
+    unsupported = unsupported.sort_values(by=["email status"])
+    SUPPORTED = result[result["supported school(s)"] == "Y"]
     SUPPORTED_NOT_FOUND = result[
         (result["supported school(s)"] == "Y") & (result["email status"] == "not found")
     ]
     USERS_NOT_FOUND = result[result["email status"] == "ERROR: user not found"]
-    fixed = len(FIXABLE[FIXABLE["email status"] == "activated"].index)
-    ALREADY_ACTIVE = len(result[result["email status"] == "already active"].index)
-    error = len(FIXABLE[FIXABLE["email status"] == "failed to activate"].index)
-    unsupported = len(not_fixable.index)
-    supported_not_found = len(SUPPORTED_NOT_FOUND.index)
-    user_not_found = len(USERS_NOT_FOUND.index)
-
-    ERRORS = FIXABLE[FIXABLE["email status"] == "failed to activate"]
-    result = concat([ERRORS, SUPPORTED_NOT_FOUND, USERS_NOT_FOUND, not_fixable])
+    activated_count = len(SUPPORTED[SUPPORTED["email status"] == "activated"].index)
+    already_active_count = len(result[result["email status"] == "already active"].index)
+    failed_to_activate_count = len(
+        SUPPORTED[SUPPORTED["email status"] == "failed to activate"].index
+    )
+    unsupported_count = len(unsupported.index)
+    supported_not_found_count = len(SUPPORTED_NOT_FOUND.index)
+    users_not_found_count = len(USERS_NOT_FOUND.index)
+    FAILED_TO_ACTIVATE = SUPPORTED[SUPPORTED["email status"] == "failed to activate"]
+    result = concat(
+        [FAILED_TO_ACTIVATE, SUPPORTED_NOT_FOUND, USERS_NOT_FOUND, unsupported]
+    )
     result.drop("index", axis=1, inplace=True)
 
     if include_activated:
-        FIXABLE.sort_values(by=["email status"], inplace=True)
+        SUPPORTED.sort_values(by=["email status"], inplace=True)
         fixed_stem = (
             f"{result_path.stem}_{datetime.now().strftime('%H_%M_%S')}"
             "_fixed_COMPLETE.csv"
@@ -259,18 +265,20 @@ def process_result(include_activated, result_path):
     result_path.rename(final_path)
 
     return (
-        fixed,
-        ALREADY_ACTIVE,
-        error,
-        unsupported,
-        supported_not_found,
-        user_not_found,
+        ALREADY_PROCESSED_COUNT,
+        activated_count,
+        already_active_count,
+        failed_to_activate_count,
+        unsupported_count,
+        supported_not_found_count,
+        users_not_found_count,
     )
 
 
 def print_messages(
     total,
-    fixed,
+    already_processed,
+    activated,
     already_active,
     supported_not_found,
     unsupported,
@@ -281,9 +289,14 @@ def print_messages(
     colorize("SUMMARY:", "yellow", True)
     echo(f"- Processed {colorize(total, 'magenta')} accounts.")
     echo(
-        f"- Activated {fixed if fixed == 0 else colorize(fixed, 'green')} supported"
+        f"- Activated {activated if activated == 0 else colorize(activated, 'green')} supported"
         " users with unconfirmed email accounts."
     )
+
+    if already_processed > 0:
+        echo(
+            f"- Skipped {colorize(already_processed, 'yellow')} users already processed."
+        )
 
     if already_active > 0:
         echo(
@@ -357,8 +370,8 @@ def email_main(test, include_activated, verbose, force, clear_processed):
                 else:
                     supported = "N"
                     status = "unsupported"
-            elif message:
-                supported = email_status = "ERROR: user not found"
+            elif message == "user not found":
+                supported = "ERROR: user not found"
                 status = "user not found"
 
         report.at[index, ["email status", "supported school(s)"]] = [
@@ -429,7 +442,8 @@ def email_main(test, include_activated, verbose, force, clear_processed):
     toggle_progress_bar(report, check_and_activate_emails, CANVAS, verbose, args=ARGS)
     remove_empty_log(LOG_PATH)
     (
-        fixed,
+        already_processed,
+        activated,
         already_active,
         error,
         unsupported,
@@ -438,7 +452,8 @@ def email_main(test, include_activated, verbose, force, clear_processed):
     ) = process_result(include_activated, RESULT_PATH)
     print_messages(
         TOTAL,
-        fixed,
+        already_processed,
+        activated,
         already_active,
         supported_not_found,
         unsupported,
