@@ -211,7 +211,6 @@ def get_command_paths(command, logs=False, processed=False, input_dir=False):
 
 def get_completed_result(result_directory):
     CSV_FILES = [result for result in Path(result_directory).glob("*.csv")]
-    print(CSV_FILES)
     return next(
         (
             result
@@ -256,8 +255,6 @@ def check_previous_output(result_path, result_directory):
             raise Exit()
     elif result_directory:
         completed_result = get_completed_result(result_directory)
-
-        print(completed_result)
 
         if completed_result:
             print_task_complete_message(completed_result)

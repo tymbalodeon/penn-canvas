@@ -289,13 +289,15 @@ def print_messages(
     colorize("SUMMARY:", "yellow", True)
     echo(f"- Processed {colorize(total, 'magenta')} accounts.")
     echo(
-        f"- Activated {activated if activated == 0 else colorize(activated, 'green')} supported"
+        "- Activated"
+        f" {activated if activated == 0 else colorize(activated, 'green')} supported"
         " users with unconfirmed email accounts."
     )
 
     if already_processed > 0:
         echo(
-            f"- Skipped {colorize(already_processed, 'yellow')} users already processed."
+            f"- Skipped {colorize(already_processed, 'yellow')} users already"
+            " processed."
         )
 
     if already_active > 0:
@@ -393,7 +395,9 @@ def email_main(test, include_activated, verbose, force, clear_processed):
                 )
 
             echo(
-                f"- ({(index + 1):,}/{TOTAL}) {user_display}: {status_display}{email_status_display if status == 'unsupported' else ''}"
+                f"- ({(index + 1):,}/{TOTAL}) {user_display}:"
+                f" {status_display}"
+                f"{email_status_display if status == 'unsupported' else ''}"
             )
 
         if (

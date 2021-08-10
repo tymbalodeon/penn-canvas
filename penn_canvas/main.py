@@ -1,12 +1,12 @@
 from typer import Argument, Option, Typer
 
 from .archive import archive_main
+from .count_sites import count_sites_main
 from .email import email_main
 from .helpers import display_config, make_config
 from .nso import nso_main
 from .storage import storage_main
 from .tool import tool_main
-from .count_sites import count_sites_main
 
 app = Typer(
     help=(
@@ -20,7 +20,10 @@ app = Typer(
 def count_sites(
     year_and_term: str = Argument(
         ...,
-        help="The term to limit the count to, in the form of year (YYYY) plus term code (A for spring, B for summer, C for fall) - e.g. '2021C'",
+        help=(
+            "The term to limit the count to, in the form of year (YYYY) plus term code"
+            " (A for spring, B for summer, C for fall) - e.g. '2021C'"
+        ),
     ),
     separate: bool = Option(
         False,
@@ -72,8 +75,8 @@ def archive(
 
     INPUT: Canvas course id whose discussions you want to archive
 
-    OUTPUT: Folder with the course name containing csv files for each discussion, listing the user, timestamp, and
-    post
+    OUTPUT: Folder with the course name containing csv files for each
+    discussion, listing the user, timestamp, and post
     """
 
     archive_main(course, instance, verbose, force)
