@@ -209,8 +209,34 @@ def get_command_paths(command, logs=False, processed=False, input_dir=False):
     return tuple(PATHS)
 
 
-def check_previous_output(result_path):
+def get_completed_result(result_directory):
+    CSV_FILES = [result for result in Path(result_directory).glob("*.csv")]
+    print(CSV_FILES)
+    return next(
+        (
+            result
+            for result in CSV_FILES
+            if TODAY_AS_Y_M_D in result.name and "COMPLETE" in result.name
+        ),
+        None,
+    )
+
+
+def print_task_complete_message(result_path):
+    colorize("TASK ALREADY COMPLETE", "yellow", True)
+    result_path_display = colorize(result_path, "green")
+    echo(f"- Output available at: {result_path_display}")
+    echo(
+        "- To re-run the task, overwriting previous results, run this command"
+        " with the '--force' option"
+    )
+    colorize("FINISHED", "yellow", True)
+
+
+def check_previous_output(result_path, result_directory):
     echo(") Checking for previous results...")
+
+    index = 0
 
     if result_path.is_file():
         INCOMPLETE = read_csv(result_path)
@@ -225,30 +251,30 @@ def check_previous_output(result_path):
             except Exception:
                 index = 0
         else:
-            colorize("TASK ALREADY COMPLETE", "yellow", True)
-            result_path_display = colorize(result_path, "green")
-            echo(f"- Output available at: {result_path_display}")
-            echo(
-                "- To re-run the task, overwriting previous results, run this command"
-                " with the '--force' option"
-            )
-            colorize("FINISHED", "yellow", True)
+            print_task_complete_message(result_path)
 
             raise Exit()
-    else:
-        index = 0
+    elif result_directory:
+        completed_result = get_completed_result(result_directory)
+
+        print(completed_result)
+
+        if completed_result:
+            print_task_complete_message(completed_result)
+
+            raise Exit()
 
     return index
 
 
-def get_start_index(force, result_path):
+def get_start_index(force, result_path, result_directory=None):
     if force:
         if result_path.exists():
             remove(result_path)
 
         return 0
     else:
-        return check_previous_output(result_path)
+        return check_previous_output(result_path, result_directory)
 
 
 def make_skip_message(start, item):

@@ -412,7 +412,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
     )
     LOG_PATH = LOGS / f"{YEAR}_email_log_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
     report = find_users_report()
-    START = get_start_index(force, RESULT_PATH)
+    START = get_start_index(force, RESULT_PATH, RESULTS)
     report, TOTAL = cleanup_report(report, START)
     handle_clear_processed(clear_processed, PROCESSED_PATH)
     PROCESSED_USERS = get_processed_users(
