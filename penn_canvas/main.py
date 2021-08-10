@@ -43,7 +43,7 @@ def count_sites(
     Counts the number of unique course numbers that have a Canvas site.
     """
 
-    count_sites(year_and_term, separate, graduate_course_minimum_number, test)
+    count_sites_main(year_and_term, separate, graduate_course_minimum_number, test)
 
 
 @app.command()
