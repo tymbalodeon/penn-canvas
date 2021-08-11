@@ -273,8 +273,8 @@ def process_result(result_path, processed_path):
     supported_problems.drop("index", axis=1, inplace=True)
     unsupported_problems.drop("index", axis=1, inplace=True)
     activated.drop("index", axis=1, inplace=True)
-    supported_path = RESULTS / f"{result_path.stem}_SUPPORTED.csv"
-    unsupported_path = RESULTS / f"{result_path.stem}_UNSUPPORTED.csv"
+    supported_path = RESULTS / f"{result_path.stem}_SUPPORTED_ERROR.csv"
+    unsupported_path = RESULTS / f"{result_path.stem}_UNSUPPORTED_ERROR.csv"
     activated_path = RESULTS / f"{result_path.stem}_ACTIVATED.csv"
 
     supported_problems.to_csv(supported_path, index=False)

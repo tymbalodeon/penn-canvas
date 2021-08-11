@@ -211,11 +211,12 @@ def get_command_paths(command, logs=False, processed=False, input_dir=False):
 
 def get_completed_result(result_directory):
     CSV_FILES = [result for result in Path(result_directory).glob("*.csv")]
+
     return next(
         (
             result
             for result in CSV_FILES
-            if TODAY_AS_Y_M_D in result.name and "COMPLETE" in result.name
+            if TODAY_AS_Y_M_D in result.name and "ACTIVATED" in result.name
         ),
         None,
     )
