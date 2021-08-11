@@ -122,7 +122,7 @@ def get_sub_accounts(canvas):
 def get_user_emails(user):
     communication_channels = user.get_communication_channels()
 
-    return (channel for channel in communication_channels if channel.type == "email")
+    return [channel for channel in communication_channels if channel.type == "email"]
 
 
 def get_email_status(email):
@@ -145,13 +145,14 @@ def is_already_active(user, canvas, verbose, index):
     except Exception:
         return True, "error", canvas_user, emails
 
-    email = next(emails, None)
+    emails_iterator = iter(emails)
+    email = next(emails_iterator, None)
 
     if email:
         is_active = get_email_status(email)
 
         while not is_active:
-            next_email = next(emails, None)
+            next_email = next(emails_iterator, None)
 
             if not next_email:
                 return True, "unconfirmed", canvas_user, emails
@@ -195,7 +196,7 @@ def activate_user_email(canvas_user_id, canvas_user, emails, log_path):
             skip_confirmation=True,
         )
 
-    emails = get_user_emails(canvas_user)
+    emails = iter(get_user_emails(canvas_user))
     email = next(emails, None)
     is_active = get_email_status(email)
 
