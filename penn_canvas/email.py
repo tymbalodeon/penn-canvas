@@ -235,6 +235,14 @@ def process_result(include_activated, result_path):
         (result["supported school(s)"] == "Y") & (result["email status"] == "not found")
     ]
     USERS_NOT_FOUND = result[result["email status"] == "user not found"]
+    ERROR_SUPPORTED = result[
+        (result["email status"] == "error") & (result["supported school(s)"] == "Y")
+    ]
+    ERROR_UNSUPPORTED = result[
+        (result["email status"] == "error") & (result["supported school(s)"] == "N")
+    ]
+    ERROR_SUPPORTED_COUNT = len(ERROR_SUPPORTED.index)
+    ERROR_UNSUPPORTED_COUNT = len(ERROR_UNSUPPORTED.index)
     activated_count = len(SUPPORTED[SUPPORTED["email status"] == "activated"].index)
     already_active_count = len(result[result["email status"] == "already active"].index)
     failed_to_activate_count = len(
@@ -245,7 +253,14 @@ def process_result(include_activated, result_path):
     users_not_found_count = len(USERS_NOT_FOUND.index)
     FAILED_TO_ACTIVATE = SUPPORTED[SUPPORTED["email status"] == "failed to activate"]
     result = concat(
-        [FAILED_TO_ACTIVATE, SUPPORTED_NOT_FOUND, USERS_NOT_FOUND, unsupported]
+        [
+            ERROR_SUPPORTED,
+            ERROR_UNSUPPORTED,
+            FAILED_TO_ACTIVATE,
+            SUPPORTED_NOT_FOUND,
+            USERS_NOT_FOUND,
+            unsupported,
+        ]
     )
     result.drop("index", axis=1, inplace=True)
 
@@ -269,6 +284,8 @@ def process_result(include_activated, result_path):
         ALREADY_PROCESSED_COUNT,
         activated_count,
         already_active_count,
+        ERROR_SUPPORTED_COUNT,
+        ERROR_UNSUPPORTED_COUNT,
         failed_to_activate_count,
         unsupported_count,
         supported_not_found_count,
@@ -281,9 +298,11 @@ def print_messages(
     already_processed,
     activated,
     already_active,
+    error_supported,
+    error_unsupported,
     supported_not_found,
     unsupported,
-    errors,
+    failed_to_activate,
     log_path,
     user_not_found,
 ):
@@ -292,37 +311,41 @@ def print_messages(
     activated_display = colorize(activated, "yellow" if not activated else "green")
     echo(
         "- Activated"
-        f" {activated_display} supported users with unconfirmed email accounts."
+        f" {activated_display} supported users with unconfirmed email addresses."
     )
 
     if already_processed > 0:
         echo(
-            f"- Skipped {colorize(already_processed, 'yellow')} users already"
+            "- Skipped"
+            f" {colorize(already_processed, 'yellow')} {'user' if already_processed == 1 else 'users'} already"
             " processed."
         )
 
     if already_active > 0:
         echo(
             f"- Found {colorize(already_active, 'cyan')} supported and unsupported"
-            " users with email accounts already active."
+            f" {'user' if already_active == 1 else 'users'} with email addresses"
+            " already active."
         )
 
     if supported_not_found > 0:
         echo(
-            f"- Found {colorize(supported_not_found, 'red')} supported users with no"
-            " email account."
+            f"- Found {colorize(supported_not_found, 'red')} supported"
+            f" {'user' if supported_not_found == 1 else 'users'} with no email address."
         )
 
     if unsupported > 0:
         echo(
-            f"- Found {colorize(unsupported, 'yellow')} unsupported users with missing"
-            " or unconfirmed email accounts."
+            f"- Found {colorize(unsupported, 'yellow')} unsupported"
+            f" {'user' if unsupported == 1 else 'users'} with missing or unconfirmed"
+            " email addresses."
         )
 
-    if errors > 0:
+    if failed_to_activate > 0:
         message = colorize(
-            f"Failed to activate email(s) for {errors} supported users with (an)"
-            " unconfirmed email account(s).",
+            f"Failed to activate email(s) for {failed_to_activate} supported"
+            f" {'user' if failed_to_activate == 1 else 'users'} with (an) unconfirmed"
+            " email address(es).",
             "red",
         )
         log_path_display = colorize(log_path, "green")
@@ -332,8 +355,25 @@ def print_messages(
         )
 
     if user_not_found > 0:
-        message = colorize(f"Failed to find {user_not_found} users.", "red")
+        message = colorize(
+            "Failed to find"
+            f" {user_not_found} {'user' if user_not_found == 1 else 'users'}.",
+            "red",
+        )
         echo(f"- {message}")
+
+    if error_supported > 0:
+        echo(
+            f"- Encountered an error for {colorize(error_supported, 'red')} supported"
+            f" {'user' if error_supported == 1 else 'users'}."
+        )
+
+    if error_unsupported > 0:
+        echo(
+            "- Encountered an error for"
+            f" {colorize(error_unsupported, 'red')} unsupported"
+            f" {'user' if error_unsupported == 1 else 'users'}."
+        )
 
     colorize("FINISHED", "yellow", True)
 
@@ -436,6 +476,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
             "unsupported": "yellow",
             "user not found": "red",
             "not found": "red",
+            "error": "red",
         }
 
     echo(") Processing users...")
@@ -446,7 +487,9 @@ def email_main(test, include_activated, verbose, force, clear_processed):
         already_processed,
         activated,
         already_active,
-        error,
+        error_supported,
+        error_unsupported,
+        failed_to_activate,
         unsupported,
         supported_not_found,
         user_not_found,
@@ -456,9 +499,11 @@ def email_main(test, include_activated, verbose, force, clear_processed):
         already_processed,
         activated,
         already_active,
+        error_supported,
+        error_unsupported,
         supported_not_found,
         unsupported,
-        error,
+        failed_to_activate,
         LOG_PATH,
         user_not_found,
     )
