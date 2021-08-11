@@ -2,7 +2,6 @@ from csv import writer
 from datetime import datetime
 from os import remove
 from pathlib import Path
-from shutil import rmtree
 
 from pandas import concat, read_csv
 from typer import Exit, echo
@@ -224,7 +223,7 @@ def activate_user_email(
 def remove_empty_log(log_path):
     if log_path.is_file() and read_csv(log_path).empty:
         echo(") Removing empty log file...")
-        rmtree(LOGS, ignore_errors=True)
+        remove(log_path)
 
 
 def process_result(result_path, processed_path):
@@ -319,9 +318,8 @@ def print_messages(
 
     if already_processed > 0:
         echo(
-            "- Skipped"
-            f" {colorize(already_processed, 'yellow')} {'user' if already_processed == 1 else 'users'} already"
-            " processed."
+            f"- Skipped {colorize(already_processed, 'yellow')}"
+            f" {'user' if already_processed == 1 else 'users'} already processed."
         )
 
     if already_active > 0:
@@ -457,7 +455,11 @@ def email_main(test, verbose, force, clear_processed):
     PROCESSED_PATH = (
         PROCESSED / f"{YEAR}_email_processed_users{'_test' if test else ''}.csv"
     )
-    LOG_PATH = LOGS / f"{YEAR}_email_log_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
+    LOG_STEM = (
+        f"{YEAR}_email_log_{TODAY_AS_Y_M_D}{'_test' if test else ''}"
+        "_{{datetime.now().strftime('%H_%M_%S')}}.csv"
+    )
+    LOG_PATH = LOGS / LOG_STEM
     report = find_users_report()
     START = get_start_index(force, RESULT_PATH, RESULTS)
     report, TOTAL = cleanup_report(report, START)
