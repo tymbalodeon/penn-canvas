@@ -130,14 +130,6 @@ def email(
             " of production (https://canvas.upenn.edu/)."
         ),
     ),
-    include_activated: bool = Option(
-        False,
-        "--include-activated",
-        help=(
-            "Include in the result file the list of users whose email accounts were"
-            " automatically activated by the script."
-        ),
-    ),
     verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
     ),
@@ -181,7 +173,7 @@ def email(
     NOTE: Input filename must include the current date in order to be accepted.
     """
 
-    email_main(test, include_activated, verbose, force, clear_processed)
+    email_main(test, verbose, force, clear_processed)
 
 
 @app.command()

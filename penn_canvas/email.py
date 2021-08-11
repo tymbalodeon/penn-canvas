@@ -1,5 +1,6 @@
 from csv import writer
 from datetime import datetime
+from os import remove
 from pathlib import Path
 from shutil import rmtree
 
@@ -25,14 +26,16 @@ REPORTS, RESULTS, LOGS, PROCESSED = get_command_paths(
     "email", logs=True, processed=True
 )
 HEADERS = [
-    "index",
     "canvas user id",
     "login id",
     "full name",
     "email status",
-    "supported school(s)",
+    "supported",
 ]
-LOG_HEADERS = ["canvas user id", "name", "email address"]
+INDEX_HEADERS = HEADERS[:]
+INDEX_HEADERS.insert(0, "index")
+LOG_HEADERS = HEADERS[:3]
+LOG_HEADERS.extend(["email address"])
 ACCOUNTS = [
     99243,
     99237,
@@ -138,12 +141,12 @@ def is_already_active(user, canvas, verbose, index):
     try:
         canvas_user = canvas.get_user(user_id)
     except Exception:
-        return False, "user not found", canvas_user, emails
+        return "user not found", canvas_user, emails
 
     try:
         emails = get_user_emails(canvas_user)
     except Exception:
-        return True, "error", canvas_user, emails
+        return "error", canvas_user, emails
 
     emails_iterator = iter(emails)
     email = next(emails_iterator, None)
@@ -155,14 +158,14 @@ def is_already_active(user, canvas, verbose, index):
             next_email = next(emails_iterator, None)
 
             if not next_email:
-                return True, "unconfirmed", canvas_user, emails
+                return "unconfirmed", canvas_user, emails
 
             is_active = get_email_status(next_email)
 
         if is_active:
-            return False, "already active", canvas_user, emails
+            return "already active", canvas_user, emails
     else:
-        return True, "not found", canvas_user, emails
+        return "not found", canvas_user, emails
 
 
 def check_schools(canvas_user, sub_accounts, canvas, verbose):
@@ -182,10 +185,12 @@ def check_schools(canvas_user, sub_accounts, canvas, verbose):
     return bool(fixable_id)
 
 
-def activate_user_email(canvas_user_id, canvas_user, emails, log_path):
+def activate_user_email(
+    canvas_user_id, login_id, full_name, canvas_user, emails, log_path
+):
     for email in emails:
         address = email.address
-        user_info = [canvas_user_id, canvas_user.name, address]
+        user_info = [canvas_user_id, login_id, full_name, address]
 
         with open(log_path, "a", newline="") as result:
             writer(result).writerow(user_info)
@@ -204,7 +209,7 @@ def activate_user_email(canvas_user_id, canvas_user, emails, log_path):
         next_email = next(emails, None)
 
         if not next_email:
-            return False, "failed to activate"
+            return "failed to activate"
 
         is_active = get_email_status(next_email)
 
@@ -213,7 +218,7 @@ def activate_user_email(canvas_user_id, canvas_user, emails, log_path):
         log.drop(index=log.index[-1:], inplace=True)
         log.to_csv(log_path, index=False)
 
-        return True, "activated"
+        return "activated"
 
 
 def remove_empty_log(log_path):
@@ -222,70 +227,68 @@ def remove_empty_log(log_path):
         rmtree(LOGS, ignore_errors=True)
 
 
-def process_result(include_activated, result_path):
+def process_result(result_path, processed_path):
     result = read_csv(result_path)
 
-    ALREADY_PROCESSED_COUNT = len(
+    supported = result[result["supported"] == "Y"]
+    unsupported = result[result["supported"] == "N"]
+    activated = supported[supported["email status"] == "activated"].copy()
+    failed_to_activate = supported[supported["email status"] == "failed to activate"]
+    supported_not_found = supported[supported["email status"] == "not found"]
+    error_supported = supported[supported["email status"] == "error"]
+    users_not_found = result[result["email status"] == "user not found"]
+    error_unsupported = unsupported[unsupported["email status"] == "error"]
+    unsupported_not_found = unsupported[unsupported["email status"] == "not found"]
+    unsupported_unconfirmed = unsupported[unsupported["email status"] == "unconfirmed"]
+
+    already_processed_count = len(
         result[result["email status"] == "already processed"].index
     )
-    unsupported = result[result["supported school(s)"] == "N"]
-    unsupported = unsupported.sort_values(by=["email status"])
-    SUPPORTED = result[result["supported school(s)"] == "Y"]
-    SUPPORTED_NOT_FOUND = result[
-        (result["supported school(s)"] == "Y") & (result["email status"] == "not found")
-    ]
-    USERS_NOT_FOUND = result[result["email status"] == "user not found"]
-    ERROR_SUPPORTED = result[
-        (result["email status"] == "error") & (result["supported school(s)"] == "Y")
-    ]
-    ERROR_UNSUPPORTED = result[
-        (result["email status"] == "error") & (result["supported school(s)"] == "N")
-    ]
-    ERROR_SUPPORTED_COUNT = len(ERROR_SUPPORTED.index)
-    ERROR_UNSUPPORTED_COUNT = len(ERROR_UNSUPPORTED.index)
-    activated_count = len(SUPPORTED[SUPPORTED["email status"] == "activated"].index)
     already_active_count = len(result[result["email status"] == "already active"].index)
-    failed_to_activate_count = len(
-        SUPPORTED[SUPPORTED["email status"] == "failed to activate"].index
-    )
     unsupported_count = len(unsupported.index)
-    supported_not_found_count = len(SUPPORTED_NOT_FOUND.index)
-    users_not_found_count = len(USERS_NOT_FOUND.index)
-    FAILED_TO_ACTIVATE = SUPPORTED[SUPPORTED["email status"] == "failed to activate"]
-    result = concat(
+    activated_count = len(activated.index)
+    failed_to_activate_count = len(failed_to_activate.index)
+    supported_not_found_count = len(supported_not_found.index)
+    error_supported_count = len(error_supported.index)
+    users_not_found_count = len(users_not_found.index)
+    error_unsupported_count = len(error_unsupported.index)
+
+    supported_problems = concat(
         [
-            ERROR_SUPPORTED,
-            ERROR_UNSUPPORTED,
-            FAILED_TO_ACTIVATE,
-            SUPPORTED_NOT_FOUND,
-            USERS_NOT_FOUND,
-            unsupported,
+            failed_to_activate,
+            error_supported,
+            supported_not_found,
+            users_not_found,
         ]
     )
-    result.drop("index", axis=1, inplace=True)
-
-    if include_activated:
-        SUPPORTED.sort_values(by=["email status"], inplace=True)
-        fixed_stem = (
-            f"{result_path.stem}_{datetime.now().strftime('%H_%M_%S')}"
-            "_fixed_COMPLETE.csv"
-        )
-        fixed_path = RESULTS / fixed_stem
-        result.to_csv(fixed_path, index=False)
-
-    result.to_csv(result_path, index=False)
-    final_path = (
-        RESULTS
-        / f"{result_path.stem}_{datetime.now().strftime('%H_%M_%S')}_COMPLETE.csv"
+    unsupported_problems = concat(
+        [
+            error_unsupported,
+            unsupported_not_found,
+            unsupported_unconfirmed,
+            users_not_found,
+        ]
     )
-    result_path.rename(final_path)
+
+    supported_problems.drop("index", axis=1, inplace=True)
+    unsupported_problems.drop("index", axis=1, inplace=True)
+    activated.drop("index", axis=1, inplace=True)
+    supported_path = RESULTS / f"{result_path.stem}_SUPPORTED.csv"
+    unsupported_path = RESULTS / f"{result_path.stem}_UNSUPPORTED.csv"
+    activated_path = RESULTS / f"{result_path.stem}_ACTIVATED.csv"
+
+    supported_problems.to_csv(supported_path, index=False)
+    unsupported_problems.to_csv(unsupported_path, index=False)
+    activated.to_csv(activated_path, index=False)
+
+    remove(result_path)
 
     return (
-        ALREADY_PROCESSED_COUNT,
+        already_processed_count,
         activated_count,
         already_active_count,
-        ERROR_SUPPORTED_COUNT,
-        ERROR_UNSUPPORTED_COUNT,
+        error_supported_count,
+        error_unsupported_count,
         failed_to_activate_count,
         unsupported_count,
         supported_not_found_count,
@@ -378,44 +381,44 @@ def print_messages(
     colorize("FINISHED", "yellow", True)
 
 
-def email_main(test, include_activated, verbose, force, clear_processed):
+def email_main(test, verbose, force, clear_processed):
     def check_and_activate_emails(user, canvas, verbose, args):
-        index, user_id, login_id, full_name = user
+        index, canvas_user_id, login_id, full_name = user
         result_path, log_path, processed_users = args
 
         status = None
         supported = None
 
-        if user_id in processed_users:
+        if canvas_user_id in processed_users:
             status = "already processed"
         else:
-            needs_school_check, message, canvas_user, emails = is_already_active(
+            status, canvas_user, emails = is_already_active(
                 user, canvas, verbose, index
             )
-            status = message
 
-            if needs_school_check:
+            if status == "error" or status == "unconfirmed" or status == "not found":
                 is_supported = check_schools(canvas_user, SUB_ACCOUNTS, canvas, verbose)
 
                 if is_supported:
                     supported = "Y"
                     status = "not found"
 
-                    if message == "unconfirmed":
-                        activated, activate_message = activate_user_email(
+                    if status == "unconfirmed":
+                        activated = activate_user_email(
                             user[1],
+                            login_id,
+                            full_name,
                             canvas_user,
                             emails,
                             log_path,
                         )
-                        status = activate_message
+                        status = activated
                 else:
                     supported = "N"
-                    status = "unsupported"
-            elif message == "user not found":
+            elif status == "user not found":
                 supported = status = "user not found"
 
-        report.at[index, ["email status", "supported school(s)"]] = [
+        report.at[index, ["email status", "supported"]] = [
             status,
             supported,
         ]
@@ -423,27 +426,30 @@ def email_main(test, include_activated, verbose, force, clear_processed):
 
         if verbose:
             color = PRINT_COLOR_MAPS.get(status, "magenta")
-            status_display = colorize(str(status).upper(), color)
+            status_display = colorize(
+                f"{'email not found' if status == 'not found' else status}".upper(),
+                color,
+            )
+            unsupported_display = ""
             user_display = colorize(
                 f"{' '.join(full_name.split())} ({login_id})", "magenta"
             )
 
-            if status == "unsupported":
-                email_status_display = colorize(f" ({str(message).upper()})", color)
+            if supported == "N":
+                unsupported_display = colorize(" (UNSUPPORTED)", "yellow")
 
             echo(
                 f"- ({(index + 1):,}/{TOTAL}) {user_display}:"
-                f" {status_display}"
-                f"{email_status_display if status == 'unsupported' else ''}"
+                f" {status_display}{unsupported_display}"
             )
 
         if (
-            status == "activated"
-            or status == "unsupported"
-            or status == "already active"
-        ) and user_id not in processed_users:
+            status == "activated" or supported == "N" or status == "already active"
+        ) and canvas_user_id not in processed_users:
             with open(PROCESSED_PATH, "a+", newline="") as processed_file:
-                writer(processed_file).writerow([user_id, status])
+                writer(processed_file).writerow(
+                    [canvas_user_id, login_id, full_name, status, supported]
+                )
 
     RESULT_PATH = (
         RESULTS / f"{YEAR}_email_result_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
@@ -456,10 +462,8 @@ def email_main(test, include_activated, verbose, force, clear_processed):
     START = get_start_index(force, RESULT_PATH, RESULTS)
     report, TOTAL = cleanup_report(report, START)
     handle_clear_processed(clear_processed, PROCESSED_PATH)
-    PROCESSED_USERS = get_processed_users(
-        PROCESSED, PROCESSED_PATH, ["user id", "status"]
-    )
-    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
+    PROCESSED_USERS = get_processed_users(PROCESSED, PROCESSED_PATH, HEADERS)
+    make_csv_paths(RESULTS, RESULT_PATH, INDEX_HEADERS)
     make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
     ARGS = RESULT_PATH, LOG_PATH, PROCESSED_USERS
     make_skip_message(START, "user")
@@ -473,7 +477,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
             "already active": "cyan",
             "activated": "green",
             "failed to activate": "red",
-            "unsupported": "yellow",
+            "unconfirmed": "yellow",
             "user not found": "red",
             "not found": "red",
             "error": "red",
@@ -493,7 +497,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
         unsupported,
         supported_not_found,
         user_not_found,
-    ) = process_result(include_activated, RESULT_PATH)
+    ) = process_result(RESULT_PATH, PROCESSED_PATH)
     print_messages(
         TOTAL,
         already_processed,
