@@ -457,7 +457,7 @@ def email_main(test, verbose, force, clear_processed):
     )
     LOG_STEM = (
         f"{YEAR}_email_log_{TODAY_AS_Y_M_D}{'_test' if test else ''}"
-        "_{{datetime.now().strftime('%H_%M_%S')}}.csv"
+        f"_{datetime.now().strftime('%H_%M_%S')}.csv"
     )
     LOG_PATH = LOGS / LOG_STEM
     report = find_users_report()
