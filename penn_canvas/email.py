@@ -234,7 +234,7 @@ def process_result(include_activated, result_path):
     SUPPORTED_NOT_FOUND = result[
         (result["supported school(s)"] == "Y") & (result["email status"] == "not found")
     ]
-    USERS_NOT_FOUND = result[result["email status"] == "ERROR: user not found"]
+    USERS_NOT_FOUND = result[result["email status"] == "user not found"]
     activated_count = len(SUPPORTED[SUPPORTED["email status"] == "activated"].index)
     already_active_count = len(result[result["email status"] == "already active"].index)
     failed_to_activate_count = len(
@@ -289,10 +289,10 @@ def print_messages(
 ):
     colorize("SUMMARY:", "yellow", True)
     echo(f"- Processed {colorize(total, 'magenta')} accounts.")
+    activated_display = colorize(activated, "yellow" if not activated else "green")
     echo(
         "- Activated"
-        f" {activated if activated == 0 else colorize(activated, 'green')} supported"
-        " users with unconfirmed email accounts."
+        f" {activated_display} supported users with unconfirmed email accounts."
     )
 
     if already_processed > 0:
@@ -343,7 +343,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
         index, user_id, login_id, full_name = user
         result_path, log_path, processed_users = args
 
-        email_status = None
+        status = None
         supported = None
 
         if user_id in processed_users:
@@ -352,8 +352,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
             needs_school_check, message, canvas_user, emails = is_already_active(
                 user, canvas, verbose, index
             )
-            status = "already active"
-            email_status = message
+            status = message
 
             if needs_school_check:
                 is_supported = check_schools(canvas_user, SUB_ACCOUNTS, canvas, verbose)
@@ -369,17 +368,15 @@ def email_main(test, include_activated, verbose, force, clear_processed):
                             emails,
                             log_path,
                         )
-                        email_status = activate_message
-                        status = "activated" if activated else "failed to activate"
+                        status = activate_message
                 else:
                     supported = "N"
                     status = "unsupported"
             elif message == "user not found":
-                supported = "ERROR: user not found"
-                status = "user not found"
+                supported = status = "user not found"
 
         report.at[index, ["email status", "supported school(s)"]] = [
-            email_status,
+            status,
             supported,
         ]
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
@@ -392,9 +389,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
             )
 
             if status == "unsupported":
-                email_status_display = colorize(
-                    f" ({str(email_status).upper()})", color
-                )
+                email_status_display = colorize(f" ({str(message).upper()})", color)
 
             echo(
                 f"- ({(index + 1):,}/{TOTAL}) {user_display}:"
