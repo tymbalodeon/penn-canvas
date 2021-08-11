@@ -135,7 +135,7 @@ def is_already_active(user, canvas, verbose, index):
     try:
         canvas_user = canvas.get_user(user_id)
     except Exception:
-        return False, "user not found"
+        return False, "user not found", None
 
     emails = get_user_emails(canvas_user)
     email = next(emails, None)
@@ -147,21 +147,18 @@ def is_already_active(user, canvas, verbose, index):
             next_email = next(emails, None)
 
             if not next_email:
-                return True, "unconfirmed"
+                return True, "unconfirmed", canvas_user
 
             is_active = get_email_status(next_email)
 
         if is_active:
-            return False, "already active"
+            return False, "already active", None
     else:
-        return True, "not found"
+        return True, "not found", canvas_user
 
 
-def check_schools(user, sub_accounts, canvas, verbose):
-    canvas_user_id = user[1]
-
-    user_id = canvas.get_user(canvas_user_id)
-    user_enrollments = user_id.get_courses()
+def check_schools(canvas_user, sub_accounts, canvas, verbose):
+    user_enrollments = canvas_user.get_courses()
 
     def get_account_id(course):
         try:
@@ -177,9 +174,7 @@ def check_schools(user, sub_accounts, canvas, verbose):
     return bool(fixable_id)
 
 
-def activate_user_email(user, canvas, log_path):
-    canvas_user_id = user[1]
-    canvas_user = canvas.get_user(canvas_user_id)
+def activate_user_email(canvas_user_id, canvas_user, canvas, log_path):
     emails = get_user_emails(canvas_user)
 
     for email in emails:
@@ -348,14 +343,14 @@ def email_main(test, include_activated, verbose, force, clear_processed):
         if user_id in processed_users:
             status = "already processed"
         else:
-            needs_school_check, message = is_already_active(
+            needs_school_check, message, canvas_user = is_already_active(
                 user, canvas, verbose, index
             )
             status = "already active"
             email_status = message
 
             if needs_school_check:
-                is_supported = check_schools(user, SUB_ACCOUNTS, canvas, verbose)
+                is_supported = check_schools(canvas_user, SUB_ACCOUNTS, canvas, verbose)
 
                 if is_supported:
                     supported = "Y"
@@ -363,7 +358,8 @@ def email_main(test, include_activated, verbose, force, clear_processed):
 
                     if message == "unconfirmed":
                         activated, activate_message = activate_user_email(
-                            user,
+                            user[1],
+                            canvas_user,
                             canvas,
                             log_path,
                         )
