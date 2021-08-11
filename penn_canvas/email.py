@@ -132,12 +132,19 @@ def get_email_status(email):
 def is_already_active(user, canvas, verbose, index):
     user_id = user[1]
 
+    canvas_user = None
+    emails = None
+
     try:
         canvas_user = canvas.get_user(user_id)
     except Exception:
-        return False, "user not found", None
+        return False, "user not found", canvas_user, emails
 
-    emails = get_user_emails(canvas_user)
+    try:
+        emails = get_user_emails(canvas_user)
+    except Exception:
+        return True, "error", canvas_user, emails
+
     email = next(emails, None)
 
     if email:
@@ -147,14 +154,14 @@ def is_already_active(user, canvas, verbose, index):
             next_email = next(emails, None)
 
             if not next_email:
-                return True, "unconfirmed", canvas_user
+                return True, "unconfirmed", canvas_user, emails
 
             is_active = get_email_status(next_email)
 
         if is_active:
-            return False, "already active", None
+            return False, "already active", canvas_user, emails
     else:
-        return True, "not found", canvas_user
+        return True, "not found", canvas_user, emails
 
 
 def check_schools(canvas_user, sub_accounts, canvas, verbose):
@@ -174,9 +181,7 @@ def check_schools(canvas_user, sub_accounts, canvas, verbose):
     return bool(fixable_id)
 
 
-def activate_user_email(canvas_user_id, canvas_user, canvas, log_path):
-    emails = get_user_emails(canvas_user)
-
+def activate_user_email(canvas_user_id, canvas_user, emails, log_path):
     for email in emails:
         address = email.address
         user_info = [canvas_user_id, canvas_user.name, address]
@@ -343,7 +348,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
         if user_id in processed_users:
             status = "already processed"
         else:
-            needs_school_check, message, canvas_user = is_already_active(
+            needs_school_check, message, canvas_user, emails = is_already_active(
                 user, canvas, verbose, index
             )
             status = "already active"
@@ -360,7 +365,7 @@ def email_main(test, include_activated, verbose, force, clear_processed):
                         activated, activate_message = activate_user_email(
                             user[1],
                             canvas_user,
-                            canvas,
+                            emails,
                             log_path,
                         )
                         email_status = activate_message
