@@ -462,11 +462,9 @@ def email_main(test, verbose, new, force, clear_processed):
     PROCESSED_PATH = (
         PROCESSED / f"{YEAR}_email_processed_users{'_test' if test else ''}.csv"
     )
-
     PROCESSED_ERRORS_PATH = (
         PROCESSED / f"{YEAR}_email_processed_errors{'_test' if test else ''}.csv"
     )
-
     LOG_STEM = (
         f"{YEAR}_email_log_{TODAY_AS_Y_M_D}{'_test' if test else ''}"
         f"_{datetime.now().strftime('%H_%M_%S')}.csv"
