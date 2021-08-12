@@ -106,7 +106,7 @@ def cleanup_report(report, processed_users, processed_errors, new, start=0):
         already_processed_count = already_processed_count + len(processed_errors)
 
     message = colorize(
-        f"SKIPPING {already_processed_count} PREVIOUSLY PROCESSED"
+        f"SKIPPING {already_processed_count:,} PREVIOUSLY PROCESSED"
         f" {'USER' if already_processed_count == 1 else 'USERS'}...",
         "yellow",
     )
