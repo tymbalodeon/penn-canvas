@@ -177,8 +177,7 @@ def is_already_active(user, canvas, verbose, index):
 
             is_active = get_email_status(next_email)
 
-        if is_active:
-            return "already active", canvas_user, emails
+        return "already active", canvas_user, emails
     else:
         return "not found", canvas_user, emails
 
@@ -228,12 +227,11 @@ def activate_user_email(
 
         is_active = get_email_status(next_email)
 
-    if is_active:
-        log = read_csv(log_path)
-        log.drop(index=log.index[-1:], inplace=True)
-        log.to_csv(log_path, index=False)
+    log = read_csv(log_path)
+    log.drop(index=log.index[-1:], inplace=True)
+    log.to_csv(log_path, index=False)
 
-        return "activated"
+    return "activated"
 
 
 def remove_empty_log(log_path):
@@ -290,9 +288,8 @@ def process_result(result_path, processed_path, new):
     users_not_found_path = RESULTS / f"{result_path.stem}_USERS_NOT_FOUND.csv"
 
     def dynamic_to_csv(path, dataframe, condition):
-        header = not condition
-        mode = "a" if condition else "w"
-        dataframe.to_csv(path, mode=mode, header=header, index=False)
+        mode = "w" if condition else "a"
+        dataframe.to_csv(path, mode=mode, header=condition, index=False)
 
     dynamic_to_csv(activated_path, activated, activated_path.exists())
     dynamic_to_csv(supported_path, supported_errors, new)
@@ -337,27 +334,27 @@ def print_messages(
         f" {activated_display} supported users with unconfirmed email addresses."
     )
 
-    if already_active > 0:
+    if already_active:
         echo(
             f"- Found {colorize(already_active, 'cyan')} supported and unsupported"
             f" {'user' if already_active == 1 else 'users'} with email addresses"
             " already active."
         )
 
-    if supported_not_found > 0:
+    if supported_not_found:
         echo(
             f"- Found {colorize(supported_not_found, 'red')} supported"
             f" {'user' if supported_not_found == 1 else 'users'} with no email address."
         )
 
-    if unsupported > 0:
+    if unsupported:
         echo(
             f"- Found {colorize(unsupported, 'yellow')} unsupported"
             f" {'user' if unsupported == 1 else 'users'} with missing or unconfirmed"
             " email addresses."
         )
 
-    if failed_to_activate > 0:
+    if failed_to_activate:
         message = colorize(
             f"Failed to activate email(s) for {failed_to_activate} supported"
             f" {'user' if failed_to_activate == 1 else 'users'} with (an) unconfirmed"
@@ -370,7 +367,7 @@ def print_messages(
             f" {log_path_display}"
         )
 
-    if user_not_found > 0:
+    if user_not_found:
         message = colorize(
             "Failed to find"
             f" {user_not_found} {'user' if user_not_found == 1 else 'users'}.",
@@ -378,13 +375,13 @@ def print_messages(
         )
         echo(f"- {message}")
 
-    if error_supported > 0:
+    if error_supported:
         echo(
             f"- Encountered an error for {colorize(error_supported, 'red')} supported"
             f" {'user' if error_supported == 1 else 'users'}."
         )
 
-    if error_unsupported > 0:
+    if error_unsupported:
         echo(
             "- Encountered an error for"
             f" {colorize(error_unsupported, 'red')} unsupported"
@@ -465,11 +462,9 @@ def email_main(test, verbose, new, force, clear_processed):
     PROCESSED_PATH = (
         PROCESSED / f"{YEAR}_email_processed_users{'_test' if test else ''}.csv"
     )
-
     PROCESSED_ERRORS_PATH = (
         PROCESSED / f"{YEAR}_email_processed_errors{'_test' if test else ''}.csv"
     )
-
     LOG_STEM = (
         f"{YEAR}_email_log_{TODAY_AS_Y_M_D}{'_test' if test else ''}"
         f"_{datetime.now().strftime('%H_%M_%S')}.csv"
