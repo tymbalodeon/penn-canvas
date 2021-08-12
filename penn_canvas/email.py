@@ -334,27 +334,27 @@ def print_messages(
         f" {activated_display} supported users with unconfirmed email addresses."
     )
 
-    if already_active > 0:
+    if already_active:
         echo(
             f"- Found {colorize(already_active, 'cyan')} supported and unsupported"
             f" {'user' if already_active == 1 else 'users'} with email addresses"
             " already active."
         )
 
-    if supported_not_found > 0:
+    if supported_not_found:
         echo(
             f"- Found {colorize(supported_not_found, 'red')} supported"
             f" {'user' if supported_not_found == 1 else 'users'} with no email address."
         )
 
-    if unsupported > 0:
+    if unsupported:
         echo(
             f"- Found {colorize(unsupported, 'yellow')} unsupported"
             f" {'user' if unsupported == 1 else 'users'} with missing or unconfirmed"
             " email addresses."
         )
 
-    if failed_to_activate > 0:
+    if failed_to_activate:
         message = colorize(
             f"Failed to activate email(s) for {failed_to_activate} supported"
             f" {'user' if failed_to_activate == 1 else 'users'} with (an) unconfirmed"
@@ -367,7 +367,7 @@ def print_messages(
             f" {log_path_display}"
         )
 
-    if user_not_found > 0:
+    if user_not_found:
         message = colorize(
             "Failed to find"
             f" {user_not_found} {'user' if user_not_found == 1 else 'users'}.",
@@ -375,13 +375,13 @@ def print_messages(
         )
         echo(f"- {message}")
 
-    if error_supported > 0:
+    if error_supported:
         echo(
             f"- Encountered an error for {colorize(error_supported, 'red')} supported"
             f" {'user' if error_supported == 1 else 'users'}."
         )
 
-    if error_unsupported > 0:
+    if error_unsupported:
         echo(
             "- Encountered an error for"
             f" {colorize(error_unsupported, 'red')} unsupported"
