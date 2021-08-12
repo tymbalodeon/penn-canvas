@@ -177,8 +177,7 @@ def is_already_active(user, canvas, verbose, index):
 
             is_active = get_email_status(next_email)
 
-        if is_active:
-            return "already active", canvas_user, emails
+        return "already active", canvas_user, emails
     else:
         return "not found", canvas_user, emails
 
@@ -228,12 +227,11 @@ def activate_user_email(
 
         is_active = get_email_status(next_email)
 
-    if is_active:
-        log = read_csv(log_path)
-        log.drop(index=log.index[-1:], inplace=True)
-        log.to_csv(log_path, index=False)
+    log = read_csv(log_path)
+    log.drop(index=log.index[-1:], inplace=True)
+    log.to_csv(log_path, index=False)
 
-        return "activated"
+    return "activated"
 
 
 def remove_empty_log(log_path):
@@ -290,9 +288,8 @@ def process_result(result_path, processed_path, new):
     users_not_found_path = RESULTS / f"{result_path.stem}_USERS_NOT_FOUND.csv"
 
     def dynamic_to_csv(path, dataframe, condition):
-        header = not condition
-        mode = "a" if condition else "w"
-        dataframe.to_csv(path, mode=mode, header=header, index=False)
+        mode = "w" if condition else "a"
+        dataframe.to_csv(path, mode=mode, header=condition, index=False)
 
     dynamic_to_csv(activated_path, activated, activated_path.exists())
     dynamic_to_csv(supported_path, supported_errors, new)
