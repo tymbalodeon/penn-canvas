@@ -204,11 +204,11 @@ def nso(
     ),
 ):
     """
-    Enrolls incoming freshmen into Canvas Groups as part of the 'Thrive at Penn'
-    site.
+    ('NSO' stands for 'New Student Orientation'.) Enrolls incoming freshmen into
+    Canvas Groups as part of the 'Thrive at Penn' site.
 
-    INPUT: An xlsx file (assumes graduation year is in the file name) with
-    the columns [Canvas Course ID | Group Set Name | Group Name | User (Pennkey)]
+    INPUT: An xlsx file (assumes graduation year is in the file name) with the
+    columns [Canvas Course ID | Group Set Name | Group Name | User (Pennkey)]
 
     OUPUT: A csv file listing students who were not successfully added to a
     Group

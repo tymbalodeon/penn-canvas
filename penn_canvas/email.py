@@ -256,7 +256,6 @@ def process_result(result_path, processed_path):
             failed_to_activate,
             error_supported,
             supported_not_found,
-            users_not_found,
         ]
     )
     unsupported_problems = concat(
@@ -264,20 +263,28 @@ def process_result(result_path, processed_path):
             error_unsupported,
             unsupported_not_found,
             unsupported_unconfirmed,
-            users_not_found,
         ]
     )
 
+    activated.drop("index", axis=1, inplace=True)
     supported_problems.drop("index", axis=1, inplace=True)
     unsupported_problems.drop("index", axis=1, inplace=True)
-    activated.drop("index", axis=1, inplace=True)
+    users_not_found.drop("index", axis=1, inplace=True)
+    activated_path = RESULTS / f"{result_path.stem}_ACTIVATED.csv"
     supported_path = RESULTS / f"{result_path.stem}_SUPPORTED_ERROR.csv"
     unsupported_path = RESULTS / f"{result_path.stem}_UNSUPPORTED_ERROR.csv"
-    activated_path = RESULTS / f"{result_path.stem}_ACTIVATED.csv"
+    users_not_found_path = RESULTS / f"{result_path.stem}_USERS_NOT_FOUND.csv"
 
+    activated.to_csv(
+        activated_path, mode=f"{'a' if unsupported_path.exists() else 'w'}", index=False
+    )
     supported_problems.to_csv(supported_path, index=False)
-    unsupported_problems.to_csv(unsupported_path, index=False)
-    activated.to_csv(activated_path, index=False)
+    unsupported_problems.to_csv(
+        unsupported_path,
+        mode=f"{'a' if unsupported_path.exists() else 'w'}",
+        index=False,
+    )
+    users_not_found.to_csv(users_not_found_path, index=False)
 
     remove(result_path)
 
@@ -433,9 +440,7 @@ def email_main(test, verbose, force, clear_processed):
                     [canvas_user_id, login_id, full_name, status, supported]
                 )
 
-    RESULT_PATH = (
-        RESULTS / f"{YEAR}_email_result_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
-    )
+    RESULT_PATH = RESULTS / f"{YEAR}_email_result{'_test' if test else ''}.csv"
     PROCESSED_PATH = (
         PROCESSED / f"{YEAR}_email_processed_users{'_test' if test else ''}.csv"
     )
