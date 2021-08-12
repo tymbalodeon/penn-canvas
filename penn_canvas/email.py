@@ -290,8 +290,9 @@ def process_result(result_path, processed_path, new):
     users_not_found_path = RESULTS / f"{result_path.stem}_USERS_NOT_FOUND.csv"
 
     def dynamic_to_csv(path, dataframe, condition):
+        header = not condition
         mode = "a" if condition else "w"
-        dataframe.to_csv(path, mode=mode, header=condition, index=False)
+        dataframe.to_csv(path, mode=mode, header=header, index=False)
 
     dynamic_to_csv(activated_path, activated, activated_path.exists())
     dynamic_to_csv(supported_path, supported_errors, new)
@@ -300,7 +301,7 @@ def process_result(result_path, processed_path, new):
 
     if new:
         for path in [supported_path, users_not_found_path]:
-            read_csv(path).drop_duplicates(inplace=True).to_csv(path, index=False)
+            read_csv(path).drop_duplicates().to_csv(path, index=False)
 
     remove(result_path)
 
