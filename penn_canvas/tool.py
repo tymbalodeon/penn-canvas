@@ -15,6 +15,8 @@ from .helpers import (
     get_command_paths,
     get_start_index,
     make_csv_paths,
+    handle_clear_processed,
+    get_processed,
     make_skip_message,
     toggle_progress_bar,
 )
@@ -114,7 +116,9 @@ def find_course_report(enable):
             return TODAYS_REPORTS, report_display
 
 
-def cleanup_reports(reports, report_display, enable, processed_courses, start=0):
+def cleanup_reports(
+    reports, report_display, enable, processed_courses, processed_errors, new, start=0
+):
     echo(f") Preparing {report_display}...")
 
     def cleanup_report(report):
@@ -144,6 +148,12 @@ def cleanup_reports(reports, report_display, enable, processed_courses, start=0)
         data_frame.reset_index(drop=True, inplace=True)
         already_processed_count = len(processed_courses)
 
+        if new:
+            data_frame = data_frame[
+                ~data_frame["canvas_course_id"].isin(processed_errors)
+            ]
+            already_processed_count = already_processed_count + len(processed_errors)
+
         if already_processed_count:
             message = colorize(
                 f"SKIPPING {already_processed_count:,} PREVIOUSLY PROCESSED"
@@ -168,17 +178,6 @@ def cleanup_reports(reports, report_display, enable, processed_courses, start=0)
     return data_frame, f"{total:,}", terms
 
 
-def get_processed_courses(processed_path):
-    if processed_path.is_file():
-        result = read_csv(processed_path, dtype=str)
-        result = result.astype("string", copy=False, errors="ignore")
-        return result["canvas_course_id"].tolist()
-    else:
-        make_csv_paths(PROCESSED, processed_path, ["canvas_course_id"])
-
-        return list()
-
-
 def process_result(tool, terms, enable, result_path):
     result = read_csv(result_path)
     ENABLED = result[result["tool status"] == "enabled"]
@@ -194,6 +193,7 @@ def process_result(tool, terms, enable, result_path):
         & (result["tool status"] != "not found")
         & (result["tool status"] != "not supported")
     ]
+
     ENABLED_COUNT = len(ENABLED)
     ALREADY_ENABLED_COUNT = len(ALREADY_ENABLED)
     DISABLED_COUNT = len(DISABLED)
@@ -345,7 +345,7 @@ def print_messages(
     colorize("FINISHED", "yellow", True)
 
 
-def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
+def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
     def check_tool_usage(course, canvas, verbose, args):
         if len(args) == 4:
             tool, use_id, enable, PROCESSED_COURSES = args
@@ -425,6 +425,9 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
         if enable and tool_status in {"already enabled", "enabled", "not supported"}:
             with open(PROCESSED_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow([canvas_course_id])
+        elif canvas_course_id not in PROCESSED_ERRORS:
+            with open(PROCESSED_ERRORS_PATH, "a+", newline="") as processed_file:
+                writer(processed_file).writerow([canvas_course_id])
 
     tool = check_tool(tool)
     REPORTS, report_display = find_course_report(enable)
@@ -442,25 +445,18 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
             f"{'_test' if test else ''}.csv"
         )
         PROCESSED_PATH = PROCESSED / PROCESSED_STEM
-
-        if clear_processed:
-            proceed = confirm(
-                "You have asked to clear the list of courses already processed."
-                " This list makes subsequent runs of the command faster. Are you sure"
-                " you want to do this?"
-            )
-        else:
-            proceed = False
-
-        if proceed:
-            echo(") Clearing list of courses already processed...")
-
-            if PROCESSED_PATH.exists():
-                remove(PROCESSED_PATH)
-        else:
-            echo(") Finding courses already processed...")
-
-        PROCESSED_COURSES = get_processed_courses(PROCESSED_PATH)
+        PROCESSED_ERRORS_STEM = (
+            f"{tool.replace(' ', '_')}_tool_enable_processed_errors"
+            f"{'_test' if test else ''}.csv"
+        )
+        PROCESSED_ERRORS_PATH = PROCESSED / PROCESSED_ERRORS_STEM
+        handle_clear_processed(
+            clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH], "courses"
+        )
+        PROCESSED_COURSES = get_processed(PROCESSED, PROCESSED_PATH, "canvas course id")
+        PROCESSED_ERRORS = get_processed(
+            PROCESSED, PROCESSED_ERRORS_PATH, "canvas course id"
+        )
     elif not force:
         PREVIOUS_RESULTS = [result_file for result_file in Path(RESULTS).glob("*.csv")]
         PREVIOUS_RESULTS_FOR_TERM = dict()
@@ -502,7 +498,7 @@ def tool_main(tool, use_id, enable, test, verbose, force, clear_processed):
                 raise Exit()
 
     report, total, terms = cleanup_reports(
-        REPORTS, report_display, enable, PROCESSED_COURSES, START
+        REPORTS, report_display, enable, PROCESSED_COURSES, PROCESSED_ERRORS, new, START
     )
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_skip_message(START, "course")

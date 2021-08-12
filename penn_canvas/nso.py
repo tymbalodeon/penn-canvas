@@ -14,7 +14,7 @@ from .helpers import (
     get_canvas,
     get_command_paths,
     get_data_warehouse_config,
-    get_processed_users,
+    get_processed,
     get_start_index,
     handle_clear_processed,
     make_csv_paths,
@@ -442,7 +442,7 @@ def nso_main(test, verbose, force, clear_processed):
     START = get_start_index(force, RESULT_PATH)
     data, TOTAL = cleanup_data(data, START)
     handle_clear_processed(clear_processed, PROCESSED_PATH)
-    PROCESSED_USERS = get_processed_users(PROCESSED, PROCESSED_PATH)
+    PROCESSED_USERS = get_processed(PROCESSED, PROCESSED_PATH)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_skip_message(START, "user")
     INSTANCE = "test" if test else "prod"

@@ -312,7 +312,7 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
         echo(f") Finding {item_plural} already processed...")
 
 
-def get_processed_users(processed_directory, processed_path, columns="pennkey"):
+def get_processed(processed_directory, processed_path, columns="pennkey"):
     if type(columns) != list:
         columns = [columns]
 
@@ -338,7 +338,7 @@ def get_canvas(instance="test"):
         access_token = production
     elif instance == "open":
         url = CANVAS_URL_OPEN
-        access_token = open_canvas
+        access_tokn = open_canvas
 
     return Canvas(url, access_token)
 

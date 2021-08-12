@@ -306,6 +306,14 @@ def tool(
     verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
     ),
+    new: bool = Option(
+        False,
+        "--new",
+        help=(
+            "Process only newly added courses, skipping previous courses that"
+            " encountered errors."
+        ),
+    ),
     force: bool = Option(
         False,
         "--force",
@@ -346,4 +354,4 @@ def tool(
     output file.
     """
 
-    tool_main(tool, use_id, enable, test, verbose, force, clear_processed)
+    tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed)

@@ -13,7 +13,7 @@ from .helpers import (
     colorize,
     get_canvas,
     get_command_paths,
-    get_processed_users,
+    get_processed,
     get_start_index,
     handle_clear_processed,
     make_csv_paths,
@@ -287,9 +287,9 @@ def process_result(result_path, processed_path, new):
     unsupported_path = RESULTS / f"{result_path.stem}_UNSUPPORTED_ERROR.csv"
     users_not_found_path = RESULTS / f"{result_path.stem}_USERS_NOT_FOUND.csv"
 
-    def dynamic_to_csv(path, dataframe, condition):
+    def dynamic_to_csv(path, data_frame, condition):
         mode = "w" if condition else "a"
-        dataframe.to_csv(path, mode=mode, header=condition, index=False)
+        data_frame.to_csv(path, mode=mode, header=condition, index=False)
 
     dynamic_to_csv(activated_path, activated, activated_path.exists())
     dynamic_to_csv(supported_path, supported_errors, new)
@@ -447,7 +447,7 @@ def email_main(test, verbose, new, force, clear_processed):
                 f" {status_display}{unsupported_display}"
             )
 
-        if status == "activated" or supported == "N" or status == "already active":
+        if status in {"activated", "already active"} or supported == "N":
             with open(PROCESSED_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow(
                     [canvas_user_id, login_id, full_name, status, supported]
@@ -471,8 +471,8 @@ def email_main(test, verbose, new, force, clear_processed):
     )
     handle_clear_processed(clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH])
     report = find_users_report()
-    PROCESSED_USERS = get_processed_users(PROCESSED, PROCESSED_PATH, HEADERS)
-    PROCESSED_ERRORS = get_processed_users(PROCESSED, PROCESSED_ERRORS_PATH, HEADERS)
+    PROCESSED_USERS = get_processed(PROCESSED, PROCESSED_PATH, HEADERS)
+    PROCESSED_ERRORS = get_processed(PROCESSED, PROCESSED_ERRORS_PATH, HEADERS)
     START = get_start_index(force, RESULT_PATH, RESULTS)
     report, TOTAL = cleanup_report(
         report, PROCESSED_USERS, PROCESSED_ERRORS, new, START
