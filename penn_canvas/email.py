@@ -90,7 +90,7 @@ def find_users_report():
             return TODAYS_REPORT
 
 
-def cleanup_report(report, processed_users, start=0):
+def cleanup_report(report, processed_users, processed_errors, new, start=0):
     echo(") Preparing report...")
 
     data = read_csv(report)
@@ -99,6 +99,10 @@ def cleanup_report(report, processed_users, start=0):
     data.sort_values("canvas_user_id", ascending=False, inplace=True, ignore_index=True)
     data = data.astype("string", copy=False, errors="ignore")
     data = data[~data["canvas_user_id"].isin(processed_users)]
+
+    if new:
+        data = data[~data["canvas_user_id"].isin(processed_errors)]
+
     data.reset_index(drop=True, inplace=True)
     TOTAL = len(data.index)
     data = data.loc[start:TOTAL, :]
@@ -237,7 +241,7 @@ def process_result(result_path, processed_path):
     failed_to_activate = supported[supported["email status"] == "failed to activate"]
     supported_not_found = supported[supported["email status"] == "not found"]
     error_supported = supported[supported["email status"] == "error"]
-    users_not_found = result[result["email status"] == "user not found"]
+    users_not_found = result[result["email status"] == "user not found"].copy()
     error_unsupported = unsupported[unsupported["email status"] == "error"]
     unsupported_not_found = unsupported[unsupported["email status"] == "not found"]
     unsupported_unconfirmed = unsupported[unsupported["email status"] == "unconfirmed"]
@@ -377,10 +381,9 @@ def print_messages(
     colorize("FINISHED", "yellow", True)
 
 
-def email_main(test, verbose, force, clear_processed):
+def email_main(test, verbose, new, force, clear_processed):
     def check_and_activate_emails(user, canvas, verbose, args):
         index, canvas_user_id, login_id, full_name = user
-        result_path, log_path, processed_users = args
 
         status = None
         supported = None
@@ -401,7 +404,7 @@ def email_main(test, verbose, force, clear_processed):
                         full_name,
                         canvas_user,
                         emails,
-                        log_path,
+                        LOG_PATH,
                     )
                     status = activated
             else:
@@ -439,24 +442,36 @@ def email_main(test, verbose, force, clear_processed):
                 writer(processed_file).writerow(
                     [canvas_user_id, login_id, full_name, status, supported]
                 )
+        else:
+            with open(PROCESSED_ERRORS_PATH, "a+", newline="") as processed_file:
+                writer(processed_file).writerow(
+                    [canvas_user_id, login_id, full_name, status, supported]
+                )
 
     RESULT_PATH = RESULTS / f"{YEAR}_email_result{'_test' if test else ''}.csv"
     PROCESSED_PATH = (
         PROCESSED / f"{YEAR}_email_processed_users{'_test' if test else ''}.csv"
     )
+
+    PROCESSED_ERRORS_PATH = (
+        PROCESSED / f"{YEAR}_email_processed_errors{'_test' if test else ''}.csv"
+    )
+
     LOG_STEM = (
         f"{YEAR}_email_log_{TODAY_AS_Y_M_D}{'_test' if test else ''}"
         f"_{datetime.now().strftime('%H_%M_%S')}.csv"
     )
     report = find_users_report()
     PROCESSED_USERS = get_processed_users(PROCESSED, PROCESSED_PATH, HEADERS)
+    PROCESSED_ERRORS = get_processed_users(PROCESSED, PROCESSED_ERRORS_PATH, HEADERS)
     START = get_start_index(force, RESULT_PATH, RESULTS)
-    report, TOTAL = cleanup_report(report, PROCESSED_USERS, START)
-    handle_clear_processed(clear_processed, PROCESSED_PATH)
+    report, TOTAL = cleanup_report(
+        report, PROCESSED_USERS, PROCESSED_ERRORS, new, START
+    )
+    handle_clear_processed(clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH])
     make_csv_paths(RESULTS, RESULT_PATH, INDEX_HEADERS)
     LOG_PATH = LOGS / LOG_STEM
     make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
-    ARGS = RESULT_PATH, LOG_PATH, PROCESSED_USERS
     make_skip_message(START, "user")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
@@ -475,7 +490,7 @@ def email_main(test, verbose, force, clear_processed):
 
     echo(") Processing users...")
 
-    toggle_progress_bar(report, check_and_activate_emails, CANVAS, verbose, args=ARGS)
+    toggle_progress_bar(report, check_and_activate_emails, CANVAS, verbose)
     remove_empty_log(LOG_PATH)
     (
         activated,

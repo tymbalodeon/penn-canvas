@@ -39,13 +39,13 @@ If using the "nso" command, you will also need to set up a connection to Penn's 
 3. Acquire the Courseware team's Data Warehouse username and password and store in Penn Canvas' config file (see below)  
 4. Make sure you are connected to Penn's [GlobalProtect VPN](https://www.isc.upenn.edu/how-to/university-vpn-getting-started-guide)
 
-#### CLI config generator
+#### Config 
 
-A config file can be generated for you by running `penn-canvas config`. You will be prompted to input values for each item you wish to add (you will be given a chance to skip items you are not using). Input will not be displayed on screen. If you try to run another command without a config file, you will also be prompted to generate one before proceeding.
+##### Automatic generator
 
-If you need to quickly check the values of your config file, you can run `penn-canvas config --view`, which will display all the current values on screen (you will be asked to confirm that you wish to display sensitive information on screen).
+A config file can be generated for you by running `penn-canvas config`. You will be prompted to input values for each item you wish to add (you will be given a chance to skip items you are not using them). Input will not be displayed on screen. If you try to run another command without a config file, you will also be prompted to generate one before proceeding.
 
-#### Manual config creation
+##### Manual creation
 
 You may also create your config file manually. Penn-Canvas expects the location to be "$HOME/.config/penn-canvas" and the contents to be (fields may be left blank):
 
@@ -55,6 +55,10 @@ You may also create your config file manually. Penn-Canvas expects the location 
 > DATA_WAREHOUSE_USER=your-data-warehouse-user-name-here  
 > DATA_WAREHOUSE_PASSWORD=your-data-warehouse-password-here  
 > DATA_WAREHOUSE_DSN=your-data-warehouse-dsn-here
+
+##### View
+
+If you need to quickly check the values of your config file, you can run `penn-canvas config --view`, which will display all the current values on screen (you will be asked to confirm that you wish to display sensitive information on screen).
 
 ## Usage
 

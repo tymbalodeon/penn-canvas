@@ -133,6 +133,14 @@ def email(
     verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
     ),
+    new: bool = Option(
+        False,
+        "--new",
+        help=(
+            "Process only newly added users, skipping previous users that encountered"
+            " errors."
+        ),
+    ),
     force: bool = Option(
         False,
         "--force",
@@ -173,7 +181,7 @@ def email(
     NOTE: Input filename must include the current date in order to be accepted.
     """
 
-    email_main(test, verbose, force, clear_processed)
+    email_main(test, verbose, new, force, clear_processed)
 
 
 @app.command()

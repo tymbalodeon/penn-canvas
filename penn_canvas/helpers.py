@@ -288,6 +288,9 @@ def make_skip_message(start, item):
 
 
 def handle_clear_processed(clear_processed, processed_path, item_plural="users"):
+    if type(processed_path) != list:
+        processed_path = [processed_path]
+
     if clear_processed:
         message = colorize(
             f"You have asked to clear the list of {item_plural} already processed."
@@ -302,8 +305,9 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
     if proceed:
         echo(f") Clearing list of {item_plural} already processed...")
 
-        if processed_path.exists():
-            remove(processed_path)
+        for path in processed_path:
+            if path.exists():
+                remove(path)
     else:
         echo(f") Finding {item_plural} already processed...")
 
@@ -313,8 +317,7 @@ def get_processed_users(processed_directory, processed_path, column="pennkey"):
         column = [column]
 
     if processed_path.is_file():
-        result = read_csv(processed_path)
-        result = result.astype("string", copy=False, errors="ignore")
+        result = read_csv(processed_path, dtype=str)
 
         return result[column[0]].tolist()
     else:
@@ -358,7 +361,7 @@ def colorize(text, color="magenta", echo=False):
         return style(text, fg=typer_colors[color])
 
 
-def toggle_progress_bar(data, callback, canvas, verbose, args):
+def toggle_progress_bar(data, callback, canvas, verbose, args=None):
     def verbose_mode():
         for item in data.itertuples():
             callback(item, canvas, verbose, args)
