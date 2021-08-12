@@ -99,9 +99,18 @@ def cleanup_report(report, processed_users, processed_errors, new, start=0):
     data.sort_values("canvas_user_id", ascending=False, inplace=True, ignore_index=True)
     data = data.astype("string", copy=False, errors="ignore")
     data = data[~data["canvas_user_id"].isin(processed_users)]
+    already_processed_count = len(processed_users)
 
     if new:
         data = data[~data["canvas_user_id"].isin(processed_errors)]
+        already_processed_count = already_processed_count + len(processed_errors)
+
+    message = colorize(
+        f"SKIPPING {already_processed_count} PREVIOUSLY PROCESSED"
+        f" {'USER' if already_processed_count == 1 else 'USERS'}...",
+        "yellow",
+    )
+    echo(f") {message}")
 
     data.reset_index(drop=True, inplace=True)
     TOTAL = len(data.index)
@@ -441,7 +450,7 @@ def email_main(test, verbose, new, force, clear_processed):
                 writer(processed_file).writerow(
                     [canvas_user_id, login_id, full_name, status, supported]
                 )
-        else:
+        elif canvas_user_id not in PROCESSED_ERRORS:
             with open(PROCESSED_ERRORS_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow(
                     [canvas_user_id, login_id, full_name, status, supported]
