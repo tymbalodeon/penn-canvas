@@ -279,15 +279,14 @@ def process_result(result_path, processed_path):
     unsupported_path = RESULTS / f"{result_path.stem}_UNSUPPORTED_ERROR.csv"
     users_not_found_path = RESULTS / f"{result_path.stem}_USERS_NOT_FOUND.csv"
 
-    activated.to_csv(
-        activated_path, mode=f"{'a' if unsupported_path.exists() else 'w'}", index=False
-    )
+    def dynamic_to_csv(path, dataframe):
+        exists = path.exists()
+        mode = "a" if path.exists() else "w"
+        dataframe.to_csv(path, mode=mode, header=exists, index=False)
+
+    dynamic_to_csv(activated_path, activated)
     supported_problems.to_csv(supported_path, index=False)
-    unsupported_problems.to_csv(
-        unsupported_path,
-        mode=f"{'a' if unsupported_path.exists() else 'w'}",
-        index=False,
-    )
+    dynamic_to_csv(unsupported_path, unsupported_problems)
     users_not_found.to_csv(users_not_found_path, index=False)
 
     remove(result_path)
