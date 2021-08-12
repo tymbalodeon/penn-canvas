@@ -105,12 +105,13 @@ def cleanup_report(report, processed_users, processed_errors, new, start=0):
         data = data[~data["canvas_user_id"].isin(processed_errors)]
         already_processed_count = already_processed_count + len(processed_errors)
 
-    message = colorize(
-        f"SKIPPING {already_processed_count:,} PREVIOUSLY PROCESSED"
-        f" {'USER' if already_processed_count == 1 else 'USERS'}...",
-        "yellow",
-    )
-    echo(f") {message}")
+    if already_processed_count:
+        message = colorize(
+            f"SKIPPING {already_processed_count:,} PREVIOUSLY PROCESSED"
+            f" {'USER' if already_processed_count == 1 else 'USERS'}...",
+            "yellow",
+        )
+        echo(f") {message}")
 
     data.reset_index(drop=True, inplace=True)
     TOTAL = len(data.index)
