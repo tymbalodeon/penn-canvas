@@ -312,16 +312,16 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
         echo(f") Finding {item_plural} already processed...")
 
 
-def get_processed_users(processed_directory, processed_path, column="pennkey"):
-    if type(column) != list:
-        column = [column]
+def get_processed_users(processed_directory, processed_path, columns="pennkey"):
+    if type(columns) != list:
+        columns = [columns]
 
     if processed_path.is_file():
         result = read_csv(processed_path, dtype=str)
 
-        return result[column[0]].tolist()
+        return result[columns[0]].tolist()
     else:
-        make_csv_paths(processed_directory, processed_path, column)
+        make_csv_paths(processed_directory, processed_path, columns)
 
         return list()
 

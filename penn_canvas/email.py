@@ -461,6 +461,7 @@ def email_main(test, verbose, new, force, clear_processed):
         f"{YEAR}_email_log_{TODAY_AS_Y_M_D}{'_test' if test else ''}"
         f"_{datetime.now().strftime('%H_%M_%S')}.csv"
     )
+    handle_clear_processed(clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH])
     report = find_users_report()
     PROCESSED_USERS = get_processed_users(PROCESSED, PROCESSED_PATH, HEADERS)
     PROCESSED_ERRORS = get_processed_users(PROCESSED, PROCESSED_ERRORS_PATH, HEADERS)
@@ -468,7 +469,6 @@ def email_main(test, verbose, new, force, clear_processed):
     report, TOTAL = cleanup_report(
         report, PROCESSED_USERS, PROCESSED_ERRORS, new, START
     )
-    handle_clear_processed(clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH])
     make_csv_paths(RESULTS, RESULT_PATH, INDEX_HEADERS)
     LOG_PATH = LOGS / LOG_STEM
     make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
