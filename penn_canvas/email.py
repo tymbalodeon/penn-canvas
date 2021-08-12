@@ -241,7 +241,7 @@ def remove_empty_log(log_path):
         remove(log_path)
 
 
-def process_result(result_path, processed_path):
+def process_result(result_path, processed_path, new):
     result = read_csv(result_path)
 
     supported = result[result["supported"] == "Y"]
@@ -264,14 +264,14 @@ def process_result(result_path, processed_path):
     users_not_found_count = len(users_not_found.index)
     error_unsupported_count = len(error_unsupported.index)
 
-    supported_problems = concat(
+    supported_errors = concat(
         [
             failed_to_activate,
             error_supported,
             supported_not_found,
         ]
     )
-    unsupported_problems = concat(
+    unsupported_errors = concat(
         [
             error_unsupported,
             unsupported_not_found,
@@ -280,23 +280,26 @@ def process_result(result_path, processed_path):
     )
 
     activated.drop("index", axis=1, inplace=True)
-    supported_problems.drop("index", axis=1, inplace=True)
-    unsupported_problems.drop("index", axis=1, inplace=True)
+    supported_errors.drop("index", axis=1, inplace=True)
+    unsupported_errors.drop("index", axis=1, inplace=True)
     users_not_found.drop("index", axis=1, inplace=True)
     activated_path = RESULTS / f"{result_path.stem}_ACTIVATED.csv"
     supported_path = RESULTS / f"{result_path.stem}_SUPPORTED_ERROR.csv"
     unsupported_path = RESULTS / f"{result_path.stem}_UNSUPPORTED_ERROR.csv"
     users_not_found_path = RESULTS / f"{result_path.stem}_USERS_NOT_FOUND.csv"
 
-    def dynamic_to_csv(path, dataframe):
-        exists = path.exists()
-        mode = "a" if path.exists() else "w"
-        dataframe.to_csv(path, mode=mode, header=exists, index=False)
+    def dynamic_to_csv(path, dataframe, condition):
+        mode = "a" if condition else "w"
+        dataframe.to_csv(path, mode=mode, header=condition, index=False)
 
-    dynamic_to_csv(activated_path, activated)
-    supported_problems.to_csv(supported_path, index=False)
-    dynamic_to_csv(unsupported_path, unsupported_problems)
-    users_not_found.to_csv(users_not_found_path, index=False)
+    dynamic_to_csv(activated_path, activated, activated_path.exists())
+    dynamic_to_csv(supported_path, supported_errors, new)
+    dynamic_to_csv(unsupported_path, unsupported_errors, unsupported_path.exists())
+    dynamic_to_csv(users_not_found_path, users_not_found, new)
+
+    if new:
+        for path in [supported_path, users_not_found_path]:
+            read_csv(path).drop_duplicates(inplace=True).to_csv(path, index=False)
 
     remove(result_path)
 
@@ -509,7 +512,7 @@ def email_main(test, verbose, new, force, clear_processed):
         unsupported,
         supported_not_found,
         user_not_found,
-    ) = process_result(RESULT_PATH, PROCESSED_PATH)
+    ) = process_result(RESULT_PATH, PROCESSED_PATH, new)
     print_messages(
         TOTAL,
         activated,
