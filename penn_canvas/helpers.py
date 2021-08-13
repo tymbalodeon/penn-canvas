@@ -283,7 +283,7 @@ def make_skip_message(start, item):
     else:
         item = f"{item.upper()}S"
 
-    message = colorize(f"SKIPPING {start} PREVIOUSLY PROCESSED {item}...", "yellow")
+    message = colorize(f"SKIPPING {start;,} PREVIOUSLY PROCESSED {item}...", "yellow")
     echo(f") {message}")
 
 

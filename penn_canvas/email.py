@@ -247,6 +247,7 @@ def process_result(result_path, processed_path, new):
     supported = result[result["supported"] == "Y"]
     unsupported = result[result["supported"] == "N"]
     activated = supported[supported["email status"] == "activated"].copy()
+    already_active = result[result["email status"] == "already active"]
     failed_to_activate = supported[supported["email status"] == "failed to activate"]
     supported_not_found = supported[supported["email status"] == "not found"]
     error_supported = supported[supported["email status"] == "error"]
@@ -254,15 +255,6 @@ def process_result(result_path, processed_path, new):
     error_unsupported = unsupported[unsupported["email status"] == "error"]
     unsupported_not_found = unsupported[unsupported["email status"] == "not found"]
     unsupported_unconfirmed = unsupported[unsupported["email status"] == "unconfirmed"]
-
-    already_active_count = len(result[result["email status"] == "already active"].index)
-    unsupported_count = len(unsupported.index)
-    activated_count = len(activated.index)
-    failed_to_activate_count = len(failed_to_activate.index)
-    supported_not_found_count = len(supported_not_found.index)
-    error_supported_count = len(error_supported.index)
-    users_not_found_count = len(users_not_found.index)
-    error_unsupported_count = len(error_unsupported.index)
 
     supported_errors = concat(
         [
@@ -302,14 +294,14 @@ def process_result(result_path, processed_path, new):
     remove(result_path)
 
     return (
-        activated_count,
-        already_active_count,
-        error_supported_count,
-        error_unsupported_count,
-        failed_to_activate_count,
-        unsupported_count,
-        supported_not_found_count,
-        users_not_found_count,
+        len(activated.index),
+        len(already_active.index),
+        len(error_supported.index),
+        len(error_unsupported.index),
+        len(failed_to_activate.index),
+        len(unsupported.index),
+        len(supported_not_found.index),
+        len(users_not_found.index),
     )
 
 
@@ -319,11 +311,11 @@ def print_messages(
     already_active,
     error_supported,
     error_unsupported,
-    supported_not_found,
-    unsupported,
     failed_to_activate,
-    log_path,
+    unsupported,
+    supported_not_found,
     user_not_found,
+    log_path,
 ):
     colorize("SUMMARY:", "yellow", True)
     echo(f"- Processed {colorize(total, 'magenta')} accounts.")
@@ -522,9 +514,9 @@ def email_main(test, verbose, new, force, clear_processed):
         already_active,
         error_supported,
         error_unsupported,
-        supported_not_found,
-        unsupported,
         failed_to_activate,
-        LOG_PATH,
+        unsupported,
+        supported_not_found,
         user_not_found,
+        LOG_PATH,
     )

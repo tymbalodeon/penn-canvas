@@ -200,13 +200,6 @@ def process_result(tool, terms, enable, result_path, new):
         & (result["tool status"] != "unsupported")
     ]
 
-    enabled_count = len(enabled)
-    already_enabled_count = len(already_enabled)
-    disabled_count = len(disabled)
-    not_found_count = len(not_found)
-    unsupported_count = len(unsupported)
-    error_count = len(error)
-
     if enable:
         enabled_path = RESULTS / f"{result_path.stem}_ENABLED.csv"
         enabled = enabled[["canvas course id", "course id"]]
@@ -264,12 +257,12 @@ def process_result(tool, terms, enable, result_path, new):
     remove(result_path)
 
     return (
-        enabled_count,
-        already_enabled_count,
-        disabled_count,
-        not_found_count,
-        unsupported_count,
-        error_count,
+        len(enabled),
+        len(already_enabled),
+        len(disabled),
+        len(not_found),
+        len(unsupported),
+        len(error),
         result_path,
     )
 
