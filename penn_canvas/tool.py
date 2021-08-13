@@ -426,7 +426,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
         elif enable and canvas_course_id not in PROCESSED_ERRORS:
             if canvas_course_id in PROCESSED_ERRORS:
                 processed_errors_csv = read_csv(PROCESSED_ERRORS_PATH)
-                processed_errors_csv[
+                rocessed_errors_csv = processed_errors_csv[
                     processed_errors_csv["canvas user id"] != canvas_course_id
                 ]
                 processed_errors_csv.to_csv(PROCESSED_ERRORS_PATH, index=False)
