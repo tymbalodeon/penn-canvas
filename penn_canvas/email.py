@@ -283,21 +283,23 @@ def process_result(result_path, processed_path, new):
     unsupported_errors.drop("index", axis=1, inplace=True)
     users_not_found.drop("index", axis=1, inplace=True)
     activated_path = RESULTS / f"{result_path.stem}_ACTIVATED.csv"
-    supported_path = RESULTS / f"{result_path.stem}_SUPPORTED_ERROR.csv"
-    unsupported_path = RESULTS / f"{result_path.stem}_UNSUPPORTED_ERROR.csv"
+    supported_errors_path = RESULTS / f"{result_path.stem}_SUPPORTED_ERROR.csv"
+    unsupported_errors_path = RESULTS / f"{result_path.stem}_UNSUPPORTED_ERROR.csv"
     users_not_found_path = RESULTS / f"{result_path.stem}_USERS_NOT_FOUND.csv"
 
     def dynamic_to_csv(path, data_frame, condition):
-        mode = "w" if condition else "a"
-        data_frame.to_csv(path, mode=mode, header=condition, index=False)
+        mode = "a" if condition else "w"
+        data_frame.to_csv(path, mode=mode, header=not condition, index=False)
 
     dynamic_to_csv(activated_path, activated, activated_path.exists())
-    dynamic_to_csv(supported_path, supported_errors, new)
-    dynamic_to_csv(unsupported_path, unsupported_errors, unsupported_path.exists())
+    dynamic_to_csv(supported_errors_path, supported_errors, new)
+    dynamic_to_csv(
+        unsupported_errors_path, unsupported_errors, unsupported_errors_path.exists()
+    )
     dynamic_to_csv(users_not_found_path, users_not_found, new)
 
     if new:
-        for path in [supported_path, users_not_found_path]:
+        for path in [supported_errors_path, users_not_found_path]:
             read_csv(path).drop_duplicates().to_csv(path, index=False)
 
     remove(result_path)
