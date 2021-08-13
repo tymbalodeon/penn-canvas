@@ -361,6 +361,11 @@ def colorize(text, color="magenta", echo=False):
         return style(text, fg=typer_colors[color])
 
 
+def dynamic_to_csv(path, data_frame, condition):
+    mode = "a" if condition else "w"
+    data_frame.to_csv(path, mode=mode, header=not condition, index=False)
+
+
 def toggle_progress_bar(data, callback, canvas, verbose, args=None):
     def verbose_mode():
         for item in data.itertuples():

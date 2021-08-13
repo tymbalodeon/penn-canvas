@@ -12,6 +12,7 @@ from .helpers import (
     YEAR,
     colorize,
     get_canvas,
+    dynamic_to_csv,
     get_command_paths,
     get_start_index,
     make_csv_paths,
@@ -184,7 +185,7 @@ def cleanup_reports(
     return data_frame, f"{total:,}", terms
 
 
-def process_result(tool, terms, enable, result_path):
+def process_result(tool, terms, enable, result_path, new):
     result = read_csv(result_path)
     enabled = result[result["tool status"] == "enabled"]
     already_enabled = result[result["tool status"] == "already enabled"]
@@ -209,35 +210,56 @@ def process_result(tool, terms, enable, result_path):
     if enable:
         enabled_path = RESULTS / f"{result_path.stem}_ENABLED.csv"
         enabled = enabled[["canvas course id", "course id"]]
-        enabled.to_csv(enabled_path, index=False)
+        dynamic_to_csv(enabled_path, enabled, enabled_path.exists())
         error_result = concat([error, not_found])
-        error_result = error_result[["canvas course id", "course id"]]
+        error_result.rename(
+            columns={
+                "tool status": "error",
+            },
+            inplace=True,
+        )
+        error_result = error_result[["canvas course id", "course id", "error"]]
         error_path = RESULTS / f"{result_path.stem}_ERROR.csv"
-        error_result.to_csv(error_path, index=False)
+        dynamic_to_csv(error_path, error_result, new)
+
+        if error_result.empty and not new:
+            with open(error_path, "w", newline="") as result:
+                writer(result).writerow(["canvas course id", "course id", "error"])
     else:
-        result = concat([enabled, not_found, error])
-
-        if error_count:
-            result["tool status"] = result["tool status"].apply(
-                lambda tool_status: None if tool_status == "enabled" else tool_status
-            )
-            result.rename(
-                columns={
-                    "tool status": "error",
-                },
-                inplace=True,
-            )
-            result = result[["term id", "canvas course id", "course id", "error"]]
-        else:
-            result = result[["term id", "canvas course id", "course id"]]
-
-        result = result.groupby(
+        enabled_path = (
+            RESULTS
+            / f"{'_'.join(terms).replace('/', '')}_{result_path.stem}_REPORT_ENABLED.csv"
+        )
+        enabled = enabled[["term id", "canvas course id", "course id"]]
+        enabled = enabled.groupby(
             ["canvas course id", "term id"], group_keys=False
         ).apply(DataFrame.sort_values, "course id")
-        final_path = (
-            RESULTS / f"{'_'.join(terms).replace('/', '')}_{result_path.stem}.csv"
+        enabled.to_csv(enabled_path, index=False)
+        error_path = (
+            RESULTS
+            / f"{'_'.join(terms).replace('/', '')}_{result_path.stem}_REPORT_ERROR.csv"
         )
-        result.to_csv(final_path, index=False)
+        error_result = concat([error, not_found])
+        error_result.rename(
+            columns={
+                "tool status": "error",
+            },
+            inplace=True,
+        )
+        error_result = error_result[
+            ["term id", "canvas course id", "course id", "error"]
+        ]
+        error_result = error_result.groupby(
+            ["canvas course id", "term id"], group_keys=False
+        ).apply(DataFrame.sort_values, "course id")
+
+        if error_result.empty:
+            with open(error_path, "w", newline="") as result:
+                writer(result).writerow(
+                    ["term id", "canvas course id", "course id", "error"]
+                )
+        else:
+            error_result.to_csv(error_path, index=False)
 
     remove(result_path)
 
@@ -397,7 +419,6 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
     REPORTS, report_display = find_course_report(enable)
     RESULT_FILE_NAME = (
         f"{f'{YEAR}_' if enable else ''}{tool.replace(' ', '_')}"
-        f"{'' if enable else 'REPORT'}"
         f"{'_test' if test else ''}.csv"
     )
     RESULT_PATH = RESULTS / RESULT_FILE_NAME
@@ -432,7 +453,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
         START,
     )
 
-    if not force and not enable:
+    if not force and not enable and not RESULT_PATH.exists():
         PREVIOUS_RESULTS = [result_file for result_file in Path(RESULTS).glob("*.csv")]
         PREVIOUS_RESULTS_FOR_TERM = dict()
 
@@ -445,12 +466,12 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
 
         for term in PREVIOUS_RESULTS_FOR_TERM:
             path_display = colorize(PREVIOUS_RESULTS_FOR_TERM[term], "green")
-            message = colorize(
+            colorize(
                 f"REPORT FOR {tool.upper()} HAS ALREADY BEEN GENERATED FOR TERM"
                 f" {term.upper()}: {path_display}",
                 "yellow",
+                True,
             )
-            echo(f"- {message}")
             run_again = confirm(
                 f"Would you like to generate a report for term {term} again?"
             )
@@ -519,7 +540,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
         not_participating,
         error,
         result_path,
-    ) = process_result(tool, terms, enable, RESULT_PATH)
+    ) = process_result(tool, terms, enable, RESULT_PATH, new)
     print_messages(
         tool,
         enable,

@@ -14,6 +14,7 @@ from .helpers import (
     get_canvas,
     get_command_paths,
     get_processed,
+    dynamic_to_csv,
     get_start_index,
     handle_clear_processed,
     make_csv_paths,
@@ -286,10 +287,6 @@ def process_result(result_path, processed_path, new):
     supported_errors_path = RESULTS / f"{result_path.stem}_SUPPORTED_ERROR.csv"
     unsupported_errors_path = RESULTS / f"{result_path.stem}_UNSUPPORTED_ERROR.csv"
     users_not_found_path = RESULTS / f"{result_path.stem}_USERS_NOT_FOUND.csv"
-
-    def dynamic_to_csv(path, data_frame, condition):
-        mode = "a" if condition else "w"
-        data_frame.to_csv(path, mode=mode, header=not condition, index=False)
 
     dynamic_to_csv(activated_path, activated, activated_path.exists())
     dynamic_to_csv(supported_errors_path, supported_errors, new)
