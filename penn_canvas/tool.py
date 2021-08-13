@@ -24,12 +24,12 @@ from .helpers import (
 REPORTS, RESULTS, PROCESSED = get_command_paths("tool", processed=True)
 HEADERS = [
     "index",
-    "canvas_course_id",
-    "course_id",
-    "short_name",
-    "long_name",
-    "canvas_account_id",
-    "term_id",
+    "canvas course id",
+    "course id",
+    "short name",
+    "long name",
+    "canvas account id",
+    "term id",
     "status",
     "tool status",
 ]
@@ -117,7 +117,13 @@ def find_course_report(enable):
 
 
 def cleanup_reports(
-    reports, report_display, enable, processed_courses, processed_errors, new, start=0
+    reports,
+    report_display,
+    enable,
+    processed_courses=None,
+    processed_errors=None,
+    new=False,
+    start=0,
 ):
     echo(f") Preparing {report_display}...")
 
@@ -229,20 +235,12 @@ def process_result(tool, terms, enable, result_path):
         result = result[result["tool status"] == "already enabled"]
 
     if ERROR_COUNT:
-        result = result[["canvas_account_id", "term_id", "course_id", "error"]]
+        result = result[["canvas account id", "term id", "course id", "error"]]
     else:
-        result = result[["canvas_account_id", "term_id", "course_id"]]
+        result = result[["canvas account id", "term id", "course id"]]
 
-    result = result.groupby(["canvas_account_id", "term_id"], group_keys=False).apply(
-        DataFrame.sort_values, "course_id"
-    )
-    result.rename(
-        columns={
-            "canvas_account_id": "canvas account id",
-            "term_id": "term id",
-            "course_id": "course id",
-        },
-        inplace=True,
+    result = result.groupby(["canvas account id", "term id"], group_keys=False).apply(
+        DataFrame.sort_values, "course id"
     )
 
     if result.empty:
@@ -425,7 +423,14 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
         if enable and tool_status in {"already enabled", "enabled", "unsupported"}:
             with open(PROCESSED_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow([canvas_course_id])
-        elif canvas_course_id not in PROCESSED_ERRORS:
+        elif enable and canvas_course_id not in PROCESSED_ERRORS:
+            if canvas_course_id in PROCESSED_ERRORS:
+                processed_errors_csv = read_csv(PROCESSED_ERRORS_PATH)
+                processed_errors_csv[
+                    processed_errors_csv["canvas user id"] != canvas_course_id
+                ]
+                processed_errors_csv.to_csv(PROCESSED_ERRORS_PATH, index=False)
+
             with open(PROCESSED_ERRORS_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow([canvas_course_id])
 
@@ -498,7 +503,13 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
                 raise Exit()
 
     report, total, terms = cleanup_reports(
-        REPORTS, report_display, enable, PROCESSED_COURSES, PROCESSED_ERRORS, new, START
+        REPORTS,
+        report_display,
+        enable,
+        PROCESSED_COURSES if enable else None,
+        PROCESSED_ERRORS if enable else None,
+        new if enable else False,
+        START,
     )
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_skip_message(START, "course")
