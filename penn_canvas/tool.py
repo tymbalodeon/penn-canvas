@@ -257,12 +257,12 @@ def process_result(tool, terms, enable, result_path, new):
     remove(result_path)
 
     return (
-        len(enabled),
-        len(already_enabled),
-        len(disabled),
-        len(not_found),
-        len(unsupported),
-        len(error),
+        len(enabled.index),
+        len(already_enabled.index),
+        len(disabled.index),
+        len(not_found.index),
+        len(unsupported.index),
+        len(error.index),
         result_path,
     )
 
