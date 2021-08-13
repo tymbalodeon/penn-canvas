@@ -186,106 +186,68 @@ def cleanup_reports(
 
 def process_result(tool, terms, enable, result_path):
     result = read_csv(result_path)
-    ENABLED = result[result["tool status"] == "enabled"]
-    ALREADY_ENABLED = result[result["tool status"] == "already enabled"]
-    DISABLED = result[result["tool status"] == "disabled"]
-    NOT_FOUND = result[result["tool status"] == "not found"]
-    UNSUPPORTED = result[result["tool status"] == "unsupported"]
-    ERROR = result[
-        (result["tool status"] != "already processed")
-        & (result["tool status"] != "enabled")
+    enabled = result[result["tool status"] == "enabled"]
+    already_enabled = result[result["tool status"] == "already enabled"]
+    disabled = result[result["tool status"] == "disabled"]
+    not_found = result[result["tool status"] == "not found"]
+    unsupported = result[result["tool status"] == "unsupported"]
+    error = result[
+        (result["tool status"] != "enabled")
         & (result["tool status"] != "already enabled")
         & (result["tool status"] != "disabled")
         & (result["tool status"] != "not found")
         & (result["tool status"] != "unsupported")
     ]
 
-    ENABLED_COUNT = len(ENABLED)
-    ALREADY_ENABLED_COUNT = len(ALREADY_ENABLED)
-    DISABLED_COUNT = len(DISABLED)
-    NOT_FOUND_COUNT = len(NOT_FOUND)
-    NOT_PARTICIPATING_COUNT = len(UNSUPPORTED)
-    ERROR_COUNT = len(ERROR)
+    enabled_count = len(enabled)
+    already_enabled_count = len(already_enabled)
+    disabled_count = len(disabled)
+    not_found_count = len(not_found)
+    unsupported_count = len(unsupported)
+    error_count = len(error)
 
-    if ERROR_COUNT:
-        result = result[
-            (result["tool status"] != "disabled")
-            & (result["tool status"] != "not found")
-            & (result["tool status"] != "unsupported")
-        ]
-
-        if enable:
-            result = result[(result["tool status"] != "already enabled")]
-
-        status_values_to_clear = ["already enabled", "enabled"]
-        result["tool status"] = result["tool status"].apply(
-            lambda tool_status: None
-            if tool_status in status_values_to_clear
-            else tool_status
-        )
-        result.rename(
-            columns={
-                "tool status": "error",
-            },
-            inplace=True,
-        )
-    elif enable:
-        result = result[result["tool status"] == "enabled"]
+    if enable:
+        enabled_path = RESULTS / f"{result_path.stem}_ENABLED.csv"
+        enabled = enabled[["canvas course id", "course id"]]
+        enabled.to_csv(enabled_path, index=False)
+        error_result = concat([error, not_found])
+        error_result = error_result[["canvas course id", "course id"]]
+        error_path = RESULTS / f"{result_path.stem}_ERROR.csv"
+        error_result.to_csv(error_path, index=False)
     else:
-        result = result[result["tool status"] == "already enabled"]
+        result = concat([enabled, not_found, error])
 
-    if ERROR_COUNT:
-        result = result[["canvas account id", "term id", "course id", "error"]]
-    else:
-        result = result[["canvas account id", "term id", "course id"]]
-
-    result = result.groupby(["canvas account id", "term id"], group_keys=False).apply(
-        DataFrame.sort_values, "course id"
-    )
-
-    if result.empty:
-        with open(result_path, "w", newline="") as result_file:
-            if enable:
-                writer(result_file).writerow(
-                    [f'"{tool.upper()}" NOT ENABLED FOR ANY COURSES']
-                )
-            else:
-                writer(result_file).writerow(
-                    [f'NO COURSES WITH "{tool.upper()}" ENABLED']
-                )
-    else:
-        with open(result_path, "w", newline="") as result_file:
-            if enable:
-                writer(result_file).writerow(
-                    [f'ENABLED "{tool.upper()}" FOR COURSES', None, None]
-                )
-            else:
-                writer(result_file).writerow(
-                    [f'COURSES WITH "{tool.upper()}" ENABLED', None, None]
-                )
-
-        result.to_csv(result_path, mode="a", index=False)
-
-        if not enable:
-            final_path = (
-                RESULTS
-                / f"{'_'.join(terms).replace('/', '')}_{result_path.stem}_COMPLETE.csv"
+        if error_count:
+            result["tool status"] = result["tool status"].apply(
+                lambda tool_status: None if tool_status == "enabled" else tool_status
             )
-            result_path = result_path.rename(final_path)
+            result.rename(
+                columns={
+                    "tool status": "error",
+                },
+                inplace=True,
+            )
+            result = result[["term id", "canvas course id", "course id", "error"]]
         else:
-            final_stem = (
-                f"{result_path.stem}_{datetime.now().strftime('%H_%M_%S')}_COMPLETE.csv"
-            )
-            final_path = RESULTS / final_stem
-            result_path = result_path.rename(final_path)
+            result = result[["term id", "canvas course id", "course id"]]
+
+        result = result.groupby(
+            ["canvas course id", "term id"], group_keys=False
+        ).apply(DataFrame.sort_values, "course id")
+        final_path = (
+            RESULTS / f"{'_'.join(terms).replace('/', '')}_{result_path.stem}.csv"
+        )
+        result.to_csv(final_path, index=False)
+
+    remove(result_path)
 
     return (
-        ENABLED_COUNT,
-        ALREADY_ENABLED_COUNT,
-        DISABLED_COUNT,
-        NOT_FOUND_COUNT,
-        NOT_PARTICIPATING_COUNT,
-        ERROR_COUNT,
+        enabled_count,
+        already_enabled_count,
+        disabled_count,
+        not_found_count,
+        unsupported_count,
+        error_count,
         result_path,
     )
 
@@ -382,10 +344,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
                     tool_tab = next((tab for tab in tabs if tab.label == tool), None)
 
                 if tool_tab and tool_tab.visibility == "public":
-                    tool_status = "already enabled"
-
-                    if verbose and not enable:
-                        tool_status = "enabled"
+                    tool_status = "already enabled" if enable else "enabled"
                 elif enable:
                     tool_tab.update(hidden=False, position=3)
                     tool_status = "enabled"
@@ -438,8 +397,8 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
     REPORTS, report_display = find_course_report(enable)
     RESULT_FILE_NAME = (
         f"{f'{YEAR}_' if enable else ''}{tool.replace(' ', '_')}"
-        f"_tool_{'enable' if enable else 'report'}"
-        f"_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
+        f"{'' if enable else 'REPORT'}"
+        f"{'_test' if test else ''}.csv"
     )
     RESULT_PATH = RESULTS / RESULT_FILE_NAME
     START = get_start_index(force, RESULT_PATH)
@@ -462,7 +421,18 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
         PROCESSED_ERRORS = get_processed(
             PROCESSED, PROCESSED_ERRORS_PATH, "canvas course id"
         )
-    elif not force:
+
+    report, total, terms = cleanup_reports(
+        REPORTS,
+        report_display,
+        enable,
+        PROCESSED_COURSES if enable else None,
+        PROCESSED_ERRORS if enable else None,
+        new if enable else False,
+        START,
+    )
+
+    if not force and not enable:
         PREVIOUS_RESULTS = [result_file for result_file in Path(RESULTS).glob("*.csv")]
         PREVIOUS_RESULTS_FOR_TERM = dict()
 
@@ -502,15 +472,6 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
 
                 raise Exit()
 
-    report, total, terms = cleanup_reports(
-        REPORTS,
-        report_display,
-        enable,
-        PROCESSED_COURSES if enable else None,
-        PROCESSED_ERRORS if enable else None,
-        new if enable else False,
-        START,
-    )
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
     make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
