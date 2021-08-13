@@ -448,6 +448,13 @@ def email_main(test, verbose, new, force, clear_processed):
             )
 
         if status in {"activated", "already active"} or supported == "N":
+            if canvas_user_id in PROCESSED_ERRORS:
+                processed_errors_csv = read_csv(PROCESSED_ERRORS_PATH)
+                processed_errors_csv[
+                    processed_errors_csv["canvas user id"] != canvas_user_id
+                ]
+                processed_errors_csv.to_csv(PROCESSED_ERRORS_PATH, index=False)
+
             with open(PROCESSED_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow(
                     [canvas_user_id, login_id, full_name, status, supported]

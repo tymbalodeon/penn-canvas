@@ -184,28 +184,28 @@ def process_result(tool, terms, enable, result_path):
     ALREADY_ENABLED = result[result["tool status"] == "already enabled"]
     DISABLED = result[result["tool status"] == "disabled"]
     NOT_FOUND = result[result["tool status"] == "not found"]
-    NOT_PARTICIPATING = result[result["tool status"] == "not supported"]
+    UNSUPPORTED = result[result["tool status"] == "unsupported"]
     ERROR = result[
         (result["tool status"] != "already processed")
         & (result["tool status"] != "enabled")
         & (result["tool status"] != "already enabled")
         & (result["tool status"] != "disabled")
         & (result["tool status"] != "not found")
-        & (result["tool status"] != "not supported")
+        & (result["tool status"] != "unsupported")
     ]
 
     ENABLED_COUNT = len(ENABLED)
     ALREADY_ENABLED_COUNT = len(ALREADY_ENABLED)
     DISABLED_COUNT = len(DISABLED)
     NOT_FOUND_COUNT = len(NOT_FOUND)
-    NOT_PARTICIPATING_COUNT = len(NOT_PARTICIPATING)
+    NOT_PARTICIPATING_COUNT = len(UNSUPPORTED)
     ERROR_COUNT = len(ERROR)
 
     if ERROR_COUNT:
         result = result[
             (result["tool status"] != "disabled")
             & (result["tool status"] != "not found")
-            & (result["tool status"] != "not supported")
+            & (result["tool status"] != "unsupported")
         ]
 
         if enable:
@@ -372,7 +372,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
             and tool == "Course Materials @ Penn Libraries"
             and canvas_account_id not in RESERVE_ACCOUNTS
         ):
-            tool_status = "not supported"
+            tool_status = "unsupported"
         else:
             try:
                 course = canvas.get_course(canvas_course_id)
@@ -422,7 +422,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
         report.at[index, "tool status"] = tool_status
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
-        if enable and tool_status in {"already enabled", "enabled", "not supported"}:
+        if enable and tool_status in {"already enabled", "enabled", "unsupported"}:
             with open(PROCESSED_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow([canvas_course_id])
         elif canvas_course_id not in PROCESSED_ERRORS:
@@ -532,7 +532,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
         PRINT_COLOR_MAPS = {
             "not found": "red",
             "already processed": "yellow",
-            "not supported": "yellow",
+            "unsupported": "yellow",
             "already enabled": "cyan",
             "enabled": "green",
             "disabled": "yellow",
