@@ -4,7 +4,7 @@ from os import remove
 from pathlib import Path
 
 from pandas import concat, read_csv
-from typer import Exit, echo
+from typer import echo
 
 from .helpers import (
     TODAY_AS_Y_M_D,
@@ -12,7 +12,6 @@ from .helpers import (
     add_headers_to_empty_files,
     colorize,
     drop_duplicate_errors,
-    process_input,
     dynamic_to_csv,
     find_input,
     get_canvas,
@@ -23,6 +22,7 @@ from .helpers import (
     make_csv_paths,
     make_index_headers,
     make_skip_message,
+    process_input,
     toggle_progress_bar,
 )
 
