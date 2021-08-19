@@ -326,6 +326,62 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
         echo(f") Finding {item_plural} already processed...")
 
 
+def print_missing_input_and_exit(input_file_name, please_add_message, date=True):
+    error = colorize(
+        "- ERROR: A {input_file_name}{date_message if date else ' '}was not found.",
+        "yellow",
+    )
+    echo(f"{error}\n- {please_add_message}")
+
+
+def find_input(command, input_file_name, extension, input_directory, date=True):
+    def get_input(path):
+        INPUT_FILES = [input_file for input_file in Path(path).glob(extension)]
+
+        return [input_file for input_file in INPUT_FILES if TODAY in input_file.name]
+
+    echo(") Finding {input_file_name}...")
+
+    date_message = " matching today's date "
+    please_add_message = (
+        "Please add a"
+        f" {input_file_name}{date_message if date else ' '}to the following"
+        " directory and then run this script again:"
+        f" {colorize(input_directory,'green')}\n- (If you need instructions for"
+        " generating one, run this command with the '--help' flag.)"
+    )
+
+    if not input_directory.exists():
+        Path.mkdir(input_directory, parents=True)
+        error = colorize("- ERROR: {command} Input directory not found.", "yellow")
+        echo(
+            f"{error} \n- Creating one for you at:"
+            f" {colorize(input_directory, 'green')}\n- {please_add_message}"
+        )
+
+        raise Exit(1)
+
+    HOME = Path.home()
+    TODAYS_INPUT = get_input(HOME / "Downloads")
+
+    while not TODAYS_INPUT:
+        paths = iter(["Desktop", "Documents"])
+
+        try:
+            TODAYS_INPUT = get_input(HOME / next(paths))
+        except Exception:
+            TODAYS_INPUT = None
+
+            break
+
+    if not TODAYS_INPUT:
+        print_missing_input_and_exit(input_file_name, date, please_add_message)
+
+        raise Exit(1)
+    else:
+        return TODAYS_INPUT, please_add_message
+
+
 def get_processed(processed_directory, processed_path, columns="pennkey"):
     if type(columns) != list:
         columns = [columns]
