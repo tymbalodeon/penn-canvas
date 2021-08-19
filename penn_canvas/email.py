@@ -12,6 +12,7 @@ from .helpers import (
     add_headers_to_empty_files,
     colorize,
     drop_duplicate_errors,
+    process_input,
     dynamic_to_csv,
     find_input,
     get_canvas,
@@ -22,7 +23,6 @@ from .helpers import (
     make_csv_paths,
     make_index_headers,
     make_skip_message,
-    print_missing_input_and_exit,
     toggle_progress_bar,
 )
 
@@ -55,38 +55,8 @@ ACCOUNTS = [
 ]
 
 
-def cleanup_report(
-    reports,
-    processed_users,
-    processed_errors,
-    new,
-    input_file_name,
-    please_add_message,
-    start=0,
-):
-    echo(") Preparing report...")
-
-    reports = iter(reports)
-    error = True
-    abort = False
-
-    while error:
-        try:
-            report = next(reports, None)
-
-            if not report:
-                error = False
-                abort = True
-                print_missing_input_and_exit(input_file_name, please_add_message)
-            else:
-                data = read_csv(report)
-                data = data[["canvas_user_id", "login_id", "full_name"]]
-                error = False
-        except Exception:
-            error = True
-
-    if abort:
-        raise Exit(1)
+def cleanup_data(data, args):
+    processed_users, processed_errors, new = args
 
     data.drop_duplicates(subset=["canvas_user_id"], inplace=True)
     data.sort_values("canvas_user_id", ascending=False, inplace=True, ignore_index=True)
@@ -106,11 +76,7 @@ def cleanup_report(
         )
         echo(f") {message}")
 
-    data.reset_index(drop=True, inplace=True)
-    TOTAL = len(data.index)
-    data = data.loc[start:TOTAL, :]
-
-    return data, f"{TOTAL:,}"
+    return data
 
 
 def find_sub_accounts(canvas, account_id):
@@ -472,17 +438,22 @@ def email_main(test, verbose, new, force, clear_processed):
         f"_{datetime.now().strftime('%H_%M_%S')}.csv"
     )
     handle_clear_processed(clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH])
-    reports, please_add_message = find_input(COMMAND, INPUT_FILE_NAME, "*.csv", REPORTS)
+    reports, please_add_message, missing_file_message = find_input(
+        COMMAND, INPUT_FILE_NAME, "*.csv", REPORTS
+    )
     PROCESSED_USERS = get_processed(PROCESSED, PROCESSED_PATH, HEADERS)
     PROCESSED_ERRORS = get_processed(PROCESSED, PROCESSED_ERRORS_PATH, HEADERS)
     START = get_start_index(force, RESULT_PATH, RESULTS)
-    report, TOTAL = cleanup_report(
+    cleanup_data_args = (PROCESSED_USERS, PROCESSED_ERRORS, new)
+    CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:3]]
+    report, TOTAL = process_input(
         reports,
-        PROCESSED_USERS,
-        PROCESSED_ERRORS,
-        new,
         INPUT_FILE_NAME,
         please_add_message,
+        CLEANUP_HEADERS,
+        cleanup_data,
+        missing_file_message,
+        cleanup_data_args,
         START,
     )
     make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))

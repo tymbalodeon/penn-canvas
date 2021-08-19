@@ -327,11 +327,13 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
 
 
 def print_missing_input_and_exit(input_file_name, please_add_message, date=True):
+    date_message = " matching today's date "
     error = colorize(
-        "- ERROR: A {input_file_name}{date_message if date else ' '}was not found.",
+        f"- ERROR: A {input_file_name}{date_message if date else ' '}was not found.",
         "yellow",
     )
-    echo(f"{error}\n- {please_add_message}")
+
+    return f"{error}\n- {please_add_message}"
 
 
 def find_input(command, input_file_name, extension, input_directory, date=True):
@@ -340,7 +342,7 @@ def find_input(command, input_file_name, extension, input_directory, date=True):
 
         return [input_file for input_file in INPUT_FILES if TODAY in input_file.name]
 
-    echo(") Finding {input_file_name}...")
+    echo(f") Finding {input_file_name}...")
 
     date_message = " matching today's date "
     please_add_message = (
@@ -374,12 +376,62 @@ def find_input(command, input_file_name, extension, input_directory, date=True):
 
             break
 
+    missing_file_message = print_missing_input_and_exit(
+        input_file_name, please_add_message, date
+    )
+
     if not TODAYS_INPUT:
-        print_missing_input_and_exit(input_file_name, date, please_add_message)
+        echo(missing_file_message)
 
         raise Exit(1)
     else:
-        return TODAYS_INPUT, please_add_message
+        return TODAYS_INPUT, please_add_message, missing_file_message
+
+
+def process_input(
+    input_files,
+    input_file_name,
+    please_add_message,
+    headers,
+    cleanup_data,
+    missing_file_message,
+    args=None,
+    start=0,
+):
+    echo(") Preparing report...")
+
+    reports = iter(input_files)
+    error = True
+    abort = False
+
+    while error:
+        try:
+            report = next(reports, None)
+
+            if not report:
+                error = False
+                abort = True
+                echo(missing_file_message)
+            else:
+                data = read_csv(report)
+                data = data.loc[:, headers]
+                error = False
+        except Exception:
+            error = True
+
+    if abort:
+        raise Exit(1)
+
+    if args:
+        data = cleanup_data(data, args)
+    else:
+        data = cleanup_data(data)
+
+    data.reset_index(drop=True, inplace=True)
+    TOTAL = len(data.index)
+    data = data.loc[start:TOTAL, :]
+
+    return data, f"{TOTAL:,}"
 
 
 def get_processed(processed_directory, processed_path, columns="pennkey"):

@@ -1,24 +1,25 @@
-from pathlib import Path
-
 from pandas import isna, read_csv
-from typer import Exit, echo
+from typer import echo
 
 from .helpers import (
-    TODAY,
     TODAY_AS_Y_M_D,
     colorize,
+    find_input,
     get_canvas,
     get_command_paths,
     get_start_index,
     make_csv_paths,
+    make_index_headers,
     make_skip_message,
+    process_input,
     toggle_progress_bar,
 )
 
-REPORTS, RESULTS = get_command_paths("Storage")
+COMMAND = "Storage"
+INPUT_FILE_NAME = "Canvas Course Storage report"
+REPORTS, RESULTS = get_command_paths(COMMAND)
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result.csv"
 HEADERS = [
-    "index",
     "id",
     "sis id",
     "account id",
@@ -47,61 +48,12 @@ SUB_ACCOUNTS = [
 ]
 
 
-def find_storage_report():
-    echo(") Finding storage report...")
-
-    if not REPORTS.exists():
-        Path.mkdir(REPORTS, parents=True)
-        error = colorize(
-            "- ERROR: Canvas storage reports directory not found.", "yellow"
-        )
-        echo(
-            f"{error} \n-"
-            f" Creating one for you at: {colorize(REPORTS, 'green')}\n- Please add a"
-            " Canvas storage report matching today's date to this directory and then"
-            " run this script again.\n- (If you need instructions for generating a"
-            " Canvas storage report, run this command with the '--help' flag.)"
-        )
-
-        raise Exit(1)
-    else:
-        CSV_FILES = [report for report in Path(REPORTS).glob("*.csv")]
-        TODAYS_REPORT = next(
-            (report for report in CSV_FILES if TODAY in report.name), None
-        )
-
-        if not TODAYS_REPORT:
-            error = (
-                "- ERROR: A Canvas Course Storage report matching today's date was not"
-                " found."
-            )
-            echo(
-                f"{colorize(error, 'yellow')}\n- Please add a Canvas storage report"
-                " matching today's date to the following directory and then run this"
-                f" script again: {colorize(REPORTS, 'green')}\n- (If you need"
-                " instructions for generating a Canvas storage report, run this"
-                " command with the '--help' flag.)"
-            )
-
-            raise Exit(1)
-        else:
-            return TODAYS_REPORT
-
-
-def cleanup_report(report, start=0):
-    echo(") Preparing report...")
-
-    data = read_csv(report)
-    data = data[["id", "sis id", "account id", "storage used in MB"]]
+def cleanup_data(data):
     data = data[data["storage used in MB"] > 0]
     data.sort_values(by=["storage used in MB"], inplace=True)
     data = data.astype("string", copy=False, errors="ignore")
-    data = data[data["account id"].isin(SUB_ACCOUNTS)]
-    data.reset_index(drop=True, inplace=True)
-    TOTAL = len(data.index)
-    data = data.loc[start:TOTAL, :]
 
-    return data, TOTAL
+    return data[data["account id"].isin(SUB_ACCOUNTS)]
 
 
 def check_percent_storage(course, canvas, verbose, total):
@@ -246,10 +198,18 @@ def storage_main(test, verbose, force, increase=1000):
         ] = row
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
-    report = find_storage_report()
+    report, please_add_message = find_input(COMMAND, INPUT_FILE_NAME, "*.csv", REPORTS)
     START = get_start_index(force, RESULT_PATH)
-    report, TOTAL = cleanup_report(report, START)
-    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
+    CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:4]]
+    report, TOTAL = process_input(
+        report,
+        INPUT_FILE_NAME,
+        please_add_message,
+        CLEANUP_HEADERS,
+        cleanup_data,
+        START,
+    )
+    make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))
     make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
