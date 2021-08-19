@@ -52,7 +52,27 @@ ACCOUNTS = [
 ]
 
 
-def find_users_report():
+def print_missing_report_and_exit():
+    error = colorize(
+        "- ERROR: A Canvas Provisioning (Users) CSV report matching today's"
+        " date was not found.",
+        "yellow",
+    )
+    echo(
+        f"{error}\n- Please add a Canvas (Users) Provisioning report matching"
+        " today's date to the following directory and then run this script"
+        f" again: {colorize(REPORTS,'green')}\n- (If you need instructions"
+        " for generating a Canvas Provisioning report, run this command with"
+        " the '--help' flag.)"
+    )
+
+
+def find_users_reports():
+    def get_report(path):
+        CSV_FILES = [report for report in Path(path).glob("*.csv")]
+
+        return [report for report in CSV_FILES if TODAY in report.name]
+
     echo(") Finding Canvas Provisioning (Users) report...")
 
     if not REPORTS.exists():
@@ -67,36 +87,53 @@ def find_users_report():
         )
 
         raise Exit(1)
+
+    HOME = Path.home()
+    TODAYS_REPORTS = get_report(HOME / "Downloads")
+
+    while not TODAYS_REPORTS:
+        paths = iter(["Desktop", "Documents"])
+
+        try:
+            TODAYS_REPORTS = get_report(HOME / next(paths))
+        except Exception:
+            TODAYS_REPORTS = None
+
+            break
+
+    if not TODAYS_REPORTS:
+        print_missing_report_and_exit()
+
+        raise Exit(1)
     else:
-        CSV_FILES = [report for report in Path(REPORTS).glob("*.csv")]
-        TODAYS_REPORT = next(
-            (report for report in CSV_FILES if TODAY in report.name), None
-        )
-
-        if not TODAYS_REPORT:
-            error = colorize(
-                "- ERROR: A Canvas Provisioning (Users) CSV report matching today's"
-                " date was not found.",
-                "yellow",
-            )
-            echo(
-                f"{error}\n- Please add a Canvas (Users) Provisioning report matching"
-                " today's date to the following directory and then run this script"
-                f" again: {colorize(REPORTS,'green')}\n- (If you need instructions"
-                " for generating a Canvas Provisioning report, run this command with"
-                " the '--help' flag.)"
-            )
-
-            raise Exit(1)
-        else:
-            return TODAYS_REPORT
+        return TODAYS_REPORTS
 
 
-def cleanup_report(report, processed_users, processed_errors, new, start=0):
+def cleanup_report(reports, processed_users, processed_errors, new, start=0):
     echo(") Preparing report...")
 
-    data = read_csv(report)
-    data = data[["canvas_user_id", "login_id", "full_name"]]
+    reports = iter(reports)
+    error = True
+    abort = False
+
+    while error:
+        try:
+            report = next(reports, None)
+
+            if not report:
+                error = False
+                abort = True
+                print_missing_report_and_exit()
+            else:
+                data = read_csv(report)
+                data = data[["canvas_user_id", "login_id", "full_name"]]
+                error = False
+        except Exception:
+            error = True
+
+    if abort:
+        raise Exit(1)
+
     data.drop_duplicates(subset=["canvas_user_id"], inplace=True)
     data.sort_values("canvas_user_id", ascending=False, inplace=True, ignore_index=True)
     data = data.astype("string", copy=False, errors="ignore")
@@ -481,12 +518,12 @@ def email_main(test, verbose, new, force, clear_processed):
         f"_{datetime.now().strftime('%H_%M_%S')}.csv"
     )
     handle_clear_processed(clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH])
-    report = find_users_report()
+    reports = find_users_reports()
     PROCESSED_USERS = get_processed(PROCESSED, PROCESSED_PATH, HEADERS)
     PROCESSED_ERRORS = get_processed(PROCESSED, PROCESSED_ERRORS_PATH, HEADERS)
     START = get_start_index(force, RESULT_PATH, RESULTS)
     report, TOTAL = cleanup_report(
-        report, PROCESSED_USERS, PROCESSED_ERRORS, new, START
+        reports, PROCESSED_USERS, PROCESSED_ERRORS, new, START
     )
     make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))
     LOG_PATH = LOGS / LOG_STEM
