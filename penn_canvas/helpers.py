@@ -13,6 +13,8 @@ CANVAS_URL_OPEN = "https://upenn-catalog.instructure.com"
 CONFIG_DIRECTORY = Path.home() / ".config"
 CONFIG_PATH = CONFIG_DIRECTORY / "penn-canvas"
 COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
+BOX_PATH = Path.home() / "Box"
+BOX_CLI_PATH = BOX_PATH / "Penn Canvas CLI"
 YEAR = datetime.now().strftime("%Y")
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
@@ -181,6 +183,13 @@ def get_data_warehouse_config():
     return check_config(CONFIG_PATH)[3:]
 
 
+def make_index_headers(headers):
+    INDEX_HEADERS = headers[:]
+    INDEX_HEADERS.insert(0, "index")
+
+    return INDEX_HEADERS
+
+
 def make_csv_paths(csv_dir, csv_file, headers):
     if not csv_dir.exists():
         Path.mkdir(csv_dir)
@@ -190,13 +199,14 @@ def make_csv_paths(csv_dir, csv_file, headers):
             writer(result).writerow(headers)
 
 
-def get_command_paths(command, logs=False, processed=False, input_dir=False):
-    COMMAND_DIRECTORY = COMMAND_DIRECTORY_BASE / f"{command}"
-    input_name = "input" if input_dir else "reports"
-    REPORTS = COMMAND_DIRECTORY / input_name
-    RESULTS = COMMAND_DIRECTORY / "results"
+def get_command_paths(command, logs=False, processed=False):
+    BOX = BOX_PATH.exists()
+    BASE = BOX_CLI_PATH if BOX else COMMAND_DIRECTORY_BASE
+    COMMAND_DIRECTORY = BASE / f"{command}"
+    REPORTS = COMMAND_DIRECTORY / "Input"
+    RESULTS = COMMAND_DIRECTORY / "RESULTS"
     LOGS = COMMAND_DIRECTORY / "logs"
-    PROCESSED = COMMAND_DIRECTORY / "processed"
+    PROCESSED = COMMAND_DIRECTORY / ".processed"
 
     PATHS = [REPORTS, RESULTS]
 
@@ -205,6 +215,10 @@ def get_command_paths(command, logs=False, processed=False, input_dir=False):
 
     if processed:
         PATHS.append(PROCESSED)
+
+    for path in PATHS:
+        if not path.exists():
+            Path.mkdir(path, parents=True)
 
     return tuple(PATHS)
 
@@ -338,7 +352,7 @@ def get_canvas(instance="test"):
         access_token = production
     elif instance == "open":
         url = CANVAS_URL_OPEN
-        access_tokn = open_canvas
+        access_token = open_canvas
 
     return Canvas(url, access_token)
 
@@ -361,9 +375,21 @@ def colorize(text, color="magenta", echo=False):
         return style(text, fg=typer_colors[color])
 
 
-def dynamic_to_csv(path, data_frame, condition):
+def dynamic_to_csv(path, data_frame, condition, columns):
     mode = "a" if condition else "w"
     data_frame.to_csv(path, mode=mode, header=not condition, index=False)
+
+
+def drop_duplicate_errors(paths):
+    for path in paths:
+        read_csv(path).drop_duplicates().to_csv(path, index=False)
+
+
+def add_headers_to_empty_files(data_frames, headers):
+    for data_frame in data_frames:
+        if data_frame.empty:
+            with open(f"{data_frame}_path", "w", newline="") as output_file:
+                writer(output_file).writerow(headers)
 
 
 def toggle_progress_bar(data, callback, canvas, verbose, args=None):

@@ -15,7 +15,7 @@ from .helpers import (
     toggle_progress_bar,
 )
 
-REPORTS, RESULTS = get_command_paths("storage")
+REPORTS, RESULTS = get_command_paths("Storage")
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result.csv"
 HEADERS = [
     "index",

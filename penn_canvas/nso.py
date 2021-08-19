@@ -30,7 +30,7 @@ init_oracle_client(
 )
 
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
-INPUT, RESULTS, PROCESSED = get_command_paths("nso", input_dir=True, processed=True)
+INPUT, RESULTS, PROCESSED = get_command_paths("NSO", processed=True)
 FINAL_LIST_PATH = RESULTS / f"{YEAR}_nso_final_list.csv"
 HEADERS = [
     "index",

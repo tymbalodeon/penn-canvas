@@ -10,20 +10,23 @@ from .helpers import (
     TODAY,
     TODAY_AS_Y_M_D,
     YEAR,
+    add_headers_to_empty_files,
     colorize,
+    drop_duplicate_errors,
+    dynamic_to_csv,
     get_canvas,
     get_command_paths,
     get_processed,
-    dynamic_to_csv,
     get_start_index,
     handle_clear_processed,
     make_csv_paths,
+    make_index_headers,
     make_skip_message,
     toggle_progress_bar,
 )
 
 REPORTS, RESULTS, LOGS, PROCESSED = get_command_paths(
-    "email", logs=True, processed=True
+    "Email", logs=True, processed=True
 )
 HEADERS = [
     "canvas user id",
@@ -32,8 +35,6 @@ HEADERS = [
     "email status",
     "supported",
 ]
-INDEX_HEADERS = HEADERS[:]
-INDEX_HEADERS.insert(0, "index")
 LOG_HEADERS = HEADERS[:3]
 LOG_HEADERS.extend(["email address"])
 ACCOUNTS = [
@@ -275,21 +276,33 @@ def process_result(result_path, processed_path, new):
     supported_errors.drop("index", axis=1, inplace=True)
     unsupported_errors.drop("index", axis=1, inplace=True)
     users_not_found.drop("index", axis=1, inplace=True)
-    activated_path = RESULTS / f"{result_path.stem}_ACTIVATED.csv"
-    supported_errors_path = RESULTS / f"{result_path.stem}_SUPPORTED_ERROR.csv"
-    unsupported_errors_path = RESULTS / f"{result_path.stem}_UNSUPPORTED_ERROR.csv"
-    users_not_found_path = RESULTS / f"{result_path.stem}_USERS_NOT_FOUND.csv"
 
-    dynamic_to_csv(activated_path, activated, activated_path.exists())
-    dynamic_to_csv(supported_errors_path, supported_errors, new)
+    BASE = RESULTS / f"{YEAR}"
+
+    if not BASE.exists():
+        Path.mkdir(BASE)
+
+    activated_path = BASE / f"{result_path.stem}_ACTIVATED.csv"
+    supported_errors_path = BASE / f"{result_path.stem}_SUPPORTED_ERROR.csv"
+    unsupported_errors_path = BASE / f"{result_path.stem}_UNSUPPORTED_ERROR.csv"
+    users_not_found_path = BASE / f"{result_path.stem}_USERS_NOT_FOUND.csv"
+
+    dynamic_to_csv(activated_path, activated, activated_path.exists(), HEADERS)
+    dynamic_to_csv(supported_errors_path, supported_errors, new, HEADERS)
     dynamic_to_csv(
-        unsupported_errors_path, unsupported_errors, unsupported_errors_path.exists()
+        unsupported_errors_path,
+        unsupported_errors,
+        unsupported_errors_path.exists(),
+        HEADERS,
     )
-    dynamic_to_csv(users_not_found_path, users_not_found, new)
+    dynamic_to_csv(users_not_found_path, users_not_found, new, HEADERS)
 
     if new:
-        for path in [supported_errors_path, users_not_found_path]:
-            read_csv(path).drop_duplicates().to_csv(path, index=False)
+        drop_duplicate_errors([supported_errors_path, users_not_found_path])
+    else:
+        add_headers_to_empty_files(
+            [activated, supported_errors, unsupported_errors, users_not_found], HEADERS
+        )
 
     remove(result_path)
 
@@ -475,7 +488,7 @@ def email_main(test, verbose, new, force, clear_processed):
     report, TOTAL = cleanup_report(
         report, PROCESSED_USERS, PROCESSED_ERRORS, new, START
     )
-    make_csv_paths(RESULTS, RESULT_PATH, INDEX_HEADERS)
+    make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))
     LOG_PATH = LOGS / LOG_STEM
     make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
     make_skip_message(START, "user")

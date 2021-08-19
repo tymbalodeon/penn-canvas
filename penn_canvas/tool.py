@@ -1,5 +1,4 @@
 from csv import writer
-from datetime import datetime
 from os import remove
 from pathlib import Path
 
@@ -8,23 +7,24 @@ from typer import Exit, confirm, echo
 
 from .helpers import (
     TODAY,
-    TODAY_AS_Y_M_D,
     YEAR,
+    add_headers_to_empty_files,
     colorize,
-    get_canvas,
+    drop_duplicate_errors,
     dynamic_to_csv,
+    get_canvas,
     get_command_paths,
-    get_start_index,
-    make_csv_paths,
-    handle_clear_processed,
     get_processed,
+    get_start_index,
+    handle_clear_processed,
+    make_csv_paths,
+    make_index_headers,
     make_skip_message,
     toggle_progress_bar,
 )
 
-REPORTS, RESULTS, PROCESSED = get_command_paths("tool", processed=True)
+REPORTS, RESULTS, PROCESSED = get_command_paths("Tool", processed=True)
 HEADERS = [
-    "index",
     "canvas course id",
     "course id",
     "short name",
@@ -201,9 +201,14 @@ def process_result(tool, terms, enable, result_path, new):
     ]
 
     if enable:
-        enabled_path = RESULTS / f"{result_path.stem}_ENABLED.csv"
+        BASE = RESULTS / "Enabled" / YEAR
+
+        if not BASE.exists():
+            Path.mkdir(BASE, parents=True)
+
+        enabled_path = BASE / f"{result_path.stem}_ENABLED.csv"
         enabled = enabled[["canvas course id", "course id"]]
-        dynamic_to_csv(enabled_path, enabled, enabled_path.exists())
+        dynamic_to_csv(enabled_path, enabled, enabled_path.exists(), HEADERS)
         error_result = concat([error, not_found])
         error_result.rename(
             columns={
@@ -212,24 +217,29 @@ def process_result(tool, terms, enable, result_path, new):
             inplace=True,
         )
         error_result = error_result[["canvas course id", "course id", "error"]]
-        error_path = RESULTS / f"{result_path.stem}_ERROR.csv"
-        dynamic_to_csv(error_path, error_result, new)
+        error_path = BASE / f"{result_path.stem}_ERROR.csv"
+        dynamic_to_csv(error_path, error_result, new, HEADERS)
 
-        if error_result.empty and not new:
-            with open(error_path, "w", newline="") as result:
-                writer(result).writerow(["canvas course id", "course id", "error"])
+        if new:
+            drop_duplicate_errors([error_path])
+        else:
+            add_headers_to_empty_files(
+                [enabled],
+                ["canvas course id", "course id", "error"],
+            )
     else:
-        enabled_path = (
-            RESULTS
-            / f"{'_'.join(terms).replace('/', '')}_{result_path.stem}_REPORT_ENABLED.csv"
+        BASE = RESULTS / "Reports"
+        ENABLED_STEM = (
+            f"{'_'.join(terms).replace('/', '')}_{result_path.stem}_REPORT_ENABLED.csv"
         )
+        enabled_path = BASE / ENABLED_STEM
         enabled = enabled[["term id", "canvas course id", "course id"]]
         enabled = enabled.groupby(
             ["canvas course id", "term id"], group_keys=False
         ).apply(DataFrame.sort_values, "course id")
         enabled.to_csv(enabled_path, index=False)
         error_path = (
-            RESULTS
+            BASE
             / f"{'_'.join(terms).replace('/', '')}_{result_path.stem}_REPORT_ERROR.csv"
         )
         error_result = concat([error, not_found])
@@ -400,7 +410,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
         elif enable and canvas_course_id not in PROCESSED_ERRORS:
             if canvas_course_id in PROCESSED_ERRORS:
                 processed_errors_csv = read_csv(PROCESSED_ERRORS_PATH)
-                rocessed_errors_csv = processed_errors_csv[
+                processed_errors_csv = processed_errors_csv[
                     processed_errors_csv["canvas user id"] != canvas_course_id
                 ]
                 processed_errors_csv.to_csv(PROCESSED_ERRORS_PATH, index=False)
@@ -486,7 +496,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
 
                 raise Exit()
 
-    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
+    make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))
     make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
