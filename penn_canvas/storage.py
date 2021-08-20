@@ -5,8 +5,12 @@ from .helpers import (
     TODAY_AS_Y_M_D,
     colorize,
     find_input,
+    BOX_PATH,
+    BOX_CLI_PATH,
     get_canvas,
     get_command_paths,
+    YEAR,
+    MONTH,
     get_start_index,
     make_csv_paths,
     make_index_headers,
@@ -155,6 +159,23 @@ def process_result():
     result.drop(columns=["index", "account id", "storage used in MB"], inplace=True)
     result.rename(columns={"id": "subaccount id", "sis id": "course id"}, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
+
+    if BOX_PATH.exists():
+        storage_shared_directory = BOX_CLI_PATH / "Storage_Quota_Monitoring"
+        this_month_directory = next(
+            (
+                directory
+                for directory in storage_shared_directory.iterdir()
+                if YEAR in directory.name and MONTH in directory.name
+            ),
+            None,
+        )
+
+        try:
+            box_result_path = this_month_directory / RESULT_PATH.name
+            result.to_csv(box_result_path, index=False)
+        except Exception as error:
+            echo(f"- {error}")
 
     return increased_count, error_count
 

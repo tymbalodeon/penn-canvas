@@ -16,6 +16,7 @@ COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
 BOX_PATH = Path.home() / "Box"
 BOX_CLI_PATH = BOX_PATH / "Penn Canvas CLI"
 YEAR = datetime.now().strftime("%Y")
+MONTH = datetime.now().strftime("%B")
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 MAIN_ACCOUNT_ID = 96678
