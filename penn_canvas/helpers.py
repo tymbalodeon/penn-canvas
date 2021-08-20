@@ -424,8 +424,7 @@ def process_input(
                     remove(report)
 
                 error = False
-        except Exception as ex:
-            print(ex)
+        except Exception:
             error = True
 
     if abort:
