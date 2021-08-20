@@ -2,7 +2,6 @@ from pandas import isna, read_csv
 from typer import echo
 
 from .helpers import (
-    BOX_CLI_PATH,
     BOX_PATH,
     MONTH,
     TODAY_AS_Y_M_D,
@@ -161,7 +160,7 @@ def process_result():
     result.to_csv(RESULT_PATH, index=False)
 
     if BOX_PATH.exists():
-        storage_shared_directory = BOX_CLI_PATH / "Storage_Quota_Monitoring"
+        storage_shared_directory = BOX_PATH / "Storage_Quota_Monitoring"
         this_month_directory = next(
             (
                 directory

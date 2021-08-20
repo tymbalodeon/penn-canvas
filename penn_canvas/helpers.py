@@ -421,6 +421,7 @@ def process_input(
 
                 if not report.parents[0] == input_directory:
                     copy(report, input_directory / report.name)
+                    remove(report)
 
                 error = False
         except Exception:
