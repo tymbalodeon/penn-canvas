@@ -52,9 +52,9 @@ SUB_ACCOUNTS = [
 
 
 def cleanup_data(data):
-    data = data[data["storage used in MB"] > 0]
+    data = data[data["storage used in MB"] > 0].copy()
     data.sort_values(by=["storage used in MB"], inplace=True)
-    data = data.astype("string", copy=False, errors="ignore")
+    data = data.astype("string", errors="ignore")
 
     return data[data["account id"].isin(SUB_ACCOUNTS)]
 

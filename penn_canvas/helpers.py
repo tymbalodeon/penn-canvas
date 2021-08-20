@@ -367,12 +367,13 @@ def find_input(command, input_file_name, extension, input_directory, date=True):
 
     HOME = Path.home()
     TODAYS_INPUT = get_input(HOME / "Downloads")
+    PATHS = [HOME / path for path in ["Desktop", "Documents"]]
+    PATHS.append(input_directory)
+    PATHS = iter(PATHS)
 
     while not TODAYS_INPUT:
-        paths = iter(["Desktop", "Documents"])
-
         try:
-            TODAYS_INPUT = get_input(HOME / next(paths))
+            TODAYS_INPUT = get_input(next(PATHS))
         except Exception:
             TODAYS_INPUT = None
 
