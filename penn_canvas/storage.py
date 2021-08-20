@@ -175,7 +175,7 @@ def process_result():
             box_result_path = this_month_directory / RESULT_PATH.name
             result.to_csv(box_result_path, index=False)
         except Exception as error:
-            echo(f"- {error}")
+            echo(f"- ERROR: {error}")
 
     return increased_count, error_count
 
