@@ -418,7 +418,10 @@ def process_input(
             else:
                 data = read_csv(report)
                 data = data.loc[:, headers]
-                copy(report, input_directory / report.name)
+
+                if not report.parents[0] == input_directory:
+                    copy(report, input_directory / report.name)
+
                 error = False
         except Exception:
             error = True
