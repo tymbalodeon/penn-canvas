@@ -2,6 +2,7 @@ from csv import writer
 from datetime import datetime
 from os import remove
 from pathlib import Path
+from shutil import copy
 
 from canvasapi import Canvas
 from pandas import read_csv
@@ -392,6 +393,7 @@ def find_input(command, input_file_name, extension, input_directory, date=True):
 def process_input(
     input_files,
     input_file_name,
+    input_directory,
     please_add_message,
     headers,
     cleanup_data,
@@ -416,6 +418,7 @@ def process_input(
             else:
                 data = read_csv(report)
                 data = data.loc[:, headers]
+                copy(report, input_directory / report.name)
                 error = False
         except Exception:
             error = True

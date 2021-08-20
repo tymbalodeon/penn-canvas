@@ -225,6 +225,7 @@ def storage_main(test, verbose, force, increase=1000):
     report, TOTAL = process_input(
         report,
         INPUT_FILE_NAME,
+        REPORTS,
         please_add_message,
         CLEANUP_HEADERS,
         cleanup_data,
