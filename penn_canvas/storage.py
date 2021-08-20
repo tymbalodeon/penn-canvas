@@ -2,15 +2,15 @@ from pandas import isna, read_csv
 from typer import echo
 
 from .helpers import (
+    BOX_CLI_PATH,
+    BOX_PATH,
+    MONTH,
     TODAY_AS_Y_M_D,
+    YEAR,
     colorize,
     find_input,
-    BOX_PATH,
-    BOX_CLI_PATH,
     get_canvas,
     get_command_paths,
-    YEAR,
-    MONTH,
     get_start_index,
     make_csv_paths,
     make_index_headers,
