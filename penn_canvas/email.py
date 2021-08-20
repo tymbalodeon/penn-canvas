@@ -449,6 +449,7 @@ def email_main(test, verbose, new, force, clear_processed):
     report, TOTAL = process_input(
         reports,
         INPUT_FILE_NAME,
+        REPORTS,
         please_add_message,
         CLEANUP_HEADERS,
         cleanup_data,

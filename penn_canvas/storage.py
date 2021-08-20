@@ -2,7 +2,11 @@ from pandas import isna, read_csv
 from typer import echo
 
 from .helpers import (
+    BOX_CLI_PATH,
+    BOX_PATH,
+    MONTH,
     TODAY_AS_Y_M_D,
+    YEAR,
     colorize,
     find_input,
     get_canvas,
@@ -156,6 +160,23 @@ def process_result():
     result.rename(columns={"id": "subaccount id", "sis id": "course id"}, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
 
+    if BOX_PATH.exists():
+        storage_shared_directory = BOX_CLI_PATH / "Storage_Quota_Monitoring"
+        this_month_directory = next(
+            (
+                directory
+                for directory in storage_shared_directory.iterdir()
+                if YEAR in directory.name and MONTH in directory.name
+            ),
+            None,
+        )
+
+        try:
+            box_result_path = this_month_directory / RESULT_PATH.name
+            result.to_csv(box_result_path, index=False)
+        except Exception as error:
+            echo(f"- ERROR: {error}")
+
     return increased_count, error_count
 
 
@@ -206,6 +227,7 @@ def storage_main(test, verbose, force, increase=1000):
     report, TOTAL = process_input(
         report,
         INPUT_FILE_NAME,
+        REPORTS,
         please_add_message,
         CLEANUP_HEADERS,
         cleanup_data,

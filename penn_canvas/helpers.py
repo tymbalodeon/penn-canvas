@@ -2,6 +2,7 @@ from csv import writer
 from datetime import datetime
 from os import remove
 from pathlib import Path
+from shutil import copy
 
 from canvasapi import Canvas
 from pandas import read_csv
@@ -16,6 +17,7 @@ COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
 BOX_PATH = Path.home() / "Box"
 BOX_CLI_PATH = BOX_PATH / "Penn Canvas CLI"
 YEAR = datetime.now().strftime("%Y")
+MONTH = datetime.now().strftime("%B")
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 MAIN_ACCOUNT_ID = 96678
@@ -391,6 +393,7 @@ def find_input(command, input_file_name, extension, input_directory, date=True):
 def process_input(
     input_files,
     input_file_name,
+    input_directory,
     please_add_message,
     headers,
     cleanup_data,
@@ -415,6 +418,10 @@ def process_input(
             else:
                 data = read_csv(report)
                 data = data.loc[:, headers]
+
+                if not report.parents[0] == input_directory:
+                    copy(report, input_directory / report.name)
+
                 error = False
         except Exception:
             error = True
