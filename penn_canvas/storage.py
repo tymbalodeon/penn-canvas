@@ -223,13 +223,12 @@ def storage_main(test, verbose, force, increase=1000):
         COMMAND, INPUT_FILE_NAME, "*.csv", REPORTS
     )
     START = get_start_index(force, RESULT_PATH)
-    CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:4]]
     report, TOTAL = process_input(
         report,
         INPUT_FILE_NAME,
         REPORTS,
         please_add_message,
-        CLEANUP_HEADERS,
+        HEADERS[:4],
         cleanup_data,
         missing_file_message,
         START,
