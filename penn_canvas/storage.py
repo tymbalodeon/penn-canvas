@@ -198,7 +198,9 @@ def storage_main(test, verbose, force, increase=1000):
         ] = row
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
-    report, please_add_message = find_input(COMMAND, INPUT_FILE_NAME, "*.csv", REPORTS)
+    report, please_add_message, missing_file_message = find_input(
+        COMMAND, INPUT_FILE_NAME, "*.csv", REPORTS
+    )
     START = get_start_index(force, RESULT_PATH)
     CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:4]]
     report, TOTAL = process_input(
@@ -207,6 +209,7 @@ def storage_main(test, verbose, force, increase=1000):
         please_add_message,
         CLEANUP_HEADERS,
         cleanup_data,
+        missing_file_message,
         START,
     )
     make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))
