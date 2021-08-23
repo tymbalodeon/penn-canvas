@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pandas import isna, read_csv
 from typer import echo
 
@@ -171,6 +173,9 @@ def process_result():
         )
 
         try:
+            if not this_month_directory:
+                Path.mkdir(storage_shared_directory / f"{MONTH} {YEAR}")
+
             box_result_path = this_month_directory / RESULT_PATH.name
             result.to_csv(box_result_path, index=False)
         except Exception as error:
