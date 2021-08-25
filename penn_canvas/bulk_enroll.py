@@ -1,3 +1,4 @@
+from csv import writer
 from pandas import DataFrame
 from typer import Exit, echo
 
@@ -7,6 +8,7 @@ from .helpers import (
     colorize,
     find_input,
     get_canvas,
+    make_csv_paths,
     get_command_paths,
     process_input,
 )
@@ -67,19 +69,26 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
             ]
         )
 
-    course_codes = [
-        course.sis_course_id if course.sis_course_id else course.name
-        for course in COURSES
-    ]
+    if dry_run:
+        course_codes = [
+            course.sis_course_id if course.sis_course_id else course.name
+            for course in COURSES
+        ]
 
-    dry_run_output = DataFrame(course_codes, columns=["course"])
-    dry_run_output.to_csv(
-        RESULTS
-        / f"{SUB_ACCOUNT}_courses_for_bulk_enrollment_of_{USER_NAME}_{YEAR}.csv",
-        index=False,
-    )
+        dry_run_output = DataFrame(course_codes, columns=["course"])
+        dry_run_output.to_csv(
+            RESULTS
+            / f"{SUB_ACCOUNT}_courses_for_bulk_enrollment_of_{USER_NAME}_{YEAR}.csv",
+            index=False,
+        )
+    else:
+        ERROR_FILE = (
+            RESULTS / f"{SUB_ACCOUNT}_bulk_enrollment_{USER_NAME}_{YEAR}_ERRORS.csv"
+        )
+        make_csv_paths(
+            RESULTS, ERROR_FILE, ["canvas sis course id", "canvas course id", "error"]
+        )
 
-    if not dry_run:
         for course in COURSES:
             try:
                 enrollment = course.enroll_user(
@@ -92,5 +101,15 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
                     "red",
                     True,
                 )
+                with open(ERROR_FILE) as error_file:
+                    writer(error_file).writerow(
+                        [
+                            course.sis_course_id
+                            if course.sis_course_id
+                            else course.name,
+                            course.id,
+                            error,
+                        ]
+                    )
 
     colorize("FINISHED", "yellow", True)
