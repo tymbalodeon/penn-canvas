@@ -6,6 +6,7 @@ from .email import email_main
 from .helpers import display_config, make_config
 from .nso import nso_main
 from .storage import storage_main
+from .bulk_enroll import bulk_enroll_main
 from .tool import tool_main
 
 app = Typer(
@@ -47,6 +48,20 @@ def archive(
     """
 
     archive_main(course, instance, verbose, force)
+
+
+@app.command()
+def bulk_enroll(
+    test: bool = Option(
+        False,
+        "--test",
+        help=(
+            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
+            " of production (https://canvas.upenn.edu/)."
+        ),
+    )
+):
+    bulk_enroll_main(test)
 
 
 @app.command()
