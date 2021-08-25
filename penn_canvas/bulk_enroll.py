@@ -62,10 +62,7 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
 
         raise Exit(1)
 
-    if dry_run:
-        echo(f") Finding {SUB_ACCOUNT} courses for {TOTAL} terms...")
-    else:
-        echo(f") Enrolling {USER_NAME} in {SUB_ACCOUNT} courses for {TOTAL} terms...")
+    echo(f") Finding {SUB_ACCOUNT} courses for {TOTAL} terms...")
 
     COURSES = list()
 
@@ -98,6 +95,8 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
         make_csv_paths(
             RESULTS, ERROR_FILE, ["canvas sis course id", "canvas course id", "error"]
         )
+
+        echo(f") Enrolling {USER_NAME} in {SUB_ACCOUNT} courses...")
 
         for course in COURSES:
             try:
