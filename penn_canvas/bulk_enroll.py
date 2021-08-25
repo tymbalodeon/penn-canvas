@@ -1,6 +1,6 @@
 from csv import writer
 
-from pandas import DataFrame
+from pandas import DataFrame, read_csv
 from typer import Exit, echo
 
 from .helpers import (
@@ -17,6 +17,7 @@ from .helpers import (
 COMMAND = "Bulk Enroll"
 INPUT_FILE_NAME = "Terms input file"
 INPUT, RESULTS = get_command_paths(COMMAND)
+ONGOING_TERM_ID = 4373
 
 
 def cleanup_data(data):
@@ -60,15 +61,22 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
 
     COURSES = list()
 
-    for term in terms:
-        COURSES.extend(
-            [
-                course
-                for course in ACCOUNT.get_courses(
-                    enrollment_term_id=term, by_subaccounts=[sub_account]
-                )
-            ]
-        )
+    # for term in terms:
+    #     COURSES.extend(
+    #         [
+    #             course
+    #             for course in ACCOUNT.get_courses(
+    #                 enrollment_term_id=term, by_subaccounts=[sub_account]
+    #             )
+    #         ]
+    #     )
+
+    for course in [
+        "SRS_GOMD-970-001 2020C",
+        "SRS_DEND-856-001 2020C",
+        "SRS_DPED-704-001 2020C",
+    ]:
+        COURSES.append(CANVAS.get_course(course, True))
 
     if dry_run:
         course_codes = [
@@ -92,9 +100,12 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
 
         for course in COURSES:
             try:
+                enrollment_term_id = course.enrollment_term_id
+                course.update(course={"term_id": ONGOING_TERM_ID})
                 enrollment = course.enroll_user(
                     user, enrollment={"enrollment_state": "active"}
                 )
+                course.update(course={"term_id": enrollment_term_id})
                 echo(f"- ENROLLED {USER_NAME} in {course.name}: {enrollment}")
             except Exception as error:
                 colorize(
@@ -102,15 +113,19 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
                     "red",
                     True,
                 )
-                with open(ERROR_FILE) as error_file:
-                    writer(error_file).writerow(
-                        [
-                            course.sis_course_id
-                            if course.sis_course_id
-                            else course.name,
-                            course.id,
-                            error,
-                        ]
+                with open(ERROR_FILE, "a+", newline="") as error_file:
+                    errors = set(read_csv(ERROR_FILE)["canvas sis course id"])
+                    course_log = (
+                        course.sis_course_id if course.sis_course_id else course.name
                     )
+
+                    if course_log not in errors:
+                        writer(error_file).writerow(
+                            [
+                                course_log,
+                                course.id,
+                                error,
+                            ]
+                        )
 
     colorize("FINISHED", "yellow", True)
