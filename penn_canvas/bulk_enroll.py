@@ -1,54 +1,68 @@
-from pathlib import Path
+from pandas import DataFrame
+from typer import Exit, echo
 
-from pandas import DataFrame, to_csv
-from typer import echo
+from .helpers import (
+    MAIN_ACCOUNT_ID,
+    YEAR,
+    colorize,
+    find_input,
+    get_canvas,
+    get_command_paths,
+    process_input,
+)
 
-from .helpers import MAIN_ACCOUNT_ID, get_canvas
-
-SUBACCOUNT = 99241
-TERMS = [
-    5773,
-    5799,
-    5818,
-    5833,
-    5901,
-    5910,
-    5956,
-    5988,
-    6008,
-    6055,
-    6086,
-    6112,
-    6139,
-    6269,
-    6291,
-    6304,
-    6321,
-    5688,
-    5821,
-    5911,
-    6063,
-    6120,
-    6303,
-    4373,
-    2244,
-]
-
-USER = 5985383
+COMMAND = "Bulk Enroll"
+INPUT_FILE_NAME = "Terms input file"
+INPUT, RESULTS = get_command_paths(COMMAND)
 
 
-def bulk_enroll_main(test, terms=TERMS, subaccount=SUBACCOUNT):
+def cleanup_data(data):
+    return data["canvas_term_id"].tolist()
+
+
+def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
+    INPUT_FILES, PLEASE_ADD_MESSAGE, MISSING_FILE_MESSAGE = find_input(
+        COMMAND, INPUT_FILE_NAME, INPUT, date=False, bulk_enroll=True
+    )
+
+    if input_file:
+        terms = process_input(
+            INPUT_FILES,
+            INPUT_FILE_NAME,
+            INPUT,
+            PLEASE_ADD_MESSAGE,
+            ["canvas_term_id"],
+            cleanup_data,
+            MISSING_FILE_MESSAGE,
+            bulk_enroll=True,
+        )
+
+    TOTAL = len(terms)
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
     ACCOUNT = CANVAS.get_account(MAIN_ACCOUNT_ID)
+    SUB_ACCOUNT = CANVAS.get_account(sub_account)
+
+    try:
+        USER_NAME = CANVAS.get_user(user)
+    except Exception:
+        colorize(f"- ERROR: User {user} not found.", "yellow", True)
+
+        raise Exit(1)
+
+    if dry_run:
+        echo(f") Finding {SUB_ACCOUNT} courses for {TOTAL} terms...")
+    else:
+        echo(f") Enrolling {USER_NAME} in {SUB_ACCOUNT} courses for {TOTAL} terms...")
+
     COURSES = list()
 
-    for term in TERMS:
+    for term in terms:
         COURSES.extend(
             [
                 course
                 for course in ACCOUNT.get_courses(
-                    enrollment_term_id=term, by_subaccounts=[SUBACCOUNT]
+                    enrollment_term_id=term, by_subaccounts=[sub_account]
                 )
             ]
         )
@@ -58,14 +72,25 @@ def bulk_enroll_main(test, terms=TERMS, subaccount=SUBACCOUNT):
         for course in COURSES
     ]
 
-    courses = DataFrame(course_codes, columns=["course"])
-    courses.to_csv(Path.home() / "Desktop" / "course_to_enroll.csv", index=False)
+    dry_run_output = DataFrame(course_codes, columns=["course"])
+    dry_run_output.to_csv(
+        RESULTS
+        / f"{SUB_ACCOUNT}_courses_for_bulk_enrollment_of_{USER_NAME}_{YEAR}.csv",
+        index=False,
+    )
 
-    for course in COURSES:
-        try:
-            enrollment = course.enroll_user(
-                USER, enrollment={"enrollment_state": "active"}
-            )
-            echo(f"Enrolled: {enrollment}")
-        except Exception:
-            echo("failed to enroll")
+    if not dry_run:
+        for course in COURSES:
+            try:
+                enrollment = course.enroll_user(
+                    user, enrollment={"enrollment_state": "active"}
+                )
+                echo(f"- ENROLLED {USER_NAME} in {course.name}: {enrollment}")
+            except Exception as error:
+                colorize(
+                    f"- ERROR: Failed to enroll {USER_NAME} in {course.name} ({error})",
+                    "red",
+                    True,
+                )
+
+    colorize("FINISHED", "yellow", True)

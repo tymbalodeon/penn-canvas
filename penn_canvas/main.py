@@ -1,12 +1,12 @@
 from typer import Argument, Option, Typer
 
 from .archive import archive_main
+from .bulk_enroll import bulk_enroll_main
 from .count_sites import count_sites_main
 from .email import email_main
 from .helpers import display_config, make_config
 from .nso import nso_main
 from .storage import storage_main
-from .bulk_enroll import bulk_enroll_main
 from .tool import tool_main
 
 app = Typer(
@@ -52,6 +52,58 @@ def archive(
 
 @app.command()
 def bulk_enroll(
+    user: int = Option(
+        5966278, "--user", help="The Canvas user id of the user to be bulk enrolled."
+    ),
+    sub_account: int = Option(
+        99241,
+        "--sub-account",
+        help="The Canvas account id of the school to pull courses from.",
+    ),
+    terms: list[int] = Option(
+        [
+            5773,
+            5799,
+            5818,
+            5833,
+            5901,
+            5910,
+            5956,
+            5988,
+            6008,
+            6055,
+            6086,
+            6112,
+            6139,
+            6269,
+            6291,
+            6304,
+            6321,
+            5688,
+            5821,
+            5911,
+            6063,
+            6120,
+            6303,
+            4373,
+            2244,
+        ],
+        "--terms",
+        help="A list of Canvas enrollment term ids to pull courses from.",
+    ),
+    input_file: bool = Option(
+        True,
+        "--input-file",
+        help="Use a csv file to input terms instead of a command-line option.",
+    ),
+    dry_run: bool = Option(
+        False,
+        "--dry-run",
+        help=(
+            "Ouput a list of courses found for the given school and terms without"
+            " enrolling the user."
+        ),
+    ),
     test: bool = Option(
         False,
         "--test",
@@ -59,9 +111,9 @@ def bulk_enroll(
             "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
             " of production (https://canvas.upenn.edu/)."
         ),
-    )
+    ),
 ):
-    bulk_enroll_main(test)
+    bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test)
 
 
 @app.command()

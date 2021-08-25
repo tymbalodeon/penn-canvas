@@ -439,7 +439,7 @@ def email_main(test, verbose, new, force, clear_processed):
     )
     handle_clear_processed(clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH])
     reports, please_add_message, missing_file_message = find_input(
-        COMMAND, INPUT_FILE_NAME, "*.csv", REPORTS
+        COMMAND, INPUT_FILE_NAME, REPORTS
     )
     PROCESSED_USERS = get_processed(PROCESSED, PROCESSED_PATH, HEADERS)
     PROCESSED_ERRORS = get_processed(PROCESSED, PROCESSED_ERRORS_PATH, HEADERS)

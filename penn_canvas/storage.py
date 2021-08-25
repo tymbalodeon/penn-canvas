@@ -224,7 +224,7 @@ def storage_main(test, verbose, force, increase=1000):
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
     report, please_add_message, missing_file_message = find_input(
-        COMMAND, INPUT_FILE_NAME, "*.csv", REPORTS
+        COMMAND, INPUT_FILE_NAME, REPORTS
     )
     START = get_start_index(force, RESULT_PATH)
     report, TOTAL = process_input(

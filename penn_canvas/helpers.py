@@ -205,18 +205,13 @@ def get_command_paths(command, logs=False, processed=False):
     BOX = BOX_PATH.exists()
     BASE = BOX_CLI_PATH if BOX else COMMAND_DIRECTORY_BASE
     COMMAND_DIRECTORY = BASE / f"{command}"
-    REPORTS = COMMAND_DIRECTORY / "Input"
-    RESULTS = COMMAND_DIRECTORY / "RESULTS"
-    LOGS = COMMAND_DIRECTORY / "logs"
-    PROCESSED = COMMAND_DIRECTORY / ".processed"
-
-    PATHS = [REPORTS, RESULTS]
+    PATHS = [(COMMAND_DIRECTORY / "Input"), (COMMAND_DIRECTORY / "RESULTS")]
 
     if logs:
-        PATHS.append(LOGS)
+        PATHS.append(COMMAND_DIRECTORY / "logs")
 
     if processed:
-        PATHS.append(PROCESSED)
+        PATHS.append(COMMAND_DIRECTORY / ".processed")
 
     for path in PATHS:
         if not path.exists():
@@ -329,7 +324,9 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
 
 
 def print_missing_input_and_exit(input_file_name, please_add_message, date=True):
-    date_message = " matching today's date "
+    if date:
+        date_message = " matching today's date "
+
     error = colorize(
         f"- ERROR: A {input_file_name}{date_message if date else ' '}was not found.",
         "yellow",
@@ -338,15 +335,33 @@ def print_missing_input_and_exit(input_file_name, please_add_message, date=True)
     return f"{error}\n- {please_add_message}"
 
 
-def find_input(command, input_file_name, extension, input_directory, date=True):
+def find_input(
+    command,
+    input_file_name,
+    input_directory,
+    extension="*.csv",
+    date=True,
+    bulk_enroll=False,
+):
     def get_input(path):
         INPUT_FILES = [input_file for input_file in Path(path).glob(extension)]
 
-        return [input_file for input_file in INPUT_FILES if TODAY in input_file.name]
+        if bulk_enroll:
+            return [
+                input_file
+                for input_file in INPUT_FILES
+                if "bulk enroll" in input_file.name.lower() and YEAR in input_file.name
+            ]
+        else:
+            return [
+                input_file for input_file in INPUT_FILES if TODAY in input_file.name
+            ]
 
     echo(f") Finding {input_file_name}...")
 
-    date_message = " matching today's date "
+    if date:
+        date_message = " matching today's date "
+
     please_add_message = (
         "Please add a"
         f" {input_file_name}{date_message if date else ' '}to the following"
@@ -401,8 +416,9 @@ def process_input(
     missing_file_message,
     args=None,
     start=0,
+    bulk_enroll=False,
 ):
-    echo(") Preparing report...")
+    echo(f") Preparing {input_file_name}...")
 
     reports = iter(input_files)
     error = True
@@ -436,11 +452,14 @@ def process_input(
     else:
         data = cleanup_data(data)
 
-    data.reset_index(drop=True, inplace=True)
-    TOTAL = len(data.index)
-    data = data.loc[start:TOTAL, :]
+    if not bulk_enroll:
+        data.reset_index(drop=True, inplace=True)
+        TOTAL = len(data.index)
+        data = data.loc[start:TOTAL, :]
 
-    return data, f"{TOTAL:,}"
+        return data, f"{TOTAL:,}"
+    else:
+        return data
 
 
 def get_processed(processed_directory, processed_path, columns="pennkey"):
