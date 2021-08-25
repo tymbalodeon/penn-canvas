@@ -1,4 +1,5 @@
 from csv import writer
+from datetime import datetime, timedelta
 
 from pandas import DataFrame, read_csv
 from typer import Exit, echo
@@ -18,6 +19,12 @@ COMMAND = "Bulk Enroll"
 INPUT_FILE_NAME = "Terms input file"
 INPUT, RESULTS = get_command_paths(COMMAND)
 ONGOING_TERM_ID = 4373
+
+
+def get_tomorrow():
+    current_time = datetime.utcnow()
+    now_plus_one_day = current_time + timedelta(days=1)
+    return now_plus_one_day.isoformat() + "Z"
 
 
 def cleanup_data(data):
@@ -46,6 +53,7 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
     CANVAS = get_canvas(INSTANCE)
     ACCOUNT = CANVAS.get_account(MAIN_ACCOUNT_ID)
     SUB_ACCOUNT = CANVAS.get_account(sub_account)
+    NOW = get_tomorrow()
 
     try:
         USER_NAME = CANVAS.get_user(user)
@@ -61,22 +69,15 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
 
     COURSES = list()
 
-    # for term in terms:
-    #     COURSES.extend(
-    #         [
-    #             course
-    #             for course in ACCOUNT.get_courses(
-    #                 enrollment_term_id=term, by_subaccounts=[sub_account]
-    #             )
-    #         ]
-    #     )
-
-    for course in [
-        "SRS_GOMD-970-001 2020C",
-        "SRS_DEND-856-001 2020C",
-        "SRS_DPED-704-001 2020C",
-    ]:
-        COURSES.append(CANVAS.get_course(course, True))
+    for term in terms:
+        COURSES.extend(
+            [
+                course
+                for course in ACCOUNT.get_courses(
+                    enrollment_term_id=term, by_subaccounts=[sub_account]
+                )
+            ]
+        )
 
     if dry_run:
         course_codes = [
@@ -101,11 +102,21 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
         for course in COURSES:
             try:
                 enrollment_term_id = course.enrollment_term_id
+                end_at = ""
                 course.update(course={"term_id": ONGOING_TERM_ID})
+
+                if course.end_at:
+                    end_at = course.end_at
+                    course.update(course={"end_at": NOW})
+
                 enrollment = course.enroll_user(
                     user, enrollment={"enrollment_state": "active"}
                 )
                 course.update(course={"term_id": enrollment_term_id})
+
+                if end_at:
+                    course.update(course={"end_at": end_at})
+
                 echo(f"- ENROLLED {USER_NAME} in {course.name}: {enrollment}")
             except Exception as error:
                 colorize(
@@ -113,6 +124,7 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
                     "red",
                     True,
                 )
+
                 with open(ERROR_FILE, "a+", newline="") as error_file:
                     errors = set(read_csv(ERROR_FILE)["canvas sis course id"])
                     course_log = (
