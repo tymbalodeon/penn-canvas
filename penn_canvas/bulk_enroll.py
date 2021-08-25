@@ -1,4 +1,5 @@
 from csv import writer
+
 from pandas import DataFrame
 from typer import Exit, echo
 
@@ -8,8 +9,8 @@ from .helpers import (
     colorize,
     find_input,
     get_canvas,
-    make_csv_paths,
     get_command_paths,
+    make_csv_paths,
     process_input,
 )
 
