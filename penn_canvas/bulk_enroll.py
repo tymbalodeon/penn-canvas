@@ -17,8 +17,9 @@ from .helpers import (
 
 COMMAND = "Bulk Enroll"
 INPUT_FILE_NAME = "Terms input file"
-INPUT, RESULTS = get_command_paths(COMMAND)
+INPUT, RESULTS, LOGS = get_command_paths(COMMAND, logs=True)
 ONGOING_TERM_ID = 4373
+HEADERS = ["canvas course id", "canvas sis course id", "error"]
 
 
 def get_tomorrow():
@@ -59,9 +60,16 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
     try:
         USER_NAME = CANVAS.get_user(user)
     except Exception:
-        colorize(f"- ERROR: User {user} not found.", "yellow", True)
+        colorize(
+            f"- ERROR: User {user} not found. Please verify that you have the correct"
+            " Canvas user id and try again.",
+            "yellow",
+            True,
+        )
 
         raise Exit(1)
+
+    LOG_PATH = LOGS / f"{YEAR}_bulk_enrollment_log_{USER_NAME}_in_{SUB_ACCOUNT}.csv"
 
     echo(f") Finding {SUB_ACCOUNT} courses for {TOTAL} terms...")
 
@@ -92,9 +100,8 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
         ERROR_FILE = (
             RESULTS / f"{SUB_ACCOUNT}_bulk_enrollment_{USER_NAME}_{YEAR}_ERRORS.csv"
         )
-        make_csv_paths(
-            RESULTS, ERROR_FILE, ["canvas sis course id", "canvas course id", "error"]
-        )
+        make_csv_paths(RESULTS, ERROR_FILE, HEADERS)
+        make_csv_paths(LOGS, LOG_PATH, HEADERS)
 
         echo(f") Enrolling {USER_NAME} in {SUB_ACCOUNT} courses...")
 
@@ -102,15 +109,29 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
             for course in ACCOUNT.get_courses(
                 enrollment_term_id=term, by_subaccounts=[sub_account]
             ):
+                sis_course_id_or_name = (
+                    course.sis_course_id if course.sis_course_id else course.name
+                )
+
                 try:
                     enrollment_term_id = course.enrollment_term_id
                     end_at = ""
-                    course.update(course={"term_id": ONGOING_TERM_ID})
+
+                    course_info = [
+                        course.id,
+                        sis_course_id_or_name,
+                        enrollment_term_id,
+                        end_at,
+                    ]
+
+                    with open(LOG_PATH, "a", newline="") as log:
+                        writer(log).writerow(course_info)
 
                     if course.end_at:
                         end_at = course.end_at
                         course.update(course={"end_at": TOMORROW})
 
+                    course.update(course={"term_id": ONGOING_TERM_ID})
                     enrollment = course.enroll_user(
                         user, enrollment={"enrollment_state": "active"}
                     )
@@ -119,7 +140,27 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
                     if end_at:
                         course.update(course={"end_at": end_at})
 
-                    echo(f"- ENROLLED {USER_NAME} in {course.name}: {enrollment}")
+                    updated_course = CANVAS.get_course(course.id)
+
+                    if (
+                        updated_course.enrollment_term_id == enrollment_term_id
+                        and updated_course.end_at == end_at
+                    ):
+                        errors = read_csv(ERROR_FILE)
+                        errors = errors[
+                            errors["canvas sis course id"] != sis_course_id_or_name
+                        ]
+                        errors.to_csv(ERROR_FILE, index=False)
+                        log = read_csv(LOG_PATH)
+                        log.drop(index=log.index[-1:], inplace=True)
+                        log.to_csv(LOG_PATH, index=False)
+
+                        echo(f"- ENROLLED {USER_NAME} in {course.name}: {enrollment}")
+                    else:
+                        echo(
+                            "- ERROR: Failed to restore original term and/or end_at"
+                            f" data. Please see log path for details: {LOG_PATH}"
+                        )
                 except Exception as error:
                     colorize(
                         f"- ERROR: Failed to enroll {USER_NAME} in"
@@ -130,17 +171,12 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
 
                     with open(ERROR_FILE, "a+", newline="") as error_file:
                         errors = set(read_csv(ERROR_FILE)["canvas sis course id"])
-                        course_log = (
-                            course.sis_course_id
-                            if course.sis_course_id
-                            else course.name
-                        )
 
-                        if course_log not in errors:
+                        if sis_course_id_or_name not in errors:
                             writer(error_file).writerow(
                                 [
-                                    course_log,
                                     course.id,
+                                    sis_course_id_or_name,
                                     error,
                                 ]
                             )
