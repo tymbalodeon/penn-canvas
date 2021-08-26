@@ -167,7 +167,7 @@ def bulk_enroll_main(
                     course.id,
                     sis_course_id_or_name,
                     enrollment_term_id,
-                    end_at,
+                    course.end_at,
                 ]
 
                 with open(LOG_PATH, "a", newline="") as log:
@@ -178,9 +178,7 @@ def bulk_enroll_main(
                     course.update(course={"end_at": TOMORROW})
 
                 course.update(course={"term_id": ONGOING_TERM_ID})
-                enrollment = course.enroll_user(
-                    user, enrollment={"enrollment_state": "active"}
-                )
+                course.enroll_user(user, enrollment={"enrollment_state": "active"})
                 course.update(course={"term_id": enrollment_term_id})
 
                 if end_at:
