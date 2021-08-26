@@ -22,8 +22,8 @@ INPUT, RESULTS, LOGS, PROCESSED = get_command_paths(COMMAND, logs=True, processe
 ONGOING_TERM_ID = 4373
 HEADERS = ["canvas course id", "canvas sis course id", "error"]
 PROCESSED_HEADERS = HEADERS[:2]
-LOG_HEADERS = HEADERS[:]
-LOG_HEADERS.append("end_at")
+LOG_HEADERS = HEADERS[:2]
+LOG_HEADERS.extend(["term", "end_at"])
 
 
 def get_tomorrow():
