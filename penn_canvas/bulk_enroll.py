@@ -73,18 +73,19 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
 
     echo(f") Finding {SUB_ACCOUNT} courses for {TOTAL} terms...")
 
-    if dry_run:
-        COURSES = list()
+    COURSES = list()
 
-        for term in terms:
-            COURSES.extend(
-                [
-                    course
-                    for course in ACCOUNT.get_courses(
-                        enrollment_term_id=term, by_subaccounts=[sub_account]
-                    )
-                ]
-            )
+    for term in terms:
+        COURSES.extend(
+            [
+                course
+                for course in ACCOUNT.get_courses(
+                    enrollment_term_id=term, by_subaccounts=[sub_account]
+                )
+            ]
+        )
+
+    if dry_run:
         course_codes = [
             course.sis_course_id if course.sis_course_id else course.name
             for course in COURSES
@@ -104,83 +105,82 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
 
         echo(f") Enrolling {USER_NAME} in {SUB_ACCOUNT} courses...")
 
-        for term in terms:
-            for course in ACCOUNT.get_courses(
-                enrollment_term_id=term, by_subaccounts=[sub_account]
-            ):
-                sis_course_id_or_name = (
-                    course.sis_course_id if course.sis_course_id else course.name
+    TOTAL_COURSES = len(COURSES)
+
+    for index, course in enumerate(COURSES):
+        index += 1
+        sis_course_id_or_name = (
+            course.sis_course_id if course.sis_course_id else course.name
+        )
+
+        try:
+            enrollment_term_id = course.enrollment_term_id
+            end_at = ""
+
+            course_info = [
+                course.id,
+                sis_course_id_or_name,
+                enrollment_term_id,
+                end_at,
+            ]
+
+            with open(LOG_PATH, "a", newline="") as log:
+                writer(log).writerow(course_info)
+
+            if course.end_at:
+                end_at = course.end_at
+                course.update(course={"end_at": TOMORROW})
+
+            course.update(course={"term_id": ONGOING_TERM_ID})
+            enrollment = course.enroll_user(
+                user, enrollment={"enrollment_state": "active"}
+            )
+            course.update(course={"term_id": enrollment_term_id})
+
+            if end_at:
+                course.update(course={"end_at": end_at})
+
+            updated_course = CANVAS.get_course(course.id)
+
+            if updated_course.enrollment_term_id == enrollment_term_id and bool(
+                updated_course.end_at
+            ) == bool(end_at):
+                errors = read_csv(ERROR_FILE)
+                errors = errors[errors["canvas sis course id"] != sis_course_id_or_name]
+                errors.to_csv(ERROR_FILE, index=False)
+                log = read_csv(LOG_PATH)
+                log.drop(index=log.index[-1:], inplace=True)
+                log.to_csv(LOG_PATH, index=False)
+
+                echo(
+                    f"- ({index}/{TOTAL_COURSES})"
+                    f" {colorize('ENROLLED', 'green')} {colorize(USER_NAME)} in"
+                    f" {colorize(course.name, 'blue')}."
                 )
+            else:
+                echo(
+                    "- ({index}/{TOTAL_COURSES}) {colorize('ERROR:', 'red')}"
+                    " Failed to restore original term and/or end_at data. Please see"
+                    f" log path for details: {colorize(LOG_PATH, 'green')}"
+                )
+        except Exception as error:
+            colorize(
+                f"- ({index}/{TOTAL_COURSES}) ERROR: Failed to enroll {USER_NAME} in"
+                f" {course.name} ({error})",
+                "red",
+                True,
+            )
 
-                try:
-                    enrollment_term_id = course.enrollment_term_id
-                    end_at = ""
+            with open(ERROR_FILE, "a+", newline="") as error_file:
+                errors = set(read_csv(ERROR_FILE)["canvas sis course id"])
 
-                    course_info = [
-                        course.id,
-                        sis_course_id_or_name,
-                        enrollment_term_id,
-                        end_at,
-                    ]
-
-                    with open(LOG_PATH, "a", newline="") as log:
-                        writer(log).writerow(course_info)
-
-                    if course.end_at:
-                        end_at = course.end_at
-                        course.update(course={"end_at": TOMORROW})
-
-                    course.update(course={"term_id": ONGOING_TERM_ID})
-                    enrollment = course.enroll_user(
-                        user, enrollment={"enrollment_state": "active"}
-                    )
-                    course.update(course={"term_id": enrollment_term_id})
-
-                    if end_at:
-                        course.update(course={"end_at": end_at})
-
-                    updated_course = CANVAS.get_course(course.id)
-
-                    if updated_course.enrollment_term_id == enrollment_term_id and bool(
-                        updated_course.end_at
-                    ) == bool(end_at):
-                        errors = read_csv(ERROR_FILE)
-                        errors = errors[
-                            errors["canvas sis course id"] != sis_course_id_or_name
+                if sis_course_id_or_name not in errors:
+                    writer(error_file).writerow(
+                        [
+                            course.id,
+                            sis_course_id_or_name,
+                            error,
                         ]
-                        errors.to_csv(ERROR_FILE, index=False)
-                        log = read_csv(LOG_PATH)
-                        log.drop(index=log.index[-1:], inplace=True)
-                        log.to_csv(LOG_PATH, index=False)
-
-                        echo(
-                            f"- {colorize('ENROLLED', 'green')} {colorize(USER_NAME)} in"
-                            f" {colorize(course.name, 'blue')}."
-                        )
-                    else:
-                        echo(
-                            "- {colorize('ERROR:', 'red')} Failed to restore"
-                            " original term and/or end_at data. Please see log path"
-                            f" for details: {colorize(LOG_PATH, 'green')}"
-                        )
-                except Exception as error:
-                    colorize(
-                        f"- ERROR: Failed to enroll {USER_NAME} in"
-                        f" {course.name} ({error})",
-                        "red",
-                        True,
                     )
-
-                    with open(ERROR_FILE, "a+", newline="") as error_file:
-                        errors = set(read_csv(ERROR_FILE)["canvas sis course id"])
-
-                        if sis_course_id_or_name not in errors:
-                            writer(error_file).writerow(
-                                [
-                                    course.id,
-                                    sis_course_id_or_name,
-                                    error,
-                                ]
-                            )
 
     colorize("FINISHED", "yellow", True)
