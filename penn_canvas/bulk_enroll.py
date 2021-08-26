@@ -155,12 +155,13 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
 
                         echo(
                             f"- {colorize('ENROLLED', 'green')} {colorize(USER_NAME)} in"
-                            f" {colorize(course.name, 'blue')}"
+                            f" {colorize(course.name, 'blue')}."
                         )
                     else:
                         echo(
-                            "- ERROR: Failed to restore original term and/or end_at"
-                            f" data. Please see log path for details: {LOG_PATH}"
+                            "- {colorize('ERROR:', 'red')} Failed to restore"
+                            " original term and/or end_at data. Please see log path"
+                            f" for details: {colorize(LOG_PATH, 'green')}"
                         )
                 except Exception as error:
                     colorize(
