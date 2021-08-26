@@ -112,8 +112,30 @@ def bulk_enroll(
             " of production (https://canvas.upenn.edu/)."
         ),
     ),
+    check_errors: bool = Option(
+        False,
+        "--check-errors",
+        help=(
+            "Attempt to enroll user in courses that previously hit an error (skips"
+            " errors by default)."
+        ),
+    ),
+    clear_processed: bool = Option(
+        False,
+        "--clear-processed",
+        help="Clear the list of courses already processed for a given user/school.",
+    ),
 ):
-    bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test)
+    bulk_enroll_main(
+        user,
+        sub_account,
+        terms,
+        input_file,
+        dry_run,
+        test,
+        check_errors,
+        clear_processed,
+    )
 
 
 @app.command()
