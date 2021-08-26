@@ -93,7 +93,7 @@ def bulk_enroll(
     ),
     input_file: bool = Option(
         True,
-        "--input-file",
+        "--no-input-file",
         help="Use a csv file to input terms instead of a command-line option.",
     ),
     dry_run: bool = Option(

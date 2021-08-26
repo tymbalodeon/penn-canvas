@@ -34,11 +34,10 @@ def cleanup_data(data):
 
 
 def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
-    INPUT_FILES, PLEASE_ADD_MESSAGE, MISSING_FILE_MESSAGE = find_input(
-        COMMAND, INPUT_FILE_NAME, INPUT, date=False, bulk_enroll=True
-    )
-
     if input_file:
+        INPUT_FILES, PLEASE_ADD_MESSAGE, MISSING_FILE_MESSAGE = find_input(
+            COMMAND, INPUT_FILE_NAME, INPUT, date=False, bulk_enroll=True
+        )
         terms = process_input(
             INPUT_FILES,
             INPUT_FILE_NAME,
@@ -89,7 +88,6 @@ def bulk_enroll_main(user, sub_account, terms, input_file, dry_run, test):
             course.sis_course_id if course.sis_course_id else course.name
             for course in COURSES
         ]
-
         dry_run_output = DataFrame(course_codes, columns=["course"])
         dry_run_output.to_csv(
             RESULTS
