@@ -224,7 +224,7 @@ def process_result(tool, terms, enable, result_path, new):
             drop_duplicate_errors([error_path])
         else:
             add_headers_to_empty_files(
-                [enabled],
+                {enabled_path: enabled},
                 ["canvas course id", "course id", "error"],
             )
     else:

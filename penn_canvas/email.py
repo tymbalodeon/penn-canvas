@@ -273,10 +273,10 @@ def process_result(result_path, processed_path, new):
     else:
         add_headers_to_empty_files(
             {
-                "activated": activated,
-                "suppored_errors": supported_errors,
-                "unsupported_errors": unsupported_errors,
-                "users_not_found": users_not_found,
+                activated_path: activated,
+                supported_errors_path: supported_errors,
+                unsupported_errors_path: unsupported_errors,
+                users_not_found_path: users_not_found,
             },
             HEADERS,
         )
