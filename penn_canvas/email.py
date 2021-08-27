@@ -158,7 +158,7 @@ def check_schools(canvas_user, sub_accounts, canvas, verbose):
         (account for account in account_ids if account in sub_accounts), None
     )
 
-    return bool(fixable_id)
+    return bool(fixable_id), account_ids[0]
 
 
 def activate_user_email(
@@ -242,10 +242,10 @@ def process_result(result_path, processed_path, new):
         ]
     )
 
-    activated.drop("index", axis=1, inplace=True)
-    supported_errors.drop("index", axis=1, inplace=True)
+    activated.drop(["index", "subaccount"], axis=1, inplace=True)
+    supported_errors.drop(["index", "subaccount"], axis=1, inplace=True)
     unsupported_errors.drop("index", axis=1, inplace=True)
-    users_not_found.drop("index", axis=1, inplace=True)
+    users_not_found.drop(["index", "subaccount"], axis=1, inplace=True)
 
     BASE = RESULTS / f"{YEAR}"
 
@@ -369,13 +369,15 @@ def email_main(test, verbose, new, force, clear_processed):
     def check_and_activate_emails(user, canvas, verbose, args):
         index, canvas_user_id, login_id, full_name = user
 
-        status = None
         supported = None
+        account = None
 
         status, canvas_user, emails = is_already_active(user, canvas, verbose, index)
 
         if status == "error" or status == "unconfirmed" or status == "not found":
-            is_supported = check_schools(canvas_user, SUB_ACCOUNTS, canvas, verbose)
+            is_supported, account = check_schools(
+                canvas_user, SUB_ACCOUNTS, canvas, verbose
+            )
 
             if is_supported:
                 supported = "Y"
@@ -451,9 +453,10 @@ def email_main(test, verbose, new, force, clear_processed):
         elif status == "user not found":
             supported = status = "user not found"
 
-        report.at[index, ["email status", "supported"]] = [
+        report.at[index, ["email status", "supported", "subaccount"]] = [
             status,
             supported,
+            account,
         ]
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
