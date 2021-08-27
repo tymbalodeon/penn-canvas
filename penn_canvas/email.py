@@ -3,6 +3,7 @@ from datetime import datetime
 from os import remove
 from pathlib import Path
 
+from cx_Oracle import connect, init_oracle_client
 from pandas import concat, read_csv
 from typer import echo
 
@@ -16,9 +17,11 @@ from .helpers import (
     find_input,
     get_canvas,
     get_command_paths,
+    get_data_warehouse_config,
     get_processed,
     get_start_index,
     handle_clear_processed,
+    init_data_warehouse,
     make_csv_paths,
     make_index_headers,
     make_skip_message,
@@ -37,6 +40,7 @@ HEADERS = [
     "full name",
     "email status",
     "supported",
+    "subaccount",
 ]
 LOG_HEADERS = HEADERS[:3]
 LOG_HEADERS.extend(["email address"])
@@ -155,22 +159,32 @@ def check_schools(canvas_user, sub_accounts, canvas, verbose):
         (account for account in account_ids if account in sub_accounts), None
     )
 
-    return bool(fixable_id)
+    return bool(fixable_id), account_ids[0]
 
 
 def activate_user_email(
     canvas_user_id, login_id, full_name, canvas_user, emails, log_path
 ):
     for email in emails:
-        address = email.address
-        user_info = [canvas_user_id, login_id, full_name, address]
+        new_add = isinstance(email, str)
+        user_info = [
+            canvas_user_id,
+            login_id,
+            full_name,
+            email if new_add else email.address,
+        ]
 
         with open(log_path, "a", newline="") as result:
             writer(result).writerow(user_info)
 
-        email.delete()
+        if not new_add:
+            email.delete()
+
         canvas_user.create_communication_channel(
-            communication_channel={"address": address, "type": "email"},
+            communication_channel={
+                "address": email if new_add else email.address,
+                "type": "email",
+            },
             skip_confirmation=True,
         )
 
@@ -229,10 +243,10 @@ def process_result(result_path, processed_path, new):
         ]
     )
 
-    activated.drop("index", axis=1, inplace=True)
-    supported_errors.drop("index", axis=1, inplace=True)
+    activated.drop(["index", "subaccount"], axis=1, inplace=True)
+    supported_errors.drop(["index", "subaccount"], axis=1, inplace=True)
     unsupported_errors.drop("index", axis=1, inplace=True)
-    users_not_found.drop("index", axis=1, inplace=True)
+    users_not_found.drop(["index", "subaccount"], axis=1, inplace=True)
 
     BASE = RESULTS / f"{YEAR}"
 
@@ -356,36 +370,94 @@ def email_main(test, verbose, new, force, clear_processed):
     def check_and_activate_emails(user, canvas, verbose, args):
         index, canvas_user_id, login_id, full_name = user
 
-        status = None
         supported = None
+        account = None
 
         status, canvas_user, emails = is_already_active(user, canvas, verbose, index)
 
         if status == "error" or status == "unconfirmed" or status == "not found":
-            is_supported = check_schools(canvas_user, SUB_ACCOUNTS, canvas, verbose)
+            is_supported, account = check_schools(
+                canvas_user, SUB_ACCOUNTS, canvas, verbose
+            )
 
             if is_supported:
                 supported = "Y"
-                status = "not found"
+                canvas_user_id = user[1]
 
                 if status == "unconfirmed":
-                    activated = activate_user_email(
-                        user[1],
+                    status = activate_user_email(
+                        canvas_user_id,
                         login_id,
                         full_name,
                         canvas_user,
                         emails,
                         LOG_PATH,
                     )
-                    status = activated
+                elif status == "not found":
+                    cursor = connect(
+                        DATA_WAREHOUSE_USER,
+                        DATA_WAREHOUSE_PASSWORD,
+                        DATA_WAREHOUSE_DSN,
+                    ).cursor()
+                    cursor.execute(
+                        """
+                        SELECT
+                            penn_id, email_address
+                        FROM
+                            employee_general
+                        WHERE
+                            pennkey = :pennkey
+                        """,
+                        pennkey=login_id,
+                    )
+
+                    for penn_id, email in cursor:
+                        if email:
+                            status = activate_user_email(
+                                canvas_user_id,
+                                login_id,
+                                full_name,
+                                canvas_user,
+                                [email.strip()],
+                                LOG_PATH,
+                            )
+                    if not status == "activated":
+                        cursor = connect(
+                            DATA_WAREHOUSE_USER,
+                            DATA_WAREHOUSE_PASSWORD,
+                            DATA_WAREHOUSE_DSN,
+                        ).cursor()
+                        cursor.execute(
+                            """
+                            SELECT
+                                penn_id, email_address
+                            FROM
+                                person_all_v
+                            WHERE
+                                pennkey = :pennkey
+                            """,
+                            pennkey=login_id,
+                        )
+
+                        for penn_id, email in cursor:
+                            if email:
+                                status = activate_user_email(
+                                    canvas_user_id,
+                                    login_id,
+                                    full_name,
+                                    canvas_user,
+                                    [email.strip()],
+                                    LOG_PATH,
+                                )
             else:
                 supported = "N"
         elif status == "user not found":
             supported = status = "user not found"
 
-        report.at[index, ["email status", "supported"]] = [
+        report.at[index, ["email status", "supported", "subaccount"]] = [
             status,
             supported,
+            account,
         ]
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
@@ -464,6 +536,12 @@ def email_main(test, verbose, new, force, clear_processed):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
     SUB_ACCOUNTS = get_sub_accounts(CANVAS)
+    (
+        DATA_WAREHOUSE_USER,
+        DATA_WAREHOUSE_PASSWORD,
+        DATA_WAREHOUSE_DSN,
+    ) = get_data_warehouse_config()
+    init_data_warehouse()
 
     if verbose:
         PRINT_COLOR_MAPS = {

@@ -1,6 +1,7 @@
 from csv import writer
 from datetime import datetime
 from os import remove
+from cx_Oracle import init_oracle_client
 from pathlib import Path
 from shutil import copy
 
@@ -183,6 +184,15 @@ def get_data_warehouse_config():
     echo(") Reading Data Warehouse credentials from config file...")
 
     return check_config(CONFIG_PATH)[3:]
+
+
+def init_data_warehouse():
+    lib_dir = Path.home() / "Downloads/instantclient_19_8"
+    config_dir = lib_dir / "network/admin"
+    init_oracle_client(
+        lib_dir=str(lib_dir),
+        config_dir=str(config_dir),
+    )
 
 
 def make_index_headers(headers):

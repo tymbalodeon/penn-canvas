@@ -126,6 +126,10 @@ def bulk_enroll(
         help="Clear the list of courses already processed for a given user/school.",
     ),
 ):
+    """
+    Enrolls a given user into all courses found for the given school and terms.
+
+    """
     bulk_enroll_main(
         user,
         sub_account,
