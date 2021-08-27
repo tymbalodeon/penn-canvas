@@ -532,9 +532,9 @@ def drop_duplicate_errors(paths):
 
 
 def add_headers_to_empty_files(data_frames, headers):
-    for data_frame in data_frames:
+    for name, data_frame in data_frames.items():
         if data_frame.empty:
-            with open(f"{data_frame}_path", "w", newline="") as output_file:
+            with open(f"{name}_path", "w", newline="") as output_file:
                 writer(output_file).writerow(headers)
 
 

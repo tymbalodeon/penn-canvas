@@ -272,7 +272,13 @@ def process_result(result_path, processed_path, new):
         drop_duplicate_errors([supported_errors_path, users_not_found_path])
     else:
         add_headers_to_empty_files(
-            [activated, supported_errors, unsupported_errors, users_not_found], HEADERS
+            {
+                "activated": activated,
+                "suppored_errors": supported_errors,
+                "unsupported_errors": unsupported_errors,
+                "users_not_found": users_not_found,
+            },
+            HEADERS,
         )
 
     remove(result_path)
