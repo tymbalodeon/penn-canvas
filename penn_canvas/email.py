@@ -159,7 +159,7 @@ def check_schools(canvas_user, sub_accounts, canvas, verbose):
         (account for account in account_ids if account in sub_accounts), None
     )
 
-    return bool(fixable_id), account_ids[0]
+    return bool(fixable_id), account_ids[0] if len(account_ids) else None
 
 
 def activate_user_email(
@@ -457,7 +457,7 @@ def email_main(test, verbose, new, force, clear_processed):
         report.at[index, ["email status", "supported", "subaccount"]] = [
             status,
             supported,
-            account,
+            str(account),
         ]
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
