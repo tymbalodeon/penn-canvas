@@ -3,6 +3,7 @@ from datetime import datetime
 from os import remove
 from pathlib import Path
 
+from cx_Oracle import connect, init_oracle_client
 from pandas import concat, read_csv
 from typer import echo
 
@@ -16,9 +17,11 @@ from .helpers import (
     find_input,
     get_canvas,
     get_command_paths,
+    get_data_warehouse_config,
     get_processed,
     get_start_index,
     handle_clear_processed,
+    init_data_warehouse,
     make_csv_paths,
     make_index_headers,
     make_skip_message,
@@ -162,15 +165,25 @@ def activate_user_email(
     canvas_user_id, login_id, full_name, canvas_user, emails, log_path
 ):
     for email in emails:
-        address = email.address
-        user_info = [canvas_user_id, login_id, full_name, address]
+        new_add = isinstance(email, str)
+        user_info = [
+            canvas_user_id,
+            login_id,
+            full_name,
+            email if new_add else email.address,
+        ]
 
         with open(log_path, "a", newline="") as result:
             writer(result).writerow(user_info)
 
-        email.delete()
+        if not new_add:
+            email.delete()
+
         canvas_user.create_communication_channel(
-            communication_channel={"address": address, "type": "email"},
+            communication_channel={
+                "address": email if new_add else email.address,
+                "type": "email",
+            },
             skip_confirmation=True,
         )
 
@@ -366,18 +379,73 @@ def email_main(test, verbose, new, force, clear_processed):
 
             if is_supported:
                 supported = "Y"
-                status = "not found"
+                canvas_user_id = user[1]
 
                 if status == "unconfirmed":
-                    activated = activate_user_email(
-                        user[1],
+                    status = activate_user_email(
+                        canvas_user_id,
                         login_id,
                         full_name,
                         canvas_user,
                         emails,
                         LOG_PATH,
                     )
-                    status = activated
+                elif status == "not found":
+                    cursor = connect(
+                        DATA_WAREHOUSE_USER,
+                        DATA_WAREHOUSE_PASSWORD,
+                        DATA_WAREHOUSE_DSN,
+                    ).cursor()
+                    cursor.execute(
+                        """
+                        SELECT
+                            penn_id, email_address
+                        FROM
+                            employee_general
+                        WHERE
+                            pennkey = :pennkey
+                        """,
+                        pennkey=login_id,
+                    )
+
+                    for penn_id, email in cursor:
+                        if email and not email.strip().endswith(".org"):
+                            status = activate_user_email(
+                                canvas_user_id,
+                                login_id,
+                                full_name,
+                                canvas_user,
+                                [email],
+                                LOG_PATH,
+                            )
+                    if not status == "activated":
+                        cursor = connect(
+                            DATA_WAREHOUSE_USER,
+                            DATA_WAREHOUSE_PASSWORD,
+                            DATA_WAREHOUSE_DSN,
+                        ).cursor()
+                        cursor.execute(
+                            """
+                            SELECT
+                                penn_id, email_address
+                            FROM
+                                person_all_v
+                            WHERE
+                                pennkey = :pennkey
+                            """,
+                            pennkey=login_id,
+                        )
+
+                        for penn_id, email in cursor:
+                            if email and not email.strip().endswith(".org"):
+                                status = activate_user_email(
+                                    canvas_user_id,
+                                    login_id,
+                                    full_name,
+                                    canvas_user,
+                                    [email],
+                                    LOG_PATH,
+                                )
             else:
                 supported = "N"
         elif status == "user not found":
@@ -464,6 +532,12 @@ def email_main(test, verbose, new, force, clear_processed):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
     SUB_ACCOUNTS = get_sub_accounts(CANVAS)
+    (
+        DATA_WAREHOUSE_USER,
+        DATA_WAREHOUSE_PASSWORD,
+        DATA_WAREHOUSE_DSN,
+    ) = get_data_warehouse_config()
+    init_data_warehouse()
 
     if verbose:
         PRINT_COLOR_MAPS = {

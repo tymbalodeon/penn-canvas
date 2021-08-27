@@ -2,7 +2,7 @@ from csv import writer
 from datetime import datetime
 from pathlib import Path
 
-from cx_Oracle import connect, init_oracle_client
+from cx_Oracle import connect
 from natsort import natsorted
 from pandas import Categorical, DataFrame, concat, isna, read_csv, read_excel
 from typer import Abort, Exit, echo
@@ -17,17 +17,12 @@ from .helpers import (
     get_processed,
     get_start_index,
     handle_clear_processed,
+    init_data_warehouse,
     make_csv_paths,
     make_skip_message,
     toggle_progress_bar,
 )
 
-lib_dir = Path.home() / "Downloads/instantclient_19_8"
-config_dir = lib_dir / "network/admin"
-init_oracle_client(
-    lib_dir=str(lib_dir),
-    config_dir=str(config_dir),
-)
 
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
 INPUT, RESULTS, PROCESSED = get_command_paths("NSO", processed=True)
