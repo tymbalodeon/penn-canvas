@@ -40,6 +40,7 @@ HEADERS = [
     "full name",
     "email status",
     "supported",
+    "subaccount",
 ]
 LOG_HEADERS = HEADERS[:3]
 LOG_HEADERS.extend(["email address"])
@@ -411,13 +412,13 @@ def email_main(test, verbose, new, force, clear_processed):
                     )
 
                     for penn_id, email in cursor:
-                        if email and not email.strip().endswith(".org"):
+                        if email:
                             status = activate_user_email(
                                 canvas_user_id,
                                 login_id,
                                 full_name,
                                 canvas_user,
-                                [email],
+                                [email.strip()],
                                 LOG_PATH,
                             )
                     if not status == "activated":
@@ -439,13 +440,13 @@ def email_main(test, verbose, new, force, clear_processed):
                         )
 
                         for penn_id, email in cursor:
-                            if email and not email.strip().endswith(".org"):
+                            if email:
                                 status = activate_user_email(
                                     canvas_user_id,
                                     login_id,
                                     full_name,
                                     canvas_user,
-                                    [email],
+                                    [email.strip()],
                                     LOG_PATH,
                                 )
             else:
