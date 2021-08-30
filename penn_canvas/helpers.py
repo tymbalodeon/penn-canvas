@@ -531,9 +531,9 @@ def drop_duplicate_errors(paths):
         read_csv(path).drop_duplicates().to_csv(path, index=False)
 
 
-def add_headers_to_empty_files(data_frames, headers):
-    for path, data_frame in data_frames.items():
-        if data_frame.empty:
+def add_headers_to_empty_files(paths, headers):
+    for path in paths:
+        if read_csv(path).empty:
             with open(path, "w", newline="") as output_file:
                 writer(output_file).writerow(headers)
 

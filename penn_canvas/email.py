@@ -276,7 +276,8 @@ def process_result(result_path, processed_path, new):
             supported_errors_path,
             unsupported_errors_path,
             users_not_found_path,
-        ]
+        ],
+        HEADERS,
     )
 
     remove(result_path)
