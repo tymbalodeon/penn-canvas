@@ -372,7 +372,7 @@ def print_messages(
     colorize("FINISHED", "yellow", True)
 
 
-def email_main(test, verbose, new, force, clear_processed):
+def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
     def check_and_activate_emails(user, canvas, verbose, args):
         index, canvas_user_id, login_id, full_name = user
 
@@ -399,7 +399,7 @@ def email_main(test, verbose, new, force, clear_processed):
                         emails,
                         LOG_PATH,
                     )
-                elif status == "not found":
+                elif status == "not found" and not no_data_warehouse:
                     cursor = connect(
                         DATA_WAREHOUSE_USER,
                         DATA_WAREHOUSE_PASSWORD,

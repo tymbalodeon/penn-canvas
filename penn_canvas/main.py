@@ -247,6 +247,14 @@ def email(
         "--clear-processed",
         help="Clear the list of users already processed for the current year.",
     ),
+    no_data_warehouse: bool = Option(
+        False,
+        "--no-data-warehouse",
+        help=(
+            "Don't check the Data Warehouse (use when access to the Data Warehouse is"
+            " unavailable.)"
+        ),
+    ),
 ):
     """
     Checks the email status of users and activates any unconfirmed email
@@ -274,7 +282,7 @@ def email(
     NOTE: Input filename must include the current date in order to be accepted.
     """
 
-    email_main(test, verbose, new, force, clear_processed)
+    email_main(test, verbose, new, force, clear_processed, no_data_warehouse)
 
 
 @app.command()
