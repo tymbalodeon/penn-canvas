@@ -258,15 +258,14 @@ def process_result(result_path, processed_path, new):
     unsupported_errors_path = BASE / f"{result_path.stem}_UNSUPPORTED_ERROR.csv"
     users_not_found_path = BASE / f"{result_path.stem}_USERS_NOT_FOUND.csv"
 
-    dynamic_to_csv(activated_path, activated, activated_path.exists(), HEADERS)
-    dynamic_to_csv(supported_errors_path, supported_errors, new, HEADERS)
+    dynamic_to_csv(activated_path, activated, activated_path.exists())
+    dynamic_to_csv(supported_errors_path, supported_errors, new)
     dynamic_to_csv(
         unsupported_errors_path,
         unsupported_errors,
         unsupported_errors_path.exists(),
-        HEADERS,
     )
-    dynamic_to_csv(users_not_found_path, users_not_found, new, HEADERS)
+    dynamic_to_csv(users_not_found_path, users_not_found, new)
 
     if new:
         drop_duplicate_errors([supported_errors_path, users_not_found_path])

@@ -521,7 +521,7 @@ def colorize(text, color="magenta", echo=False):
         return style(text, fg=typer_colors[color])
 
 
-def dynamic_to_csv(path, data_frame, condition, columns):
+def dynamic_to_csv(path, data_frame, condition):
     mode = "a" if condition else "w"
     data_frame.to_csv(path, mode=mode, header=not condition, index=False)
 

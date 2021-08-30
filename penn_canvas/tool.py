@@ -208,7 +208,7 @@ def process_result(tool, terms, enable, result_path, new):
 
         enabled_path = BASE / f"{result_path.stem}_ENABLED.csv"
         enabled = enabled[["canvas course id", "course id"]]
-        dynamic_to_csv(enabled_path, enabled, enabled_path.exists(), HEADERS)
+        dynamic_to_csv(enabled_path, enabled, enabled_path.exists())
         error_result = concat([error, not_found])
         error_result.rename(
             columns={
@@ -218,7 +218,7 @@ def process_result(tool, terms, enable, result_path, new):
         )
         error_result = error_result[["canvas course id", "course id", "error"]]
         error_path = BASE / f"{result_path.stem}_ERROR.csv"
-        dynamic_to_csv(error_path, error_result, new, HEADERS)
+        dynamic_to_csv(error_path, error_result, new)
 
         if new:
             drop_duplicate_errors([error_path])
