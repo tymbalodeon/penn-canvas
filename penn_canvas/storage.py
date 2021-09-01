@@ -99,7 +99,7 @@ def check_percent_storage(course, canvas, verbose, total):
     except Exception:
         if verbose:
             message = colorize(f"ERROR: {sis_id} ({canvas_id}) NOT FOUND", "red")
-            echo(f"- (({index + 1):,}/{total}) {message}")
+            echo(f"- ({(index + 1):,}/{total}) {message}")
         return False, "course not found"
 
 
