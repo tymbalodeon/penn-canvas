@@ -1,11 +1,11 @@
 from csv import writer
 from datetime import datetime
 from os import remove
-from cx_Oracle import init_oracle_client
 from pathlib import Path
 from shutil import copy
 
 from canvasapi import Canvas
+from cx_Oracle import init_oracle_client
 from pandas import read_csv
 from typer import Abort, Exit, colors, confirm, echo, progressbar, prompt, secho, style
 

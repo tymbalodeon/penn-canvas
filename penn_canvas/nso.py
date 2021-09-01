@@ -17,12 +17,10 @@ from .helpers import (
     get_processed,
     get_start_index,
     handle_clear_processed,
-    init_data_warehouse,
     make_csv_paths,
     make_skip_message,
     toggle_progress_bar,
 )
-
 
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
 INPUT, RESULTS, PROCESSED = get_command_paths("NSO", processed=True)

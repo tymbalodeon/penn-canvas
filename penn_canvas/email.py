@@ -3,7 +3,7 @@ from datetime import datetime
 from os import remove
 from pathlib import Path
 
-from cx_Oracle import connect, init_oracle_client
+from cx_Oracle import connect
 from pandas import concat, read_csv
 from typer import echo
 

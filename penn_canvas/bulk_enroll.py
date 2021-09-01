@@ -3,15 +3,16 @@ from datetime import datetime, timedelta
 
 from pandas import DataFrame, read_csv
 from typer import Exit, echo
+
 from .helpers import (
     MAIN_ACCOUNT_ID,
     YEAR,
-    get_processed,
     colorize,
     find_input,
-    handle_clear_processed,
     get_canvas,
     get_command_paths,
+    get_processed,
+    handle_clear_processed,
     make_csv_paths,
     process_input,
 )
@@ -57,15 +58,16 @@ def bulk_enroll_main(
 
     ACCOUNT = CANVAS.get_account(MAIN_ACCOUNT_ID)
     SUB_ACCOUNT = CANVAS.get_account(sub_account).name
-    PROCESSED_PATH = (
-        PROCESSED
-        / f"{YEAR}_bulk_enroll_{USER_NAME}_in_{SUB_ACCOUNT}_processed_courses{'_test' if test else ''}.csv"
+    PROCESSED_STEM_STRING = (
+        f"{YEAR}_bulk_enroll_{USER_NAME}_in_{SUB_ACCOUNT}_"
+        f"processed_courses{'_test' if test else ''}.csv"
     )
-
-    PROCESSED_ERRORS_PATH = (
-        PROCESSED
-        / f"{YEAR}_bulk_enroll_{USER_NAME}_in_{SUB_ACCOUNT}_processed_errors{'_test' if test else ''}.csv"
+    PROCESSED_PATH = PROCESSED / PROCESSED_STEM_STRING
+    PROCESSED_ERRORS_STEM_STRING = (
+        f"{YEAR}_bulk_enroll_{USER_NAME}_in_{SUB_ACCOUNT}_"
+        f"processed_errors{'_test' if test else ''}.csv"
     )
+    PROCESSED_ERRORS_PATH = PROCESSED / PROCESSED_ERRORS_STEM_STRING
     handle_clear_processed(
         clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH], item_plural="courses"
     )
