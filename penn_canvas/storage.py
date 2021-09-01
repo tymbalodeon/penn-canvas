@@ -75,7 +75,7 @@ def check_percent_storage(course, canvas, verbose, total):
                 color = "green"
 
             echo(
-                f"- ({index + 1}/{total}) {sis_id} ({canvas_id}):"
+                f"- ({(index + 1):,}/{total}) {sis_id} ({canvas_id}):"
                 f" {colorize(f'{int(percentage_used * 100)}%', color)}"
             )
 
@@ -89,7 +89,7 @@ def check_percent_storage(course, canvas, verbose, total):
                         f" {canvas_id}",
                         "yellow",
                     )
-                    echo(f"({index + 1}/{total}) {message}")
+                    echo(f"({(index + 1):,}/{total}) {message}")
 
                 return False, "missing sis id"
             else:
@@ -99,7 +99,7 @@ def check_percent_storage(course, canvas, verbose, total):
     except Exception:
         if verbose:
             message = colorize(f"ERROR: {sis_id} ({canvas_id}) NOT FOUND", "red")
-            echo(f"- ({index + 1}/{total}) {message}")
+            echo(f"- (({index + 1):,}/{total}) {message}")
         return False, "course not found"
 
 
@@ -175,6 +175,14 @@ def process_result():
         try:
             if not this_month_directory:
                 Path.mkdir(storage_shared_directory / f"{MONTH} {YEAR}")
+                this_month_directory = next(
+                    (
+                        directory
+                        for directory in storage_shared_directory.iterdir()
+                        if YEAR in directory.name and MONTH in directory.name
+                    ),
+                    None,
+                )
 
             box_result_path = this_month_directory / RESULT_PATH.name
             result.to_csv(box_result_path, index=False)
@@ -187,7 +195,7 @@ def process_result():
 def print_messages(total, increased, errors):
     colorize("SUMMARY:", "yellow", True)
     echo(f"- Processed {colorize(total, 'magenta')} courses.")
-    echo(f"- Increased storage quota for {colorize(increased, 'magenta')} courses.")
+    echo(f"- Increased storage quota for {colorize(increased, 'yellow')} courses.")
 
     if errors > 0:
         echo(f"- {colorize(f'Failed to find {str(errors)} courses.', 'red')}")
