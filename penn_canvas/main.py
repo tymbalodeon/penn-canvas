@@ -6,6 +6,7 @@ from .count_sites import count_sites_main
 from .email import email_main
 from .helpers import display_config, make_config
 from .nso import nso_main
+from .open_canvas_enroll import open_canvas_enroll_main
 from .storage import storage_main
 from .tool import tool_main
 
@@ -328,6 +329,15 @@ def nso(
     """
 
     nso_main(test, verbose, force, clear_processed)
+
+
+@app.command()
+def open_canvas_enroll(
+    verbose: bool = Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    )
+):
+    open_canvas_enroll_main(verbose)
 
 
 @app.command()
