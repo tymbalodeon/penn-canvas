@@ -243,10 +243,13 @@ def process_result(result_path, processed_path, new):
         ]
     )
 
-    activated.drop(["index", "subaccount"], axis=1, inplace=True)
-    supported_errors.drop(["index", "subaccount"], axis=1, inplace=True)
-    unsupported_errors.drop("index", axis=1, inplace=True)
-    users_not_found.drop(["index", "subaccount"], axis=1, inplace=True)
+    for path in [activated, supported_errors, unsupported_errors, users_not_found]:
+        columns = ["index", "supported"]
+
+        if path != unsupported_errors:
+            columns.append("subaccount")
+
+        path.drop(["index", "supported", "subaccount"], axis=1, inplace=True)
 
     BASE = RESULTS / f"{YEAR}"
 
