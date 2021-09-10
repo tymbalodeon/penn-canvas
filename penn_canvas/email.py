@@ -243,13 +243,18 @@ def process_result(result_path, processed_path, new):
         ]
     )
 
-    for path in [activated, supported_errors, unsupported_errors, users_not_found]:
+    for data_frame in [
+        activated,
+        supported_errors,
+        unsupported_errors,
+        users_not_found,
+    ]:
         columns = ["index", "supported"]
 
-        if path != unsupported_errors:
+        if data_frame is not unsupported_errors:
             columns.append("subaccount")
 
-        path.drop(["index", "supported", "subaccount"], axis=1, inplace=True)
+        data_frame.drop(["index", "supported", "subaccount"], axis=1, inplace=True)
 
     BASE = RESULTS / f"{YEAR}"
 
