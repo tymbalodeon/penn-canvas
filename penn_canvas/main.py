@@ -332,8 +332,12 @@ def nso(
 
 
 @app.command()
-def open_canvas_enroll():
-    open_canvas_enroll_main()
+def open_canvas_enroll(
+    remove: bool = Option(
+        False, "--remove", help="Remove user accounts instead of create them."
+    )
+):
+    open_canvas_enroll_main(remove)
 
 
 @app.command()

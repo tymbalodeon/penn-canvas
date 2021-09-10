@@ -353,6 +353,7 @@ def find_input(
     date=True,
     bulk_enroll=False,
     open_canvas=False,
+    remove=False,
 ):
     def get_input(path):
         INPUT_FILES = [input_file for input_file in Path(path).glob(extension)]
@@ -364,11 +365,20 @@ def find_input(
                 if "bulk enroll" in input_file.name.lower() and YEAR in input_file.name
             ]
         elif open_canvas:
-            return [
+            input_files = [
                 input_file
                 for input_file in INPUT_FILES
-                if "open" in input_file.name.lower()
+                if "open" in input_file.name.lower() and TODAY in input_file.name
             ]
+
+            if remove:
+                input_files = [
+                    input_file
+                    for input_file in input_files
+                    if "remove" in input_file.name.lower()
+                ]
+
+            return input_files
         else:
             return [
                 input_file for input_file in INPUT_FILES if TODAY in input_file.name
@@ -434,6 +444,7 @@ def process_input(
     args=None,
     start=0,
     bulk_enroll=False,
+    open_canvas=False,
 ):
     echo(f") Preparing {input_file_name}...")
 

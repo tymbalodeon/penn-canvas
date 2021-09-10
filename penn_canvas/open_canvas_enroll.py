@@ -91,12 +91,12 @@ def create_canvas_users(users, account_id, total, enroll=False):
     echo("FINISHED")
 
 
-def open_canvas_enroll_main():
-    input_file, please_add_message, missing_file_message = find_input(
-        COMMAND, INPUT_FILE_NAME, REPORTS, open_canvas=True
+def open_canvas_enroll_main(remove):
+    input_files, please_add_message, missing_file_message = find_input(
+        COMMAND, INPUT_FILE_NAME, REPORTS, open_canvas=True, remove=remove
     )
     users, TOTAL = process_input(
-        input_file,
+        input_files,
         INPUT_FILE_NAME,
         REPORTS,
         please_add_message,
