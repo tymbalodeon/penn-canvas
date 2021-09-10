@@ -332,12 +332,8 @@ def nso(
 
 
 @app.command()
-def open_canvas_enroll(
-    verbose: bool = Option(
-        False, "--verbose", help="Print out detailed information as the task runs."
-    )
-):
-    open_canvas_enroll_main(verbose)
+def open_canvas_enroll():
+    open_canvas_enroll_main()
 
 
 @app.command()
