@@ -56,7 +56,7 @@ def create_or_delete_canvas_users(
         try:
             canvas = get_canvas("open_test" if test else "open", False)
             account = canvas.get_account(account_id)
-            users = account.get_users(search_term=email)
+            users = account.get_users(search_term=email.lower().strip())
             users_list = list()
 
             for user in users:
@@ -68,16 +68,23 @@ def create_or_delete_canvas_users(
                 raise Exception("USER NOT FOUND")
 
             if remove:
-                user = account.delete_user(users_list[0])
+                account.delete_user(users_list[0])
+                user = False
             else:
                 pseudonym = {"unique_id": email}
                 user_object = {"name": full_name}
-                user = account.create_user(pseudonym, user=user_object)
+
+                try:
+                    user = account.create_user(pseudonym, user=user_object)
+                except Exception:
+                    raise Exception("EMAIL ALREADY IN USE")
 
             echo(
-                f"- ({index + 1}/{total}) {'DELETED' if remove else 'CREATED'} Canvas"
-                f" account for {colorize(full_name, 'yellow')}:"
-                f" {colorize(user, 'magenta')}."
+                f"- ({index + 1}/{total})"
+                f" {colorize('DELETED', 'red') if remove else colorize('CREATED', 'green')} Canvas"
+                " account for"
+                f" {colorize(full_name, 'yellow')}{': ' if user else ''}"
+                f"{colorize(user, 'magenta') if user else ''}."
             )
 
             if not remove and enroll and course_id:
