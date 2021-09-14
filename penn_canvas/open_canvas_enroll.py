@@ -47,32 +47,46 @@ def enroll_user_in_course(user, course_id, canvas=None, test=False):
         print(f"- FAILED to enroll {user} in {course}.")
 
 
-def create_canvas_users(users, account_id, total, enroll=False, test=False):
-    def create_canvas_user(full_name, email, account_id, course_id, index):
+def create_or_delete_canvas_users(
+    users, account_id, total, enroll=False, test=False, remove=False
+):
+    def create_or_delete_canvas_user(
+        full_name, email, account_id, course_id, index, remove
+    ):
         try:
             canvas = get_canvas("open_test" if test else "open", False)
             account = canvas.get_account(account_id)
             users = account.get_users(search_term=email)
+            users_list = list()
 
-            if users:
+            for user in users:
+                users_list.append(user)
+
+            if not remove and users_list:
                 raise Exception("EMAIL ALREADY IN USE")
+            elif remove and not users_list:
+                raise Exception("USER NOT FOUND")
 
-            pseudonym = {"unique_id": email}
-            user = {"name": full_name}
-            account = canvas.get_account(account_id)
-            user = account.create_user(pseudonym, user=user)
+            if remove:
+                user = account.delete_user(users_list[0])
+            else:
+                pseudonym = {"unique_id": email}
+                user_object = {"name": full_name}
+                user = account.create_user(pseudonym, user=user_object)
 
             echo(
-                f"- ({index + 1}/{total}) CREATED Canvas account for"
-                f" {colorize(full_name, 'yellow')}: {colorize(user, 'magenta')}."
+                f"- ({index + 1}/{total}) {'DELETED' if remove else 'CREATED'} Canvas"
+                f" account for {colorize(full_name, 'yellow')}:"
+                f" {colorize(user, 'magenta')}."
             )
 
-            if enroll and course_id:
+            if not remove and enroll and course_id:
                 enroll_user_in_course(user, course_id, canvas)
         except Exception as error:
             colorize(
-                f"- ({index + 1}/{total}) ERROR: Failed to create canvas user"
-                f" {full_name}, {email} ({error}).",
+                f"- ({index + 1}/{total}) ERROR: Failed to"
+                f" {'delete' if remove else 'create'} canvas user {full_name},"
+                f" {email} ({error}).",
                 "red",
                 True,
             )
@@ -86,7 +100,9 @@ def create_canvas_users(users, account_id, total, enroll=False, test=False):
             index, full_name, email = user
             course_id = None
 
-        create_canvas_user(full_name, email, account_id, course_id, index)
+        create_or_delete_canvas_user(
+            full_name, email, account_id, course_id, index, remove=remove
+        )
 
     echo("FINISHED")
 
@@ -104,4 +120,4 @@ def open_canvas_enroll_main(remove, test=False):
         cleanup_data,
         missing_file_message,
     )
-    create_canvas_users(users, ACCOUNT, TOTAL, test=test)
+    create_or_delete_canvas_users(users, ACCOUNT, TOTAL, test=test, remove=remove)
