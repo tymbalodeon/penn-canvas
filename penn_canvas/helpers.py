@@ -12,6 +12,7 @@ from typer import Abort, Exit, colors, confirm, echo, progressbar, prompt, secho
 CANVAS_URL_PROD = "https://canvas.upenn.edu"
 CANVAS_URL_TEST = "https://upenn.test.instructure.com"
 CANVAS_URL_OPEN = "https://upenn-catalog.instructure.com"
+CANVAS_URL_OPEN_TEST = "https://upenn-catalog.test.instructure.com"
 CONFIG_DIRECTORY = Path.home() / ".config"
 CONFIG_PATH = CONFIG_DIRECTORY / "penn-canvas"
 COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
@@ -32,6 +33,7 @@ def make_config():
         production,
         development,
         open_canvas,
+        open_canvas_test,
         data_warehouse_user,
         data_warehouse_password,
         data_warehouse_dsn,
@@ -61,6 +63,14 @@ def make_config():
             hide_input=True,
         )
 
+    use_open_test = confirm("Input an Access Token for OPEN Canvas TEST?")
+
+    if use_open_test:
+        open_canvas_test = prompt(
+            "Please enter your Access Token for OPEN Canvas TEST",
+            hide_input=True,
+        )
+
     use_data_warehouse = confirm("Input DATA WAREHOUSE credentials?")
 
     if use_data_warehouse:
@@ -72,12 +82,16 @@ def make_config():
         data_warehouse_dsn = prompt("Please enter your DATA WAREHOUSE DSN")
 
     with open(CONFIG_PATH, "w+") as config:
-        config.write(f"CANVAS_KEY_PROD={production}")
-        config.write(f"\nCANVAS_KEY_DEV={development}")
-        config.write(f"\nCANVAS_KEY_OPEN={open_canvas}")
-        config.write(f"\nDATA_WAREHOUSE_USER={data_warehouse_user}")
-        config.write(f"\nDATA_WAREHOUSE_PASSWORD={data_warehouse_password}")
-        config.write(f"\nDATA_WAREHOUSE_DSN={data_warehouse_dsn}")
+        for value in [
+            f"CANVAS_KEY_PROD={production}",
+            f"\nCANVAS_KEY_DEV={development}",
+            f"\nCANVAS_KEY_OPEN={open_canvas}",
+            f"\nCANVAS_KEY_OPEN_TEST={open_canvas_test}",
+            f"\nDATA_WAREHOUSE_USER={data_warehouse_user}",
+            f"\nDATA_WAREHOUSE_PASSWORD={data_warehouse_password}",
+            f"\nDATA_WAREHOUSE_DSN={data_warehouse_dsn}",
+        ]:
+            config.write(value)
 
 
 def display_config():
@@ -89,6 +103,7 @@ def display_config():
             production,
             development,
             open_canvas,
+            open_canvas_test,
             data_warehouse_user,
             data_warehouse_password,
             data_warehouse_dsn,
@@ -98,6 +113,7 @@ def display_config():
         production = colorize(f"{production}", config_value_color)
         development = colorize(f"{development}", config_value_color)
         open_canvas = colorize(f"{open_canvas}", config_value_color)
+        open_canvas_test = colorize(f"{open_canvas_test}", config_value_color)
         data_warehouse_user = colorize(f"{data_warehouse_user}", config_value_color)
         data_warehouse_password = colorize(
             f"{data_warehouse_password}", config_value_color
@@ -110,6 +126,7 @@ def display_config():
             f"\nCANVAS_KEY_PROD: {production}"
             f"\nCANVAS_KEY_DEV: {development}"
             f"\nCANVAS_KEY_OPEN: {open_canvas}"
+            f"\nCANVAS_KEY_OPEN_TEST: {open_canvas_test}"
             f"\nDATA_WAREHOUSE_USER: {data_warehouse_user}"
             f"\nDATA_WAREHOUSE_PASSWORD: {data_warehouse_password}"
             f"\nDATA_WAREHOUSE_DSN: {data_warehouse_dsn}"
@@ -134,6 +151,7 @@ def check_config(config):
                 "\n\tCANVAS_KEY_PROD=your-canvas-prod-key-here"
                 "\n\tCANVAS_KEY_DEV=your-canvas-test-key-here"
                 "\n\tCANVAS_KEY_OPEN=your-open-canvas-key-here"
+                "\n\tCANVAS_KEY_OPEN_TEST=your-open-canvas-test-key-here"
             )
             raise Abort()
         else:
@@ -146,6 +164,7 @@ def read_config(config):
     production = ""
     development = ""
     open_canvas = ""
+    open_canvas_test = ""
     data_warehouse_user = ""
     data_warehouse_password = ""
     data_warehouse_dsn = ""
@@ -161,6 +180,8 @@ def read_config(config):
                     development = line.replace("CANVAS_KEY_DEV=", "")
                 elif "CANVAS_KEY_OPEN" in line:
                     open_canvas = line.replace("CANVAS_KEY_OPEN=", "")
+                elif "CANVAS_KEY_OPEN_TEST" in line:
+                    open_canvas_test = line.replace("CANVAS_KEY_OPEN_TEST=", "")
                 elif "DATA_WAREHOUSE_USER" in line:
                     data_warehouse_user = line.replace("DATA_WAREHOUSE_USER=", "")
                 elif "DATA_WAREHOUSE_PASSWORD" in line:
@@ -174,6 +195,7 @@ def read_config(config):
         production,
         development,
         open_canvas,
+        open_canvas_test,
         data_warehouse_user,
         data_warehouse_password,
         data_warehouse_dsn,
@@ -508,7 +530,9 @@ def get_canvas(instance="test", verbose=True):
     if verbose:
         echo(") Reading Canvas Access Tokens from config file...")
 
-    production, development, open_canvas = check_config(CONFIG_PATH)[0:3]
+    production, development, open_canvas, open_canvas_test = check_config(CONFIG_PATH)[
+        0:4
+    ]
     url = CANVAS_URL_TEST
     access_token = development
 
@@ -518,6 +542,9 @@ def get_canvas(instance="test", verbose=True):
     elif instance == "open":
         url = CANVAS_URL_OPEN
         access_token = open_canvas
+    elif instance == "open_test":
+        url = CANVAS_URL_OPEN_TEST
+        access_token = open_canvas_test
 
     return Canvas(url, access_token)
 

@@ -28,10 +28,10 @@ def cleanup_data(data):
     return data
 
 
-def enroll_user_in_course(user, course_id, canvas=None):
+def enroll_user_in_course(user, course_id, canvas=None, test=False):
     try:
         if not canvas:
-            canvas = get_canvas("open", False)
+            canvas = get_canvas("open_test" if test else "open", False)
 
         course = canvas.get_course(course_id)
     except Exception:
@@ -47,10 +47,10 @@ def enroll_user_in_course(user, course_id, canvas=None):
         print(f"- FAILED to enroll {user} in {course}.")
 
 
-def create_canvas_users(users, account_id, total, enroll=False):
+def create_canvas_users(users, account_id, total, enroll=False, test=False):
     def create_canvas_user(full_name, email, account_id, course_id, index):
         try:
-            canvas = get_canvas("open", False)
+            canvas = get_canvas("open_test" if test else "open", False)
             account = canvas.get_account(account_id)
             users = account.get_users(search_term=email)
 
@@ -91,7 +91,7 @@ def create_canvas_users(users, account_id, total, enroll=False):
     echo("FINISHED")
 
 
-def open_canvas_enroll_main(remove):
+def open_canvas_enroll_main(remove, test=False):
     input_files, please_add_message, missing_file_message = find_input(
         COMMAND, INPUT_FILE_NAME, REPORTS, open_canvas=True, remove=remove
     )
@@ -104,4 +104,4 @@ def open_canvas_enroll_main(remove):
         cleanup_data,
         missing_file_message,
     )
-    create_canvas_users(users, ACCOUNT, TOTAL)
+    create_canvas_users(users, ACCOUNT, TOTAL, test)

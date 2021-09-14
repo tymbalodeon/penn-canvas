@@ -335,9 +335,17 @@ def nso(
 def open_canvas_enroll(
     remove: bool = Option(
         False, "--remove", help="Remove user accounts instead of create them."
-    )
+    ),
+    test: bool = Option(
+        False,
+        "--test",
+        help=(
+            "Use the Canvas test instance (https://upenn-catalog.test.instructure.com)"
+            " instead of production (https://upenn-catalog.instructure.com)."
+        ),
+    ),
 ):
-    open_canvas_enroll_main(remove)
+    open_canvas_enroll_main(remove, test)
 
 
 @app.command()
