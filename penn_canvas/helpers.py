@@ -205,7 +205,7 @@ def read_config(config):
 def get_data_warehouse_config():
     echo(") Reading Data Warehouse credentials from config file...")
 
-    return check_config(CONFIG_PATH)[3:]
+    return check_config(CONFIG_PATH)[4:]
 
 
 def init_data_warehouse():
