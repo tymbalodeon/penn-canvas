@@ -104,4 +104,4 @@ def open_canvas_enroll_main(remove, test=False):
         cleanup_data,
         missing_file_message,
     )
-    create_canvas_users(users, ACCOUNT, TOTAL, test)
+    create_canvas_users(users, ACCOUNT, TOTAL, test=test)
