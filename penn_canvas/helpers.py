@@ -352,6 +352,8 @@ def find_input(
     extension="*.csv",
     date=True,
     bulk_enroll=False,
+    open_canvas=False,
+    remove=False,
 ):
     def get_input(path):
         INPUT_FILES = [input_file for input_file in Path(path).glob(extension)]
@@ -362,6 +364,21 @@ def find_input(
                 for input_file in INPUT_FILES
                 if "bulk enroll" in input_file.name.lower() and YEAR in input_file.name
             ]
+        elif open_canvas:
+            input_files = [
+                input_file
+                for input_file in INPUT_FILES
+                if "open" in input_file.name.lower() and TODAY in input_file.name
+            ]
+
+            if remove:
+                input_files = [
+                    input_file
+                    for input_file in input_files
+                    if "remove" in input_file.name.lower()
+                ]
+
+            return input_files
         else:
             return [
                 input_file for input_file in INPUT_FILES if TODAY in input_file.name
@@ -427,6 +444,7 @@ def process_input(
     args=None,
     start=0,
     bulk_enroll=False,
+    open_canvas=False,
 ):
     echo(f") Preparing {input_file_name}...")
 
@@ -486,8 +504,9 @@ def get_processed(processed_directory, processed_path, columns="pennkey"):
         return list()
 
 
-def get_canvas(instance="test"):
-    echo(") Reading Canvas Access Tokens from config file...")
+def get_canvas(instance="test", verbose=True):
+    if verbose:
+        echo(") Reading Canvas Access Tokens from config file...")
 
     production, development, open_canvas = check_config(CONFIG_PATH)[0:3]
     url = CANVAS_URL_TEST
