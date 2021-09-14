@@ -178,7 +178,7 @@ def read_config(config):
                     production = line.replace("CANVAS_KEY_PROD=", "")
                 elif "CANVAS_KEY_DEV" in line:
                     development = line.replace("CANVAS_KEY_DEV=", "")
-                elif "CANVAS_KEY_OPEN" in line:
+                elif "CANVAS_KEY_OPEN=" in line:
                     open_canvas = line.replace("CANVAS_KEY_OPEN=", "")
                 elif "CANVAS_KEY_OPEN_TEST" in line:
                     open_canvas_test = line.replace("CANVAS_KEY_OPEN_TEST=", "")
