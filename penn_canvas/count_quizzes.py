@@ -1,13 +1,13 @@
 from .helpers import get_canvas
 
 
-def count_surveys(inputfile="survey_input.csv", outputfile="RESULT_surveys.csv"):
+def count_surveys():
     def sort_quizzes(quizzes, quiz_type, published):
         return len(
             [
                 quiz
                 for quiz in quizzes
-                if quiz.quiz_type == quiz_type and bool(quiz.published) is published
+                if quiz.quiz_type == quiz_type and quiz.published is published
             ]
         )
 
