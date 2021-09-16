@@ -51,10 +51,18 @@ def filter_and_count_quizzes(quizzes, quiz_type, published):
     )
 
 
-def process_result(result_path, processed_path, new):
+def process_result(result_path):
     result = read_csv(result_path, dtype=str)
+    result.drop(columns=["index"], inplace=True)
+    result.to_csv(result_path, index=False)
 
-    return result
+    return len(result.index)
+
+
+def print_messages(total):
+    colorize("SUMMARY:", "yellow", True)
+    echo(f"- Processed {colorize(total)} courses.")
+    colorize("FINISHED", "yellow", True)
 
 
 def count_quizzes_main(test, force, verbose):
@@ -135,7 +143,7 @@ def count_quizzes_main(test, force, verbose):
         CLEANUP_HEADERS,
         cleanup_data,
         missing_file_message,
-        START,
+        start=START,
     )
     make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))
     make_skip_message(START, "course")
@@ -144,3 +152,5 @@ def count_quizzes_main(test, force, verbose):
 
     echo(") Processing courses...")
     toggle_progress_bar(report, count_quizzes_for_course, CANVAS, verbose)
+    process_result(RESULT_PATH)
+    print_messages(TOTAL)
