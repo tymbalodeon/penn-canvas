@@ -54,9 +54,11 @@ def create_or_delete_canvas_users(
         full_name, email, account_id, course_id, index, remove
     ):
         try:
+            full_name = full_name.strip()
+            email = email.strip()
             canvas = get_canvas("open_test" if test else "open", False)
             account = canvas.get_account(account_id)
-            users = account.get_users(search_term=email.lower().strip())
+            users = account.get_users(search_term=email)
             users_list = list()
 
             for user in users:
