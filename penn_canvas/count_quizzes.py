@@ -69,7 +69,6 @@ def process_result(result_path, term_id):
     courses_with_quiz = len(
         result[(result["total"] != "0") & (result["total"] != "error")].index
     )
-    result.fillna("N/A", inplace=True)
     result.drop(columns=["index"], inplace=True)
     renamed_headers = [header.replace("_", " ") for header in HEADERS[:5]]
     renamed_columns = {}
@@ -79,6 +78,7 @@ def process_result(result_path, term_id):
 
     result.rename(columns=renamed_columns, inplace=True)
     result.sort_values("total", ascending=False, inplace=True)
+    result.fillna("N/A", inplace=True)
     result.to_csv(result_path, index=False)
     result_path.rename(str(result_path).replace(YEAR, term_id))
 
