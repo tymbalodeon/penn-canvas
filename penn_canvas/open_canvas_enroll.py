@@ -17,7 +17,7 @@ from .helpers import (
 COMMAND = "Open Canvas Enroll"
 INPUT_FILE_NAME = "Open Canvas Users csv file"
 REPORTS, RESULTS = get_command_paths(COMMAND)
-HEADERS = ["Full name", "Email address"]
+HEADERS = ["Name", "Email"]
 ACCOUNT = 1
 
 
