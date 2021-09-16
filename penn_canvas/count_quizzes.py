@@ -25,6 +25,7 @@ HEADERS = [
     "account_id",
     "term_id",
     "status",
+    "number of students",
     "published ungraded quizzes",
     "unpublished ungraded quizzes",
     "published graded quizzes",
@@ -51,7 +52,7 @@ def filter_and_count_quizzes(quizzes, quiz_type, published):
     )
 
 
-def process_result(result_path):
+def process_result(result_path, term_id):
     result = read_csv(result_path)
     courses_with_quiz = len(
         result[(result["total"] != 0) & (result["total"] != "error")].index
@@ -59,7 +60,15 @@ def process_result(result_path):
     result.fillna("N/A", inplace=True)
     result.drop(columns=["index"], inplace=True)
     result.sort_values(by=["total"], inplace=True, ascending=False)
+    renamed_headers = [header.replace("_", " ") for header in HEADERS[:5]]
+    renamed_columns = {}
+
+    for index, header in enumerate(renamed_headers):
+        renamed_columns[HEADERS[index]] = header
+
+    result.rename(columns=renamed_columns, inplace=True)
     result.to_csv(result_path, index=False)
+    result_path.rename(str(result_path).replace(YEAR, term_id))
 
     return courses_with_quiz
 
@@ -91,6 +100,9 @@ def count_quizzes_main(test, force, verbose):
         try:
             course = canvas.get_course(canvas_course_id)
             course_name = course.name
+            number_of_students = len(
+                [student for student in course.get_users(enrollment_type=["student"])]
+            )
             quizzes = course.get_quizzes()
             published_ungraded_quizzes = filter_and_count_quizzes(
                 quizzes, "survey", True
@@ -125,6 +137,7 @@ def count_quizzes_main(test, force, verbose):
             account_id,
             term_id,
             status,
+            number_of_students,
             published_ungraded_quizzes,
             unpublished_ungraded_quizzes,
             published_graded_quizzes,
@@ -135,14 +148,14 @@ def count_quizzes_main(test, force, verbose):
 
         echo(
             f"- ({index + 1}/{TOTAL})"
-            f" {colorize(course_name, 'yellow')}:"
-            f" {colorize(total_quizzes if not error_message else error_message, 'blue' if not error_message else 'red')}"
+            f" {colorize(course_name, 'magenta')}:"
+            f" {colorize(total_quizzes if not error_message else error_message, 'green' if not error_message else 'red')}"
         )
 
     reports, please_add_message, missing_file_message = find_input(
         COMMAND, INPUT_FILE_NAME, REPORTS
     )
-    RESULT_PATH = RESULTS / f"{YEAR}_quiz_result.csv"
+    RESULT_PATH = RESULTS / f"{YEAR}_quiz_usage_report.csv"
     START = get_start_index(force, RESULT_PATH, RESULTS)
     report, TOTAL = process_input(
         reports,
@@ -154,6 +167,7 @@ def count_quizzes_main(test, force, verbose):
         missing_file_message,
         start=START,
     )
+    TERM_ID = report.at[0, "term_id"]
     make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))
     make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
@@ -161,5 +175,5 @@ def count_quizzes_main(test, force, verbose):
 
     echo(") Processing courses...")
     toggle_progress_bar(report, count_quizzes_for_course, CANVAS, verbose)
-    courses_with_quiz = process_result(RESULT_PATH)
+    courses_with_quiz = process_result(RESULT_PATH, TERM_ID)
     print_messages(TOTAL, courses_with_quiz)
