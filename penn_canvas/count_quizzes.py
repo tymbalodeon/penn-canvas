@@ -52,16 +52,25 @@ def filter_and_count_quizzes(quizzes, quiz_type, published):
 
 
 def process_result(result_path):
-    result = read_csv(result_path, dtype=str)
+    result = read_csv(result_path)
+    courses_with_quiz = len(
+        result[(result["total"] != 0) & (result["total"] != "error")].index
+    )
+    result.fillna("N/A", inplace=True)
     result.drop(columns=["index"], inplace=True)
+    result.sort_values(by=["total"], inplace=True, ascending=False)
     result.to_csv(result_path, index=False)
 
-    return len(result.index)
+    return courses_with_quiz
 
 
-def print_messages(total):
+def print_messages(total, courses_with_quiz):
     colorize("SUMMARY:", "yellow", True)
     echo(f"- Processed {colorize(total)} courses.")
+    echo(
+        f"- Found {colorize(courses_with_quiz, 'green')} courses with at least one"
+        " quiz."
+    )
     colorize("FINISHED", "yellow", True)
 
 
@@ -127,7 +136,7 @@ def count_quizzes_main(test, force, verbose):
         echo(
             f"- ({index + 1}/{TOTAL})"
             f" {colorize(course_name, 'yellow')}:"
-            f" {colorize(total_quizzes if not error_message else error_message, 'magenta' if not error_message else 'red')}"
+            f" {colorize(total_quizzes if not error_message else error_message, 'blue' if not error_message else 'red')}"
         )
 
     reports, please_add_message, missing_file_message = find_input(
@@ -152,5 +161,5 @@ def count_quizzes_main(test, force, verbose):
 
     echo(") Processing courses...")
     toggle_progress_bar(report, count_quizzes_for_course, CANVAS, verbose)
-    process_result(RESULT_PATH)
-    print_messages(TOTAL)
+    courses_with_quiz = process_result(RESULT_PATH)
+    print_messages(TOTAL, courses_with_quiz)

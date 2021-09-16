@@ -215,7 +215,6 @@ def remove_empty_log(log_path):
 
 def process_result(result_path, processed_path, new):
     result = read_csv(result_path)
-
     supported = result[result["supported"] == "Y"]
     unsupported = result[result["supported"] == "N"]
     activated = supported[supported["email status"] == "activated"].copy()
