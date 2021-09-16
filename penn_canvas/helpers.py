@@ -557,6 +557,7 @@ def colorize(text, color="magenta", echo=False):
         "magenta": colors.MAGENTA,
         "red": colors.RED,
         "yellow": colors.YELLOW,
+        "white": colors.WHITE,
     }
 
     text = f"{text:,}" if type(text) == int else str(text)
@@ -594,7 +595,22 @@ def toggle_progress_bar(data, callback, canvas, verbose, args=None):
             for item in progress:
                 callback(item, canvas, verbose, args)
 
-    if verbose:
-        verbose_mode()
+    def verbose_mode_no_args():
+        for item in data.itertuples():
+            callback(item, canvas, verbose)
+
+    def progress_bar_mode_no_args():
+        with progressbar(data.itertuples(), length=len(data.index)) as progress:
+            for item in progress:
+                callback(item, canvas, verbose)
+
+    if not args:
+        if verbose:
+            verbose_mode_no_args()
+        else:
+            progress_bar_mode_no_args()
     else:
-        progress_bar_mode()
+        if verbose:
+            verbose_mode()
+        else:
+            progress_bar_mode()
