@@ -46,7 +46,14 @@ def cleanup_data(data):
 
 def filter_and_count_quizzes(quizzes, quiz_type, published):
     if not quiz_type:
-        return len([quiz for quiz in quizzes if quiz.published is published])
+        return len(
+            [
+                quiz
+                for quiz in quizzes
+                if (quiz.quiz_type == "survey" or quiz.quiz_type == "graded_survey")
+                and quiz.published is published
+            ]
+        )
     else:
         return len(
             [
