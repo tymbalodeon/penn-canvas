@@ -165,10 +165,11 @@ def count_quizzes_main(test, force, verbose):
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
         if verbose:
+            message = total_quizzes if not error_message else error_message
             echo(
                 f"- ({index + 1}/{TOTAL})"
                 f" {colorize(course_name, 'magenta')}:"
-                f" {colorize(total_quizzes if not error_message else error_message, 'green' if not error_message else 'red')}"
+                f" {colorize(message, 'green' if not error_message else 'red')}"
             )
 
     reports, please_add_message, missing_file_message = find_input(

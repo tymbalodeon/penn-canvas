@@ -1,18 +1,6 @@
 from typer import echo
 
-from .helpers import (
-    TODAY_AS_Y_M_D,
-    YEAR,
-    find_input,
-    colorize,
-    get_canvas,
-    get_command_paths,
-    get_start_index,
-    make_csv_paths,
-    make_index_headers,
-    make_skip_message,
-    process_input,
-)
+from .helpers import colorize, find_input, get_canvas, get_command_paths, process_input
 
 COMMAND = "Open Canvas Enroll"
 INPUT_FILE_NAME = "Open Canvas Users csv file"
@@ -81,10 +69,12 @@ def create_or_delete_canvas_users(
                 except Exception:
                     raise Exception("EMAIL ALREADY IN USE")
 
+            deleted = f"{colorize('DELETED', 'red')}"
+            created = f"{colorize('CREATED', 'green')}"
             echo(
                 f"- ({index + 1}/{total})"
-                f" {colorize('DELETED', 'red') if remove else colorize('CREATED', 'green')} Canvas"
-                " account for"
+                f" {deleted if remove else created}"
+                " Canvas account for"
                 f" {colorize(full_name, 'yellow')}{': ' if user else ''}"
                 f"{colorize(user, 'magenta') if user else ''}."
             )

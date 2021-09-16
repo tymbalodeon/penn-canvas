@@ -2,8 +2,8 @@ from typer import Argument, Option, Typer
 
 from .archive import archive_main
 from .bulk_enroll import bulk_enroll_main
-from .count_sites import count_sites_main
 from .count_quizzes import count_quizzes_main
+from .count_sites import count_sites_main
 from .email import email_main
 from .helpers import display_config, make_config
 from .nso import nso_main
