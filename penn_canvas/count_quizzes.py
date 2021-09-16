@@ -30,6 +30,8 @@ HEADERS = [
     "unpublished ungraded quizzes",
     "published graded quizzes",
     "unpublished graded quizzes",
+    "total published quizzes",
+    "total unpublished quizzes",
     "total",
 ]
 CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:6]]
@@ -43,13 +45,16 @@ def cleanup_data(data):
 
 
 def filter_and_count_quizzes(quizzes, quiz_type, published):
-    return len(
-        [
-            quiz
-            for quiz in quizzes
-            if quiz.quiz_type == quiz_type and quiz.published is published
-        ]
-    )
+    if not quiz_type:
+        return len([quiz for quiz in quizzes if quiz.published is published])
+    else:
+        return len(
+            [
+                quiz
+                for quiz in quizzes
+                if quiz.quiz_type == quiz_type and quiz.published is published
+            ]
+        )
 
 
 def process_result(result_path, term_id):
@@ -116,6 +121,8 @@ def count_quizzes_main(test, force, verbose):
             unpublished_graded_quizzes = filter_and_count_quizzes(
                 quizzes, "graded_survey", False
             )
+            total_published_quizzes = filter_and_count_quizzes(quizzes, False, True)
+            total_unpublished_quizzes = filter_and_count_quizzes(quizzes, False, False)
             total_quizzes = (
                 published_ungraded_quizzes
                 + unpublished_ungraded_quizzes
@@ -127,6 +134,8 @@ def count_quizzes_main(test, force, verbose):
             unpublished_ungraded_quizzes = "error"
             published_graded_quizzes = "error"
             unpublished_graded_quizzes = "error"
+            total_published_quizzes = "error"
+            total_unpublished_quizzes = "error"
             course_name = canvas_course_id
             error_message = error
 
@@ -142,6 +151,8 @@ def count_quizzes_main(test, force, verbose):
             str(unpublished_ungraded_quizzes),
             str(published_graded_quizzes),
             str(unpublished_graded_quizzes),
+            str(total_published_quizzes),
+            str(total_unpublished_quizzes),
             str(total_quizzes),
         ]
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
