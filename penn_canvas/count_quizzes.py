@@ -71,7 +71,6 @@ def process_result(result_path, term_id):
     )
     result.fillna("N/A", inplace=True)
     result.drop(columns=["index"], inplace=True)
-    result.sort_values(by=["total"], inplace=True, ascending=False)
     renamed_headers = [header.replace("_", " ") for header in HEADERS[:5]]
     renamed_columns = {}
 
@@ -79,6 +78,7 @@ def process_result(result_path, term_id):
         renamed_columns[HEADERS[index]] = header
 
     result.rename(columns=renamed_columns, inplace=True)
+    result.sort_values("total", ascending=False, inplace=True)
     result.to_csv(result_path, index=False)
     result_path.rename(str(result_path).replace(YEAR, term_id))
 
