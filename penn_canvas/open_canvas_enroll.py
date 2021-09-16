@@ -22,7 +22,7 @@ ACCOUNT = 1
 
 
 def cleanup_data(data):
-    data.drop_duplicates(subset=["Email address"], inplace=True)
+    data.drop_duplicates(subset=["Email"], inplace=True)
     data = data.astype("string", errors="ignore")
 
     return data
