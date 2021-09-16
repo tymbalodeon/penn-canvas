@@ -1,32 +1,35 @@
-from typer import echo
 from pandas import read_csv
+from typer import echo
+
 from .helpers import (
     YEAR,
+    colorize,
     find_input,
-    make_skip_message,
-    toggle_progress_bar,
     get_canvas,
     get_command_paths,
     get_start_index,
     make_csv_paths,
     make_index_headers,
+    make_skip_message,
     process_input,
+    toggle_progress_bar,
 )
 
 COMMAND = "Count Quizzes"
 INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
 REPORTS, RESULTS = get_command_paths(COMMAND)
 HEADERS = [
-    "canvas course id",
-    "course id",
-    "short name",
-    "account id",
-    "term id",
+    "canvas_course_id",
+    "course_id",
+    "short_name",
+    "account_id",
+    "term_id",
     "status",
-    "published_ungraded_quizzes",
-    "unpublished_ungraded_quizzes",
-    "published_graded_quizzes",
-    "unpublished_graded_quizzes",
+    "published ungraded quizzes",
+    "unpublished ungraded quizzes",
+    "published graded quizzes",
+    "unpublished graded quizzes",
+    "total",
 ]
 CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:6]]
 
@@ -49,16 +52,28 @@ def filter_and_count_quizzes(quizzes, quiz_type, published):
 
 
 def process_result(result_path, processed_path, new):
-    result = read_csv(result_path)
+    result = read_csv(result_path, dtype=str)
+
     return result
 
 
 def count_quizzes_main(test, force, verbose):
     def count_quizzes_for_course(course, canvas, verbose):
-        index, canvas_course_id, course_id, short_name, account, term, status = course
+        (
+            index,
+            canvas_course_id,
+            course_id,
+            short_name,
+            account_id,
+            term_id,
+            status,
+        ) = course
+
+        error_message = False
 
         try:
             course = canvas.get_course(canvas_course_id)
+            course_name = course.name
             quizzes = course.get_quizzes()
             published_ungraded_quizzes = filter_and_count_quizzes(
                 quizzes, "survey", True
@@ -78,22 +93,34 @@ def count_quizzes_main(test, force, verbose):
                 + published_graded_quizzes
                 + unpublished_graded_quizzes
             )
-
-            print(
-                index,
-                canvas_course_id,
-                course_id,
-                account,
-                term,
-                status,
-                published_ungraded_quizzes,
-                unpublished_ungraded_quizzes,
-                published_graded_quizzes,
-                unpublished_graded_quizzes,
-                total_quizzes,
-            )
         except Exception as error:
-            print(error)
+            published_ungraded_quizzes = "error"
+            unpublished_ungraded_quizzes = "error"
+            published_graded_quizzes = "error"
+            unpublished_graded_quizzes = "error"
+            course_name = canvas_course_id
+            error_message = error
+
+        report.at[index, HEADERS] = [
+            canvas_course_id,
+            course_id,
+            short_name,
+            account_id,
+            term_id,
+            status,
+            published_ungraded_quizzes,
+            unpublished_ungraded_quizzes,
+            published_graded_quizzes,
+            unpublished_graded_quizzes,
+            total_quizzes,
+        ]
+        report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
+
+        echo(
+            f"- ({index + 1}/{TOTAL})"
+            f" {colorize(course_name, 'yellow')}:"
+            f" {colorize(total_quizzes if not error_message else error_message, 'magenta' if not error_message else 'red')}"
+        )
 
     reports, please_add_message, missing_file_message = find_input(
         COMMAND, INPUT_FILE_NAME, REPORTS

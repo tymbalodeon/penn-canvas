@@ -557,6 +557,7 @@ def colorize(text, color="magenta", echo=False):
         "magenta": colors.MAGENTA,
         "red": colors.RED,
         "yellow": colors.YELLOW,
+        "white": colors.WHITE,
     }
 
     text = f"{text:,}" if type(text) == int else str(text)
