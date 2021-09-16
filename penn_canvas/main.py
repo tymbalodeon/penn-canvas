@@ -3,6 +3,7 @@ from typer import Argument, Option, Typer
 from .archive import archive_main
 from .bulk_enroll import bulk_enroll_main
 from .count_sites import count_sites_main
+from .count_quizzes import count_quizzes_main
 from .email import email_main
 from .helpers import display_config, make_config
 from .nso import nso_main
@@ -212,6 +213,34 @@ def count_sites(
     """
 
     count_sites_main(year_and_term, separate, graduate_course_minimum_number, test)
+
+
+@app.command()
+def count_quizzes(
+    test: bool = Option(
+        False,
+        "--test",
+        help=(
+            "Use the Canvas test instance (https://upenn.test.instructure.com/)"
+            " instead of production (https://canvas.upenn.edu/)."
+        ),
+    ),
+    force: bool = Option(
+        False,
+        "--force",
+        help=(
+            "Force the task to start from the beginning despite the presence of a"
+            " pre-existing incomplete result file and overwrite that file."
+        ),
+    ),
+    verbose: bool = Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
+):
+    """
+    Generates a report of quiz usage for the courses provided as input.
+    """
+    count_quizzes_main(test, force, verbose)
 
 
 @app.command()
