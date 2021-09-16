@@ -53,9 +53,9 @@ def filter_and_count_quizzes(quizzes, quiz_type, published):
 
 
 def process_result(result_path, term_id):
-    result = read_csv(result_path)
+    result = read_csv(result_path, dtype=str)
     courses_with_quiz = len(
-        result[(result["total"] != 0) & (result["total"] != "error")].index
+        result[(result["total"] != "0") & (result["total"] != "error")].index
     )
     result.fillna("N/A", inplace=True)
     result.drop(columns=["index"], inplace=True)
@@ -137,12 +137,12 @@ def count_quizzes_main(test, force, verbose):
             account_id,
             term_id,
             status,
-            number_of_students,
-            published_ungraded_quizzes,
-            unpublished_ungraded_quizzes,
-            published_graded_quizzes,
-            unpublished_graded_quizzes,
-            total_quizzes,
+            str(number_of_students),
+            str(published_ungraded_quizzes),
+            str(unpublished_ungraded_quizzes),
+            str(published_graded_quizzes),
+            str(unpublished_graded_quizzes),
+            str(total_quizzes),
         ]
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
