@@ -26,7 +26,6 @@ HEADERS = [
     "term_id",
     "status",
     "poll everywhere",
-    "number of poll everywhere items",
 ]
 CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:6]]
 
@@ -56,7 +55,7 @@ def process_result(result_path, term_id):
         renamed_columns[HEADERS[index]] = header
 
     result.rename(columns=renamed_columns, inplace=True)
-    result.sort_values("number of poll everywhere items", ascending=False, inplace=True)
+    result.sort_values("poll everywhere", ascending=False, inplace=True)
     result.fillna("N/A", inplace=True)
     result.to_csv(result_path, index=False)
     result_path.rename(str(result_path).replace(YEAR, term_id))
@@ -99,11 +98,9 @@ def count_poll_everywhere_main(test, force, verbose):
                 if pollev_in_external_url(item)
             ]
             poll_everywhere = "Y" if items else "N"
-            poll_everywhere_count = len(items)
         except Exception as error:
             course_name = canvas_course_id
             poll_everywhere = "error"
-            poll_everywhere_count = "error"
             error_message = error
 
         report.at[index, HEADERS] = [
@@ -114,7 +111,6 @@ def count_poll_everywhere_main(test, force, verbose):
             term_id,
             status,
             poll_everywhere,
-            str(poll_everywhere_count),
         ]
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
@@ -127,10 +123,10 @@ def count_poll_everywhere_main(test, force, verbose):
             message = f"{colorize(text_and_color[0], text_and_color[1])}"
 
             if not error_message:
-                echo(f"- ({index + 1}/{TOTAL}) {colorize(course_name)}: {message}")
+                echo(f"- ({(index + 1):,}/{TOTAL}) {colorize(course_name)}: {message}")
             else:
                 echo(
-                    f"- ({index + 1}/{TOTAL})"
+                    f"- ({(index + 1):,}/{TOTAL})"
                     f" {colorize(course_name)}:"
                     f" {colorize(error_message, 'red')}"
                 )
