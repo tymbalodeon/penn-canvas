@@ -180,7 +180,7 @@ def count_quizzes_main(test, force, verbose):
         if verbose:
             message = total_quizzes if not error_message else error_message
             echo(
-                f"- ({index + 1}/{TOTAL})"
+                f"- ({(index + 1):,}/{TOTAL})"
                 f" {colorize(course_name, 'magenta')}:"
                 f" {colorize(message, 'green' if not error_message else 'red')}"
             )
