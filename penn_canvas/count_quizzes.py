@@ -26,10 +26,12 @@ HEADERS = [
     "term_id",
     "status",
     "number of students",
-    "published ungraded quizzes",
-    "unpublished ungraded quizzes",
-    "published graded quizzes",
-    "unpublished graded quizzes",
+    "published surveys",
+    "unpublished surveys",
+    "published graded surveys",
+    "unpublished graded surveys",
+    "published assignments",
+    "unpublished assignments",
     "total published quizzes",
     "total unpublished quizzes",
     "total",
@@ -50,8 +52,7 @@ def filter_and_count_quizzes(quizzes, quiz_type, published):
             [
                 quiz
                 for quiz in quizzes
-                if (quiz.quiz_type == "survey" or quiz.quiz_type == "graded_survey")
-                and quiz.published is published
+                if quiz.quiz_type != "practice_quiz" and quiz.published is published
             ]
         )
     else:
@@ -116,31 +117,39 @@ def count_quizzes_main(test, force, verbose):
                 [student for student in course.get_users(enrollment_type=["student"])]
             )
             quizzes = course.get_quizzes()
-            published_ungraded_quizzes = filter_and_count_quizzes(
+            published_ungraded_surveys = filter_and_count_quizzes(
                 quizzes, "survey", True
             )
-            unpublished_ungraded_quizzes = filter_and_count_quizzes(
+            unpublished_ungraded_surveys = filter_and_count_quizzes(
                 quizzes, "survey", False
             )
-            published_graded_quizzes = filter_and_count_quizzes(
+            published_graded_surveys = filter_and_count_quizzes(
                 quizzes, "graded_survey", True
             )
-            unpublished_graded_quizzes = filter_and_count_quizzes(
+            unpublished_graded_surveys = filter_and_count_quizzes(
                 quizzes, "graded_survey", False
+            )
+            published_assignments = filter_and_count_quizzes(
+                quizzes, "assignment", True
+            )
+            unpublished_assignments = filter_and_count_quizzes(
+                quizzes, "assignment", False
             )
             total_published_quizzes = filter_and_count_quizzes(quizzes, False, True)
             total_unpublished_quizzes = filter_and_count_quizzes(quizzes, False, False)
             total_quizzes = (
-                published_ungraded_quizzes
-                + unpublished_ungraded_quizzes
-                + published_graded_quizzes
-                + unpublished_graded_quizzes
+                published_ungraded_surveys
+                + unpublished_ungraded_surveys
+                + published_graded_surveys
+                + unpublished_graded_surveys
             )
         except Exception as error:
-            published_ungraded_quizzes = "error"
-            unpublished_ungraded_quizzes = "error"
-            published_graded_quizzes = "error"
-            unpublished_graded_quizzes = "error"
+            published_ungraded_surveys = "error"
+            unpublished_ungraded_surveys = "error"
+            published_graded_surveys = "error"
+            unpublished_graded_surveys = "error"
+            published_assignments = "error"
+            unpublished_assignments = "error"
             total_published_quizzes = "error"
             total_unpublished_quizzes = "error"
             course_name = canvas_course_id
@@ -154,10 +163,12 @@ def count_quizzes_main(test, force, verbose):
             term_id,
             status,
             str(number_of_students),
-            str(published_ungraded_quizzes),
-            str(unpublished_ungraded_quizzes),
-            str(published_graded_quizzes),
-            str(unpublished_graded_quizzes),
+            str(published_ungraded_surveys),
+            str(unpublished_ungraded_surveys),
+            str(published_graded_surveys),
+            str(unpublished_graded_surveys),
+            str(published_assignments),
+            str(unpublished_assignments),
             str(total_published_quizzes),
             str(total_unpublished_quizzes),
             str(total_quizzes),
