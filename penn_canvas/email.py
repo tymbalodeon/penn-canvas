@@ -379,7 +379,7 @@ def print_messages(
 
 
 def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
-    def check_and_activate_emails(user, canvas, verbose, args):
+    def check_and_activate_emails(user, canvas, verbose):
         index, canvas_user_id, login_id, full_name = user
 
         supported = None
