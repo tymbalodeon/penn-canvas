@@ -142,6 +142,8 @@ def count_quizzes_main(test, force, verbose):
                 + unpublished_ungraded_surveys
                 + published_graded_surveys
                 + unpublished_graded_surveys
+                + published_assignments
+                + unpublished_assignments
             )
         except Exception as error:
             published_ungraded_surveys = "error"
