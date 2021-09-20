@@ -18,6 +18,16 @@ from .helpers import (
 COMMAND = "Count Quizzes"
 INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
 REPORTS, RESULTS = get_command_paths(COMMAND)
+NEW_QUIZ_HEADERS = [
+    "canvas_course_id",
+    "course_id",
+    "short_name",
+    "account_id",
+    "term_id",
+    "status",
+    "number of students",
+    "total",
+]
 HEADERS = [
     "canvas_course_id",
     "course_id",
@@ -37,6 +47,19 @@ HEADERS = [
     "total",
 ]
 CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:6]]
+
+
+def print_course(total_quizzes, error_message, index, total, course_name):
+    found = (
+        colorize(f"FOUND ({total_quizzes})", "green")
+        if total_quizzes
+        else colorize("NOT FOUND", "yellow")
+    )
+    echo(
+        f"- ({(index + 1):,}/{total})"
+        f" {colorize(course_name, 'magenta')}:"
+        f" {colorize(error_message, 'red') if error_message else found}"
+    )
 
 
 def cleanup_data(data):
@@ -96,7 +119,57 @@ def print_messages(total, courses_with_quiz):
     colorize("FINISHED", "yellow", True)
 
 
-def count_quizzes_main(test, force, verbose):
+def count_quizzes_main(new_quizzes, test, force, verbose):
+    def count_new_quizzes_for_course(course, canvas, verbose):
+        (
+            index,
+            canvas_course_id,
+            course_id,
+            short_name,
+            account_id,
+            term_id,
+            status,
+        ) = course
+
+        error_message = False
+
+        try:
+            course = canvas.get_course(canvas_course_id)
+            course_name = course.name
+            number_of_students = len(
+                [student for student in course.get_users(enrollment_type=["student"])]
+            )
+
+            try:
+                quizzes = [
+                    assignment
+                    for assignment in course.get_assignments()
+                    if assignment.is_quiz_lti_assignment
+                ]
+            except Exception:
+                quizzes = []
+
+            total_quizzes = len(quizzes)
+        except Exception as error:
+            total_quizzes = "error"
+            course_name = canvas_course_id
+            error_message = error
+
+        report.at[index, NEW_QUIZ_HEADERS] = [
+            canvas_course_id,
+            course_id,
+            short_name,
+            account_id,
+            term_id,
+            status,
+            str(number_of_students),
+            str(total_quizzes),
+        ]
+        report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
+
+        if verbose:
+            print_course(total_quizzes, error_message, index, TOTAL, course_name)
+
     def count_quizzes_for_course(course, canvas, verbose):
         (
             index,
@@ -178,17 +251,14 @@ def count_quizzes_main(test, force, verbose):
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
         if verbose:
-            message = total_quizzes if not error_message else error_message
-            echo(
-                f"- ({(index + 1):,}/{TOTAL})"
-                f" {colorize(course_name, 'magenta')}:"
-                f" {colorize(message, 'green' if not error_message else 'red')}"
-            )
+            print_course(total_quizzes, error_message, index, TOTAL, course_name)
 
     reports, please_add_message, missing_file_message = find_input(
         COMMAND, INPUT_FILE_NAME, REPORTS
     )
-    RESULT_PATH = RESULTS / f"{YEAR}_quiz_usage_report.csv"
+    RESULT_PATH = (
+        RESULTS / f"{YEAR}_{'new_' if new_quizzes else ''}quiz_usage_report.csv"
+    )
     START = get_start_index(force, RESULT_PATH, RESULTS)
     report, TOTAL = process_input(
         reports,
@@ -201,12 +271,21 @@ def count_quizzes_main(test, force, verbose):
         start=START,
     )
     TERM_ID = report.at[0, "term_id"]
-    make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))
+    make_csv_paths(
+        RESULTS,
+        RESULT_PATH,
+        make_index_headers(NEW_QUIZ_HEADERS if new_quizzes else HEADERS),
+    )
     make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
 
     echo(") Processing courses...")
-    toggle_progress_bar(report, count_quizzes_for_course, CANVAS, verbose)
+
+    if new_quizzes:
+        toggle_progress_bar(report, count_new_quizzes_for_course, CANVAS, verbose)
+    else:
+        toggle_progress_bar(report, count_quizzes_for_course, CANVAS, verbose)
+
     courses_with_quiz = process_result(RESULT_PATH, TERM_ID)
     print_messages(TOTAL, courses_with_quiz)

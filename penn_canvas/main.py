@@ -213,6 +213,9 @@ def count_poll_everywhere(
 
 @app.command()
 def count_quizzes(
+    new_quizzes: bool = Option(
+        False, "--new-quizzes", help="Count New Quizzes instead of Classic Quizzes."
+    ),
     test: bool = Option(
         False,
         "--test",
@@ -236,7 +239,7 @@ def count_quizzes(
     """
     Generates a report of quiz usage for the courses provided as input.
     """
-    count_quizzes_main(test, force, verbose)
+    count_quizzes_main(new_quizzes, test, force, verbose)
 
 
 @app.command()
