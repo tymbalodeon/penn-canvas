@@ -526,19 +526,19 @@ def get_processed(processed_directory, processed_path, columns="pennkey"):
         return list()
 
 
-def get_canvas(instance="test", verbose=True):
+def get_canvas(instance="prod", verbose=True):
     if verbose:
         echo(") Reading Canvas Access Tokens from config file...")
 
     production, development, open_canvas, open_canvas_test = check_config(CONFIG_PATH)[
         0:4
     ]
-    url = CANVAS_URL_TEST
-    access_token = development
+    url = CANVAS_URL_PROD
+    access_token = production
 
-    if instance == "prod":
-        url = CANVAS_URL_PROD
-        access_token = production
+    if instance == "test":
+        url = CANVAS_URL_TEST
+        access_token = development
     elif instance == "open":
         url = CANVAS_URL_OPEN
         access_token = open_canvas
