@@ -41,24 +41,35 @@ def create_or_delete_canvas_users(
     def create_or_delete_canvas_user(
         full_name, email, account_id, course_id, index, remove
     ):
+        def email_in_use(user, email):
+            channels = [
+                channel
+                for channel in user.get_communication_channels()
+                if channel.type == "email"
+            ]
+            email = [channel for channel in channels if channel.address == email]
+
+            return bool(email)
+
         try:
             full_name = full_name.strip()
             email = email.strip()
             canvas = get_canvas("open_test" if test else "open", False)
             account = canvas.get_account(account_id)
             users = account.get_users(search_term=email)
-            users_list = list()
+            users = [
+                user
+                for user in users
+                if user.login_id == email or email_in_use(user, email)
+            ]
 
-            for user in users:
-                users_list.append(user)
-
-            if not remove and users_list:
+            if users and not remove:
                 raise Exception("EMAIL ALREADY IN USE")
-            elif remove and not users_list:
+            elif remove and not users:
                 raise Exception("USER NOT FOUND")
 
             if remove:
-                account.delete_user(users_list[0])
+                account.delete_user(users[0])
                 user = False
             else:
                 pseudonym = {"unique_id": email}
