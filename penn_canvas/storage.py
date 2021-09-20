@@ -75,7 +75,8 @@ def check_percent_storage(course, canvas, verbose, total):
                 color = "green"
 
             echo(
-                f"- ({(index + 1):,}/{total}) {sis_id} ({canvas_id}):"
+                f"- ({(index + 1):,}/{total})"
+                f" {colorize(sis_id, 'yellow')} ({canvas_id}):"
                 f" {colorize(f'{int(percentage_used * 100)}%', color)}"
             )
 
