@@ -375,7 +375,7 @@ def find_input(
     date=True,
     bulk_enroll=False,
     open_canvas=False,
-    remove=False,
+    search_term=False,
 ):
     def get_input(path):
         INPUT_FILES = [input_file for input_file in Path(path).glob(extension)]
@@ -393,11 +393,11 @@ def find_input(
                 if "open" in input_file.name.lower() and TODAY in input_file.name
             ]
 
-            if remove:
+            if search_term:
                 input_files = [
                     input_file
                     for input_file in input_files
-                    if "remove" in input_file.name.lower()
+                    if search_term in input_file.name.lower()
                 ]
 
             return input_files

@@ -18,7 +18,7 @@ from .helpers import (
 COMMAND = "Open Canvas Enroll"
 INPUT_FILE_NAME = "Open Canvas Users csv file"
 REPORTS, RESULTS = get_command_paths(COMMAND)
-HEADERS = ["Name", "Email"]
+HEADERS = ["Name", "Email", "Course", "Section"]
 ACCOUNT = 1
 
 
@@ -40,18 +40,20 @@ def email_in_use(user, email):
     return bool(email)
 
 
-def enroll_user_in_course(canvas, user, course_id):
+def enroll_user_in_course(canvas, user, canvas_id, section):
     try:
-        course = canvas.get_course(course_id)
+        section = (
+            canvas.get_section(canvas_id) if section else canvas.get_course(canvas_id)
+        )
     except Exception:
-        return "course not found", course_id
+        return "course not found", canvas_id
 
     try:
-        enrollment = course.enroll_user(user)
+        enrollment = section.enroll_user(user)
 
         return "enrolled", enrollment
     except Exception:
-        return "failed to enroll", course
+        return "failed to enroll", section
 
 
 def find_user_by_email(account, email):
@@ -91,9 +93,9 @@ def remove_user(account, email):
         return "deleted"
 
 
-def enroll_user(canvas, email, course_id):
-    canvas_user = canvas.get_user(email)
-    status, course = enroll_user_in_course(canvas, canvas_user, course_id)
+def enroll_user(canvas, email, canvas_id, section):
+    users = find_user_by_email(canvas.get_account(ACCOUNT), email)
+    status, course = enroll_user_in_course(canvas, users[0], canvas_id, section)
 
     return status, course
 
@@ -204,7 +206,7 @@ def open_canvas_enroll_main(remove, enroll, test, verbose, force):
         account, remove, enroll = args
 
         if enroll:
-            index, full_name, email, course_id = user[:-1]
+            index, full_name, email, course_id, section = user[:-1]
         else:
             index, full_name, email = user[:-1]
 
@@ -219,13 +221,24 @@ def open_canvas_enroll_main(remove, enroll, test, verbose, force):
 
             if enroll:
                 try:
-                    status, course = enroll_user(canvas, email, course_id)
-                except Exception:
+                    status, course = enroll_user(
+                        canvas,
+                        email,
+                        canvas_id=section if section else course_id,
+                        section=True if section else False,
+                    )
+                except Exception as error:
+                    print(error)
                     status, canvas_user = create_user(account, full_name, email)
 
                     if status == "created":
                         try:
-                            status, course = enroll_user(canvas, email, course_id)
+                            status, course = enroll_user(
+                                canvas,
+                                email,
+                                canvas_id=section if section else course_id,
+                                section=True if section else False,
+                            )
                         except Exception as error:
                             status = error
             elif remove:
@@ -253,14 +266,19 @@ def open_canvas_enroll_main(remove, enroll, test, verbose, force):
                 f"- ({index + 1}/{TOTAL})"
                 f" {colorize(full_name, 'yellow')}{':' if canvas_user else ''}"
                 f" {colorize(status.upper(), COLOR_MAP.get(status))}"
-                f" {colorize(canvas_user, 'magenta') if canvas_user else ''}."
+                f"{colorize(' ' + str(canvas_user), 'magenta') if canvas_user else ''}."
             )
 
+    search_term = "create"
+
+    if remove:
+        search_term = "remove"
+    elif enroll:
+        search_term = "enroll"
+
     input_files, please_add_message, missing_file_message = find_input(
-        COMMAND, INPUT_FILE_NAME, REPORTS, open_canvas=True, remove=remove
+        COMMAND, INPUT_FILE_NAME, REPORTS, open_canvas=True, search_term=search_term
     )
-    if enroll:
-        HEADERS.append("Course")
 
     RESULT_STRING = (
         f"open_canvas{'_remove' if remove else ''}{'_enroll' if enroll else ''}_log"
@@ -273,7 +291,7 @@ def open_canvas_enroll_main(remove, enroll, test, verbose, force):
         INPUT_FILE_NAME,
         REPORTS,
         please_add_message,
-        HEADERS,
+        HEADERS if enroll else HEADERS[:-2],
         cleanup_data,
         missing_file_message,
         start=START,
