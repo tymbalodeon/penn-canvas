@@ -397,6 +397,14 @@ def open_canvas_enroll(
     remove: bool = Option(
         False, "--remove", help="Remove user accounts instead of create them."
     ),
+    enroll: bool = Option(
+        False,
+        "--enroll",
+        help=(
+            "Enroll users in the specified course (will create the user account if it"
+            " doesn't exist)."
+        ),
+    ),
     test: bool = Option(
         False,
         "--test",
@@ -405,8 +413,19 @@ def open_canvas_enroll(
             " instead of production (https://upenn-catalog.instructure.com)."
         ),
     ),
+    verbose: bool = Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
+    force: bool = Option(
+        False,
+        "--force",
+        help=(
+            "Force the task to start from the beginning despite the presence of a"
+            " pre-existing incomplete result file and overwrite that file."
+        ),
+    ),
 ):
-    open_canvas_enroll_main(remove, test)
+    open_canvas_enroll_main(remove, enroll, test, verbose, force)
 
 
 @app.command()
