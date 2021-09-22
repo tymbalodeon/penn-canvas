@@ -50,7 +50,7 @@ def archive(
     discussion, listing the user, timestamp, and post
     """
 
-    archive_main(course, instance, verbose, force)
+    archive_main(course, instance, verbose)
 
 
 @app.command()

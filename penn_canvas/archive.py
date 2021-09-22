@@ -42,25 +42,17 @@ def get_discussions(course_id, instance):
     echo(") Finding discussions...")
 
     course = canvas.get_course(course_id)
-    discussions = course.get_discussion_topics()
-    total = 0
+    discussions = [discussion for discussion in course.get_discussion_topics()]
 
-    for discussion in discussions:
-        total += 1
-
-    return course, discussions, total
+    return course, discussions, len(discussions)
 
 
-def archive_main(course_id, instance, verbose, force):
+def archive_main(course_id, instance, verbose):
     def archive_discussion(discussion, verbose=False, index=0, total=0):
         discussion_path = (
             COURSE / f"{discussion.title.replace('- ', '').replace(' ', '_')}.csv"
         )
-        entries = discussion.get_topic_entries()
-        total_entries = 0
-
-        for entry in entries:
-            total_entries += 1
+        entries = [entry for entry in discussion.get_topic_entries()]
 
         def process_entry(
             entry,
@@ -95,7 +87,7 @@ def archive_main(course_id, instance, verbose, force):
             return [user, timestamp, message]
 
         entries = [
-            process_entry(entry, verbose, index, total, entry_index, total_entries)
+            process_entry(entry, verbose, index, total, entry_index, len(entries))
             for entry_index, entry in enumerate(entries)
         ]
         entries = DataFrame(entries, columns=["user", "timestamp", "post"])
