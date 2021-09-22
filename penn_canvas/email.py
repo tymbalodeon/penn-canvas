@@ -5,7 +5,7 @@ from pathlib import Path
 
 from cx_Oracle import connect
 from pandas import concat, read_csv
-from typer import echo
+from typer import echo, confirm
 
 from .helpers import (
     TODAY_AS_Y_M_D,
@@ -509,6 +509,11 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
                 writer(processed_file).writerow(
                     [canvas_user_id, login_id, full_name, status, supported]
                 )
+
+    global_protect_enabled = confirm("HAVE YOU ENABLED GLOBALPROTECT VPN?")
+
+    if not global_protect_enabled:
+        return
 
     RESULT_PATH = RESULTS / f"{YEAR}_email_result{'_test' if test else ''}.csv"
     PROCESSED_PATH = (

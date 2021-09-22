@@ -478,6 +478,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
             run_again = confirm(
                 f"Would you like to generate a report for term {term} again?"
             )
+
             if not run_again:
                 TERMS_TO_RUN.append(term)
 
