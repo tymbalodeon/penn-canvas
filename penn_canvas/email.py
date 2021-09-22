@@ -585,7 +585,7 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
         unsupported,
         supported_not_found,
         user_not_found,
-    ) = process_result(RESULT_PATH, PROCESSED_PATH, new)
+    ) = process_result(RESULT_PATH, new)
     print_messages(
         TOTAL,
         activated,

@@ -227,6 +227,14 @@ pytz = ">=2017.3"
 test = ["pytest (>=5.0.1)", "pytest-xdist", "hypothesis (>=3.58)"]
 
 [[package]]
+name = "pandas-stubs"
+version = "1.2.0.17"
+description = "Type annotations for Pandas"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "pathspec"
 version = "0.8.1"
 description = "Utility library for gitignore style pattern matching of file paths."
@@ -411,7 +419,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "3b57bc995600303ce44d4c6f678eae1d550f8ed2cf4f35c16b139fdd8d36180f"
+content-hash = "f9dd9331e8d37cc5c29d664c9c1529d6a6c98672dcb08cf068cb6e5532ad3e93"
 
 [metadata.files]
 appdirs = [
@@ -547,6 +555,10 @@ pandas = [
     {file = "pandas-1.2.4-cp39-cp39-win32.whl", hash = "sha256:d0877407359811f7b853b548a614aacd7dea83b0c0c84620a9a643f180060950"},
     {file = "pandas-1.2.4-cp39-cp39-win_amd64.whl", hash = "sha256:2b063d41803b6a19703b845609c0b700913593de067b552a8b24dd8eeb8c9895"},
     {file = "pandas-1.2.4.tar.gz", hash = "sha256:649ecab692fade3cbfcf967ff936496b0cfba0af00a55dfaacd82bdda5cb2279"},
+]
+pandas-stubs = [
+    {file = "pandas-stubs-1.2.0.17.tar.gz", hash = "sha256:125597f4e3f2a0addf2941ec40170527558a3b593bb89e4844a73f84159d8e10"},
+    {file = "pandas_stubs-1.2.0.17-py3-none-any.whl", hash = "sha256:7bf94305b8e41c88052c35bec86885cba96d2163c02b26f25bc0aeef2e6b5d6f"},
 ]
 pathspec = [
     {file = "pathspec-0.8.1-py2.py3-none-any.whl", hash = "sha256:aa0cb481c4041bf52ffa7b0d8fa6cd3e88a2ca4879c533c9153882ee2556790d"},
