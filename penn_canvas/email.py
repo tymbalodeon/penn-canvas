@@ -510,10 +510,11 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
                     [canvas_user_id, login_id, full_name, status, supported]
                 )
 
-    global_protect_enabled = confirm("HAVE YOU ENABLED GLOBALPROTECT VPN?")
+    if not no_data_warehouse:
+        global_protect_enabled = confirm("HAVE YOU ENABLED GLOBALPROTECT VPN?")
 
-    if not global_protect_enabled:
-        return
+        if not global_protect_enabled:
+            return
 
     RESULT_PATH = RESULTS / f"{YEAR}_email_result{'_test' if test else ''}.csv"
     PROCESSED_PATH = (
