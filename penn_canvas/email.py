@@ -213,7 +213,7 @@ def remove_empty_log(log_path):
         remove(log_path)
 
 
-def process_result(result_path, processed_path, new):
+def process_result(result_path, new):
     result = read_csv(result_path)
     supported = result[result["supported"] == "Y"]
     unsupported = result[result["supported"] == "N"]
