@@ -32,13 +32,10 @@ def archive(
     verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
     ),
-    force: bool = Option(
+    timestamp: bool = Option(
         False,
-        "--force",
-        help=(
-            "Force the task to start from the beginning despite the presence of a"
-            " pre-existing incomplete result file and overwrite that file."
-        ),
+        "--timestamp",
+        help="Include the timestamp in the output.",
     ),
 ):
     """
@@ -50,7 +47,7 @@ def archive(
     discussion, listing the user, timestamp, and post
     """
 
-    archive_main(course, instance, verbose)
+    archive_main(course, instance, verbose, timestamp)
 
 
 @app.command()

@@ -233,17 +233,21 @@ def make_csv_paths(csv_dir, csv_file, headers):
             writer(result).writerow(headers)
 
 
-def get_command_paths(command, logs=False, processed=False):
+def get_command_paths(command, logs=False, processed=False, no_input=False):
     BOX = BOX_PATH.exists()
     BASE = BOX_CLI_PATH if BOX else COMMAND_DIRECTORY_BASE
     COMMAND_DIRECTORY = BASE / f"{command}"
-    PATHS = [(COMMAND_DIRECTORY / "Input"), (COMMAND_DIRECTORY / "RESULTS")]
+    INPUT = COMMAND_DIRECTORY / "Input"
+    PATHS = [INPUT, (COMMAND_DIRECTORY / "RESULTS")]
 
     if logs:
         PATHS.append(COMMAND_DIRECTORY / "logs")
 
     if processed:
         PATHS.append(COMMAND_DIRECTORY / ".processed")
+
+    if no_input:
+        PATHS.remove(INPUT)
 
     for path in PATHS:
         if not path.exists():

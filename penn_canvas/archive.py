@@ -6,7 +6,7 @@ from pathlib import Path
 from pandas import DataFrame
 from typer import echo, progressbar
 
-from .helpers import COMMAND_DIRECTORY_BASE, colorize, get_canvas
+from .helpers import colorize, get_canvas, get_command_paths
 
 
 class HTMLStripper(HTMLParser):
@@ -31,14 +31,11 @@ def strip_tags(html):
     return stripper.get_data()
 
 
-COMMAND_DIRECTORY = COMMAND_DIRECTORY_BASE / "archive"
-RESULTS = COMMAND_DIRECTORY / "results"
-HEADERS = ["index", "user", "timestamp", "post"]
+COMMAND = "Discussion Archive"
+RESULTS = get_command_paths(COMMAND, no_input=True)[0]
 
 
-def get_discussions(course_id, instance):
-    canvas = get_canvas(instance)
-
+def get_discussions(course_id, canvas):
     echo(") Finding discussions...")
 
     course = canvas.get_course(course_id)
@@ -47,13 +44,8 @@ def get_discussions(course_id, instance):
     return course, discussions, len(discussions)
 
 
-def archive_main(course_id, instance, verbose):
+def archive_main(course_id, instance, verbose, use_timestamp):
     def archive_discussion(discussion, verbose=False, index=0, total=0):
-        discussion_path = (
-            COURSE / f"{discussion.title.replace('- ', '').replace(' ', '_')}.csv"
-        )
-        entries = [entry for entry in discussion.get_topic_entries()]
-
         def process_entry(
             entry,
             verbose,
@@ -63,16 +55,26 @@ def archive_main(course_id, instance, verbose):
             total_entries,
         ):
             user = " ".join(entry.user["display_name"].split())
-            timestamp = datetime.strptime(
-                entry.created_at, "%Y-%m-%dT%H:%M:%SZ"
-            ).strftime("%m/%d/%Y, %H:%M:%S")
+            user_id = entry.user["id"]
+            canvas_user = CANVAS.get_user(user_id)
+            email = canvas_user.email
             message = " ".join(
                 strip_tags(entry.message.replace("\n", " ")).strip().split()
+            )
+            timestamp = (
+                datetime.strptime(entry.created_at, "%Y-%m-%dT%H:%M:%SZ").strftime(
+                    "%m/%d/%Y, %H:%M:%S"
+                )
+                if use_timestamp
+                else ""
             )
 
             if verbose:
                 user_display = colorize(user, "cyan")
-                timestamp_display = colorize(timestamp, "yellow")
+                timestamp_display = (
+                    colorize(timestamp, "yellow") if use_timestamp else ""
+                )
+                email_display = colorize(email, "yellow") if not use_timestamp else ""
                 discussion_display = colorize(discussion.title.upper(), "magenta")
 
                 if entry_index == 0:
@@ -81,27 +83,41 @@ def archive_main(course_id, instance, verbose):
                 echo(
                     f"- [{discussion_index + 1}/{total_discussions}]"
                     f" ({entry_index + 1}/{total_entries}) {discussion_display}"
-                    f" {user_display} {timestamp_display} {message[:40]}..."
+                    f" {user_display} {timestamp_display if use_timestamp else email_display} {message[:40]}..."
                 )
 
-            return [user, timestamp, message]
+            if use_timestamp:
+                return [user, email, timestamp, message]
+            else:
+                return [user, email, message]
+
+        discussion_path = (
+            COURSE / f"{discussion.title.replace('- ', '').replace(' ', '_')}.csv"
+        )
+        entries = [entry for entry in discussion.get_topic_entries()]
+
+        if not entries:
+            echo(f"==== DISCUSSION {index + 1} ====")
+            echo("- NO ENTRIES")
 
         entries = [
             process_entry(entry, verbose, index, total, entry_index, len(entries))
             for entry_index, entry in enumerate(entries)
         ]
-        entries = DataFrame(entries, columns=["user", "timestamp", "post"])
+
+        columns = ["index", "User", "Email", "Timestamp", "Post"]
+        columns.remove("index")
+
+        if not use_timestamp:
+            columns.remove("Timestamp")
+
+        entries = DataFrame(entries, columns=columns)
         entries.to_csv(discussion_path, index=False)
 
-    course, discussions, total = get_discussions(course_id, instance)
+    CANVAS = get_canvas(instance)
+    course, discussions, total = get_discussions(course_id, CANVAS)
 
     COURSE = RESULTS / f"{course.name}"
-
-    if not COMMAND_DIRECTORY.exists():
-        Path.mkdir(COMMAND_DIRECTORY)
-
-        if not RESULTS.exists():
-            Path.mkdir(RESULTS)
 
     if not COURSE.exists():
         Path.mkdir(COURSE)
