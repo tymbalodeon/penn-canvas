@@ -31,7 +31,7 @@ def strip_tags(html):
     return stripper.get_data()
 
 
-COMMAND = "Discussion Archive"
+COMMAND = "Archive"
 RESULTS = get_command_paths(COMMAND, no_input=True)[0]
 
 
