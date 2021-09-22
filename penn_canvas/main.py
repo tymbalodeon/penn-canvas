@@ -37,6 +37,11 @@ def archive(
         "--timestamp",
         help="Include the timestamp in the output.",
     ),
+    exclude_quizzes: bool = Option(
+        False,
+        "--exclude-quizzes",
+        help="Exclude quizzes from the archive output.",
+    ),
 ):
     """
     Archives a Canvas course's discussions.
@@ -44,10 +49,10 @@ def archive(
     INPUT: Canvas course id whose discussions you want to archive
 
     OUTPUT: Folder with the course name containing csv files for each
-    discussion, listing the user, timestamp, and post
-    """
+    discussion, listing the user, email, (OPTIONAL: timestamp), and post; as
+    well as a list of users who submitted for each of the course's quizzes."""
 
-    archive_main(course, instance, verbose, timestamp)
+    archive_main(course, instance, verbose, timestamp, exclude_quizzes)
 
 
 @app.command()

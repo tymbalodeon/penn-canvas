@@ -35,16 +35,23 @@ COMMAND = "Discussion Archive"
 RESULTS = get_command_paths(COMMAND, no_input=True)[0]
 
 
-def get_discussions(course_id, canvas):
+def get_discussions(course):
     echo(") Finding discussions...")
 
-    course = canvas.get_course(course_id)
     discussions = [discussion for discussion in course.get_discussion_topics()]
 
-    return course, discussions, len(discussions)
+    return discussions, len(discussions)
 
 
-def archive_main(course_id, instance, verbose, use_timestamp):
+def get_quizzes(course):
+    echo(") Finding quizzes...")
+
+    quizzes = [quiz for quiz in course.get_quizzes()]
+
+    return quizzes, len(quizzes)
+
+
+def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
     def archive_discussion(discussion, verbose=False, index=0, total=0):
         def process_entry(
             entry,
@@ -92,11 +99,12 @@ def archive_main(course_id, instance, verbose, use_timestamp):
                 return [user, email, message]
 
         discussion_path = (
-            COURSE / f"{discussion.title.replace('- ', '').replace(' ', '_')}.csv"
+            DISCUSSION_DIRECTORY
+            / f"{discussion.title.replace('- ', '').replace(' ', '_')}.csv"
         )
         entries = [entry for entry in discussion.get_topic_entries()]
 
-        if not entries:
+        if verbose and not entries:
             echo(f"==== DISCUSSION {index + 1} ====")
             echo("- NO ENTRIES")
 
@@ -105,8 +113,7 @@ def archive_main(course_id, instance, verbose, use_timestamp):
             for entry_index, entry in enumerate(entries)
         ]
 
-        columns = ["index", "User", "Email", "Timestamp", "Post"]
-        columns.remove("index")
+        columns = ["User", "Email", "Timestamp", "Post"]
 
         if not use_timestamp:
             columns.remove("Timestamp")
@@ -114,13 +121,45 @@ def archive_main(course_id, instance, verbose, use_timestamp):
         entries = DataFrame(entries, columns=columns)
         entries.to_csv(discussion_path, index=False)
 
+    def archive_quizzes(quiz, verbose=False, quiz_index=0):
+        quiz_path = (
+            QUIZ_DIRECTORY / f"{quiz.title.replace('- ', '').replace(' ', '_')}.csv"
+        )
+        users = [
+            CANVAS.get_user(submission.user_id) for submission in quiz.get_submissions()
+        ]
+
+        if verbose:
+            echo(f"==== QUIZ {quiz_index + 1} ====")
+
+            for index, user in enumerate(users):
+                user_display = colorize(user, "cyan")
+                echo(f"- ({index + 1}/{total}) {user_display}")
+
+        if verbose and not users:
+            echo(f"==== QUIZ {quiz_index + 1} ====")
+            echo("- NO SUBMISSIONS")
+
+        users = DataFrame(users, columns=["User"])
+        users.to_csv(quiz_path, index=False)
+
     CANVAS = get_canvas(instance)
-    course, discussions, total = get_discussions(course_id, CANVAS)
+    course = CANVAS.get_course(course_id)
+    discussions, total = get_discussions(course)
+    quizzes = []
+    quiz_total = 0
 
     COURSE = RESULTS / f"{course.name}"
+    DISCUSSION_DIRECTORY = COURSE / "Discussions"
+    QUIZ_DIRECTORY = COURSE / "Quizzes"
+    PATHS = [COURSE, DISCUSSION_DIRECTORY]
 
-    if not COURSE.exists():
-        Path.mkdir(COURSE)
+    if not exclude_quizzes:
+        PATHS.append(QUIZ_DIRECTORY)
+
+    for path in PATHS:
+        if not path.exists():
+            Path.mkdir(path)
 
     echo(") Processing discussions...")
 
@@ -132,9 +171,28 @@ def archive_main(course_id, instance, verbose, use_timestamp):
             for discussion in progress:
                 archive_discussion(discussion)
 
+    if not exclude_quizzes:
+        quizzes, quiz_total = get_quizzes(course)
+
+        echo(") Processing quizzes...")
+
+        if verbose:
+            for index, quiz in enumerate(quizzes):
+                archive_quizzes(quiz, True, index)
+        else:
+            with progressbar(quizzes, length=quiz_total) as progress:
+                for quiz in progress:
+                    archive_quizzes(quiz)
+
     colorize("SUMMARY", "yellow", True)
     echo(
-        f"- Archived {colorize(total, 'magenta')} discussions for"
+        f"- Archived {colorize(total, 'magenta')} DISCUSSIONS for"
         f" {colorize(course.name, 'blue')}."
     )
+
+    if not exclude_quizzes:
+        echo(
+            f"- Archived {colorize(quiz_total, 'magenta')} QUIZZES for"
+            f" {colorize(course.name, 'blue')}."
+        )
     colorize("FINISHED", "yellow", True)
