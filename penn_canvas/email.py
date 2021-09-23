@@ -5,7 +5,7 @@ from pathlib import Path
 
 from cx_Oracle import connect
 from pandas import concat, read_csv
-from typer import echo, confirm
+from typer import confirm, echo
 
 from .helpers import (
     TODAY_AS_Y_M_D,

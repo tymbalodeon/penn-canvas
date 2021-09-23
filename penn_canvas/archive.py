@@ -90,7 +90,9 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
                 echo(
                     f"- [{discussion_index + 1}/{total_discussions}]"
                     f" ({entry_index + 1}/{total_entries}) {discussion_display}"
-                    f" {user_display} {timestamp_display if use_timestamp else email_display} {message[:40]}..."
+                    f" {user_display}"
+                    f" {timestamp_display if use_timestamp else email_display}"
+                    f" {message[:40]}..."
                 )
 
             if use_timestamp:
