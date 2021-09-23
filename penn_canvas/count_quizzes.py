@@ -232,6 +232,7 @@ def count_quizzes_main(new_quizzes, test, force, verbose):
             unpublished_assignments = "error"
             total_published_quizzes = "error"
             total_unpublished_quizzes = "error"
+            number_of_students = "error"
             course_name = canvas_course_id
             error_message = error
 
