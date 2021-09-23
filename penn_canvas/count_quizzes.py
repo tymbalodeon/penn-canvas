@@ -88,6 +88,14 @@ def filter_and_count_quizzes(quizzes, quiz_type, published):
         )
 
 
+def is_new_quiz_assignment(assignment):
+    try:
+        if assignment.is_quiz_lti_assignment:
+            return True
+    except Exception:
+        return False
+
+
 def process_result(result_path, term_id):
     result = read_csv(result_path, dtype=str)
     courses_with_quiz = len(
@@ -139,19 +147,16 @@ def count_quizzes_main(new_quizzes, test, force, verbose):
             number_of_students = len(
                 [student for student in course.get_users(enrollment_type=["student"])]
             )
-
-            try:
-                quizzes = [
-                    assignment
-                    for assignment in course.get_assignments()
-                    if assignment.is_quiz_lti_assignment
-                ]
-            except Exception:
-                quizzes = []
+            quizzes = [
+                assignment
+                for assignment in course.get_assignments()
+                if is_new_quiz_assignment(assignment)
+            ]
 
             total_quizzes = len(quizzes)
         except Exception as error:
             total_quizzes = "error"
+            number_of_students = "error"
             course_name = canvas_course_id
             error_message = error
 
