@@ -276,7 +276,7 @@ def count_quizzes_main(new_quizzes, test, force, verbose):
         missing_file_message,
         start=START,
     )
-    TERM_ID = report.at[0, "term_id"]
+    TERM_ID = report.at[START, "term_id"]
     make_csv_paths(
         RESULTS,
         RESULT_PATH,
