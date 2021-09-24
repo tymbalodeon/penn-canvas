@@ -42,18 +42,18 @@ def email_in_use(user, email):
 
 def enroll_user_in_course(canvas, user, canvas_id, section):
     try:
-        section = (
+        canvas_section = (
             canvas.get_section(canvas_id) if section else canvas.get_course(canvas_id)
         )
     except Exception:
         return "course not found", canvas_id
 
     try:
-        enrollment = section.enroll_user(user)
+        enrollment = canvas_section.enroll_user(user)
 
         return "enrolled", enrollment
     except Exception:
-        return "failed to enroll", section
+        return "failed to enroll", canvas_section
 
 
 def find_user_by_email(account, email):
@@ -95,9 +95,11 @@ def remove_user(account, email):
 
 def enroll_user(canvas, email, canvas_id, section):
     users = find_user_by_email(canvas.get_account(ACCOUNT), email)
-    status, course = enroll_user_in_course(canvas, users[0], canvas_id, section)
+    status, course_or_enrollment = enroll_user_in_course(
+        canvas, users[0], canvas_id, section
+    )
 
-    return status, course
+    return status, course_or_enrollment
 
 
 def process_result(result_path):
@@ -221,14 +223,14 @@ def open_canvas_enroll_main(remove, enroll, test, verbose, force):
 
             if enroll:
                 try:
+                    section = bool(int(section))
                     status, course = enroll_user(
                         canvas,
                         email,
                         canvas_id=section if section else course_id,
                         section=True if section else False,
                     )
-                except Exception as error:
-                    print(error)
+                except Exception:
                     status, canvas_user = create_user(account, full_name, email)
 
                     if status == "created":
