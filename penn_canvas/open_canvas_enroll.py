@@ -306,7 +306,7 @@ def open_canvas_enroll_main(remove, enroll, test, verbose, force):
     CANVAS = get_canvas(INSTANCE)
 
     if enroll:
-        echo(f"Enrolling {len(users)} users in Canvas sites...")
+        echo(f") Enrolling {len(users)} users in Canvas sites...")
     elif remove:
         echo(f"Removing {len(users)} users from Canvas...")
     else:
