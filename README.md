@@ -1,6 +1,6 @@
 # Penn Canvas
 
-A command line tool for working with Penn's Canvas instances. 
+A command line tool for working with Penn's Canvas instances.
 
 ## Installation & Setup
 
@@ -34,12 +34,12 @@ To generate tokens, login to your Canvas account, go to Account > Settings, and 
 
 If using the "nso" command, you will also need to set up a connection to Penn's Data Warehouse:
 
-1. Install [Oracle Instant Client](https://www.oracle.com/database/technologies/instant-client/downloads.html) for your platform  
-2. Create a "tnsnames.ora" file in your Oracle Instant Client's "network/admin" directory, using values provided by the Courseware team  
-3. Acquire the Courseware team's Data Warehouse username and password and store in Penn Canvas' config file (see below)  
+1. Install [Oracle Instant Client](https://www.oracle.com/database/technologies/instant-client/downloads.html) for your platform
+2. Create a "tnsnames.ora" file in your Oracle Instant Client's "network/admin" directory, using values provided by the Courseware team
+3. Acquire the Courseware team's Data Warehouse username and password and store in Penn Canvas' config file (see below)
 4. Make sure you are connected to Penn's [GlobalProtect VPN](https://www.isc.upenn.edu/how-to/university-vpn-getting-started-guide)
 
-#### Config 
+#### Config
 
 ##### Automatic generator
 
@@ -52,6 +52,7 @@ You may also create your config file manually. Penn-Canvas expects the location 
 > CANVAS_KEY_PROD=your-canvas-prod-key-here  
 > CANVAS_KEY_DEV=your-canvas-test-key-here  
 > CANVAS_KEY_OPEN=your-open-canvas-key-here  
+> CANVAS_KEY_OPEN_TEST=your-open-canvas-test-key-here  
 > DATA_WAREHOUSE_USER=your-data-warehouse-user-name-here  
 > DATA_WAREHOUSE_PASSWORD=your-data-warehouse-password-here  
 > DATA_WAREHOUSE_DSN=your-data-warehouse-dsn-here

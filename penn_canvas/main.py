@@ -2,6 +2,7 @@ from typer import Argument, Option, Typer
 
 from .archive import archive_main
 from .bulk_enroll import bulk_enroll_main
+from .check_enrollment import check_enrollment_main
 from .count_poll_everywhere import count_poll_everywhere_main
 from .count_quizzes import count_quizzes_main
 from .count_sites import count_sites_main
@@ -145,6 +146,48 @@ def bulk_enroll(
         check_errors,
         clear_processed,
     )
+
+
+@app.command()
+def check_enrollment(
+    course: int = Argument(
+        ...,
+        help="The Canvas course id of the course whose enrollments you wish to check.",
+    ),
+    year: int = Argument(
+        ...,
+        help=(
+            "The year of the start date for checking enrollments, in the format: YYYY."
+        ),
+    ),
+    month: int = Argument(
+        ...,
+        help=(
+            "The month of the start date for checking enrollments, in the format: M or"
+            " MM (Do not use leading zeros)."
+        ),
+    ),
+    day: int = Argument(
+        ...,
+        help=(
+            "The day of the start date for checking enrollments, in the format: D or DD"
+            " (Do not use leading zeros)."
+        ),
+    ),
+    instance: str = Option(
+        "prod",
+        "--instance",
+        help=(
+            'The Canvas instnace to check. Can be one of the following: "prod", "test",'
+            ' "open", "open_test".'
+        ),
+    ),
+):
+    """
+    Check enrollment.
+    """
+
+    check_enrollment_main(course, year, month, day, instance)
 
 
 @app.command()
