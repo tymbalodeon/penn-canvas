@@ -330,7 +330,7 @@ def open_canvas_bulk_action_main(verbose, force):
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         new_path = RESULT_PATH.rename(RESULTS / f"{RESULT_PATH.stem}_{timestamp}.csv")
         RESULT_PATHS.append((new_path, TOTAL))
-        input_file.rename(COMPLETED / f"{input_file.stem}_COMPLETED.csv")
+        input_file.rename(COMPLETED / input_file.name)
 
     colorize("SUMMARY:", "yellow", True)
     echo(f"- PROCESSED {colorize(len(RESULT_PATHS))} FILES.")
