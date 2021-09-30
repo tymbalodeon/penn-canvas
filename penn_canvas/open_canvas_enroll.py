@@ -203,7 +203,7 @@ def print_messages(
         )
 
 
-def open_canvas_enroll_main(test, verbose, force):
+def open_canvas_enroll_main(verbose, force):
     def create_or_delete_canvas_user(user, canvas, verbose, args):
         account, action = args[:2]
 
@@ -287,6 +287,7 @@ def open_canvas_enroll_main(test, verbose, force):
             action = "remove"
             display_action = "Removing"
 
+        test = True if "test" in input_file.name else False
         RESULT_STRING = f"{input_file.stem}_RESULT.csv"
         RESULT_PATH = RESULTS / RESULT_STRING
         START = get_start_index(force, RESULT_PATH)

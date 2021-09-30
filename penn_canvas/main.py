@@ -439,14 +439,6 @@ def nso(
 
 @app.command()
 def open_canvas_enroll(
-    test: bool = Option(
-        False,
-        "--test",
-        help=(
-            "Use the Canvas test instance (https://upenn-catalog.test.instructure.com)"
-            " instead of production (https://upenn-catalog.instructure.com)."
-        ),
-    ),
     verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
     ),
@@ -459,7 +451,7 @@ def open_canvas_enroll(
         ),
     ),
 ):
-    open_canvas_enroll_main(test, verbose, force)
+    open_canvas_enroll_main(verbose, force)
 
 
 @app.command()
