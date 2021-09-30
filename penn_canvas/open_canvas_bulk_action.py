@@ -203,7 +203,7 @@ def print_messages(
         )
 
 
-def open_canvas_enroll_main(verbose, force):
+def open_canvas_bulk_action_main(verbose, force):
     def create_or_delete_canvas_user(user, canvas, verbose, args):
         account, action = args[:2]
 
