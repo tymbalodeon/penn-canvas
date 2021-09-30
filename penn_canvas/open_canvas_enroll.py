@@ -291,18 +291,19 @@ def open_canvas_enroll_main(test, verbose, force):
         RESULT_STRING = f"{input_file.name}_RESULT_{timestamp}.csv"
         RESULT_PATH = RESULTS / RESULT_STRING
         START = get_start_index(force, RESULT_PATH)
+        action_headers = HEADERS if action == "enroll" else HEADERS[:2]
         users, TOTAL = process_input(
             input_files,
             INPUT_FILE_NAME,
             REPORTS,
             please_add_message,
-            HEADERS if action == "enroll" else HEADERS[:-2],
+            action_headers,
             cleanup_data,
             missing_file_message,
             start=START,
         )
         users["Status"] = ""
-        RESULT_HEADERS = HEADERS + ["Status"]
+        RESULT_HEADERS = action_headers + ["Status"]
         make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(RESULT_HEADERS))
         make_skip_message(START, "user")
         INSTANCE = "open_test" if test else "open"
@@ -341,6 +342,6 @@ def open_canvas_enroll_main(test, verbose, force):
             already_in_use,
             course_not_found,
         )
-        input_file.rename(COMPLETED / f"{input_file.name}_COMPLETED.csv")
+        input_file.rename(COMPLETED / f"{input_file.stem}_COMPLETED.csv")
 
     colorize("FINISHED", "yellow", True)
