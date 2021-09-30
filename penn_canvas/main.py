@@ -439,17 +439,6 @@ def nso(
 
 @app.command()
 def open_canvas_enroll(
-    remove: bool = Option(
-        False, "--remove", help="Remove user accounts instead of create them."
-    ),
-    enroll: bool = Option(
-        False,
-        "--enroll",
-        help=(
-            "Enroll users in the specified course (will create the user account if it"
-            " doesn't exist)."
-        ),
-    ),
     test: bool = Option(
         False,
         "--test",
@@ -470,7 +459,7 @@ def open_canvas_enroll(
         ),
     ),
 ):
-    open_canvas_enroll_main(remove, enroll, test, verbose, force)
+    open_canvas_enroll_main(test, verbose, force)
 
 
 @app.command()
