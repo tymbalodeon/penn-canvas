@@ -233,7 +233,9 @@ def make_csv_paths(csv_dir, csv_file, headers):
             writer(result).writerow(headers)
 
 
-def get_command_paths(command, logs=False, processed=False, no_input=False):
+def get_command_paths(
+    command, logs=False, processed=False, no_input=False, completed=False
+):
     BOX = BOX_PATH.exists()
     BASE = BOX_CLI_PATH if BOX else COMMAND_DIRECTORY_BASE
     COMMAND_DIRECTORY = BASE / f"{command}"
@@ -248,6 +250,9 @@ def get_command_paths(command, logs=False, processed=False, no_input=False):
 
     if no_input:
         PATHS.remove(INPUT)
+
+    if completed:
+        PATHS.append(COMMAND_DIRECTORY / "Completed")
 
     for path in PATHS:
         if not path.exists():
@@ -379,7 +384,6 @@ def find_input(
     date=True,
     bulk_enroll=False,
     open_canvas=False,
-    search_term=False,
 ):
     def get_input(path):
         INPUT_FILES = [input_file for input_file in Path(path).glob(extension)]
@@ -391,20 +395,7 @@ def find_input(
                 if "bulk enroll" in input_file.name.lower() and YEAR in input_file.name
             ]
         elif open_canvas:
-            input_files = [
-                input_file
-                for input_file in INPUT_FILES
-                if "open" in input_file.name.lower() and TODAY in input_file.name
-            ]
-
-            if search_term:
-                input_files = [
-                    input_file
-                    for input_file in input_files
-                    if search_term in input_file.name.lower()
-                ]
-
-            return input_files
+            return INPUT_FILES
         else:
             return [
                 input_file for input_file in INPUT_FILES if TODAY in input_file.name
@@ -433,19 +424,22 @@ def find_input(
 
         raise Exit(1)
 
-    HOME = Path.home()
-    TODAYS_INPUT = get_input(HOME / "Downloads")
-    PATHS = [HOME / path for path in ["Desktop", "Documents"]]
-    PATHS.append(input_directory)
-    PATHS = iter(PATHS)
+    if open_canvas:
+        TODAYS_INPUT = get_input(input_directory)
+    else:
+        HOME = Path.home()
+        TODAYS_INPUT = get_input(HOME / "Downloads")
+        PATHS = [HOME / path for path in ["Desktop", "Documents"]]
+        PATHS.append(input_directory)
+        PATHS = iter(PATHS)
 
-    while not TODAYS_INPUT:
-        try:
-            TODAYS_INPUT = get_input(next(PATHS))
-        except Exception:
-            TODAYS_INPUT = None
+        while not TODAYS_INPUT:
+            try:
+                TODAYS_INPUT = get_input(next(PATHS))
+            except Exception:
+                TODAYS_INPUT = None
 
-            break
+                break
 
     missing_file_message = print_missing_input_and_exit(
         input_file_name, please_add_message, date

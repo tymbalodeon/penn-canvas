@@ -1,15 +1,10 @@
-from datetime import datetime
 from csv import writer
+from datetime import datetime
 
 from pytz import UTC
 from typer import echo, prompt
 
-from .helpers import (
-    colorize,
-    get_canvas,
-    get_command_paths,
-    make_csv_paths,
-)
+from .helpers import colorize, get_canvas, get_command_paths, make_csv_paths
 
 COMMAND = "Check Enrollment"
 RESULTS = get_command_paths(COMMAND, no_input=True)[0]

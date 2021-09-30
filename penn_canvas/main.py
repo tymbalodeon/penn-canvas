@@ -9,7 +9,7 @@ from .count_sites import count_sites_main
 from .email import email_main
 from .helpers import display_config, make_config
 from .nso import nso_main
-from .open_canvas_enroll import open_canvas_enroll_main
+from .open_canvas_bulk_action import open_canvas_bulk_action_main
 from .storage import storage_main
 from .tool import tool_main
 
@@ -438,26 +438,7 @@ def nso(
 
 
 @app.command()
-def open_canvas_enroll(
-    remove: bool = Option(
-        False, "--remove", help="Remove user accounts instead of create them."
-    ),
-    enroll: bool = Option(
-        False,
-        "--enroll",
-        help=(
-            "Enroll users in the specified course (will create the user account if it"
-            " doesn't exist)."
-        ),
-    ),
-    test: bool = Option(
-        False,
-        "--test",
-        help=(
-            "Use the Canvas test instance (https://upenn-catalog.test.instructure.com)"
-            " instead of production (https://upenn-catalog.instructure.com)."
-        ),
-    ),
+def open_canvas_bulk_action(
     verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
     ),
@@ -470,7 +451,7 @@ def open_canvas_enroll(
         ),
     ),
 ):
-    open_canvas_enroll_main(remove, enroll, test, verbose, force)
+    open_canvas_bulk_action_main(verbose, force)
 
 
 @app.command()
