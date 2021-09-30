@@ -20,7 +20,7 @@ from .helpers import (
 COMMAND = "Open Canvas Bulk Action"
 INPUT_FILE_NAME = "Open Canvas Bulk Action csv file"
 REPORTS, RESULTS, COMPLETED = get_command_paths(COMMAND, completed=True)
-HEADERS = ["Name", "Email", "Course", "Section"]
+HEADERS = ["Name", "Email", "Canvas ID"]
 ACCOUNT = 1
 
 
@@ -148,7 +148,6 @@ def print_messages(
     already_in_use,
     course_not_found,
 ):
-    colorize("SUMMARY:", "yellow", True)
     echo(
         f"- Processed {colorize(total, 'magenta')} {'user' if total == 1 else 'users'}."
     )
@@ -206,10 +205,11 @@ def print_messages(
 
 def open_canvas_enroll_main(test, verbose, force):
     def create_or_delete_canvas_user(user, canvas, verbose, args):
-        account, action = args
+        account, action = args[:2]
 
         if action == "enroll":
-            index, full_name, email, course_id, section = user[:-1]
+            section = args[2]
+            index, full_name, email, canvas_id = user[:-1]
         else:
             index, full_name, email = user[:-1]
 
@@ -224,23 +224,14 @@ def open_canvas_enroll_main(test, verbose, force):
 
             if action == "enroll":
                 try:
-                    section = bool(int(section))
-                    status, course = enroll_user(
-                        canvas,
-                        email,
-                        canvas_id=section if section else course_id,
-                        section=True if section else False,
-                    )
+                    status, course = enroll_user(canvas, email, canvas_id, section)
                 except Exception:
                     status, canvas_user = create_user(account, full_name, email)
 
                     if status == "created":
                         try:
                             status, course = enroll_user(
-                                canvas,
-                                email,
-                                canvas_id=section if section else course_id,
-                                section=True if section else False,
+                                canvas, email, canvas_id, section
                             )
                         except Exception as error:
                             status = error
@@ -275,20 +266,28 @@ def open_canvas_enroll_main(test, verbose, force):
         COMMAND, INPUT_FILE_NAME, REPORTS, date=False, open_canvas=True
     )
 
-    for input_file in input_files:
+    RESULT_PATHS = list()
+
+    for index, input_file in enumerate(input_files):
+        if verbose:
+            echo(f"==== FILE {index + 1}/{len(input_files)} ====")
+
         action = "create"
         display_action = "Creating"
 
         if "enroll" in input_file.name:
             action = "enroll"
             display_action = "Enrolling"
+            section = False
+
+            if "section" in input_file.name:
+                section = True
 
         elif "remove" in input_file.name:
             action = "remove"
             display_action = "Removing"
 
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        RESULT_STRING = f"{input_file.name}_RESULT_{timestamp}.csv"
+        RESULT_STRING = f"{input_file.stem}_RESULT.csv"
         RESULT_PATH = RESULTS / RESULT_STRING
         START = get_start_index(force, RESULT_PATH)
         action_headers = HEADERS if action == "enroll" else HEADERS[:2]
@@ -309,7 +308,7 @@ def open_canvas_enroll_main(test, verbose, force):
         INSTANCE = "open_test" if test else "open"
         CANVAS = get_canvas(INSTANCE)
 
-        echo(f") {display_action} {len(users)} users in Canvas sites...")
+        echo(f") {display_action} {len(users)} users...")
 
         if verbose:
             COLOR_MAP = {
@@ -321,8 +320,22 @@ def open_canvas_enroll_main(test, verbose, force):
                 "already in use": "red",
                 "course not found": "red",
             }
-        ARGS = CANVAS.get_account(ACCOUNT), action
+        ARGS = (
+            (CANVAS.get_account(ACCOUNT), action, section)
+            if action == "enroll"
+            else (CANVAS.get_account(ACCOUNT), action)
+        )
         toggle_progress_bar(users, create_or_delete_canvas_user, CANVAS, verbose, ARGS)
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        new_path = RESULT_PATH.rename(RESULTS / f"{RESULT_PATH.stem}_{timestamp}.csv")
+        RESULT_PATHS.append((new_path, TOTAL))
+        input_file.rename(COMPLETED / f"{input_file.stem}_COMPLETED.csv")
+
+    colorize("SUMMARY:", "yellow", True)
+    echo(f"- PROCESSED {colorize(len(RESULT_PATHS))} FILES.")
+
+    for result_path, total in RESULT_PATHS:
+        echo(f"==== {colorize(result_path.stem, 'green')} ====")
         (
             created,
             deleted,
@@ -331,9 +344,9 @@ def open_canvas_enroll_main(test, verbose, force):
             not_found,
             already_in_use,
             course_not_found,
-        ) = process_result(RESULT_PATH)
+        ) = process_result(result_path)
         print_messages(
-            TOTAL,
+            total,
             created,
             deleted,
             enrolled,
@@ -342,6 +355,5 @@ def open_canvas_enroll_main(test, verbose, force):
             already_in_use,
             course_not_found,
         )
-        input_file.rename(COMPLETED / f"{input_file.stem}_COMPLETED.csv")
 
     colorize("FINISHED", "yellow", True)
