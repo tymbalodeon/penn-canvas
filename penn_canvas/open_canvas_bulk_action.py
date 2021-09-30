@@ -275,19 +275,19 @@ def open_canvas_bulk_action_main(verbose, force):
         action = "create"
         display_action = "Creating"
 
-        if "enroll" in input_file.name:
+        if "enroll" in input_file.stem.lower():
             action = "enroll"
             display_action = "Enrolling"
             section = False
 
-            if "section" in input_file.name:
+            if "section" in input_file.stem.lower():
                 section = True
 
-        elif "remove" in input_file.name:
+        elif "remove" in input_file.stem.lower():
             action = "remove"
             display_action = "Removing"
 
-        test = True if "test" in input_file.name else False
+        test = True if "test" in input_file.stem.lower() else False
         RESULT_STRING = f"{input_file.stem}_RESULT.csv"
         RESULT_PATH = RESULTS / RESULT_STRING
         START = get_start_index(force, RESULT_PATH)
