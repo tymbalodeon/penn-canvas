@@ -4,7 +4,6 @@ from pandas import read_csv
 from typer import echo
 
 from .helpers import (
-    TODAY_AS_Y_M_D,
     colorize,
     find_input,
     get_canvas,
@@ -93,6 +92,17 @@ def remove_user(account, email):
         account.delete_user(user[0])
 
         return "deleted"
+
+
+def update_user_name(account, new_name, email):
+    user = find_user_by_email(account, email)
+
+    if not user:
+        return "not found"
+    else:
+        user.edit(user={"name": new_name})
+
+        return "updated"
 
 
 def enroll_user(canvas, email, canvas_id, section):
@@ -237,6 +247,8 @@ def open_canvas_bulk_action_main(verbose, force):
                             status = error
             elif action == "remove":
                 status = remove_user(account, email)
+            elif action == "update":
+                status = update_user_name(account, full_name, email)
             else:
                 status, canvas_user = create_user(account, full_name, email)
         except Exception as error:
@@ -286,6 +298,9 @@ def open_canvas_bulk_action_main(verbose, force):
         elif "remove" in input_file.stem.lower():
             action = "remove"
             display_action = "Removing"
+        elif "update" in input_file.stem.lower():
+            action = "update"
+            display_action = "Updating"
 
         test = True if "test" in input_file.stem.lower() else False
         RESULT_STRING = f"{input_file.stem}_RESULT.csv"

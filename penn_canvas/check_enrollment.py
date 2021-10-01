@@ -43,10 +43,11 @@ def check_enrollment_main(course_id, year, month, day, instance):
     INSTANCE = get_valid_instance(instance)
     CANVAS = get_canvas(INSTANCE)
     course = CANVAS.get_course(course_id)
-    RESULT_PATH = (
-        RESULTS
-        / f"{INSTANCE.upper()}_{course}_enrollments_after_{start_date.strftime('%Y_%m_%d')}.csv"
+    RESULT_PATH_STRING = (
+        f"{INSTANCE.upper()}_{course}_enrollments_after"
+        "_{start_date.strftime('%Y_%m_%d')}.csv"
     )
+    RESULT_PATH = RESULTS / RESULT_PATH_STRING
     make_csv_paths(
         RESULTS,
         RESULT_PATH,
