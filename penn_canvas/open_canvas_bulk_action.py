@@ -91,7 +91,7 @@ def remove_user(account, email):
     else:
         account.delete_user(user[0])
 
-        return "deleted"
+        return "removed"
 
 
 def update_user_name(account, new_name, email):
@@ -117,7 +117,7 @@ def enroll_user(canvas, email, canvas_id, section):
 def process_result(result_path):
     result = read_csv(result_path)
     created = len(result[result["Status"] == "created"].index)
-    deleted = len(result[result["Status"] == "deleted"].index)
+    removed = len(result[result["Status"] == "removed"].index)
     enrolled = len(result[result["Status"] == "enrolled"].index)
     failed_to_enroll = len(result[result["Status"] == "failed to enroll"].index)
     already_in_use = len(result[result["Status"] == "already in use"].index)
@@ -125,7 +125,7 @@ def process_result(result_path):
     not_found = len(
         result[
             (result["Status"] != "created")
-            & (result["Status"] != "deleted")
+            & (result["Status"] != "removed")
             & (result["Status"] != "enrolled")
             & (result["Status"] != "failed to enroll")
             & (result["Status"] != "already in use")
@@ -139,7 +139,7 @@ def process_result(result_path):
 
     return (
         created,
-        deleted,
+        removed,
         enrolled,
         failed_to_enroll,
         not_found,
@@ -151,7 +151,7 @@ def process_result(result_path):
 def print_messages(
     total,
     created,
-    deleted,
+    removed,
     enrolled,
     failed_to_enroll,
     not_found,
@@ -168,10 +168,10 @@ def print_messages(
             f" {colorize(created, 'green')} {'user' if created == 1 else 'users'}."
         )
 
-    if deleted:
+    if removed:
         echo(
-            "- Deleted"
-            f" {colorize(deleted, 'red')} {'user' if deleted == 1 else 'users'}."
+            "- Removed"
+            f" {colorize(removed, 'red')} {'user' if removed == 1 else 'users'}."
         )
 
     if enrolled:
@@ -223,7 +223,7 @@ def open_canvas_bulk_action_main(verbose, force):
         else:
             index, full_name, email = user[:-1]
 
-        status = "deleted" if action == "remove" else "created"
+        status = "removed" if action == "remove" else "created"
         course = None
         error_message = False
         canvas_user = False
@@ -261,7 +261,7 @@ def open_canvas_bulk_action_main(verbose, force):
         if verbose and error_message:
             colorize(
                 f"- ({index + 1}/{TOTAL}) ERROR: Failed to"
-                f" {'delete' if action == 'remove' else action} {full_name}"
+                f" {'remove' if action == 'remove' else action} {full_name}"
                 f" ({email}){f' in course {course}' if course else ''}: {status}.",
                 "red",
                 True,
@@ -330,7 +330,7 @@ def open_canvas_bulk_action_main(verbose, force):
             COLOR_MAP = {
                 "created": "green",
                 "enrolled": "green",
-                "deleted": "yellow",
+                "removed": "yellow",
                 "failed to enroll": "red",
                 "not found": "red",
                 "already in use": "red",
@@ -354,7 +354,7 @@ def open_canvas_bulk_action_main(verbose, force):
         echo(f"==== {colorize(result_path.stem, 'green')} ====")
         (
             created,
-            deleted,
+            removed,
             enrolled,
             failed_to_enroll,
             not_found,
@@ -364,7 +364,7 @@ def open_canvas_bulk_action_main(verbose, force):
         print_messages(
             total,
             created,
-            deleted,
+            removed,
             enrolled,
             failed_to_enroll,
             not_found,
