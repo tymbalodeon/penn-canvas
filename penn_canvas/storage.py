@@ -244,7 +244,7 @@ def storage_main(test, verbose, force, increase=1000):
         HEADERS[:4],
         cleanup_data,
         missing_file_message,
-        START,
+        start=START,
     )
     make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))
     make_skip_message(START, "course")
