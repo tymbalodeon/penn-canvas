@@ -128,7 +128,8 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
             QUIZ_DIRECTORY / f"{quiz.title.replace('- ', '').replace(' ', '_')}.csv"
         )
         users = [
-            CANVAS.get_user(submission.user_id) for submission in quiz.get_submissions()
+            CANVAS.get_user(submission.user_id).name
+            for submission in quiz.get_submissions()
         ]
 
         if verbose:
@@ -136,7 +137,7 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
 
             for index, user in enumerate(users):
                 user_display = colorize(user, "cyan")
-                echo(f"- ({index + 1}/{total}) {user_display}")
+                echo(f"- ({index + 1}/{len(users)}) {user_display}")
 
         if verbose and not users:
             echo(f"==== QUIZ {quiz_index + 1} ====")
