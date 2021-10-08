@@ -78,13 +78,12 @@ def bulk_enroll_main(
 
     if input_file:
         INPUT_FILES, PLEASE_ADD_MESSAGE, MISSING_FILE_MESSAGE = find_input(
-            COMMAND, INPUT_FILE_NAME, INPUT, date=False, bulk_enroll=True
+            INPUT_FILE_NAME, INPUT, date=False, bulk_enroll=True
         )
         terms = process_input(
             INPUT_FILES,
             INPUT_FILE_NAME,
             INPUT,
-            PLEASE_ADD_MESSAGE,
             ["canvas_term_id"],
             cleanup_data,
             MISSING_FILE_MESSAGE,

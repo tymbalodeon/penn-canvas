@@ -260,7 +260,7 @@ def count_quizzes_main(new_quizzes, test, force, verbose):
             print_course(total_quizzes, error_message, index, TOTAL, course_name)
 
     reports, please_add_message, missing_file_message = find_input(
-        COMMAND, INPUT_FILE_NAME, REPORTS
+        INPUT_FILE_NAME, REPORTS
     )
     RESULT_PATH = (
         RESULTS / f"{YEAR}_{'new_' if new_quizzes else ''}quiz_usage_report.csv"
@@ -270,7 +270,6 @@ def count_quizzes_main(new_quizzes, test, force, verbose):
         reports,
         INPUT_FILE_NAME,
         REPORTS,
-        please_add_message,
         CLEANUP_HEADERS,
         cleanup_data,
         missing_file_message,

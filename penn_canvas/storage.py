@@ -62,7 +62,8 @@ def cleanup_data(data):
 
 
 def check_percent_storage(course, canvas, verbose, total):
-    index, canvas_id, sis_id, account_id, storage_used = course
+    index, canvas_id, sis_id = course[:3]
+    storage_used = course[-1]
 
     try:
         canvas_course = canvas.get_course(canvas_id)
@@ -185,8 +186,14 @@ def process_result():
                     None,
                 )
 
-            box_result_path = this_month_directory / RESULT_PATH.name
-            result.to_csv(box_result_path, index=False)
+            box_result_path = (
+                this_month_directory / RESULT_PATH.name
+                if this_month_directory
+                else None
+            )
+
+            if box_result_path:
+                result.to_csv(box_result_path, index=False)
         except Exception as error:
             echo(f"- ERROR: {error}")
 
@@ -232,12 +239,12 @@ def storage_main(test, verbose, force, increase=1000):
         ] = row
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
-    report, please_add_message, missing_file_message = find_input(
+    reports, please_add_message, missing_file_message = find_input(
         COMMAND, INPUT_FILE_NAME, REPORTS
     )
     START = get_start_index(force, RESULT_PATH)
     report, TOTAL = process_input(
-        report,
+        reports,
         INPUT_FILE_NAME,
         REPORTS,
         please_add_message,

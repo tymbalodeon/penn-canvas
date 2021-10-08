@@ -132,7 +132,7 @@ def count_poll_everywhere_main(test, force, verbose):
                 )
 
     reports, please_add_message, missing_file_message = find_input(
-        COMMAND, INPUT_FILE_NAME, REPORTS
+        INPUT_FILE_NAME, REPORTS
     )
     RESULT_PATH = RESULTS / f"{YEAR}_poll_everywhere_usage_report.csv"
     START = get_start_index(force, RESULT_PATH, RESULTS)
@@ -140,7 +140,6 @@ def count_poll_everywhere_main(test, force, verbose):
         reports,
         INPUT_FILE_NAME,
         REPORTS,
-        please_add_message,
         CLEANUP_HEADERS,
         cleanup_data,
         missing_file_message,

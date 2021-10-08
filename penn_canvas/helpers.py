@@ -377,7 +377,6 @@ def print_missing_input_and_exit(input_file_name, please_add_message, date=True)
 
 
 def find_input(
-    command,
     input_file_name,
     input_directory,
     extension="*.csv",
@@ -403,8 +402,7 @@ def find_input(
 
     echo(f") Finding {input_file_name}...")
 
-    if date:
-        date_message = " matching today's date "
+    date_message = " matching today's date " if date else ""
 
     please_add_message = (
         "Please add a"
@@ -457,14 +455,12 @@ def process_input(
     input_files,
     input_file_name,
     input_directory,
-    please_add_message,
     headers,
     cleanup_data,
     missing_file_message,
     args=None,
     start=0,
     bulk_enroll=False,
-    open_canvas=False,
 ):
     echo(f") Preparing {input_file_name}...")
 

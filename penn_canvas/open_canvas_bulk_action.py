@@ -252,7 +252,7 @@ def open_canvas_bulk_action_main(verbose, force):
             else:
                 status, canvas_user = create_user(account, full_name, email)
         except Exception as error:
-            status = error
+            status = str(error)
             error_message = True
 
         users.at[index, ["Status"]] = status
@@ -275,7 +275,7 @@ def open_canvas_bulk_action_main(verbose, force):
             )
 
     input_files, please_add_message, missing_file_message = find_input(
-        COMMAND, INPUT_FILE_NAME, REPORTS, date=False, open_canvas=True
+        INPUT_FILE_NAME, REPORTS, date=False, open_canvas=True
     )
 
     RESULT_PATHS = list()
@@ -311,7 +311,6 @@ def open_canvas_bulk_action_main(verbose, force):
             input_files,
             INPUT_FILE_NAME,
             REPORTS,
-            please_add_message,
             action_headers,
             cleanup_data,
             missing_file_message,
