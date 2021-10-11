@@ -247,7 +247,6 @@ def storage_main(test, verbose, force, increase=1000):
         reports,
         INPUT_FILE_NAME,
         REPORTS,
-        please_add_message,
         HEADERS[:4],
         cleanup_data,
         missing_file_message,
