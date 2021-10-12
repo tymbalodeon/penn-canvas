@@ -77,7 +77,7 @@ def bulk_enroll_main(
     )
 
     if input_file:
-        INPUT_FILES, PLEASE_ADD_MESSAGE, MISSING_FILE_MESSAGE = find_input(
+        INPUT_FILES, MISSING_FILE_MESSAGE = find_input(
             INPUT_FILE_NAME, INPUT, date=False, bulk_enroll=True
         )
         terms = process_input(

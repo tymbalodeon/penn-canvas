@@ -131,9 +131,7 @@ def count_poll_everywhere_main(test, force, verbose):
                     f" {colorize(error_message, 'red')}"
                 )
 
-    reports, please_add_message, missing_file_message = find_input(
-        INPUT_FILE_NAME, REPORTS
-    )
+    reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
     RESULT_PATH = RESULTS / f"{YEAR}_poll_everywhere_usage_report.csv"
     START = get_start_index(force, RESULT_PATH, RESULTS)
     report, TOTAL = process_input(

@@ -528,9 +528,7 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
         f"_{datetime.now().strftime('%H_%M_%S')}.csv"
     )
     handle_clear_processed(clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH])
-    reports, please_add_message, missing_file_message = find_input(
-        INPUT_FILE_NAME, REPORTS
-    )
+    reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
     PROCESSED_USERS = get_processed(PROCESSED, PROCESSED_PATH, HEADERS)
     PROCESSED_ERRORS = get_processed(PROCESSED, PROCESSED_ERRORS_PATH, HEADERS)
     START = get_start_index(force, RESULT_PATH, RESULTS)

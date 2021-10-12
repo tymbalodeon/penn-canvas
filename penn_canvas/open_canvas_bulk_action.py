@@ -100,7 +100,7 @@ def update_user_name(account, new_name, email):
     if not user:
         return "not found"
     else:
-        user.edit(user={"name": new_name})
+        user[0].edit(user={"name": new_name})
 
         return "updated"
 
@@ -213,9 +213,12 @@ def print_messages(
         )
 
 
-def open_canvas_bulk_action_main(verbose, force):
+def open_canvas_bulk_action_main(verbose, force, test):
     def create_or_delete_canvas_user(user, canvas, verbose, args):
         account, action = args[:2]
+
+        canvas_id = None
+        section = None
 
         if action == "enroll":
             section = args[2]
@@ -244,7 +247,7 @@ def open_canvas_bulk_action_main(verbose, force):
                                 canvas, email, canvas_id, section
                             )
                         except Exception as error:
-                            status = error
+                            status = str(error)
             elif action == "remove":
                 status = remove_user(account, email)
             elif action == "update":
@@ -274,7 +277,7 @@ def open_canvas_bulk_action_main(verbose, force):
                 f"{colorize(' ' + str(canvas_user), 'magenta') if canvas_user else ''}."
             )
 
-    input_files, please_add_message, missing_file_message = find_input(
+    input_files, missing_file_message = find_input(
         INPUT_FILE_NAME, REPORTS, date=False, open_canvas=True
     )
 
@@ -286,11 +289,11 @@ def open_canvas_bulk_action_main(verbose, force):
 
         action = "create"
         display_action = "Creating"
+        section = False
 
         if "enroll" in input_file.stem.lower():
             action = "enroll"
             display_action = "Enrolling"
-            section = False
 
             if "section" in input_file.stem.lower():
                 section = True
@@ -302,7 +305,7 @@ def open_canvas_bulk_action_main(verbose, force):
             action = "update"
             display_action = "Updating"
 
-        test = True if "test" in input_file.stem.lower() else False
+        open_test = True if (test or "test" in input_file.stem.lower()) else False
         RESULT_STRING = f"{input_file.stem}_RESULT.csv"
         RESULT_PATH = RESULTS / RESULT_STRING
         START = get_start_index(force, RESULT_PATH)
@@ -320,7 +323,7 @@ def open_canvas_bulk_action_main(verbose, force):
         RESULT_HEADERS = action_headers + ["Status"]
         make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(RESULT_HEADERS))
         make_skip_message(START, "user")
-        INSTANCE = "open_test" if test else "open"
+        INSTANCE = "open_test" if open_test else "open"
         CANVAS = get_canvas(INSTANCE)
 
         echo(f") {display_action} {len(users)} users...")

@@ -239,9 +239,7 @@ def storage_main(test, verbose, force, increase=1000):
         ] = row
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
-    reports, please_add_message, missing_file_message = find_input(
-        INPUT_FILE_NAME, REPORTS
-    )
+    reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
     START = get_start_index(force, RESULT_PATH)
     report, TOTAL = process_input(
         reports,

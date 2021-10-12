@@ -448,7 +448,7 @@ def find_input(
 
         raise Exit(1)
     else:
-        return TODAYS_INPUT, please_add_message, missing_file_message
+        return TODAYS_INPUT, missing_file_message
 
 
 def process_input(

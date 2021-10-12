@@ -450,8 +450,13 @@ def open_canvas_bulk_action(
             " pre-existing incomplete result file and overwrite that file."
         ),
     ),
+    test: bool = Option(
+        False,
+        "--test",
+        help="Use the Open Canvas test instance instead of production.",
+    ),
 ):
-    open_canvas_bulk_action_main(verbose, force)
+    open_canvas_bulk_action_main(verbose, force, test)
 
 
 @app.command()
