@@ -50,7 +50,7 @@ def enroll_user_in_course(canvas, user, canvas_id, section):
         return "course not found", canvas_id
 
     try:
-        enrollment = canvas_section.enroll_user(user)
+        enrollment = canvas_section.enroll_user(user, enrollment={"notify": True})
 
         return "enrolled", enrollment
     except Exception:
