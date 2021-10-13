@@ -477,7 +477,7 @@ def process_input(
                 abort = True
                 echo(missing_file_message)
             else:
-                data = read_csv(report)
+                data = read_csv(report, encoding_errors="replace")
                 data = data.loc[:, headers]
 
                 if not report.parents[0] == input_directory:

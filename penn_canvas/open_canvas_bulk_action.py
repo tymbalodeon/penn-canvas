@@ -232,7 +232,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
         canvas_user = False
 
         try:
-            full_name = full_name.strip()
+            full_name = " ".join(full_name.strip().split())
             email = email.strip()
 
             if action == "enroll":
