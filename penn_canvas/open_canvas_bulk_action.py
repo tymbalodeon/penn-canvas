@@ -318,6 +318,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
             cleanup_data,
             missing_file_message,
             start=START,
+            open_canvas=True,
         )
         users["Status"] = ""
         RESULT_HEADERS = action_headers + ["Status"]

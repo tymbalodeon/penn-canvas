@@ -461,6 +461,7 @@ def process_input(
     args=None,
     start=0,
     bulk_enroll=False,
+    open_canvas=False,
 ):
     echo(f") Preparing {input_file_name}...")
 
@@ -477,7 +478,7 @@ def process_input(
                 abort = True
                 echo(missing_file_message)
             else:
-                data = read_csv(report, encoding_errors="replace")
+                data = read_csv(report, encoding="latin1" if open_canvas else "utf-8")
                 data = data.loc[:, headers]
 
                 if not report.parents[0] == input_directory:
