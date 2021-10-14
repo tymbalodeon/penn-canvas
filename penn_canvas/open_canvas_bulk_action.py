@@ -371,7 +371,8 @@ def open_canvas_bulk_action_main(verbose, force, test):
         toggle_progress_bar(users, create_or_delete_canvas_user, CANVAS, verbose, ARGS)
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         new_path = RESULT_PATH.rename(
-            RESULTS / f"{'TEST_' if test else ''}{RESULT_PATH.stem}_{timestamp}.csv"
+            RESULTS
+            / f"{'TEST_' if open_test else ''}{RESULT_PATH.stem}_{timestamp}.csv"
         )
         RESULT_PATHS.append((new_path, TOTAL))
         input_file.rename(COMPLETED / input_file.name)
