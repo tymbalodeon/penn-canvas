@@ -217,7 +217,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
     def create_or_delete_canvas_user(user, canvas, verbose, args):
         account, action = args[:2]
 
-        canvas_id = None
+        canvas_id = ""
         section = None
 
         if action == "enroll":
@@ -232,6 +232,10 @@ def open_canvas_bulk_action_main(verbose, force, test):
         canvas_user = False
 
         try:
+            for item in [full_name, email, canvas_id]:
+                if not isinstance(item, str):
+                    raise Exception("missing value")
+
             full_name = " ".join(full_name.strip().split())
             email = email.strip()
 
