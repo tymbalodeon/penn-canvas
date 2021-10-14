@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pandas import read_csv
+from pandas import concat, read_csv
 from typer import echo
 
 from .helpers import (
@@ -116,35 +116,47 @@ def enroll_user(canvas, email, canvas_id, section):
 
 def process_result(result_path):
     result = read_csv(result_path)
-    created = len(result[result["Status"] == "created"].index)
-    removed = len(result[result["Status"] == "removed"].index)
-    enrolled = len(result[result["Status"] == "enrolled"].index)
-    failed_to_enroll = len(result[result["Status"] == "failed to enroll"].index)
-    already_in_use = len(result[result["Status"] == "already in use"].index)
-    course_not_found = len(result[result["Status"] == "course not found"].index)
-    not_found = len(
-        result[
-            (result["Status"] != "created")
-            & (result["Status"] != "removed")
-            & (result["Status"] != "enrolled")
-            & (result["Status"] != "failed to enroll")
-            & (result["Status"] != "already in use")
-            & (result["Status"] != "course not found")
-        ].index
-    )
+    created = result[result["Status"] == "created"]
+    removed = result[result["Status"] == "removed"]
+    enrolled = result[result["Status"] == "enrolled"]
+    failed_to_enroll = result[result["Status"] == "failed to enroll"]
+    already_in_use = result[result["Status"] == "already in use"]
+    course_not_found = result[result["Status"] == "course not found"]
+    missing_value = result[result["Status"] == "missing value"]
+    error = result[
+        (result["Status"] != "created")
+        & (result["Status"] != "removed")
+        & (result["Status"] != "enrolled")
+        & (result["Status"] != "failed to enroll")
+        & (result["Status"] != "already in use")
+        & (result["Status"] != "course not found")
+        & (result["Status"] != "missing value")
+    ]
 
+    result = concat(
+        [
+            missing_value,
+            course_not_found,
+            failed_to_enroll,
+            error,
+            already_in_use,
+            enrolled,
+            created,
+            removed,
+        ]
+    )
     result.drop(["index"], axis=1, inplace=True)
-    result.sort_values("Status", inplace=True, ignore_index=True)
     result.to_csv(result_path, index=False)
 
     return (
-        created,
-        removed,
-        enrolled,
-        failed_to_enroll,
-        not_found,
-        already_in_use,
-        course_not_found,
+        len(created.index),
+        len(removed.index),
+        len(enrolled.index),
+        len(failed_to_enroll.index),
+        len(error.index),
+        len(already_in_use.index),
+        len(course_not_found.index),
+        len(missing_value.index),
     )
 
 
@@ -157,6 +169,7 @@ def print_messages(
     not_found,
     already_in_use,
     course_not_found,
+    missing_value,
 ):
     echo(
         f"- Processed {colorize(total, 'magenta')} {'user' if total == 1 else 'users'}."
@@ -209,6 +222,12 @@ def print_messages(
             f"- ERROR: Failed to find {course_not_found}"
             f" {'course' if course_not_found == 1 else 'courses'}.",
             "red",
+            True,
+        )
+
+    if missing_value:
+        colorize(
+            f"- ERROR: Found {missing_value} fields with missing values.red",
             True,
         )
 
@@ -350,7 +369,9 @@ def open_canvas_bulk_action_main(verbose, force, test):
         )
         toggle_progress_bar(users, create_or_delete_canvas_user, CANVAS, verbose, ARGS)
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        new_path = RESULT_PATH.rename(RESULTS / f"{RESULT_PATH.stem}_{timestamp}.csv")
+        new_path = RESULT_PATH.rename(
+            RESULTS / f"{'TEST_' if test else ''}{RESULT_PATH.stem}_{timestamp}.csv"
+        )
         RESULT_PATHS.append((new_path, TOTAL))
         input_file.rename(COMPLETED / input_file.name)
 
@@ -367,6 +388,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
             not_found,
             already_in_use,
             course_not_found,
+            missing_value,
         ) = process_result(result_path)
         print_messages(
             total,
@@ -377,6 +399,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
             not_found,
             already_in_use,
             course_not_found,
+            missing_value,
         )
 
     colorize("FINISHED", "yellow", True)
