@@ -227,7 +227,8 @@ def print_messages(
 
     if missing_value:
         colorize(
-            f"- ERROR: Found {missing_value} fields with missing values.red",
+            f"- ERROR: Found {missing_value} fields with missing values",
+            "red",
             True,
         )
 
