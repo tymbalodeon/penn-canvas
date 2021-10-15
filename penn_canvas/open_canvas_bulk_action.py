@@ -308,6 +308,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
     )
 
     RESULT_PATHS = list()
+    input_files.sort(reverse=True)
 
     for index, input_file in enumerate(input_files):
         if verbose:
