@@ -365,11 +365,10 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
 
 
 def print_missing_input_and_exit(input_file_name, please_add_message, date=True):
-    if date:
-        date_message = " matching today's date "
+    date_message = " matching today's date " if date else ""
 
     error = colorize(
-        f"- ERROR: A {input_file_name}{date_message if date else ' '}was not found.",
+        f"- ERROR: A {input_file_name}{date_message}was not found.",
         "yellow",
     )
 
@@ -397,7 +396,10 @@ def find_input(
             return INPUT_FILES
         else:
             return [
-                input_file for input_file in INPUT_FILES if TODAY in input_file.name
+                input_file
+                for input_file in INPUT_FILES
+                if datetime.today().date()
+                == datetime.fromtimestamp(input_file.stat().st_ctime).date()
             ]
 
     echo(f") Finding {input_file_name}...")

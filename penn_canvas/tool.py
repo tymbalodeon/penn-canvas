@@ -185,7 +185,7 @@ def cleanup_reports(
     return data_frame, f"{total:,}", terms
 
 
-def process_result(tool, terms, enable, result_path, new):
+def process_result(terms, enable, result_path, new):
     result = read_csv(result_path)
     enabled = result[result["tool status"] == "enabled"]
     already_enabled = result[result["tool status"] == "already enabled"]
@@ -332,10 +332,7 @@ def print_messages(
 
 def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
     def check_tool_usage(course, canvas, verbose, args):
-        if len(args) == 4:
-            tool, use_id, enable, PROCESSED_COURSES = args
-        else:
-            tool, use_id, enable = args
+        tool, use_id, enable = args
 
         tool_display = colorize(tool, "blue")
         (
@@ -345,9 +342,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
             short_name,
             long_name,
             canvas_account_id,
-            term_id,
-            status,
-        ) = course
+        ) = course[:6]
 
         tool_status = "not found"
         error = False
@@ -370,7 +365,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
 
                 if tool_tab and tool_tab.visibility == "public":
                     tool_status = "already enabled" if enable else "enabled"
-                elif enable:
+                elif tool_tab and enable:
                     tool_tab.update(hidden=False, position=3)
                     tool_status = "enabled"
                 else:
@@ -427,6 +422,8 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
     RESULT_PATH = RESULTS / RESULT_FILE_NAME
     START = get_start_index(force, RESULT_PATH)
 
+    PROCESSED_COURSES = PROCESSED_ERRORS = None
+
     if enable:
         PROCESSED_STEM = (
             f"{tool.replace(' ', '_')}_tool_enable_processed_courses"
@@ -441,6 +438,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
         handle_clear_processed(
             clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH], "courses"
         )
+
         PROCESSED_COURSES = get_processed(PROCESSED, PROCESSED_PATH, "canvas course id")
         PROCESSED_ERRORS = get_processed(
             PROCESSED, PROCESSED_ERRORS_PATH, "canvas course id"
@@ -544,7 +542,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
         not_participating,
         error,
         result_path,
-    ) = process_result(tool, terms, enable, RESULT_PATH, new)
+    ) = process_result(terms, enable, RESULT_PATH, new)
     print_messages(
         tool,
         enable,
