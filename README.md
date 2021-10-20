@@ -25,6 +25,10 @@ Code changes can be tested quickly without having to build the app by running co
 
 > `poetry run penn-canvas [OPTIONS] COMMAND [ARGS]`
 
+or via the Makefile alias:
+
+> `make try args=[ARGS]`
+
 ### Non-Poetry
 
 A "requirements.txt" file is also included for non-Poetry installation. Instructions for developing without Poetry are not currently available.
