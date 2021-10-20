@@ -2,13 +2,20 @@
 
 A command line tool for working with Penn's Canvas instances.
 
+## Makefile
+
+A Makefile is provided with aliases to common commands.
+
+_This README uses these aliases. Actual commands can be seen in the Makefile itself._
+
+- To install "make" on MacOS: `xcode-select --install`
+
 ## Installation & Setup
 
 NOTE: This project is intended to be developed and built using [poetry](https://python-poetry.org/).
 
 1. `poetry install`
-2. `poetry build`
-3. `pip install <path-to-.whl-file-in-this-project's-dist-folder>` (you may need to run this with `sudo` or add the `--user` flag)
+2. `make build`
 
 The `penn-canvas` command will then be globally available in your shell.
 

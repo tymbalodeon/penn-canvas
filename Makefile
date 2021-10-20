@@ -1,18 +1,20 @@
 ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-WHEEL := $(ROOT_DIR)/buid/penn_canvas-0.1.0-py3-none-any.whl
+VERSION := $(shell awk -F '[ ="]+' '$$1 == "version" { print $$2 }' $(ROOT_DIR)/pyproject.toml)
+WHEEL := $(ROOT_DIR)/dist/penn_canvas-$(VERSION)-py3-none-any.whl
 REQUIREMENTS = requirements.txt
-COMMAND := poetry run
+POETRY = poetry run
+COMMAND = penn-canvas
 
 all: help
 
 black: ## Format code
-	$(COMMAND) black --experimental-string-processing $(ROOT_DIR)
+	$(POETRY) black --experimental-string-processing $(ROOT_DIR)
 
 build: ## Build the CLI and isntall it in your global pip packages
-	poetry build && pip
+	poetry build && pip install $(WHEEL) --force-reinstall
 
 flake8: ## Lint code
-	$(COMMAND) flake8 $(ROOT_DIR)
+	$(POETRY) flake8 $(ROOT_DIR)
 
 format: isort black flake8 ## Format and lint code
 
@@ -23,4 +25,11 @@ help: ## Display the help menu
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 isort: ## Sort imports
-	$(COMMAND) isort $(ROOT_DIR)
+	$(POETRY) isort $(ROOT_DIR)
+
+try: ## Try a command using the current state of the files without building
+ifdef args
+	$(POETRY) $(COMMAND) $(args)
+else
+	$(POETRY) $(COMMAND)
+endif
