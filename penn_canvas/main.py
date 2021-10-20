@@ -45,9 +45,10 @@ def archive(
     ),
 ):
     """
-    Archives a Canvas course's discussions.
+    Archives a Canvas course's discussions and quiz participation.
 
-    INPUT: Canvas course id whose discussions you want to archive
+    INPUT: Canvas course id whose discussions (and optionally quiz
+    participation) you want to archive
 
     OUTPUT: Folder with the course name containing csv files for each
     discussion, listing the user, email, (OPTIONAL: timestamp), and post; as
@@ -133,7 +134,7 @@ def bulk_enroll(
     ),
 ):
     """
-    Enrolls a given user into all courses found for the given school and terms.
+    Enrolls a given user into all courses for the given school and terms.
 
     """
     bulk_enroll_main(
@@ -207,9 +208,11 @@ def config(
 
     - PRODUCTION: `https://canvas.upenn.edu/`
 
-    - DEVELOPMENT: `https://upenn.test.instructure.com/`
+    - TEST: `https://upenn.test.instructure.com/`
 
     - OPEN: `https://upenn-catalog.instructure.com/`
+
+    - OPEN TEST: `https://upenn-catalog.test.instructure.com/`
 
     OUTPUT: config file located at $HOME/.config/penn-canvas
 

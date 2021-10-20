@@ -6,12 +6,12 @@ from pandas import DataFrame, concat, isna, read_csv
 from typer import Exit, confirm, echo
 
 from .helpers import (
-    TODAY,
     YEAR,
     add_headers_to_empty_files,
     colorize,
     drop_duplicate_errors,
     dynamic_to_csv,
+    find_input,
     get_canvas,
     get_command_paths,
     get_processed,
@@ -20,10 +20,12 @@ from .helpers import (
     make_csv_paths,
     make_index_headers,
     make_skip_message,
+    process_input,
     toggle_progress_bar,
 )
 
 REPORTS, RESULTS, PROCESSED = get_command_paths("Tool", processed=True)
+INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
 HEADERS = [
     "canvas course id",
     "course id",
@@ -61,76 +63,11 @@ def check_tool(tool):
         return tool
 
 
-def find_course_report(enable):
-    echo(") Finding Canvas Provisioning (Courses) report(s)...")
-
-    if not REPORTS.exists():
-        Path.mkdir(REPORTS, parents=True)
-        error = colorize("- ERROR: Canvas tool reports directory not found.", "yellow")
-        echo(
-            f"{error} \n- Creating one for you at: {colorize(REPORTS, 'green')}\n-"
-            " Please add a Canvas Provisioning (Courses) report for at least one term,"
-            " and matching today's date, to this directory and then run this script"
-            " again.\n- (If you need instructions for generating a Canvas Provisioning"
-            " report, run this command with the '--help' flag.)"
-        )
-
-        raise Exit(1)
-    else:
-        CSV_FILES = [report for report in Path(REPORTS).glob("*.csv")]
-        TODAYS_REPORTS = [report for report in CSV_FILES if TODAY in report.name]
-
-        if not len(TODAYS_REPORTS):
-            error = colorize(
-                "- ERROR: A Canvas Provisioning (Courses) CSV report matching today's"
-                " date was not found.",
-                "yellow",
-            )
-            echo(
-                f"{error}\n- Please add a Canvas (Courses) Provisioning report for at"
-                " least one term, matching today's date, to the following directory"
-                f" and then run this script again: {colorize(REPORTS, 'green')}\n- (If"
-                " you need instructions for generating a Canvas Provisioning report,"
-                " run this command with the '--help' flag.)"
-            )
-
-            raise Exit(1)
-        else:
-            total = len(TODAYS_REPORTS)
-
-            if total == 1:
-                report_display = "report"
-            else:
-                report_display = "reports"
-
-            if not enable:
-                echo(f"- Found {total} {report_display}:")
-
-                FOUND_PATHS = list()
-
-                for path in TODAYS_REPORTS:
-                    FOUND_PATHS.append(colorize(path.stem, "green"))
-
-                for path in FOUND_PATHS:
-                    echo(f"- {path}")
-
-            return TODAYS_REPORTS, report_display
-
-
-def cleanup_reports(
-    reports,
-    report_display,
-    enable,
-    processed_courses=None,
-    processed_errors=None,
-    new=False,
-    start=0,
-):
-    echo(f") Preparing {report_display}...")
+def cleanup_data(data, args):
+    enable, processed_courses, processed_errors, new = args
 
     def cleanup_report(report):
-        data = read_csv(report)
-        data = data[
+        data = report[
             [
                 "canvas_course_id",
                 "course_id",
@@ -151,7 +88,7 @@ def cleanup_reports(
         return data
 
     if enable:
-        data_frame = cleanup_report(reports[0])
+        data_frame = cleanup_report(data[0])
         data_frame.reset_index(drop=True, inplace=True)
         already_processed_count = len(processed_courses)
 
@@ -171,18 +108,13 @@ def cleanup_reports(
     else:
         data_frames = list()
 
-        for report in reports:
+        for report in data:
             data = cleanup_report(report)
             data_frames.append(data)
 
         data_frame = concat(data_frames, ignore_index=True)
 
-    total = len(data_frame.index)
-    data_frame = data_frame.loc[start:total, :]
-    data_frame["term_id"].fillna("N/A", inplace=True)
-    terms = data_frame["term_id"].drop_duplicates().tolist()
-
-    return data_frame, f"{total:,}", terms
+    return data_frame
 
 
 def process_result(terms, enable, result_path, new):
@@ -378,7 +310,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
                     message = colorize(
                         f"ERROR: Failed to process {course_id} ({error_message})", "red"
                     )
-                    echo(f"- ({(index + 1):,}/{total}) {message}")
+                    echo(f"- ({(index + 1):,}/{TOTAL}) {message}")
 
         if verbose and not error:
             if isna(course_id):
@@ -389,7 +321,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
             color = PRINT_COLOR_MAPS.get(tool_status)
             found_display = colorize(tool_status.upper(), color)
             echo(
-                f'- ({(index + 1):,}/{total}) "{tool_display}" {found_display} for'
+                f'- ({(index + 1):,}/{TOTAL}) "{tool_display}" {found_display} for'
                 f" {course_display}."
             )
 
@@ -414,7 +346,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
                 writer(processed_file).writerow([canvas_course_id])
 
     tool = check_tool(tool)
-    REPORTS, report_display = find_course_report(enable)
+    reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
     RESULT_FILE_NAME = (
         f"{f'{YEAR}_' if enable else ''}{tool.replace(' ', '_')}"
         f"{'_test' if test else ''}.csv"
@@ -444,15 +376,23 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
             PROCESSED, PROCESSED_ERRORS_PATH, "canvas course id"
         )
 
-    report, total, terms = cleanup_reports(
+    CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:7]]
+    cleanup_data_args = (enable, PROCESSED_COURSES, PROCESSED_ERRORS, new)
+    report, TOTAL = process_input(
+        reports,
+        INPUT_FILE_NAME,
         REPORTS,
-        report_display,
-        enable,
-        PROCESSED_COURSES if enable else None,
-        PROCESSED_ERRORS if enable else None,
-        new if enable else False,
-        START,
+        CLEANUP_HEADERS,
+        cleanup_data,
+        missing_file_message,
+        cleanup_data_args,
+        start=START,
+        tool=True,
     )
+
+    report = report.loc[START:TOTAL, :]
+    report["term_id"].fillna("N/A", inplace=True)
+    terms = report["term_id"].drop_duplicates().tolist()
 
     if not force and not enable and not RESULT_PATH.exists():
         PREVIOUS_RESULTS = [result_file for result_file in Path(RESULTS).glob("*.csv")]
@@ -486,7 +426,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
 
             report.reset_index(inplace=True)
             report.drop(["index"], axis=1, inplace=True)
-            total = f"{len(report.index):,}"
+            TOTAL = f"{len(report.index):,}"
             terms = report["term_id"].drop_duplicates().tolist()
 
             if not terms:
@@ -518,10 +458,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
     else:
         echo(f') Checking {STYLED_TERMS} courses for "{tool_display}"...')
 
-    if enable:
-        ARGS = (tool, use_id, enable, PROCESSED_COURSES)
-    else:
-        ARGS = (tool, use_id, enable)
+    ARGS = (tool, use_id, enable)
 
     if verbose:
         PRINT_COLOR_MAPS = {
@@ -552,6 +489,6 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
         not_found,
         not_participating,
         error,
-        total,
+        TOTAL,
         result_path,
     )

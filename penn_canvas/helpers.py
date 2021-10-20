@@ -464,35 +464,61 @@ def process_input(
     start=0,
     bulk_enroll=False,
     open_canvas=False,
+    tool=False,
 ):
     echo(f") Preparing {input_file_name}...")
 
-    reports = iter(input_files)
-    error = True
-    abort = False
+    def get_report_data(report):
+        data = read_csv(report)
+        data = data.loc[:, headers]
 
-    while error:
+        if not report.parents[0] == input_directory:
+            copy(report, input_directory / report.name)
+            remove(report)
+
+        return data
+
+    def is_tool_report(report):
         try:
-            report = next(reports, None)
+            get_report_data(report)
 
-            if not report:
-                error = False
-                abort = True
-                echo(missing_file_message)
-            else:
-                data = read_csv(report, encoding="latin1" if open_canvas else "utf-8")
-                data = data.loc[:, headers]
-
-                if not report.parents[0] == input_directory:
-                    copy(report, input_directory / report.name)
-                    remove(report)
-
-                error = False
+            return True
         except Exception:
-            error = True
+            return False
 
-    if abort:
-        raise Exit(1)
+    if tool:
+        data = [
+            get_report_data(report) for report in input_files if is_tool_report(report)
+        ]
+    else:
+        reports = iter(input_files)
+        error = True
+        abort = False
+
+        while error:
+            try:
+                report = next(reports, None)
+
+                if not report:
+                    error = False
+                    abort = True
+                    echo(missing_file_message)
+                else:
+                    data = read_csv(
+                        report, encoding="latin1" if open_canvas else "utf-8"
+                    )
+                    data = data.loc[:, headers]
+
+                    if not report.parents[0] == input_directory:
+                        copy(report, input_directory / report.name)
+                        remove(report)
+
+                    error = False
+            except Exception:
+                error = True
+
+        if abort:
+            raise Exit(1)
 
     if args:
         data = cleanup_data(data, args)
