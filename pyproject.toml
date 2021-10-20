@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "penn-canvas"
 version = "0.1.0"
-description = "A collection of scripts for interacting with Penn Canvas"
+description = "A command-line tool for interacting with Penn's Canvas instances"
 authors = ["Ben Rosen <benrosen@upenn.edu>"]
 readme = "README.md"
 
@@ -9,7 +9,7 @@ readme = "README.md"
 penn-canvas = "penn_canvas.main:app"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 typer = {extras = ["all"], version = "^0.3.2"}
 canvasapi = "^2.2.0"
 requests = "^2.25.1"
