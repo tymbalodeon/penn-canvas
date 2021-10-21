@@ -21,17 +21,17 @@ The `penn-canvas` command will then be globally available in your shell.
 
 ### Development
 
-Code changes can be tested quickly without having to build the app by running commands through `poetry run`:
-
-> `poetry run penn-canvas [OPTIONS] COMMAND [ARGS]`
-
-or via the Makefile alias:
+Code changes can be tested quickly without having to build the app by running:
 
 > `make try args=[ARGS]`
 
 ### Non-Poetry
 
 A "requirements.txt" file is also included for non-Poetry installation. Instructions for developing without Poetry are not currently available.
+
+To "freeze" the dependencies to the requirements file via Poetry, run:
+
+> `make freeze`
 
 ### Configuration
 
