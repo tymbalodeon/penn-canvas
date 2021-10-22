@@ -37,7 +37,7 @@ def make_config():
         data_warehouse_user,
         data_warehouse_password,
         data_warehouse_dsn,
-    ) = read_config(CONFIG_PATH)
+    ) = read_config()
 
     use_production = confirm("Input an Access Token for PRODUCTION?")
 
@@ -107,7 +107,7 @@ def display_config():
             data_warehouse_user,
             data_warehouse_password,
             data_warehouse_dsn,
-        ) = check_config(CONFIG_PATH)
+        ) = check_config()
 
         config_value_color = "yellow"
         production = colorize(f"{production}", config_value_color)
@@ -133,8 +133,8 @@ def display_config():
         )
 
 
-def check_config(config):
-    if not config.exists():
+def check_config():
+    if not CONFIG_PATH.exists():
         error = colorize(
             "- ERROR: No config file ($HOME/.config/penn-canvas) exists for"
             " Penn-Canvas.",
@@ -157,10 +157,10 @@ def check_config(config):
         else:
             make_config()
 
-    return read_config(config)
+    return read_config()
 
 
-def read_config(config):
+def read_config():
     production = ""
     development = ""
     open_canvas = ""
@@ -169,7 +169,7 @@ def read_config(config):
     data_warehouse_password = ""
     data_warehouse_dsn = ""
 
-    if config.is_file():
+    if CONFIG_PATH.is_file():
         with open(CONFIG_PATH, "r") as config:
             LINES = config.read().splitlines()
 
@@ -205,7 +205,7 @@ def read_config(config):
 def get_data_warehouse_config():
     echo(") Reading Data Warehouse credentials from config file...")
 
-    return check_config(CONFIG_PATH)[4:]
+    return check_config()[4:]
 
 
 def init_data_warehouse():
@@ -469,26 +469,23 @@ def process_input(
     echo(f") Preparing {input_file_name}...")
 
     def get_report_data(report):
-        data = read_csv(report)
-        data = data.loc[:, headers]
-
-        if not report.parents[0] == input_directory:
-            copy(report, input_directory / report.name)
-            remove(report)
-
-        return data
-
-    def is_tool_report(report):
         try:
-            get_report_data(report)
+            data = read_csv(report)
+            data = data.loc[:, headers]
 
-            return True
+            if not report.parents[0] == input_directory:
+                copy(report, input_directory / report.name)
+                remove(report)
+
+            return data
         except Exception:
-            return False
+            return None
 
     if tool:
         data = [
-            get_report_data(report) for report in input_files if is_tool_report(report)
+            report
+            for report in [get_report_data(report) for report in input_files]
+            if report is not None
         ]
     else:
         reports = iter(input_files)
@@ -553,9 +550,7 @@ def get_canvas(instance="prod", verbose=True):
     if verbose:
         echo(") Reading Canvas Access Tokens from config file...")
 
-    production, development, open_canvas, open_canvas_test = check_config(CONFIG_PATH)[
-        0:4
-    ]
+    production, development, open_canvas, open_canvas_test = check_config()[0:4]
     url = CANVAS_URL_PROD
     access_token = production
 

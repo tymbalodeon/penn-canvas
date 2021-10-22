@@ -24,6 +24,10 @@ pytest = "^5.2"
 flake8 = "^3.9.2"
 black = "^21.6b0"
 isort = "^5.8.0"
+pre-commit = "^2.15.0"
+types-pytz = "^2021.3.0"
+mypy = "^0.910"
+types-requests = "^2.25.11"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -31,3 +35,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 experimental_string_processing = true
+
+[tool.isort]
+profile = "black"

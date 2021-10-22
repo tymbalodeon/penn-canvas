@@ -3,27 +3,18 @@ from json import dumps
 
 from requests import get
 
-from .helpers import API_KEY_PROD, API_KEY_TEST, get_canvas, make_data_dir
+from .helpers import get_canvas, read_config
 
 TESTING = False
-
 course_id = 1569010
 course_date = "2021-02-11"
 canvas = get_canvas(TESTING)
-
 course = canvas.get_course(course_id)
 students = course.get_users()
-
-use_API_KEY = API_KEY_TEST if TESTING else API_KEY_PROD
-
+use_API_KEY = read_config()[0]
 headers = {"Authorization": "Bearer %s" % use_API_KEY}
 outputFile = "data/{0}_{1}.csv".format(course_id, course_date)
-
-try:
-    output = writer(open(outputFile, "w+", newline=""))
-except FileNotFoundError:
-    make_data_dir()
-    output = writer(open(outputFile, "w+", newline=""))
+output = writer(open(outputFile, "w+", newline=""))
 
 for s in students:
     user = s.id
@@ -77,8 +68,7 @@ for s in students:
         data = r
 
         for row in data:
-            # if course_id in row['url']: #or course_id == row[-2]['context']:
-            output.writerow(row.values())  # values row
+            output.writerow(row.values())
 
         last_page = True
 
