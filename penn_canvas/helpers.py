@@ -519,6 +519,9 @@ def process_input(
                     )
                     data = data.loc[:, headers]
 
+                    if TODAY not in report.name:
+                        report.rename(f"{report.name}_{TODAY}")
+
                     if not report.parents[0] == input_directory:
                         copy(report, input_directory / report.name)
                         remove(report)
