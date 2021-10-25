@@ -3,6 +3,7 @@ from datetime import datetime
 from os import remove
 from pathlib import Path
 from shutil import copy
+from zipfile import ZipFile
 
 from canvasapi import Canvas
 from cx_Oracle import init_oracle_client
@@ -384,6 +385,18 @@ def find_input(
     open_canvas=False,
 ):
     def get_input(path):
+        ZIP_FILES = [
+            input_file
+            for input_file in Path(path).glob("*.zip")
+            if "provisioning" in input_file.name
+        ]
+
+        if ZIP_FILES:
+            for zip_file in ZIP_FILES:
+                with ZipFile(zip_file) as unzipper:
+                    unzipper.extractall(path)
+                remove(zip_file)
+
         INPUT_FILES = [input_file for input_file in Path(path).glob(extension)]
 
         if bulk_enroll:
