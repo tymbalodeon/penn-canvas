@@ -54,7 +54,7 @@ def bulk_enroll_main(
             True,
         )
 
-        raise Exit(1)
+        raise Exit()
 
     ACCOUNT = CANVAS.get_account(MAIN_ACCOUNT_ID)
     SUB_ACCOUNT = CANVAS.get_account(sub_account).name

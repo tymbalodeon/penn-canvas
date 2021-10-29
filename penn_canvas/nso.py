@@ -49,7 +49,7 @@ def find_nso_file():
             " flag.)"
         )
 
-        raise Exit(1)
+        raise Exit()
     else:
         XLSX_FILES = [input_file for input_file in Path(INPUT).glob("*.xlsx")]
         CURRENT_FILE = next(
@@ -75,7 +75,7 @@ def find_nso_file():
                 " run this command with the '--help' flag.)"
             )
 
-            raise Exit(1)
+            raise Exit()
         else:
             return CURRENT_FILE
 

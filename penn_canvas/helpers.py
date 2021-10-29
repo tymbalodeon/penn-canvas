@@ -435,7 +435,7 @@ def find_input(
             f" {colorize(input_directory, 'green')}\n- {please_add_message}"
         )
 
-        raise Exit(1)
+        raise Exit()
 
     if open_canvas:
         TODAYS_INPUT = get_input(input_directory)
@@ -461,7 +461,7 @@ def find_input(
     if not TODAYS_INPUT:
         echo(missing_file_message)
 
-        raise Exit(1)
+        raise Exit()
     else:
         return TODAYS_INPUT, missing_file_message
 
@@ -531,7 +531,7 @@ def process_input(
                 error = True
 
         if abort:
-            raise Exit(1)
+            raise Exit()
 
     if args:
         data = cleanup_data(data, args)
