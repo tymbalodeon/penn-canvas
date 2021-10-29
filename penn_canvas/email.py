@@ -110,7 +110,7 @@ def get_email_status(email):
     return email.workflow_state == "active"
 
 
-def is_already_active(user, canvas, verbose, index):
+def is_already_active(user, canvas):
     user_id = user[1]
 
     canvas_user = None
@@ -145,7 +145,7 @@ def is_already_active(user, canvas, verbose, index):
         return "not found", canvas_user, emails
 
 
-def check_schools(canvas_user, sub_accounts, canvas, verbose):
+def check_schools(canvas_user, sub_accounts):
     user_enrollments = canvas_user.get_courses()
 
     def get_account_id(course):
@@ -385,12 +385,10 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
         supported = None
         account = None
 
-        status, canvas_user, emails = is_already_active(user, canvas, verbose, index)
+        status, canvas_user, emails = is_already_active(user, canvas)
 
         if status == "error" or status == "unconfirmed" or status == "not found":
-            is_supported, account = check_schools(
-                canvas_user, SUB_ACCOUNTS, canvas, verbose
-            )
+            is_supported, account = check_schools(canvas_user, SUB_ACCOUNTS)
 
             if is_supported:
                 supported = "Y"
