@@ -477,61 +477,40 @@ def process_input(
     start=0,
     bulk_enroll=False,
     open_canvas=False,
-    tool=False,
 ):
     echo(f") Preparing {input_file_name}...")
 
-    def get_report_data(report):
+    reports = iter(input_files)
+    error = True
+    abort = False
+
+    while error:
         try:
-            data = read_csv(report)
-            data = data.loc[:, headers]
+            report = next(reports, None)
 
-            if not report.parents[0] == input_directory:
-                copy(report, input_directory / report.name)
-                remove(report)
+            if not report:
+                error = False
+                abort = True
+                echo(missing_file_message)
+            else:
+                data = read_csv(report, encoding="latin1" if open_canvas else "utf-8")
+                data = data.loc[:, headers]
 
-            return data
-        except Exception:
-            return None
-
-    if tool:
-        data = [
-            report
-            for report in [get_report_data(report) for report in input_files]
-            if report is not None
-        ]
-    else:
-        reports = iter(input_files)
-        error = True
-        abort = False
-
-        while error:
-            try:
-                report = next(reports, None)
-
-                if not report:
-                    error = False
-                    abort = True
-                    echo(missing_file_message)
-                else:
-                    data = read_csv(
-                        report, encoding="latin1" if open_canvas else "utf-8"
+                if TODAY not in report.name:
+                    report = report.rename(
+                        report.parents[0] / f"{report.stem}_{TODAY}{report.suffix}"
                     )
-                    data = data.loc[:, headers]
 
-                    if TODAY not in report.name:
-                        report.rename(f"{report.name}_{TODAY}")
+                if not report.parents[0] == input_directory:
+                    copy(report, input_directory / report.name)
+                    remove(report)
 
-                    if not report.parents[0] == input_directory:
-                        copy(report, input_directory / report.name)
-                        remove(report)
+                error = False
+        except Exception:
+            error = True
 
-                    error = False
-            except Exception:
-                error = True
-
-        if abort:
-            raise Exit()
+    if abort:
+        raise Exit()
 
     if args:
         data = cleanup_data(data, args)

@@ -88,7 +88,7 @@ def cleanup_data(data, args):
         return data
 
     if enable:
-        data_frame = cleanup_report(data[0])
+        data_frame = cleanup_report(data)
         data_frame.reset_index(drop=True, inplace=True)
         already_processed_count = len(processed_courses)
 
@@ -387,7 +387,6 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
         missing_file_message,
         cleanup_data_args,
         start=START,
-        tool=True,
     )
 
     report = report.loc[START:TOTAL, :]
