@@ -8,6 +8,7 @@ from .count_quizzes import count_quizzes_main
 from .count_sites import count_sites_main
 from .email import email_main
 from .helpers import display_config, make_config
+from .module import module_main
 from .nso import nso_main
 from .open_canvas_bulk_action import open_canvas_bulk_action_main
 from .storage import storage_main
@@ -393,6 +394,25 @@ def email(
     """
 
     email_main(test, verbose, new, force, clear_processed, no_data_warehouse)
+
+
+@app.command()
+def module(
+    test: bool = Option(
+        False,
+        "--test",
+        help=(
+            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
+            " of production (https://canvas.upenn.edu/)"
+        ),
+    ),
+    course_id: int = Argument(
+        ...,
+        help="The Canvas course id of the course whose modules you want to re-lock.",
+    ),
+):
+    """Re-lock a courses modules."""
+    module_main(test, course_id)
 
 
 @app.command()
