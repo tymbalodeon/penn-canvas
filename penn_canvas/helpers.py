@@ -24,6 +24,15 @@ MONTH = datetime.now().strftime("%B")
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 MAIN_ACCOUNT_ID = 96678
+COLORS = {
+    "blue": colors.BLUE,
+    "cyan": colors.CYAN,
+    "green": colors.GREEN,
+    "magenta": colors.MAGENTA,
+    "red": colors.RED,
+    "yellow": colors.YELLOW,
+    "white": colors.WHITE,
+}
 
 
 def make_config():
@@ -111,16 +120,16 @@ def display_config():
         ) = check_config()
 
         config_value_color = "yellow"
-        production = colorize(f"{production}", config_value_color)
-        development = colorize(f"{development}", config_value_color)
-        open_canvas = colorize(f"{open_canvas}", config_value_color)
-        open_canvas_test = colorize(f"{open_canvas_test}", config_value_color)
-        data_warehouse_user = colorize(f"{data_warehouse_user}", config_value_color)
-        data_warehouse_password = colorize(
+        production = color(f"{production}", config_value_color)
+        development = color(f"{development}", config_value_color)
+        open_canvas = color(f"{open_canvas}", config_value_color)
+        open_canvas_test = color(f"{open_canvas_test}", config_value_color)
+        data_warehouse_user = color(f"{data_warehouse_user}", config_value_color)
+        data_warehouse_password = color(
             f"{data_warehouse_password}", config_value_color
         )
-        data_warehouse_dsn = colorize(f"{data_warehouse_dsn}", config_value_color)
-        config_path = colorize(f"{CONFIG_PATH}", "green")
+        data_warehouse_dsn = color(f"{data_warehouse_dsn}", config_value_color)
+        config_path = color(f"{CONFIG_PATH}", "green")
 
         echo(
             f"\nCONFIG: {config_path}\n"
@@ -136,7 +145,7 @@ def display_config():
 
 def check_config():
     if not CONFIG_PATH.exists():
-        error = colorize(
+        error = color(
             "- ERROR: No config file ($HOME/.config/penn-canvas) exists for"
             " Penn-Canvas.",
             "yellow",
@@ -276,14 +285,14 @@ def get_completed_result(result_directory):
 
 
 def print_task_complete_message(result_path):
-    colorize("TASK ALREADY COMPLETE", "yellow", True)
-    result_path_display = colorize(result_path, "green")
+    color("TASK ALREADY COMPLETE", "yellow", True)
+    result_path_display = color(result_path, "green")
     echo(f"- Output available at: {result_path_display}")
     echo(
         "- To re-run the task, overwriting previous results, run this command"
         " with the '--force' option"
     )
-    colorize("FINISHED", "yellow", True)
+    color("FINISHED", "yellow", True)
 
 
 def check_previous_output(result_path, result_directory):
@@ -336,7 +345,7 @@ def make_skip_message(start, item):
     else:
         item = f"{item.upper()}S"
 
-    message = colorize(f"SKIPPING {start:,} PREVIOUSLY PROCESSED {item}...", "yellow")
+    message = color(f"SKIPPING {start:,} PREVIOUSLY PROCESSED {item}...", "yellow")
     echo(f") {message}")
 
 
@@ -345,7 +354,7 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
         processed_path = [processed_path]
 
     if clear_processed:
-        message = colorize(
+        message = color(
             f"You have asked to clear the list of {item_plural} already processed."
             " This list makes subsequent runs of the command faster. Are you sure"
             " you want to do this?",
@@ -368,7 +377,7 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
 def print_missing_input_and_exit(input_file_name, please_add_message, date=True):
     date_message = " matching today's date " if date else ""
 
-    error = colorize(
+    error = color(
         f"- ERROR: A {input_file_name}{date_message}was not found.",
         "yellow",
     )
@@ -423,16 +432,16 @@ def find_input(
         "Please add a"
         f" {input_file_name}{date_message if date else ' '}to the following"
         " directory and then run this script again:"
-        f" {colorize(input_directory,'green')}\n- (If you need instructions for"
+        f" {color(input_directory,'green')}\n- (If you need instructions for"
         " generating one, run this command with the '--help' flag.)"
     )
 
     if not input_directory.exists():
         Path.mkdir(input_directory, parents=True)
-        error = colorize("- ERROR: {command} Input directory not found.", "yellow")
+        error = color("- ERROR: {command} Input directory not found.", "yellow")
         echo(
             f"{error} \n- Creating one for you at:"
-            f" {colorize(input_directory, 'green')}\n- {please_add_message}"
+            f" {color(input_directory, 'green')}\n- {please_add_message}"
         )
 
         raise Exit()
@@ -562,23 +571,9 @@ def get_canvas(instance="prod", verbose=True):
     return Canvas(url, access_token)
 
 
-def colorize(text, color="magenta", echo=False):
-    typer_colors = {
-        "blue": colors.BLUE,
-        "cyan": colors.CYAN,
-        "green": colors.GREEN,
-        "magenta": colors.MAGENTA,
-        "red": colors.RED,
-        "yellow": colors.YELLOW,
-        "white": colors.WHITE,
-    }
-
-    text = f"{text:,}" if type(text) == int else str(text)
-
-    if echo:
-        return secho(text, fg=typer_colors[color])
-    else:
-        return style(text, fg=typer_colors[color])
+def color(text, color="magenta", echo=False):
+    text = f"{text:,}" if isinstance(text, int) else str(text)
+    return secho(text, fg=COLORS[color]) if echo else style(text, fg=COLORS[color])
 
 
 def dynamic_to_csv(path, data_frame, condition):

@@ -3,7 +3,7 @@ from typer import echo
 
 from .helpers import (
     YEAR,
-    colorize,
+    color,
     find_input,
     get_canvas,
     get_command_paths,
@@ -64,13 +64,13 @@ def process_result(result_path, term_id):
 
 
 def print_messages(total, courses_with_quiz):
-    colorize("SUMMARY:", "yellow", True)
-    echo(f"- Processed {colorize(total)} courses.")
+    color("SUMMARY:", "yellow", True)
+    echo(f"- Processed {color(total)} courses.")
     echo(
-        f"- Found {colorize(courses_with_quiz, 'green')} courses with Poll Everywhere"
+        f"- Found {color(courses_with_quiz, 'green')} courses with Poll Everywhere"
         " enabled."
     )
-    colorize("FINISHED", "yellow", True)
+    color("FINISHED", "yellow", True)
 
 
 def count_poll_everywhere_main(test, force, verbose):
@@ -120,15 +120,15 @@ def count_poll_everywhere_main(test, force, verbose):
                 if poll_everywhere == "Y"
                 else ("NOT FOUND", "yellow")
             )
-            message = f"{colorize(text_and_color[0], text_and_color[1])}"
+            message = f"{color(text_and_color[0], text_and_color[1])}"
 
             if not error_message:
-                echo(f"- ({(index + 1):,}/{TOTAL}) {colorize(course_name)}: {message}")
+                echo(f"- ({(index + 1):,}/{TOTAL}) {color(course_name)}: {message}")
             else:
                 echo(
                     f"- ({(index + 1):,}/{TOTAL})"
-                    f" {colorize(course_name)}:"
-                    f" {colorize(error_message, 'red')}"
+                    f" {color(course_name)}:"
+                    f" {color(error_message, 'red')}"
                 )
 
     reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)

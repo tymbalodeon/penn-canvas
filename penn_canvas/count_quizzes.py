@@ -3,7 +3,7 @@ from typer import echo
 
 from .helpers import (
     YEAR,
-    colorize,
+    color,
     find_input,
     get_canvas,
     get_command_paths,
@@ -51,14 +51,14 @@ CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:6]]
 
 def print_course(total_quizzes, error_message, index, total, course_name):
     found = (
-        colorize(f"FOUND ({total_quizzes})", "green")
+        color(f"FOUND ({total_quizzes})", "green")
         if total_quizzes
-        else colorize("NOT FOUND", "yellow")
+        else color("NOT FOUND", "yellow")
     )
     echo(
         f"- ({(index + 1):,}/{total})"
-        f" {colorize(course_name, 'magenta')}:"
-        f" {colorize(error_message, 'red') if error_message else found}"
+        f" {color(course_name, 'magenta')}:"
+        f" {color(error_message, 'red') if error_message else found}"
     )
 
 
@@ -118,13 +118,10 @@ def process_result(result_path, term_id):
 
 
 def print_messages(total, courses_with_quiz):
-    colorize("SUMMARY:", "yellow", True)
-    echo(f"- Processed {colorize(total)} courses.")
-    echo(
-        f"- Found {colorize(courses_with_quiz, 'green')} courses with at least one"
-        " quiz."
-    )
-    colorize("FINISHED", "yellow", True)
+    color("SUMMARY:", "yellow", True)
+    echo(f"- Processed {color(total)} courses.")
+    echo(f"- Found {color(courses_with_quiz, 'green')} courses with at least one quiz.")
+    color("FINISHED", "yellow", True)
 
 
 def count_quizzes_main(new_quizzes, test, force, verbose):

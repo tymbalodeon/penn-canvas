@@ -10,14 +10,13 @@ penn-canvas = "penn_canvas.main:app"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-typer = {extras = ["all"], version = "^0.3.2"}
 canvasapi = "^2.2.0"
 requests = "^2.25.1"
 pandas = "^1.2.4"
 openpyxl = "^3.0.7"
 cx-Oracle = "^8.2.1"
 natsort = "^7.1.1"
-pandas-stubs = "^1.2.0"
+typer = {extras = ["all"], version = "^0.4.0"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
@@ -28,6 +27,7 @@ pre-commit = "^2.15.0"
 types-pytz = "^2021.3.0"
 mypy = "^0.910"
 types-requests = "^2.25.11"
+pandas-stubs = "^1.2.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

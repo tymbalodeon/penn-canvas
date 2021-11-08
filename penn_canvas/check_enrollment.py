@@ -4,7 +4,7 @@ from datetime import datetime
 from pytz import UTC
 from typer import echo, prompt
 
-from .helpers import colorize, get_canvas, get_command_paths, make_csv_paths
+from .helpers import color, get_canvas, get_command_paths, make_csv_paths
 
 COMMAND = "Check Enrollment"
 RESULTS = get_command_paths(COMMAND, no_input=True)[0]
@@ -74,8 +74,8 @@ def check_enrollment_main(course_id, year, month, day, instance):
             writer(output_file).writerow([name, email, date_enrolled])
 
         echo(
-            f"- ({(index + 1):,}/{len(enrollments)}) {colorize(name, 'green')} enrolled"
-            f" in {colorize(course)} on {colorize(date_enrolled, 'yellow')}."
+            f"- ({(index + 1):,}/{len(enrollments)}) {color(name, 'green')} enrolled"
+            f" in {color(course)} on {color(date_enrolled, 'yellow')}."
         )
 
     echo("FINISHED")

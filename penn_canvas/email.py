@@ -11,7 +11,7 @@ from .helpers import (
     TODAY_AS_Y_M_D,
     YEAR,
     add_headers_to_empty_files,
-    colorize,
+    color,
     drop_duplicate_errors,
     dynamic_to_csv,
     find_input,
@@ -73,7 +73,7 @@ def cleanup_data(data, args):
         already_processed_count = already_processed_count + len(processed_errors)
 
     if already_processed_count:
-        message = colorize(
+        message = color(
             f"SKIPPING {already_processed_count:,} PREVIOUSLY PROCESSED"
             f" {'USER' if already_processed_count == 1 else 'USERS'}...",
             "yellow",
@@ -313,9 +313,9 @@ def print_messages(
     user_not_found,
     log_path,
 ):
-    colorize("SUMMARY:", "yellow", True)
-    echo(f"- Processed {colorize(total, 'magenta')} accounts.")
-    activated_display = colorize(activated, "yellow" if not activated else "green")
+    color("SUMMARY:", "yellow", True)
+    echo(f"- Processed {color(total, 'magenta')} accounts.")
+    activated_display = color(activated, "yellow" if not activated else "green")
     echo(
         "- Activated"
         f" {activated_display} supported users with unconfirmed email addresses."
@@ -323,39 +323,39 @@ def print_messages(
 
     if already_active:
         echo(
-            f"- Found {colorize(already_active, 'cyan')} supported and unsupported"
+            f"- Found {color(already_active, 'cyan')} supported and unsupported"
             f" {'user' if already_active == 1 else 'users'} with email addresses"
             " already active."
         )
 
     if supported_not_found:
         echo(
-            f"- Found {colorize(supported_not_found, 'red')} supported"
+            f"- Found {color(supported_not_found, 'red')} supported"
             f" {'user' if supported_not_found == 1 else 'users'} with no email address."
         )
 
     if unsupported:
         echo(
-            f"- Found {colorize(unsupported, 'yellow')} unsupported"
+            f"- Found {color(unsupported, 'yellow')} unsupported"
             f" {'user' if unsupported == 1 else 'users'} with missing or unconfirmed"
             " email addresses."
         )
 
     if failed_to_activate:
-        message = colorize(
+        message = color(
             f"Failed to activate email(s) for {failed_to_activate} supported"
             f" {'user' if failed_to_activate == 1 else 'users'} with (an) unconfirmed"
             " email address(es).",
             "red",
         )
-        log_path_display = colorize(log_path, "green")
+        log_path_display = color(log_path, "green")
         echo(
             f"- {message}. Affected accounts are recorded in the log file:"
             f" {log_path_display}"
         )
 
     if user_not_found:
-        message = colorize(
+        message = color(
             "Failed to find"
             f" {user_not_found} {'user' if user_not_found == 1 else 'users'}.",
             "red",
@@ -364,18 +364,18 @@ def print_messages(
 
     if error_supported:
         echo(
-            f"- Encountered an error for {colorize(error_supported, 'red')} supported"
+            f"- Encountered an error for {color(error_supported, 'red')} supported"
             f" {'user' if error_supported == 1 else 'users'}."
         )
 
     if error_unsupported:
         echo(
             "- Encountered an error for"
-            f" {colorize(error_unsupported, 'red')} unsupported"
+            f" {color(error_unsupported, 'red')} unsupported"
             f" {'user' if error_unsupported == 1 else 'users'}."
         )
 
-    colorize("FINISHED", "yellow", True)
+    color("FINISHED", "yellow", True)
 
 
 def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
@@ -473,17 +473,17 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
 
         if verbose:
             color = PRINT_COLOR_MAPS.get(status, "magenta")
-            status_display = colorize(
+            status_display = color(
                 f"{'email not found' if status == 'not found' else status}".upper(),
                 color,
             )
             unsupported_display = ""
-            user_display = colorize(
+            user_display = color(
                 f"{' '.join(full_name.split())} ({login_id})", "magenta"
             )
 
             if supported == "N":
-                unsupported_display = colorize(" (UNSUPPORTED)", "yellow")
+                unsupported_display = color(" (UNSUPPORTED)", "yellow")
 
             echo(
                 f"- ({(index + 1):,}/{TOTAL}) {user_display}:"

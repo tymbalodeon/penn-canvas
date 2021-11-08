@@ -4,7 +4,7 @@ from pandas import concat, read_csv
 from typer import echo
 
 from .helpers import (
-    colorize,
+    color,
     find_input,
     get_canvas,
     get_command_paths,
@@ -171,30 +171,27 @@ def print_messages(
     course_not_found,
     missing_value,
 ):
-    echo(
-        f"- Processed {colorize(total, 'magenta')} {'user' if total == 1 else 'users'}."
-    )
+    echo(f"- Processed {color(total, 'magenta')} {'user' if total == 1 else 'users'}.")
 
     if created:
         echo(
             "- Created"
-            f" {colorize(created, 'green')} {'user' if created == 1 else 'users'}."
+            f" {color(created, 'green')} {'user' if created == 1 else 'users'}."
         )
 
     if removed:
         echo(
-            "- Removed"
-            f" {colorize(removed, 'red')} {'user' if removed == 1 else 'users'}."
+            f"- Removed {color(removed, 'red')} {'user' if removed == 1 else 'users'}."
         )
 
     if enrolled:
         echo(
             "- Enrolled"
-            f" {colorize(enrolled, 'green')} {'user' if enrolled == 1 else 'users'}."
+            f" {color(enrolled, 'green')} {'user' if enrolled == 1 else 'users'}."
         )
 
     if failed_to_enroll:
-        colorize(
+        color(
             "- ERROR: Failed to enroll"
             f" {failed_to_enroll} {'user' if failed_to_enroll == 1 else 'users'}.",
             "red",
@@ -202,7 +199,7 @@ def print_messages(
         )
 
     if not_found:
-        colorize(
+        color(
             "- ERROR: Failed to find"
             f" {not_found} {'user' if not_found == 1 else 'users'}.",
             "red",
@@ -210,7 +207,7 @@ def print_messages(
         )
 
     if already_in_use:
-        colorize(
+        color(
             f"- ERROR: Found {already_in_use} user"
             f" {'account' if already_in_use == 1 else 'accounts'} already in use.",
             "red",
@@ -218,7 +215,7 @@ def print_messages(
         )
 
     if course_not_found:
-        colorize(
+        color(
             f"- ERROR: Failed to find {course_not_found}"
             f" {'course' if course_not_found == 1 else 'courses'}.",
             "red",
@@ -226,7 +223,7 @@ def print_messages(
         )
 
     if missing_value:
-        colorize(
+        color(
             "- ERROR: Found"
             f" {missing_value} {'field' if missing_value == 1 else 'fields'} with"
             " missing values",
@@ -288,7 +285,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
         users.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
         if verbose and error_message:
-            colorize(
+            color(
                 f"- ({index + 1}/{TOTAL}) ERROR: Failed to"
                 f" {'remove' if action == 'remove' else action} {full_name}"
                 f" ({email}){f' in course {course}' if course else ''}: {status}.",
@@ -298,9 +295,9 @@ def open_canvas_bulk_action_main(verbose, force, test):
         elif verbose:
             echo(
                 f"- ({index + 1}/{TOTAL})"
-                f" {colorize(full_name, 'yellow')}{':' if canvas_user else ''}"
-                f" {colorize(status.upper(), COLOR_MAP.get(status))}"
-                f"{colorize(' ' + str(canvas_user), 'magenta') if canvas_user else ''}."
+                f" {color(full_name, 'yellow')}{':' if canvas_user else ''}"
+                f" {color(status.upper(), COLOR_MAP.get(status))}"
+                f"{color(' ' + str(canvas_user), 'magenta') if canvas_user else ''}."
             )
 
     input_files, missing_file_message = find_input(
@@ -380,11 +377,11 @@ def open_canvas_bulk_action_main(verbose, force, test):
         RESULT_PATHS.append((new_path, TOTAL))
         input_file.rename(COMPLETED / input_file.name)
 
-    colorize("SUMMARY:", "yellow", True)
-    echo(f"- PROCESSED {colorize(len(RESULT_PATHS))} FILES.")
+    color("SUMMARY:", "yellow", True)
+    echo(f"- PROCESSED {color(len(RESULT_PATHS))} FILES.")
 
     for result_path, total in RESULT_PATHS:
-        echo(f"==== {colorize(result_path.stem, 'green')} ====")
+        echo(f"==== {color(result_path.stem, 'green')} ====")
         (
             created,
             removed,
@@ -407,4 +404,4 @@ def open_canvas_bulk_action_main(verbose, force, test):
             missing_value,
         )
 
-    colorize("FINISHED", "yellow", True)
+    color("FINISHED", "yellow", True)

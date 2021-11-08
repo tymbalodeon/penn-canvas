@@ -7,7 +7,7 @@ from typer import Exit, echo
 from .helpers import (
     MAIN_ACCOUNT_ID,
     YEAR,
-    colorize,
+    color,
     find_input,
     get_canvas,
     get_command_paths,
@@ -47,7 +47,7 @@ def bulk_enroll_main(
     try:
         USER_NAME = CANVAS.get_user(user).name
     except Exception:
-        colorize(
+        color(
             f"- ERROR: User {user} not found. Please verify that you have the correct"
             " Canvas user id and try again.",
             "yellow",
@@ -97,7 +97,7 @@ def bulk_enroll_main(
     )
 
     if already_processed_count:
-        message = colorize(
+        message = color(
             f"SKIPPING {already_processed_count:,} PREVIOUSLY PROCESSED"
             f" {'COURSE' if already_processed_count == 1 else 'COURSES'}...",
             "yellow",
@@ -201,15 +201,15 @@ def bulk_enroll_main(
 
                     echo(
                         f"- ({index}/{TOTAL_COURSES})"
-                        f" {colorize('ENROLLED', 'green')} {colorize(USER_NAME)} in"
-                        f" {colorize(course.name, 'blue')}."
+                        f" {color('ENROLLED', 'green')} {color(USER_NAME)} in"
+                        f" {color(course.name, 'blue')}."
                     )
 
                 else:
                     echo(
-                        "- ({index}/{TOTAL_COURSES}) {colorize('ERROR:', 'red')}"
+                        "- ({index}/{TOTAL_COURSES}) {color('ERROR:', 'red')}"
                         " Failed to restore original term and/or end_at data. Please"
-                        f" see log path for details: {colorize(LOG_PATH, 'green')}"
+                        f" see log path for details: {color(LOG_PATH, 'green')}"
                     )
 
                 if str(course.id) in PROCESSED_ERRORS:
@@ -223,7 +223,7 @@ def bulk_enroll_main(
                 with open(PROCESSED_PATH, "a+", newline="") as processed_file:
                     writer(processed_file).writerow([course.id, sis_course_id_or_name])
             except Exception as error:
-                colorize(
+                color(
                     f"- ({index}/{TOTAL_COURSES}) ERROR: Failed to enroll"
                     f" {USER_NAME} in {course.name} ({error})",
                     "red",
@@ -250,4 +250,4 @@ def bulk_enroll_main(
                             [course.id, sis_course_id_or_name]
                         )
 
-    colorize("FINISHED", "yellow", True)
+    color("FINISHED", "yellow", True)

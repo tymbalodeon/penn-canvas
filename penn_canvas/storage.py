@@ -8,7 +8,7 @@ from .helpers import (
     MONTH,
     TODAY_AS_Y_M_D,
     YEAR,
-    colorize,
+    color,
     find_input,
     get_canvas,
     get_command_paths,
@@ -77,16 +77,16 @@ def check_percent_storage(course, canvas, verbose, total):
 
             echo(
                 f"- ({(index + 1):,}/{total})"
-                f" {colorize(sis_id, 'yellow')} ({canvas_id}):"
-                f" {colorize(f'{int(percentage_used * 100)}%', color)}"
+                f" {color(sis_id, 'yellow')} ({canvas_id}):"
+                f" {color(f'{int(percentage_used * 100)}%', color)}"
             )
 
         if percentage_used >= 0.79:
             if verbose:
-                colorize("\t* INCREASE REQUIRED", "yellow", True)
+                color("\t* INCREASE REQUIRED", "yellow", True)
             if isna(sis_id):
                 if verbose:
-                    message = colorize(
+                    message = color(
                         "- ACTION REQUIRED: A SIS ID must be added for course:"
                         f" {canvas_id}",
                         "yellow",
@@ -100,7 +100,7 @@ def check_percent_storage(course, canvas, verbose, total):
             return False, None
     except Exception:
         if verbose:
-            message = colorize(f"ERROR: {sis_id} ({canvas_id}) NOT FOUND", "red")
+            message = color(f"ERROR: {sis_id} ({canvas_id}) NOT FOUND", "red")
             echo(f"- ({(index + 1):,}/{total}) {message}")
         return False, "course not found"
 
@@ -137,7 +137,7 @@ def increase_quota(sis_id, canvas, verbose, increase):
             new_quota = "ERROR"
 
             if verbose:
-                colorize(
+                color(
                     f"\t* Failed to increase quota for Canvas course ID: {sis_id}",
                     "yellow",
                     True,
@@ -201,14 +201,14 @@ def process_result():
 
 
 def print_messages(total, increased, errors):
-    colorize("SUMMARY:", "yellow", True)
-    echo(f"- Processed {colorize(total, 'magenta')} courses.")
-    echo(f"- Increased storage quota for {colorize(increased, 'yellow')} courses.")
+    color("SUMMARY:", "yellow", True)
+    echo(f"- Processed {color(total, 'magenta')} courses.")
+    echo(f"- Increased storage quota for {color(increased, 'yellow')} courses.")
 
     if errors > 0:
-        echo(f"- {colorize(f'Failed to find {str(errors)} courses.', 'red')}")
+        echo(f"- {color(f'Failed to find {str(errors)} courses.', 'red')}")
 
-    colorize("FINISHED", "yellow", True)
+    color("FINISHED", "yellow", True)
 
 
 def storage_main(test, verbose, force, increase=1000):

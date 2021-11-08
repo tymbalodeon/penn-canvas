@@ -1,6 +1,6 @@
 from typer import echo
 
-from .helpers import MAIN_ACCOUNT_ID, colorize, get_canvas
+from .helpers import MAIN_ACCOUNT_ID, color, get_canvas
 
 
 def is_grad_course(course_number, graduate_course_minimum_number):
@@ -38,9 +38,9 @@ def get_main_sections(sis_course_ids, year_and_term):
 
 
 def print_summary(summary):
-    colorize("SUMMARY", "yellow", True)
+    color("SUMMARY", "yellow", True)
     echo(summary)
-    colorize("FINISHED", "yellow", True)
+    color("FINISHED", "yellow", True)
 
 
 def count_sites_main(year_and_term, separate, graduate_course_minimum_number, test):
@@ -55,7 +55,7 @@ def count_sites_main(year_and_term, separate, graduate_course_minimum_number, te
         None,
     )
 
-    echo(f') Finding course codes for term "{colorize(year_and_term, "blue")}"...')
+    echo(f') Finding course codes for term "{color(year_and_term, "blue")}"...')
 
     sis_course_ids = [
         course.sis_course_id for course in ACCOUNT.get_courses(enrollment_term_id=TERM)
@@ -83,16 +83,16 @@ def count_sites_main(year_and_term, separate, graduate_course_minimum_number, te
         ]
 
         summary = (
-            f"- Number of unique {colorize(year_and_term, 'blue')} undergraduate course"
+            f"- Number of unique {color(year_and_term, 'blue')} undergraduate course"
             " numbers with a Canvas site:"
-            f" {colorize(len(undergraduate_courses), 'magenta')}\n- Number of unique"
-            f" {colorize(year_and_term, 'blue')} graduate course numbers with a Canvas"
-            f" site: {colorize(len(graduate_courses), 'magenta')}"
+            f" {color(len(undergraduate_courses), 'magenta')}\n- Number of unique"
+            f" {color(year_and_term, 'blue')} graduate course numbers with a Canvas"
+            f" site: {color(len(graduate_courses), 'magenta')}"
         )
     else:
         summary = (
-            f"- Number of unique {colorize(year_and_term, 'blue')} course numbers with"
-            f" a Canvas site: {colorize(len(sis_course_ids), 'magenta')}\n"
+            f"- Number of unique {color(year_and_term, 'blue')} course numbers with"
+            f" a Canvas site: {color(len(sis_course_ids), 'magenta')}\n"
         )
 
     print_summary(summary)

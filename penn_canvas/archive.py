@@ -6,7 +6,7 @@ from pathlib import Path
 from pandas import DataFrame
 from typer import echo, progressbar
 
-from .helpers import colorize, get_canvas, get_command_paths
+from .helpers import color, get_canvas, get_command_paths
 
 
 class HTMLStripper(HTMLParser):
@@ -77,12 +77,10 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
             )
 
             if verbose:
-                user_display = colorize(user, "cyan")
-                timestamp_display = (
-                    colorize(timestamp, "yellow") if use_timestamp else ""
-                )
-                email_display = colorize(email, "yellow") if not use_timestamp else ""
-                discussion_display = colorize(discussion.title.upper(), "magenta")
+                user_display = color(user, "cyan")
+                timestamp_display = color(timestamp, "yellow") if use_timestamp else ""
+                email_display = color(email, "yellow") if not use_timestamp else ""
+                discussion_display = color(discussion.title.upper(), "magenta")
 
                 if entry_index == 0:
                     echo(f"==== DISCUSSION {discussion_index + 1} ====")
@@ -136,7 +134,7 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
             echo(f"==== QUIZ {quiz_index + 1} ====")
 
             for index, user in enumerate(users):
-                user_display = colorize(user, "cyan")
+                user_display = color(user, "cyan")
                 echo(f"- ({index + 1}/{len(users)}) {user_display}")
 
         if verbose and not users:
@@ -187,15 +185,15 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
                 for quiz in progress:
                     archive_quizzes(quiz)
 
-    colorize("SUMMARY", "yellow", True)
+    color("SUMMARY", "yellow", True)
     echo(
-        f"- Archived {colorize(total, 'magenta')} DISCUSSIONS for"
-        f" {colorize(course.name, 'blue')}."
+        f"- Archived {color(total, 'magenta')} DISCUSSIONS for"
+        f" {color(course.name, 'blue')}."
     )
 
     if not exclude_quizzes:
         echo(
-            f"- Archived {colorize(quiz_total, 'magenta')} QUIZZES for"
-            f" {colorize(course.name, 'blue')}."
+            f"- Archived {color(quiz_total, 'magenta')} QUIZZES for"
+            f" {color(course.name, 'blue')}."
         )
-    colorize("FINISHED", "yellow", True)
+    color("FINISHED", "yellow", True)

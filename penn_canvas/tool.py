@@ -8,7 +8,7 @@ from typer import Exit, confirm, echo
 from .helpers import (
     YEAR,
     add_headers_to_empty_files,
-    colorize,
+    color,
     drop_duplicate_errors,
     dynamic_to_csv,
     find_input,
@@ -99,7 +99,7 @@ def cleanup_data(data, args):
             already_processed_count = already_processed_count + len(processed_errors)
 
         if already_processed_count:
-            message = colorize(
+            message = color(
                 f"SKIPPING {already_processed_count:,} PREVIOUSLY PROCESSED"
                 f" {'COURSE' if already_processed_count == 1 else 'COURSES'}...",
                 "yellow",
@@ -221,11 +221,11 @@ def print_messages(
     total,
     result_path,
 ):
-    tool = colorize(tool, "blue")
-    colorize("SUMMARY:", "yellow", True)
-    echo(f"- Processed {colorize(total, 'magenta')} courses.")
-    total_enabled = colorize(enabled, "green" if enabled else "yellow")
-    total_already_enabled = colorize(already_enabled, "cyan")
+    tool = color(tool, "blue")
+    color("SUMMARY:", "yellow", True)
+    echo(f"- Processed {color(total, 'magenta')} courses.")
+    total_enabled = color(enabled, "green" if enabled else "yellow")
+    total_already_enabled = color(already_enabled, "cyan")
 
     if enable:
         echo(f'- Enabled "{tool}" for {total_enabled} courses.')
@@ -237,36 +237,33 @@ def print_messages(
             )
     else:
         echo(f'- Found {total_enabled} courses with "{tool}" enabled.')
-        echo(
-            f'- Found {colorize(disabled, "yellow")} courses with disabled "{tool}"'
-            " tab."
-        )
+        echo(f'- Found {color(disabled, "yellow")} courses with disabled "{tool}" tab.')
 
     if not_found:
-        message = colorize(not_found, "yellow")
+        message = color(not_found, "yellow")
         echo(f'- Found {message} courses with no "{tool}" tab.')
 
     if not_supported:
-        message = colorize(not_supported, "yellow")
+        message = color(not_supported, "yellow")
         echo(
             f"- Found {message} courses in schools not participating in automatic"
             f' enabling of "{tool}".'
         )
 
     if error:
-        message = colorize(f"Encountered errors for {error:,} courses.", "red")
+        message = color(f"Encountered errors for {error:,} courses.", "red")
         echo(f"- {message}")
-        result_path_display = colorize(result_path, "green")
+        result_path_display = color(result_path, "green")
         echo(f"- Details recorded to result file: {result_path_display}")
 
-    colorize("FINISHED", "yellow", True)
+    color("FINISHED", "yellow", True)
 
 
 def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
     def check_tool_usage(course, canvas, verbose, args):
         tool, use_id, enable = args
 
-        tool_display = colorize(tool, "blue")
+        tool_display = color(tool, "blue")
         (
             index,
             canvas_course_id,
@@ -307,7 +304,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
                 error = True
 
                 if verbose:
-                    message = colorize(
+                    message = color(
                         f"ERROR: Failed to process {course_id} ({error_message})", "red"
                     )
                     echo(f"- ({(index + 1):,}/{TOTAL}) {message}")
@@ -318,8 +315,8 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
             else:
                 course_display = f"{course_id}"
 
-            color = PRINT_COLOR_MAPS.get(tool_status)
-            found_display = colorize(tool_status.upper(), color)
+            status_color = PRINT_COLOR_MAPS.get(tool_status)
+            found_display = color(tool_status.upper(), status_color)
             echo(
                 f'- ({(index + 1):,}/{TOTAL}) "{tool_display}" {found_display} for'
                 f" {course_display}."
@@ -405,8 +402,8 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
         TERMS_TO_RUN = list()
 
         for term in PREVIOUS_RESULTS_FOR_TERM:
-            path_display = colorize(PREVIOUS_RESULTS_FOR_TERM[term], "green")
-            colorize(
+            path_display = color(PREVIOUS_RESULTS_FOR_TERM[term], "green")
+            color(
                 f"REPORT FOR {tool.upper()} HAS ALREADY BEEN GENERATED FOR TERM"
                 f" {term.upper()}: {path_display}",
                 "yellow",
@@ -430,7 +427,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
 
             if not terms:
                 echo("NO NEW TERMS TO PROCESS")
-                colorize("FINISHED", "yellow", True)
+                color("FINISHED", "yellow", True)
 
                 raise Exit()
 
@@ -438,14 +435,14 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
     make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-    tool_display = colorize(tool, "blue")
-    TERMS_DISPLAY = [colorize(term, "yellow") for term in terms]
+    tool_display = color(tool, "blue")
+    TERMS_DISPLAY = [color(term, "yellow") for term in terms]
     STYLED_TERMS = f"{', '.join(TERMS_DISPLAY)}"
 
     if enable:
         if tool == "Course Materials @ Penn Libraries":
             ACCOUNTS_DISPLAY = [
-                colorize(f"\n\t* {account}", "magenta")
+                color(f"\n\t* {account}", "magenta")
                 for account in get_account_names(RESERVE_ACCOUNTS, CANVAS)
             ]
             ACCOUNTS = f"{''.join(ACCOUNTS_DISPLAY)}"

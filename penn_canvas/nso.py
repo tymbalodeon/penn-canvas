@@ -10,7 +10,7 @@ from typer import Abort, Exit, echo
 from .helpers import (
     TODAY_AS_Y_M_D,
     YEAR,
-    colorize,
+    color,
     get_canvas,
     get_command_paths,
     get_data_warehouse_config,
@@ -40,9 +40,9 @@ def find_nso_file():
 
     if not INPUT.exists():
         Path.mkdir(INPUT, parents=True)
-        error = colorize("- ERROR: NSO input directory not found.", "yellow")
+        error = color("- ERROR: NSO input directory not found.", "yellow")
         echo(
-            f"{error}\n- Creating one for you at: {colorize(INPUT, 'green')}\n- Please"
+            f"{error}\n- Creating one for you at: {color(INPUT, 'green')}\n- Please"
             " add an NSO input file matching the graduation year of this year's"
             " incoming freshmen to this directory and then run this script again.\n-"
             " (If you need detailed instructions, run this command with the '--help'"
@@ -62,7 +62,7 @@ def find_nso_file():
         )
 
         if not CURRENT_FILE:
-            error = colorize(
+            error = color(
                 "- ERROR: A nso file matching the graduation year of this"
                 " year's incoming freshmen was not found.",
                 "yellow",
@@ -71,7 +71,7 @@ def find_nso_file():
                 f"{error}\n- Please add a NSO input file matching the"
                 " graduation year of this year's incoming freshmen to the following"
                 " directory and then run this script again:"
-                f" {colorize(INPUT, 'green')}\n- (If you need detailed instructions,"
+                f" {color(INPUT, 'green')}\n- (If you need detailed instructions,"
                 " run this command with the '--help' flag.)"
             )
 
@@ -89,7 +89,7 @@ def cleanup_data(input_file, start=0):
         facilitators = data[0]
         students = data[1]
     except Exception:
-        colorize(
+        color(
             "- ERROR: input file does not contain two sheets. A sheet for"
             " facilitators and a sheet for students is required. Please provide a"
             " valid input file and try again.",
@@ -205,9 +205,9 @@ def print_messages(
     total,
     result_path,
 ):
-    colorize("SUMMARY:", "yellow")
-    echo(f"- Processed {colorize(total, 'magenta'):,} users.")
-    added_count = colorize(added + enrolled, "green")
+    color("SUMMARY:", "yellow")
+    echo(f"- Processed {color(total, 'magenta'):,} users.")
+    added_count = color(added + enrolled, "green")
     echo(f"- Successfully added {added_count:,} users to groups.")
 
     errors = False
@@ -218,7 +218,7 @@ def print_messages(
         else:
             user = "user"
 
-        message = colorize(
+        message = color(
             f"Automatically enrolled {enrolled:,} {user} in the course.", "yellow"
         )
         echo(f"- {message}")
@@ -229,7 +229,7 @@ def print_messages(
         else:
             user = "user"
 
-        message = colorize(
+        message = color(
             f"{already_processed:,} {user} already added to group.", "yellow"
         )
         echo(f"- {message}")
@@ -240,7 +240,7 @@ def print_messages(
         else:
             user = "user"
 
-        message = colorize(
+        message = color(
             f"Found {not_enrolled:,} {user} not enrolled in the course.", "red"
         )
         echo(f"- {message}")
@@ -254,7 +254,7 @@ def print_messages(
             user = "user"
             account = "a Canvas account"
 
-        message = colorize(f"Found {not_in_canvas:,} {user} without {account}.", "red")
+        message = color(f"Found {not_in_canvas:,} {user} without {account}.", "red")
         echo(f"- {message}")
         errors = True
 
@@ -266,7 +266,7 @@ def print_messages(
             user = "user"
             pennkey = "pennkey"
 
-        message = colorize(
+        message = color(
             f"Found {invalid_pennkey:,} {user} with invalid {pennkey}.", "red"
         )
         echo(f"- {message}")
@@ -278,17 +278,17 @@ def print_messages(
         else:
             user = "user"
 
-        message = colorize(f"Encountered an unknown error for {error:,} {user}.", "red")
+        message = color(f"Encountered an unknown error for {error:,} {user}.", "red")
         echo(f"- {message}")
         errors = True
 
     if errors:
-        result_path = colorize(result_path, "green")
+        result_path = color(result_path, "green")
         echo(f"- Details recorded to: {result_path}")
 
-    final_list_path = colorize(FINAL_LIST_PATH, "green")
+    final_list_path = color(FINAL_LIST_PATH, "green")
     echo(f"- Final Group membership assignments recorded to: {final_list_path}")
-    colorize("FINISHED", "yellow", True)
+    color("FINISHED", "yellow", True)
 
 
 def nso_main(test, verbose, force, clear_processed):
@@ -371,7 +371,7 @@ def nso_main(test, verbose, force, clear_processed):
 
                     try:
                         if verbose:
-                            penn_key_display = colorize(penn_key, "cyan")
+                            penn_key_display = color(penn_key, "cyan")
                             echo(
                                 ") Checking the Data Warehouse for pennkey:"
                                 f" {penn_key_display}..."
@@ -407,8 +407,8 @@ def nso_main(test, verbose, force, clear_processed):
 
         if verbose:
             status_display = str(status).upper()
-            status_display = colorize(status_display, color)
-            penn_key_display = colorize(penn_key, "magenta")
+            status_display = color(status_display, color)
+            penn_key_display = color(penn_key, "magenta")
             echo(
                 f"- ({index + 1}/{total}) {penn_key_display}, {group_set_name},"
                 f" {group_name}: {status_display}"
