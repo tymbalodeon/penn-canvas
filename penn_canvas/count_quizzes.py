@@ -184,6 +184,7 @@ def count_quizzes_main(new_quizzes, test, force, verbose):
         ) = course
 
         error_message = False
+        total_quizzes = 0
 
         try:
             course = canvas.get_course(canvas_course_id)

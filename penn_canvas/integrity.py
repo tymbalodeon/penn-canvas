@@ -2,10 +2,12 @@ from csv import writer
 
 from requests import get
 
-from .helpers import CANVAS_URL_PROD, check_config
+from penn_canvas.config import get_penn_canvas_config
+
+CANVAS_URL_PROD = get_penn_canvas_config("canvas_urls")[0]
 
 
-def check_user(user, start, test, key):
+def check_user(user, start, key):
     headers = {"Authorization": f"Bearer {key}"}
     url = (
         f"{CANVAS_URL_PROD}/api/v1/users/{user}/"
@@ -58,8 +60,8 @@ def check_user(user, start, test, key):
             last_page = True
 
 
-def integrity_main(test, users, start, end):
-    production, development = check_config()[:2]
+def integrity_main(test, users, start):
+    production, development = get_penn_canvas_config("canvas_keys")[:2]
     key = production if not test else development
 
     for user in users:

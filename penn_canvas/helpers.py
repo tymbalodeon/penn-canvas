@@ -6,16 +6,13 @@ from shutil import copy
 from zipfile import ZipFile
 
 from canvasapi import Canvas
-from cx_Oracle import init_oracle_client
+from cx_Oracle import connect, init_oracle_client
 from pandas import read_csv
-from typer import Abort, Exit, colors, confirm, echo, progressbar, prompt, secho, style
+from typer import Exit, confirm, echo, progressbar
 
-CANVAS_URL_PROD = "https://canvas.upenn.edu"
-CANVAS_URL_TEST = "https://upenn.test.instructure.com"
-CANVAS_URL_OPEN = "https://upenn-catalog.instructure.com"
-CANVAS_URL_OPEN_TEST = "https://upenn-catalog.test.instructure.com"
-CONFIG_DIRECTORY = Path.home() / ".config"
-CONFIG_PATH = CONFIG_DIRECTORY / "penn-canvas"
+from .config import get_penn_canvas_config
+from .style import color
+
 COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
 BOX_PATH = Path.home() / "Box"
 BOX_CLI_PATH = BOX_PATH / "Penn Canvas CLI"
@@ -24,198 +21,6 @@ MONTH = datetime.now().strftime("%B")
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 MAIN_ACCOUNT_ID = 96678
-COLORS = {
-    "blue": colors.BLUE,
-    "cyan": colors.CYAN,
-    "green": colors.GREEN,
-    "magenta": colors.MAGENTA,
-    "red": colors.RED,
-    "yellow": colors.YELLOW,
-    "white": colors.WHITE,
-}
-
-
-def make_config():
-    if not CONFIG_DIRECTORY.exists():
-        Path.mkdir(CONFIG_DIRECTORY, parents=True)
-
-    (
-        production,
-        development,
-        open_canvas,
-        open_canvas_test,
-        data_warehouse_user,
-        data_warehouse_password,
-        data_warehouse_dsn,
-    ) = read_config()
-
-    use_production = confirm("Input an Access Token for PRODUCTION?")
-
-    if use_production:
-        production = prompt(
-            "Please enter your Access Token for the PRODUCTION instance of Penn Canvas",
-            hide_input=True,
-        )
-
-    use_development = confirm("Input an Access Token for DEVELOPMENT?")
-
-    if use_development:
-        development = prompt(
-            "Please enter your Access Token for the TEST instance of Penn Canvas",
-            hide_input=True,
-        )
-
-    use_open = confirm("Input an Access Token for OPEN canvas?")
-
-    if use_open:
-        open_canvas = prompt(
-            "Please enter your Access Token for OPEN Canvas",
-            hide_input=True,
-        )
-
-    use_open_test = confirm("Input an Access Token for OPEN Canvas TEST?")
-
-    if use_open_test:
-        open_canvas_test = prompt(
-            "Please enter your Access Token for OPEN Canvas TEST",
-            hide_input=True,
-        )
-
-    use_data_warehouse = confirm("Input DATA WAREHOUSE credentials?")
-
-    if use_data_warehouse:
-        data_warehouse_user = prompt("Please enter your DATA WAREHOUSE USER")
-        data_warehouse_password = prompt(
-            "Please enter your DATA WAREHOUSE PASSWORD",
-            hide_input=True,
-        )
-        data_warehouse_dsn = prompt("Please enter your DATA WAREHOUSE DSN")
-
-    with open(CONFIG_PATH, "w+") as config:
-        for value in [
-            f"CANVAS_KEY_PROD={production}",
-            f"\nCANVAS_KEY_DEV={development}",
-            f"\nCANVAS_KEY_OPEN={open_canvas}",
-            f"\nCANVAS_KEY_OPEN_TEST={open_canvas_test}",
-            f"\nDATA_WAREHOUSE_USER={data_warehouse_user}",
-            f"\nDATA_WAREHOUSE_PASSWORD={data_warehouse_password}",
-            f"\nDATA_WAREHOUSE_DSN={data_warehouse_dsn}",
-        ]:
-            config.write(value)
-
-
-def display_config():
-    if confirm(
-        "This command will display sensitive information on your screen. Are you sure"
-        " you want to proceed?"
-    ):
-        (
-            production,
-            development,
-            open_canvas,
-            open_canvas_test,
-            data_warehouse_user,
-            data_warehouse_password,
-            data_warehouse_dsn,
-        ) = check_config()
-
-        config_value_color = "yellow"
-        production = color(f"{production}", config_value_color)
-        development = color(f"{development}", config_value_color)
-        open_canvas = color(f"{open_canvas}", config_value_color)
-        open_canvas_test = color(f"{open_canvas_test}", config_value_color)
-        data_warehouse_user = color(f"{data_warehouse_user}", config_value_color)
-        data_warehouse_password = color(
-            f"{data_warehouse_password}", config_value_color
-        )
-        data_warehouse_dsn = color(f"{data_warehouse_dsn}", config_value_color)
-        config_path = color(f"{CONFIG_PATH}", "green")
-
-        echo(
-            f"\nCONFIG: {config_path}\n"
-            f"\nCANVAS_KEY_PROD: {production}"
-            f"\nCANVAS_KEY_DEV: {development}"
-            f"\nCANVAS_KEY_OPEN: {open_canvas}"
-            f"\nCANVAS_KEY_OPEN_TEST: {open_canvas_test}"
-            f"\nDATA_WAREHOUSE_USER: {data_warehouse_user}"
-            f"\nDATA_WAREHOUSE_PASSWORD: {data_warehouse_password}"
-            f"\nDATA_WAREHOUSE_DSN: {data_warehouse_dsn}"
-        )
-
-
-def check_config():
-    if not CONFIG_PATH.exists():
-        error = color(
-            "- ERROR: No config file ($HOME/.config/penn-canvas) exists for"
-            " Penn-Canvas.",
-            "yellow",
-        )
-        create = confirm(f"{error} \n- Would you like to create one?")
-
-        if not create:
-            echo(
-                ") NOT creating...\n"
-                "- Please create a config file at: $HOME/.config/penn-canvas"
-                "\n- Place your Canvas Access Tokens in this file using the following"
-                " format:"
-                "\n\tCANVAS_KEY_PROD=your-canvas-prod-key-here"
-                "\n\tCANVAS_KEY_DEV=your-canvas-test-key-here"
-                "\n\tCANVAS_KEY_OPEN=your-open-canvas-key-here"
-                "\n\tCANVAS_KEY_OPEN_TEST=your-open-canvas-test-key-here"
-            )
-            raise Abort()
-        else:
-            make_config()
-
-    return read_config()
-
-
-def read_config():
-    production = ""
-    development = ""
-    open_canvas = ""
-    open_canvas_test = ""
-    data_warehouse_user = ""
-    data_warehouse_password = ""
-    data_warehouse_dsn = ""
-
-    if CONFIG_PATH.is_file():
-        with open(CONFIG_PATH, "r") as config:
-            LINES = config.read().splitlines()
-
-            for line in LINES:
-                if "CANVAS_KEY_PROD" in line:
-                    production = line.replace("CANVAS_KEY_PROD=", "")
-                elif "CANVAS_KEY_DEV" in line:
-                    development = line.replace("CANVAS_KEY_DEV=", "")
-                elif "CANVAS_KEY_OPEN=" in line:
-                    open_canvas = line.replace("CANVAS_KEY_OPEN=", "")
-                elif "CANVAS_KEY_OPEN_TEST" in line:
-                    open_canvas_test = line.replace("CANVAS_KEY_OPEN_TEST=", "")
-                elif "DATA_WAREHOUSE_USER" in line:
-                    data_warehouse_user = line.replace("DATA_WAREHOUSE_USER=", "")
-                elif "DATA_WAREHOUSE_PASSWORD" in line:
-                    data_warehouse_password = line.replace(
-                        "DATA_WAREHOUSE_PASSWORD=", ""
-                    )
-                elif "DATA_WAREHOUSE_DSN" in line:
-                    data_warehouse_dsn = line.replace("DATA_WAREHOUSE_DSN=", "")
-
-    return (
-        production,
-        development,
-        open_canvas,
-        open_canvas_test,
-        data_warehouse_user,
-        data_warehouse_password,
-        data_warehouse_dsn,
-    )
-
-
-def get_data_warehouse_config():
-    echo(") Reading Data Warehouse credentials from config file...")
-
-    return check_config()[4:]
 
 
 def init_data_warehouse():
@@ -225,6 +30,12 @@ def init_data_warehouse():
         lib_dir=str(lib_dir),
         config_dir=str(config_dir),
     )
+
+
+def get_data_warehouse_cursor():
+    user, password, dsn = get_penn_canvas_config("data_warehouse")
+    init_data_warehouse()
+    return connect(user, password, dsn).cursor()
 
 
 def make_index_headers(headers):
@@ -554,26 +365,35 @@ def get_canvas(instance="prod", verbose=True):
     if verbose:
         echo(") Reading Canvas Access Tokens from config file...")
 
-    production, development, open_canvas, open_canvas_test = check_config()[0:4]
-    url = CANVAS_URL_PROD
-    access_token = production
+    canvas_urls = get_penn_canvas_config("canvas_urls")
+    canvas_keys = get_penn_canvas_config("canvas_keys")
+
+    (
+        canvas_prod_key,
+        canvas_test_key,
+        open_canvas_key,
+        open_canvas_test_key,
+    ) = canvas_keys
+    (
+        canvas_prod_url,
+        canvas_test_url,
+        open_canvas_url,
+        open_canvas_test_url,
+    ) = canvas_urls
+    url = canvas_prod_url
+    key = canvas_prod_key
 
     if instance == "test":
-        url = CANVAS_URL_TEST
-        access_token = development
+        url = canvas_test_url
+        key = canvas_test_key
     elif instance == "open":
-        url = CANVAS_URL_OPEN
-        access_token = open_canvas
+        url = open_canvas_url
+        key = open_canvas_key
     elif instance == "open_test":
-        url = CANVAS_URL_OPEN_TEST
-        access_token = open_canvas_test
+        url = open_canvas_test_url
+        key = open_canvas_test_key
 
-    return Canvas(url, access_token)
-
-
-def color(text, color="magenta", echo=False):
-    text = f"{text:,}" if isinstance(text, int) else str(text)
-    return secho(text, fg=COLORS[color]) if echo else style(text, fg=COLORS[color])
+    return Canvas(url, key)
 
 
 def dynamic_to_csv(path, data_frame, condition):

@@ -1,6 +1,7 @@
 from typer import echo
 
-from .helpers import MAIN_ACCOUNT_ID, color, get_canvas
+from .helpers import MAIN_ACCOUNT_ID, get_canvas
+from .style import color
 
 
 def is_grad_course(course_number, graduate_course_minimum_number):

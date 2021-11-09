@@ -2,7 +2,6 @@ from csv import writer
 from datetime import datetime
 from pathlib import Path
 
-from cx_Oracle import connect
 from natsort import natsorted
 from pandas import Categorical, DataFrame, concat, isna, read_csv, read_excel
 from typer import Abort, Exit, echo
@@ -13,7 +12,7 @@ from .helpers import (
     color,
     get_canvas,
     get_command_paths,
-    get_data_warehouse_config,
+    get_data_warehouse_cursor,
     get_processed,
     get_start_index,
     handle_clear_processed,
@@ -82,9 +81,7 @@ def find_nso_file():
 
 def cleanup_data(input_file, start=0):
     echo(") Preparing NSO file...")
-
     data = read_excel(input_file, engine="openpyxl", sheet_name=None)
-
     try:
         facilitators = data[0]
         students = data[1]
@@ -96,8 +93,7 @@ def cleanup_data(input_file, start=0):
             "yellow",
             True,
         )
-    raise Abort()
-
+        raise Abort()
     facilitators["Group Name"] = Categorical(
         facilitators["Group Name"],
         ordered=True,
@@ -133,7 +129,6 @@ def cleanup_data(input_file, start=0):
         ]
         for index, student in enumerate(students)
     ]
-
     students = DataFrame(
         students,
         columns=["Canvas Course ID", "Group Set Name", "Group Name", "User (Pennkey)"],
@@ -142,11 +137,10 @@ def cleanup_data(input_file, start=0):
     data.columns = data.columns.str.lower()
     data["user (pennkey)"] = data["user (pennkey)"].str.lower()
     data = data.astype("string", copy=False, errors="ignore")
-    data[list(data)] = data[list(data)].apply(lambda column: column.str.strip())
+    columns = list(data)
+    data[columns] = data[columns].apply(lambda column: column.str.strip())
     TOTAL = len(data.index)
-
     data = data.loc[start:TOTAL, :]
-
     return data, TOTAL
 
 
@@ -329,18 +323,18 @@ def nso_main(test, verbose, force, clear_processed):
             return "added", "green"
 
     def create_memberships(user, canvas, verbose, args):
-        total, processed_users = args
+        total, processed_users, result_path, data = args
         index, course_id, group_set_name, group_name, penn_key = user
 
         if isna(penn_key):
             status = "invalid pennkey"
-            color = "red"
+            status_color = "red"
         elif force and penn_key in processed_users:
             status = "already processed"
-            color = "yellow"
+            status_color = "yellow"
         else:
             try:
-                status, color = create_group_membership(
+                status, status_color = create_group_membership(
                     canvas, course_id, group_set_name, group_name, penn_key
                 )
             except Exception as error:
@@ -348,14 +342,14 @@ def nso_main(test, verbose, force, clear_processed):
                     course = canvas.get_course(course_id)
                     canvas_user = canvas.get_user(penn_key, "sis_login_id")
                     status = error
-                    color = "red"
+                    status_color = "red"
 
                     try:
                         course.get_user(canvas_user)
                     except Exception:
                         try:
                             course.enroll_user(canvas_user)
-                            status, color = create_group_membership(
+                            status, status_color = create_group_membership(
                                 canvas,
                                 course_id,
                                 group_set_name,
@@ -367,7 +361,7 @@ def nso_main(test, verbose, force, clear_processed):
                             status = "failed to enroll user in course"
                 except Exception as error:
                     status = error
-                    color = "red"
+                    status_color = "red"
 
                     try:
                         if verbose:
@@ -377,11 +371,7 @@ def nso_main(test, verbose, force, clear_processed):
                                 f" {penn_key_display}..."
                             )
 
-                        cursor = connect(
-                            DATA_WAREHOUSE_USER,
-                            DATA_WAREHOUSE_PASSWORD,
-                            DATA_WAREHOUSE_DSN,
-                        ).cursor()
+                        cursor = get_data_warehouse_cursor()
                         cursor.execute(
                             """
                             SELECT
@@ -403,11 +393,11 @@ def nso_main(test, verbose, force, clear_processed):
                         status = error
 
         data.at[index, "status"] = status
-        data.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
+        data.loc[index].to_frame().T.to_csv(result_path, mode="a", header=False)
 
         if verbose:
             status_display = str(status).upper()
-            status_display = color(status_display, color)
+            status_display = color(status_display, status_color)
             penn_key_display = color(penn_key, "magenta")
             echo(
                 f"- ({index + 1}/{total}) {penn_key_display}, {group_set_name},"
@@ -426,14 +416,9 @@ def nso_main(test, verbose, force, clear_processed):
     PROCESSED_PATH = (
         PROCESSED / f"nso_processed_users_{YEAR}{'_test' if test else ''}.csv"
     )
-    data = find_nso_file()
-    (
-        DATA_WAREHOUSE_USER,
-        DATA_WAREHOUSE_PASSWORD,
-        DATA_WAREHOUSE_DSN,
-    ) = get_data_warehouse_config()
+    DATA = find_nso_file()
     START = get_start_index(force, RESULT_PATH)
-    data, TOTAL = cleanup_data(data, START)
+    DATA, TOTAL = cleanup_data(DATA, START)
     handle_clear_processed(clear_processed, PROCESSED_PATH)
     PROCESSED_USERS = get_processed(PROCESSED, PROCESSED_PATH)
     make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
@@ -444,7 +429,11 @@ def nso_main(test, verbose, force, clear_processed):
     echo(") Processing users...")
 
     toggle_progress_bar(
-        data, create_memberships, CANVAS, verbose, args=(TOTAL, PROCESSED_USERS)
+        DATA,
+        create_memberships,
+        CANVAS,
+        verbose,
+        args=(TOTAL, PROCESSED_USERS, RESULT_PATH, DATA),
     )
     (
         already_processed,

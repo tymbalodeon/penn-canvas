@@ -57,30 +57,22 @@ def cleanup_data(data):
     data = data[data["storage used in MB"] > 0].copy()
     data.sort_values(by=["storage used in MB"], inplace=True)
     data = data.astype("string", errors="ignore")
-
     return data[data["account id"].isin(SUB_ACCOUNTS)]
 
 
 def check_percent_storage(course, canvas, verbose, total):
     index, canvas_id, sis_id = course[:3]
     storage_used = course[-1]
-
     try:
         canvas_course = canvas.get_course(canvas_id)
         percentage_used = float(storage_used) / canvas_course.storage_quota_mb
-
         if verbose:
-            if percentage_used >= 0.79:
-                color = "yellow"
-            else:
-                color = "green"
-
+            percentage_color = "yellow" if percentage_used >= 0.79 else "green"
             echo(
                 f"- ({(index + 1):,}/{total})"
                 f" {color(sis_id, 'yellow')} ({canvas_id}):"
-                f" {color(f'{int(percentage_used * 100)}%', color)}"
+                f" {color(f'{int(percentage_used * 100)}%', percentage_color)}"
             )
-
         if percentage_used >= 0.79:
             if verbose:
                 color("\t* INCREASE REQUIRED", "yellow", True)
@@ -92,7 +84,6 @@ def check_percent_storage(course, canvas, verbose, total):
                         "yellow",
                     )
                     echo(f"({(index + 1):,}/{total}) {message}")
-
                 return False, "missing sis id"
             else:
                 return True, sis_id
@@ -130,12 +121,10 @@ def increase_quota(sis_id, canvas, verbose, increase):
 
         try:
             canvas_course.update(course={"storage_quota_mb": new_quota})
-
             if verbose:
                 echo(f"\t* Increased storage from {old_quota} MB to {new_quota} MB")
         except Exception:
             new_quota = "ERROR"
-
             if verbose:
                 color(
                     f"\t* Failed to increase quota for Canvas course ID: {sis_id}",
@@ -145,7 +134,6 @@ def increase_quota(sis_id, canvas, verbose, increase):
     else:
         old_quota = "N/A"
         new_quota = "N/A"
-
     return [subaccount_id, sis_id, old_quota, new_quota, error]
 
 
@@ -154,15 +142,12 @@ def process_result():
     increased_count = len(result[result["error"] == "none"].index)
     result.drop(result[result["error"] == "increase not required"].index, inplace=True)
     error_count = len(result[result["error"] != "none"].index)
-
     if error_count == 0:
         result.drop(columns=["error"], inplace=True)
-
     result.fillna("N/A", inplace=True)
     result.drop(columns=["index", "account id", "storage used in MB"], inplace=True)
     result.rename(columns={"id": "subaccount id", "sis id": "course id"}, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
-
     if BOX_PATH.exists():
         storage_shared_directory = BOX_PATH / "Storage_Quota_Monitoring"
         this_month_directory = next(
@@ -173,7 +158,6 @@ def process_result():
             ),
             None,
         )
-
         try:
             if not this_month_directory:
                 Path.mkdir(storage_shared_directory / f"{MONTH} {YEAR}")
@@ -185,18 +169,15 @@ def process_result():
                     ),
                     None,
                 )
-
             box_result_path = (
                 this_month_directory / RESULT_PATH.name
                 if this_month_directory
                 else None
             )
-
             if box_result_path:
                 result.to_csv(box_result_path, index=False)
         except Exception as error:
             echo(f"- ERROR: {error}")
-
     return increased_count, error_count
 
 
@@ -204,10 +185,8 @@ def print_messages(total, increased, errors):
     color("SUMMARY:", "yellow", True)
     echo(f"- Processed {color(total, 'magenta')} courses.")
     echo(f"- Increased storage quota for {color(increased, 'yellow')} courses.")
-
     if errors > 0:
         echo(f"- {color(f'Failed to find {str(errors)} courses.', 'red')}")
-
     color("FINISHED", "yellow", True)
 
 
@@ -217,16 +196,13 @@ def storage_main(test, verbose, force, increase=1000):
         canvas_id = course[1]
         sis_id = course[2]
         total, increase = args
-
         needs_increase, message = check_percent_storage(course, canvas, verbose, total)
-
         if needs_increase:
             row = increase_quota(message, canvas, verbose, increase)
         elif message is None:
             row = [canvas_id, sis_id, "N/A", "N/A", "increase not required"]
         else:
             row = ["ERROR", sis_id, "N/A", "N/A", message]
-
         report.loc[
             index,
             [
@@ -254,9 +230,7 @@ def storage_main(test, verbose, force, increase=1000):
     make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-
     echo(") Processing courses...")
-
     toggle_progress_bar(
         report, check_and_increase_storage, CANVAS, verbose, args=(TOTAL, increase)
     )

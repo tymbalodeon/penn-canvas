@@ -3,7 +3,9 @@ from json import dumps
 
 from requests import get
 
-from .helpers import get_canvas, read_config
+from penn_canvas.config import get_penn_canvas_config
+
+from .helpers import get_canvas
 
 TESTING = False
 course_id = 1569010
@@ -11,8 +13,8 @@ course_date = "2021-02-11"
 canvas = get_canvas(TESTING)
 course = canvas.get_course(course_id)
 students = course.get_users()
-use_API_KEY = read_config()[0]
-headers = {"Authorization": "Bearer %s" % use_API_KEY}
+canvas_prod_key = get_penn_canvas_config("canvas_keys")[0]
+headers = {"Authorization": "Bearer %s" % canvas_prod_key}
 outputFile = "data/{0}_{1}.csv".format(course_id, course_date)
 output = writer(open(outputFile, "w+", newline=""))
 

@@ -6,7 +6,8 @@ from pathlib import Path
 from pandas import DataFrame
 from typer import echo, progressbar
 
-from .helpers import color, get_canvas, get_command_paths
+from .helpers import get_canvas, get_command_paths
+from .style import color
 
 
 class HTMLStripper(HTMLParser):

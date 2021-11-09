@@ -3,7 +3,6 @@ from datetime import datetime
 from os import remove
 from pathlib import Path
 
-from cx_Oracle import connect
 from pandas import concat, read_csv
 from typer import confirm, echo
 
@@ -17,11 +16,10 @@ from .helpers import (
     find_input,
     get_canvas,
     get_command_paths,
-    get_data_warehouse_config,
+    get_data_warehouse_cursor,
     get_processed,
     get_start_index,
     handle_clear_processed,
-    init_data_warehouse,
     make_csv_paths,
     make_index_headers,
     make_skip_message,
@@ -404,11 +402,7 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
                         LOG_PATH,
                     )
                 elif status == "not found" and not no_data_warehouse:
-                    cursor = connect(
-                        DATA_WAREHOUSE_USER,
-                        DATA_WAREHOUSE_PASSWORD,
-                        DATA_WAREHOUSE_DSN,
-                    ).cursor()
+                    cursor = get_data_warehouse_cursor()
                     cursor.execute(
                         """
                         SELECT
@@ -432,11 +426,7 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
                                 LOG_PATH,
                             )
                     if not status == "activated":
-                        cursor = connect(
-                            DATA_WAREHOUSE_USER,
-                            DATA_WAREHOUSE_PASSWORD,
-                            DATA_WAREHOUSE_DSN,
-                        ).cursor()
+                        cursor = get_data_warehouse_cursor()
                         cursor.execute(
                             """
                             SELECT
@@ -472,10 +462,10 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
         if verbose:
-            color = PRINT_COLOR_MAPS.get(status, "magenta")
+            status_color = PRINT_COLOR_MAPS.get(status, "magenta")
             status_display = color(
                 f"{'email not found' if status == 'not found' else status}".upper(),
-                color,
+                status_color,
             )
             unsupported_display = ""
             user_display = color(
@@ -549,13 +539,6 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
     SUB_ACCOUNTS = get_sub_accounts(CANVAS)
-    (
-        DATA_WAREHOUSE_USER,
-        DATA_WAREHOUSE_PASSWORD,
-        DATA_WAREHOUSE_DSN,
-    ) = get_data_warehouse_config()
-    init_data_warehouse()
-
     if verbose:
         PRINT_COLOR_MAPS = {
             "already active": "cyan",
@@ -566,9 +549,7 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
             "not found": "red",
             "error": "red",
         }
-
     echo(") Processing users...")
-
     toggle_progress_bar(report, check_and_activate_emails, CANVAS, verbose)
     remove_empty_log(LOG_PATH)
     (

@@ -436,16 +436,13 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
     tool_display = color(tool, "blue")
-    TERMS_DISPLAY = [color(term, "yellow") for term in terms]
-    STYLED_TERMS = f"{', '.join(TERMS_DISPLAY)}"
+    STYLED_TERMS = color(f"{', '.join(terms)}", "yellow")
 
     if enable:
         if tool == "Course Materials @ Penn Libraries":
-            ACCOUNTS_DISPLAY = [
-                color(f"\n\t* {account}", "magenta")
-                for account in get_account_names(RESERVE_ACCOUNTS, CANVAS)
-            ]
-            ACCOUNTS = f"{''.join(ACCOUNTS_DISPLAY)}"
+            ACCOUNTS = color(
+                f"{''.join(get_account_names(RESERVE_ACCOUNTS, CANVAS))}", "magenta"
+            )
             echo(
                 f') Enabling "{tool_display}" for {STYLED_TERMS} courses in: {ACCOUNTS}'
             )

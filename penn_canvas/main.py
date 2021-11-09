@@ -1,5 +1,7 @@
 from typer import Argument, Option, Typer
 
+from penn_canvas.config import print_config_values, write_config_options
+
 from .archive import archive_main
 from .bulk_enroll import bulk_enroll_main
 from .check_enrollment import check_enrollment_main
@@ -7,7 +9,6 @@ from .count_poll_everywhere import count_poll_everywhere_main
 from .count_quizzes import count_quizzes_main
 from .count_sites import count_sites_main
 from .email import email_main
-from .helpers import display_config, make_config
 from .module import module_main
 from .nso import nso_main
 from .open_canvas_bulk_action import open_canvas_bulk_action_main
@@ -53,8 +54,8 @@ def archive(
 
     OUTPUT: Folder with the course name containing csv files for each
     discussion, listing the user, email, (OPTIONAL: timestamp), and post; as
-    well as a list of users who submitted for each of the course's quizzes."""
-
+    well as a list of users who submitted for each of the course's quizzes.
+    """
     archive_main(course, instance, verbose, timestamp, exclude_quizzes)
 
 
@@ -194,12 +195,10 @@ def check_enrollment(
 
 @app.command()
 def config(
-    view: bool = Option(
+    update: bool = Option(
         False,
-        "--view",
-        help=(
-            "Display your config's values instead of creating or updating your config."
-        ),
+        "--update",
+        help="Update the config instead of displaying",
     )
 ):
     """
@@ -225,11 +224,7 @@ def config(
     include all three; for each one you will be asked whether you want to
     include it in your config.
     """
-
-    if view:
-        display_config()
-    else:
-        make_config()
+    write_config_options() if update else print_config_values()
 
 
 @app.command()
@@ -320,7 +315,6 @@ def count_sites(
     """
     Counts the number of unique course numbers that have a Canvas site.
     """
-
     count_sites_main(year_and_term, separate, graduate_course_minimum_number, test)
 
 
@@ -392,7 +386,6 @@ def email(
 
     NOTE: Input filename must include the current date in order to be accepted.
     """
-
     email_main(test, verbose, new, force, clear_processed, no_data_warehouse)
 
 
@@ -456,7 +449,6 @@ def nso(
     year when the command is run. A file whose name contains any other year will
     not be accepted.
     """
-
     nso_main(test, verbose, force, clear_processed)
 
 
@@ -525,7 +517,6 @@ def storage(
 
     NOTE: Input filename must include the current date in order to be accepted.
     """
-
     storage_main(test, verbose, force, increase)
 
 
@@ -606,5 +597,4 @@ def tool(
     be included in the task. The results will always be combined into a single
     output file.
     """
-
     tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed)
