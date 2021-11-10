@@ -50,13 +50,30 @@ def get_config_option(section, option):
 def get_section_options(section):
     config = ConfigParser()
     config.read(CONFIG_FILE)
+    return [config.get(section, option) for option in config.options(section)]
+
+
+def get_section_options_as_tuple(section):
+    config = ConfigParser()
+    config.read(CONFIG_FILE)
     return [(option, config.get(section, option)) for option in config.options(section)]
 
 
-def get_config_options():
+def get_all_config_options():
     return list(
         chain.from_iterable(
-            [(get_section_options(section)) for section in CONFIG_OPTIONS.keys()]
+            [get_section_options(section) for section in CONFIG_OPTIONS.keys()]
+        )
+    )
+
+
+def get_all_config_options_as_tuple():
+    return list(
+        chain.from_iterable(
+            [
+                (get_section_options_as_tuple(section))
+                for section in CONFIG_OPTIONS.keys()
+            ]
         )
     )
 
@@ -65,9 +82,13 @@ def get_new_config_value(option, first_time):
     option_display = option.replace("_", " ").upper()
     confirm_message = f"Would you like to update the {option_display} value?"
     prompt_message = f"Please provide your {option_display} value"
-    updating = True if first_time else confirm(confirm_message)
+    updating = first_time or confirm(confirm_message)
     hide_input = option in SECRET_OPTIONS
-    return prompt(prompt_message, hide_input=hide_input) if updating else ""
+    return (
+        prompt(prompt_message, hide_input=hide_input, default="", show_default=False)
+        if updating
+        else ""
+    )
 
 
 def get_new_config_values(section, first_time):
@@ -88,18 +109,18 @@ def get_new_section_values(section, first_time):
 def write_config_options(first_time=False):
     create_config_directory()
     config = ConfigParser()
+    if not first_time:
+        config.read(CONFIG_FILE)
     for section in CONFIG_OPTIONS.keys():
         new_values = get_new_section_values(section, first_time)
         if first_time:
             config[section] = dict()
-        else:
-            config.read(CONFIG_FILE)
         for option, value in new_values:
             if value is not None:
                 config[section][option] = value
     with open(CONFIG_FILE, "w") as config_file:
         config.write(config_file)
-    return get_config_options()
+    return get_all_config_options()
 
 
 def print_create_config_message():
@@ -116,17 +137,35 @@ def confirm_create_config():
     )
 
 
-def get_config(section):
-    return get_section_options(section) if section else get_config_options()
+def get_config(section, as_tuple):
+    return (
+        (
+            get_section_options_as_tuple(section)
+            if section
+            else get_all_config_options_as_tuple()
+        )
+        if as_tuple
+        else (get_section_options(section) if section else get_all_config_options())
+    )
 
 
-def get_penn_canvas_config(section=None):
-    config = get_config(section) if CONFIG_FILE.is_file() else confirm_create_config()
+def get_penn_canvas_config(section=None, as_tuple=False):
+    config = (
+        get_config(section, as_tuple)
+        if CONFIG_FILE.is_file()
+        else confirm_create_config()
+    )
     if not config:
         raise Exit(1)
     return config
 
 
-def print_config_values():
-    for option, value in get_penn_canvas_config():
+def print_config(show_secrets):
+    for option, value in get_penn_canvas_config(as_tuple=True):
+        if not value:
+            value = color("[ empty ]", "yellow")
+        elif not show_secrets and option in SECRET_OPTIONS:
+            value = color("[ ...hidden... ]", "yellow")
+        else:
+            value = color(value, "green")
         echo(f"{color(option.replace('_', ' ').upper())}: {value}")

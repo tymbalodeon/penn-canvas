@@ -1,6 +1,6 @@
 from typer import Argument, Option, Typer
 
-from penn_canvas.config import print_config_values, write_config_options
+from penn_canvas.config import print_config, write_config_options
 
 from .archive import archive_main
 from .bulk_enroll import bulk_enroll_main
@@ -199,7 +199,12 @@ def config(
         False,
         "--update",
         help="Update the config instead of displaying",
-    )
+    ),
+    show_secrets: bool = Option(
+        False,
+        "--show-secrets",
+        help="Display sensitive values on screen",
+    ),
 ):
     """
     Automatically generates a config file for Penn-Canvas.
@@ -224,7 +229,7 @@ def config(
     include all three; for each one you will be asked whether you want to
     include it in your config.
     """
-    write_config_options() if update else print_config_values()
+    write_config_options() if update else print_config(show_secrets)
 
 
 @app.command()

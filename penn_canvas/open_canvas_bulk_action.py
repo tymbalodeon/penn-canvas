@@ -329,7 +329,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
             action = "update"
             display_action = "Updating"
 
-        open_test = True if (test or "test" in input_file.stem.lower()) else False
+        open_test = test or "test" in input_file.stem.lower()
         RESULT_STRING = f"{input_file.stem}_RESULT.csv"
         RESULT_PATH = RESULTS / RESULT_STRING
         START = get_start_index(force, RESULT_PATH)
