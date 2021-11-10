@@ -22,19 +22,16 @@ TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
 MAIN_ACCOUNT_ID = 96678
 
-
-def init_data_warehouse():
-    lib_dir = Path.home() / "Downloads/instantclient_19_8"
-    config_dir = lib_dir / "network/admin"
-    init_oracle_client(
-        lib_dir=str(lib_dir),
-        config_dir=str(config_dir),
-    )
+lib_dir = Path.home() / "Downloads/instantclient_19_8"
+config_dir = lib_dir / "network/admin"
+init_oracle_client(
+    lib_dir=str(lib_dir),
+    config_dir=str(config_dir),
+)
 
 
 def get_data_warehouse_cursor():
     user, password, dsn = get_penn_canvas_config("data_warehouse")
-    init_data_warehouse()
     return connect(user, password, dsn).cursor()
 
 
