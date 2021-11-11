@@ -334,7 +334,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
         RESULT_PATH = RESULTS / RESULT_STRING
         START = get_start_index(force, RESULT_PATH)
         action_headers = HEADERS if action == "enroll" else HEADERS[:2]
-        users, TOTAL = process_input(
+        users, TOTAL, dated_input_file = process_input(
             input_files,
             INPUT_FILE_NAME,
             REPORTS,
@@ -375,7 +375,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
             / f"{'TEST_' if open_test else ''}{RESULT_PATH.stem}_{timestamp}.csv"
         )
         RESULT_PATHS.append((new_path, TOTAL))
-        input_file.rename(COMPLETED / input_file.name)
+        dated_input_file.rename(COMPLETED / dated_input_file.name)
 
     color("SUMMARY:", "yellow", True)
     echo(f"- PROCESSED {color(len(RESULT_PATHS))} FILES.")

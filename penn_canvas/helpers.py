@@ -300,6 +300,7 @@ def process_input(
     reports = iter(input_files)
     error = True
     abort = False
+    report = None
 
     while error:
         try:
@@ -339,7 +340,7 @@ def process_input(
         TOTAL = len(data.index)
         data = data.loc[start:TOTAL, :]
 
-        return data, f"{TOTAL:,}"
+        return (data, f"{TOTAL:,}", report) if open_canvas else (data, f"{TOTAL:,}")
     else:
         return data
 
