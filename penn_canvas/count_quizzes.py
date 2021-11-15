@@ -106,7 +106,7 @@ def process_result(result_path, term_id):
     for index, header in enumerate(renamed_headers):
         renamed_columns[HEADERS[index]] = header
     result.rename(columns=renamed_columns, inplace=True)
-    result["total"] = result["total"].astype(int)
+    result["total"] = result["total"].astype(int, errors="ignore")
     result.sort_values("total", ascending=False, inplace=True)
     result.fillna("N/A", inplace=True)
     result.to_csv(result_path, index=False)
