@@ -65,7 +65,6 @@ def print_course(total_quizzes, error_message, index, total, course_name):
 def cleanup_data(data):
     data.drop_duplicates(subset=["canvas_course_id"], inplace=True)
     data = data.astype("string", copy=False, errors="ignore")
-
     return data
 
 
@@ -104,16 +103,14 @@ def process_result(result_path, term_id):
     result.drop(columns=["index"], inplace=True)
     renamed_headers = [header.replace("_", " ") for header in HEADERS[:5]]
     renamed_columns = {}
-
     for index, header in enumerate(renamed_headers):
         renamed_columns[HEADERS[index]] = header
-
     result.rename(columns=renamed_columns, inplace=True)
+    result["total"] = result["total"].astype(int, errors="ignore")
     result.sort_values("total", ascending=False, inplace=True)
     result.fillna("N/A", inplace=True)
     result.to_csv(result_path, index=False)
     result_path.rename(str(result_path).replace(YEAR, term_id))
-
     return courses_with_quiz
 
 
@@ -135,9 +132,7 @@ def count_quizzes_main(new_quizzes, test, force, verbose):
             term_id,
             status,
         ) = course
-
         error_message = False
-
         try:
             course = canvas.get_course(canvas_course_id)
             course_name = course.name
@@ -149,14 +144,12 @@ def count_quizzes_main(new_quizzes, test, force, verbose):
                 for assignment in course.get_assignments()
                 if is_new_quiz_assignment(assignment)
             ]
-
             total_quizzes = len(quizzes)
         except Exception as error:
             total_quizzes = "error"
             number_of_students = "error"
             course_name = canvas_course_id
             error_message = error
-
         report.at[index, NEW_QUIZ_HEADERS] = [
             canvas_course_id,
             course_id,
@@ -168,7 +161,6 @@ def count_quizzes_main(new_quizzes, test, force, verbose):
             str(total_quizzes),
         ]
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
-
         if verbose:
             print_course(total_quizzes, error_message, index, TOTAL, course_name)
 
@@ -182,10 +174,8 @@ def count_quizzes_main(new_quizzes, test, force, verbose):
             term_id,
             status,
         ) = course
-
         error_message = False
         total_quizzes = 0
-
         try:
             course = canvas.get_course(canvas_course_id)
             course_name = course.name
@@ -253,7 +243,6 @@ def count_quizzes_main(new_quizzes, test, force, verbose):
             str(total_quizzes),
         ]
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
-
         if verbose:
             print_course(total_quizzes, error_message, index, TOTAL, course_name)
 
@@ -280,13 +269,10 @@ def count_quizzes_main(new_quizzes, test, force, verbose):
     make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-
     echo(") Processing courses...")
-
     if new_quizzes:
         toggle_progress_bar(report, count_new_quizzes_for_course, CANVAS, verbose)
     else:
         toggle_progress_bar(report, count_quizzes_for_course, CANVAS, verbose)
-
     courses_with_quiz = process_result(RESULT_PATH, TERM_ID)
     print_messages(TOTAL, courses_with_quiz)

@@ -189,7 +189,6 @@ def check_enrollment(
     """
     Check enrollment.
     """
-
     check_enrollment_main(course, year, month, day, instance)
 
 
