@@ -28,7 +28,6 @@ class HTMLStripper(HTMLParser):
 def strip_tags(html):
     stripper = HTMLStripper()
     stripper.feed(html)
-
     return stripper.get_data()
 
 
@@ -38,17 +37,19 @@ RESULTS = get_command_paths(COMMAND, no_input=True)[0]
 
 def get_discussions(course):
     echo(") Finding discussions...")
-
     discussions = [discussion for discussion in course.get_discussion_topics()]
-
     return discussions, len(discussions)
+
+
+def get_assignments(course):
+    echo(") Finding assignments...")
+    assignments = [assignment for assignment in course.get_assignments()]
+    return assignments, len(assignments)
 
 
 def get_quizzes(course):
     echo(") Finding quizzes...")
-
     quizzes = [quiz for quiz in course.get_quizzes()]
-
     return quizzes, len(quizzes)
 
 
@@ -76,16 +77,13 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
                 if use_timestamp
                 else ""
             )
-
             if verbose:
                 user_display = color(user, "cyan")
                 timestamp_display = color(timestamp, "yellow") if use_timestamp else ""
                 email_display = color(email, "yellow") if not use_timestamp else ""
                 discussion_display = color(discussion.title.upper(), "magenta")
-
                 if entry_index == 0:
                     echo(f"==== DISCUSSION {discussion_index + 1} ====")
-
                 echo(
                     f"- [{discussion_index + 1}/{total_discussions}]"
                     f" ({entry_index + 1}/{total_entries}) {discussion_display}"
@@ -101,24 +99,19 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
 
         discussion_path = (
             DISCUSSION_DIRECTORY
-            / f"{discussion.title.replace('- ', '').replace(' ', '_')}.csv"
+            / f"{discussion.title.replace(' ', '_').replace('/', '-')}.csv"
         )
         entries = [entry for entry in discussion.get_topic_entries()]
-
         if verbose and not entries:
             echo(f"==== DISCUSSION {index + 1} ====")
             echo("- NO ENTRIES")
-
         entries = [
             process_entry(entry, verbose, index, total, entry_index, len(entries))
             for entry_index, entry in enumerate(entries)
         ]
-
         columns = ["User", "Email", "Timestamp", "Post"]
-
         if not use_timestamp:
             columns.remove("Timestamp")
-
         entries = DataFrame(entries, columns=columns)
         entries.to_csv(discussion_path, index=False)
 
@@ -130,41 +123,33 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
             CANVAS.get_user(submission.user_id).name
             for submission in quiz.get_submissions()
         ]
-
         if verbose:
             echo(f"==== QUIZ {quiz_index + 1} ====")
-
             for index, user in enumerate(users):
                 user_display = color(user, "cyan")
                 echo(f"- ({index + 1}/{len(users)}) {user_display}")
-
         if verbose and not users:
             echo(f"==== QUIZ {quiz_index + 1} ====")
             echo("- NO SUBMISSIONS")
-
         users = DataFrame(users, columns=["User"])
         users.to_csv(quiz_path, index=False)
 
     CANVAS = get_canvas(instance)
     course = CANVAS.get_course(course_id)
+    assignments, total = get_assignments(course)
     discussions, total = get_discussions(course)
     quizzes = []
     quiz_total = 0
-
     COURSE = RESULTS / f"{course.name}"
     DISCUSSION_DIRECTORY = COURSE / "Discussions"
     QUIZ_DIRECTORY = COURSE / "Quizzes"
     PATHS = [COURSE, DISCUSSION_DIRECTORY]
-
     if not exclude_quizzes:
         PATHS.append(QUIZ_DIRECTORY)
-
     for path in PATHS:
         if not path.exists():
             Path.mkdir(path)
-
     echo(") Processing discussions...")
-
     if verbose:
         for index, discussion in enumerate(discussions):
             archive_discussion(discussion, True, index, total)
@@ -172,12 +157,9 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
         with progressbar(discussions, length=total) as progress:
             for discussion in progress:
                 archive_discussion(discussion)
-
     if not exclude_quizzes:
         quizzes, quiz_total = get_quizzes(course)
-
         echo(") Processing quizzes...")
-
         if verbose:
             for index, quiz in enumerate(quizzes):
                 archive_quizzes(quiz, True, index)
@@ -185,13 +167,11 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
             with progressbar(quizzes, length=quiz_total) as progress:
                 for quiz in progress:
                     archive_quizzes(quiz)
-
     color("SUMMARY", "yellow", True)
     echo(
         f"- Archived {color(total, 'magenta')} DISCUSSIONS for"
         f" {color(course.name, 'blue')}."
     )
-
     if not exclude_quizzes:
         echo(
             f"- Archived {color(quiz_total, 'magenta')} QUIZZES for"
