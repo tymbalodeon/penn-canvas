@@ -9,6 +9,9 @@ from typer import echo, progressbar
 from .helpers import get_canvas, get_command_paths
 from .style import color
 
+COMMAND = "Archive"
+RESULTS = get_command_paths(COMMAND, no_input=True)[0]
+
 
 class HTMLStripper(HTMLParser):
     def __init__(self):
@@ -31,20 +34,16 @@ def strip_tags(html):
     return stripper.get_data()
 
 
-COMMAND = "Archive"
-RESULTS = get_command_paths(COMMAND, no_input=True)[0]
+def get_assignments(course):
+    echo(") Finding assignments...")
+    assignments = [assignment for assignment in course.get_assignments()]
+    return assignments, len(assignments)
 
 
 def get_discussions(course):
     echo(") Finding discussions...")
     discussions = [discussion for discussion in course.get_discussion_topics()]
     return discussions, len(discussions)
-
-
-def get_assignments(course):
-    echo(") Finding assignments...")
-    assignments = [assignment for assignment in course.get_assignments()]
-    return assignments, len(assignments)
 
 
 def get_quizzes(course):
@@ -63,21 +62,27 @@ def process_submission(
     assignment,
     canvas,
 ):
-    canvas_user = canvas.get_user(submission.user_id)
+    user = canvas.get_user(submission.user_id).name
+    try:
+        body = strip_tags(submission.body.replace("\n", " ")).strip()
+    except Exception:
+        body = ""
     if verbose:
-        user_display = color(canvas_user, "cyan")
-        assignment_display = color(assignment, "magenta")
+        user_display = color(user, "cyan")
         if submission_index == 0:
-            echo(f"==== ASSIGNMENT {assignment_index + 1} ====")
+            color(
+                f"==== ASSIGNMENT {assignment_index + 1}/{total_assignments}:"
+                f" {assignment} ====",
+                "magenta",
+                True,
+            )
         echo(
-            f"- [{assignment_index + 1}/{total_assignments}]"
-            f" ({submission_index + 1}/{total_submissions}) {assignment_display}"
+            f" - ({submission_index + 1}/{total_submissions})"
             f" {user_display}"
-            f" {submission.grade}..."
-            f" {submission.body}..."
+            f" {submission.grade}"
+            f" {body}"
         )
-
-    return [canvas_user.name, assignment, submission.grade, submission.body]
+    return [user, assignment, submission.grade, body]
 
 
 def process_entry(
@@ -107,7 +112,7 @@ def process_entry(
         user_display = color(user, "cyan")
         timestamp_display = color(timestamp, "yellow") if use_timestamp else ""
         email_display = color(email, "yellow") if not use_timestamp else ""
-        discussion_display = color(discussion.title.upper(), "magenta")
+        discussion_display = color(discussion.title.strip(), "magenta")
         if entry_index == 0:
             echo(f"==== DISCUSSION {discussion_index + 1} ====")
         echo(
@@ -117,7 +122,6 @@ def process_entry(
             f" {timestamp_display if use_timestamp else email_display}"
             f" {message[:40]}..."
         )
-
     return (
         [user, email, timestamp, message] if use_timestamp else [user, email, message]
     )
@@ -125,14 +129,12 @@ def process_entry(
 
 def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
     def archive_assignment(canvas, assignment, index, total):
-        submissions_path = (
-            ASSIGNMENT_DIRECTORY
-            / f"{assignment.name.replace(' ', '_').replace('/', '-')}_SUBMISSIONS.csv"
-        )
-        assignment_path = (
-            ASSIGNMENT_DIRECTORY
-            / f"{assignment.name.replace(' ', '_').replace('/', '-')}.md"
-        )
+        assignment_name = assignment.name.strip().replace(" ", "_").replace("/", "-")
+        assignment_path = ASSIGNMENT_DIRECTORY / assignment_name
+        if not assignment_path.exists():
+            Path.mkdir(assignment_path)
+        submissions_path = assignment_path / f"{assignment_name}_SUBMISSIONS.csv"
+        description_path = assignment_path / f"{assignment_name}.txt"
         submissions = [submission for submission in assignment.get_submissions()]
         submissions = [
             process_submission(
@@ -142,28 +144,30 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
                 total,
                 submission_index,
                 len(submissions),
-                assignment,
+                assignment.name.strip(),
                 canvas,
             )
             for submission_index, submission in enumerate(submissions)
         ]
+        try:
+            description = " ".join(
+                strip_tags(assignment.description.replace("\n", " ")).strip().split()
+            )
+        except Exception:
+            description = ""
         columns = ["User", "Assignment", "Grade", "Body"]
         submissions = DataFrame(submissions, columns=columns)
         submissions.to_csv(submissions_path, index=False)
-        with open(assignment_path, "w") as assignment_file:
-            assignment_file.write(
-                assignment.description if assignment.description else ""
-            )
+        with open(description_path, "w") as assignment_file:
+            assignment_file.write(description)
 
     def archive_discussion(canvas, discussion, verbose=False, index=0, total=0):
-        discussion_path = (
-            DISCUSSION_DIRECTORY
-            / f"{discussion.title.replace(' ', '_').replace('/', '-')}_POSTS.csv"
-        )
-        description_path = (
-            DISCUSSION_DIRECTORY
-            / f"{discussion.title.replace(' ', '_').replace('/', '-')}.md"
-        )
+        discussion_name = discussion.title.strip().replace(" ", "_").replace("/", "-")
+        discussion_path = DISCUSSION_DIRECTORY / discussion_name
+        if not discussion_path.exists():
+            Path.mkdir(discussion_path)
+        posts_path = discussion_path / f"{discussion_name}_POSTS.csv"
+        description_path = discussion_path / f"{discussion_name}.txt"
         entries = [entry for entry in discussion.get_topic_entries()]
         if verbose and not entries:
             echo(f"==== DISCUSSION {index + 1} ====")
@@ -182,13 +186,19 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
             )
             for entry_index, entry in enumerate(entries)
         ]
+        try:
+            description = " ".join(
+                strip_tags(discussion.message.replace("\n", " ")).strip().split()
+            )
+        except Exception:
+            description = ""
         columns = ["User", "Email", "Timestamp", "Post"]
         if not use_timestamp:
             columns.remove("Timestamp")
         entries = DataFrame(entries, columns=columns)
-        entries.to_csv(discussion_path, index=False)
+        entries.to_csv(posts_path, index=False)
         with open(description_path, "w") as description_file:
-            description_file.write(discussion.message if discussion.message else "")
+            description_file.write(description)
 
     def archive_quizzes(quiz, verbose=False, quiz_index=0):
         quiz_path = (
