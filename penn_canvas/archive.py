@@ -3,7 +3,7 @@ from html.parser import HTMLParser
 from io import StringIO
 from pathlib import Path
 
-from pandas import DataFrame
+from pandas import DataFrame, read_csv
 from typer import echo, progressbar
 
 from .helpers import get_canvas, get_command_paths
@@ -21,8 +21,8 @@ class HTMLStripper(HTMLParser):
         self.convert_charrefs = True
         self.text = StringIO()
 
-    def handle_data(self, d):
-        self.text.write(d)
+    def handle_data(self, data):
+        self.text.write(data)
 
     def get_data(self):
         return self.text.getvalue()
@@ -44,6 +44,16 @@ def get_discussions(course):
     echo(") Finding discussions...")
     discussions = [discussion for discussion in course.get_discussion_topics()]
     return discussions, len(discussions)
+
+
+def get_students(course):
+    echo(") Finding students...")
+    students = [
+        enrollment
+        for enrollment in course.get_enrollments()
+        if enrollment.type == "StudentEnrollment"
+    ]
+    return students, len(students)
 
 
 def get_quizzes(course):
@@ -127,8 +137,20 @@ def process_entry(
     )
 
 
-def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
-    def archive_assignment(canvas, assignment, index, total):
+def archive_main(
+    course_id,
+    instance,
+    verbose,
+    use_timestamp,
+    assignments,
+    discussions,
+    grades,
+    quizzes,
+):
+    if assignments == discussions == grades == quizzes is False:
+        assignments = discussions = grades = quizzes = True
+
+    def archive_assignment(canvas, assignment, index=0, total=0):
         assignment_name = assignment.name.strip().replace(" ", "_").replace("/", "-")
         assignment_path = ASSIGNMENT_DIRECTORY / assignment_name
         if not assignment_path.exists():
@@ -200,10 +222,30 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
         with open(description_path, "w") as description_file:
             description_file.write(description)
 
+    def archive_grade(canvas, student, index=0, total=0):
+        grades_path = GRADE_DIRECTORY / "Grades.csv"
+        name = canvas.get_user(student.user_id).name
+        grade = student.grades["final_grade"]
+        score = student.grades["final_score"]
+        grades = DataFrame(
+            {"Student": [name], "Final Grade": [grade], "Final Score": [score]},
+        )
+        if grades_path.exists():
+            grades = read_csv(grades_path).append(grades).drop_duplicates("Student")
+        grades.to_csv(grades_path, index=False)
+        if verbose:
+            user_display = color(name, "cyan")
+            echo(
+                f" - ({index + 1}/{total}) {user_display}:"
+                f" {color(grade, 'yellow')} ({score})"
+            )
+
     def archive_quizzes(quiz, verbose=False, quiz_index=0):
         quiz_path = (
             QUIZ_DIRECTORY / f"{quiz.title.replace('- ', '').replace(' ', '_')}.csv"
         )
+        if not quiz_path.exists():
+            Path.mkdir(quiz_path)
         users = [
             CANVAS.get_user(submission.user_id).name
             for submission in quiz.get_submissions()
@@ -221,31 +263,49 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
 
     CANVAS = get_canvas(instance)
     course = CANVAS.get_course(course_id)
-    assignments, assignment_total = get_assignments(course)
-    discussions, discussion_total = get_discussions(course)
     quizzes = []
+    discussion_total = 0
     quiz_total = 0
     COURSE = RESULTS / f"{course.name}"
     DISCUSSION_DIRECTORY = COURSE / "Discussions"
     ASSIGNMENT_DIRECTORY = COURSE / "Assignments"
+    GRADE_DIRECTORY = COURSE / "Grades"
     QUIZ_DIRECTORY = COURSE / "Quizzes"
-    PATHS = [COURSE, DISCUSSION_DIRECTORY, ASSIGNMENT_DIRECTORY]
-    if not exclude_quizzes:
-        PATHS.append(QUIZ_DIRECTORY)
+    PATHS = [COURSE, DISCUSSION_DIRECTORY, GRADE_DIRECTORY, ASSIGNMENT_DIRECTORY]
     for path in PATHS:
         if not path.exists():
             Path.mkdir(path)
-    echo(") Processing discussions...")
-    if verbose:
-        for index, discussion in enumerate(discussions):
-            archive_discussion(CANVAS, discussion, True, index, discussion_total)
-        for index, assignment in enumerate(assignments):
-            archive_assignment(CANVAS, assignment, index, assignment_total)
-    else:
-        with progressbar(discussions, length=discussion_total) as progress:
-            for discussion in progress:
-                archive_discussion(CANVAS, discussion)
-    if not exclude_quizzes:
+    if assignments:
+        assignments, assignment_total = get_assignments(course)
+        echo(") Processing assignments...")
+        if verbose:
+            for index, assignment in enumerate(assignments):
+                archive_assignment(CANVAS, assignment, index, assignment_total)
+        else:
+            with progressbar(assignments, length=assignment_total) as progress:
+                for assignment in progress:
+                    archive_assignment(CANVAS, assignment)
+    if discussions:
+        discussions, discussion_total = get_discussions(course)
+        echo(") Processing discussions...")
+        if verbose:
+            for index, discussion in enumerate(discussions):
+                archive_discussion(CANVAS, discussion, True, index, discussion_total)
+        else:
+            with progressbar(discussions, length=discussion_total) as progress:
+                for discussion in progress:
+                    archive_discussion(CANVAS, discussion)
+    if grades:
+        students, student_total = get_students(course)
+        echo(") Processing grades...")
+        if verbose:
+            for index, student in enumerate(students):
+                archive_grade(CANVAS, student, index, student_total)
+        else:
+            with progressbar(students, length=student_total) as progress:
+                for assignment in progress:
+                    archive_assignment(CANVAS, assignment)
+    if quizzes:
         quizzes, quiz_total = get_quizzes(course)
         echo(") Processing quizzes...")
         if verbose:
@@ -260,7 +320,7 @@ def archive_main(course_id, instance, verbose, use_timestamp, exclude_quizzes):
         f"- Archived {color(discussion_total, 'magenta')} DISCUSSIONS for"
         f" {color(course.name, 'blue')}."
     )
-    if not exclude_quizzes:
+    if quizzes:
         echo(
             f"- Archived {color(quiz_total, 'magenta')} QUIZZES for"
             f" {color(course.name, 'blue')}."

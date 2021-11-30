@@ -40,10 +40,25 @@ def archive(
         "--timestamp",
         help="Include the timestamp in the output.",
     ),
-    exclude_quizzes: bool = Option(
+    assignments: bool = Option(
         False,
-        "--exclude-quizzes",
-        help="Exclude quizzes from the archive output.",
+        "--assignments",
+        help="Inlcude assignments in the archive output.",
+    ),
+    discussions: bool = Option(
+        False,
+        "--discussions",
+        help="Inlcude discussions in the archive output.",
+    ),
+    grades: bool = Option(
+        False,
+        "--grades",
+        help="Inlcude grades in the archive output.",
+    ),
+    quizzes: bool = Option(
+        False,
+        "--quizzes",
+        help="Inlcude quizzes in the archive output.",
     ),
 ):
     """
@@ -56,7 +71,9 @@ def archive(
     discussion, listing the user, email, (OPTIONAL: timestamp), and post; as
     well as a list of users who submitted for each of the course's quizzes.
     """
-    archive_main(course, instance, verbose, timestamp, exclude_quizzes)
+    archive_main(
+        course, instance, verbose, timestamp, assignments, discussions, grades, quizzes
+    )
 
 
 @app.command()
