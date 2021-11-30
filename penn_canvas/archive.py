@@ -240,38 +240,36 @@ def archive_main(
                 f" {color(grade, 'yellow')} ({score})"
             )
 
-    def archive_quizzes(quiz, verbose=False, quiz_index=0):
+    def archive_quizzes(quiz):
+        submissions = [submission for submission in quiz.get_submissions()]
         quiz_path = (
             QUIZ_DIRECTORY / f"{quiz.title.replace('- ', '').replace(' ', '_')}.csv"
         )
         if not quiz_path.exists():
             Path.mkdir(quiz_path)
-        users = [
-            CANVAS.get_user(submission.user_id).name
-            for submission in quiz.get_submissions()
+        data = [
+            [CANVAS.get_user(submission.user_id).name, submission.score]
+            for submission in submissions
         ]
-        if verbose:
-            echo(f"==== QUIZ {quiz_index + 1} ====")
-            for index, user in enumerate(users):
-                user_display = color(user, "cyan")
-                echo(f"- ({index + 1}/{len(users)}) {user_display}")
-        if verbose and not users:
-            echo(f"==== QUIZ {quiz_index + 1} ====")
-            echo("- NO SUBMISSIONS")
-        users = DataFrame(users, columns=["User"])
+        users = DataFrame(data, columns=["Student", "Score"])
         users.to_csv(quiz_path, index=False)
 
     CANVAS = get_canvas(instance)
     course = CANVAS.get_course(course_id)
-    quizzes = []
     discussion_total = 0
     quiz_total = 0
     COURSE = RESULTS / f"{course.name}"
-    DISCUSSION_DIRECTORY = COURSE / "Discussions"
     ASSIGNMENT_DIRECTORY = COURSE / "Assignments"
+    DISCUSSION_DIRECTORY = COURSE / "Discussions"
     GRADE_DIRECTORY = COURSE / "Grades"
     QUIZ_DIRECTORY = COURSE / "Quizzes"
-    PATHS = [COURSE, DISCUSSION_DIRECTORY, GRADE_DIRECTORY, ASSIGNMENT_DIRECTORY]
+    PATHS = [
+        COURSE,
+        ASSIGNMENT_DIRECTORY,
+        DISCUSSION_DIRECTORY,
+        GRADE_DIRECTORY,
+        QUIZ_DIRECTORY,
+    ]
     for path in PATHS:
         if not path.exists():
             Path.mkdir(path)
@@ -310,7 +308,7 @@ def archive_main(
         echo(") Processing quizzes...")
         if verbose:
             for index, quiz in enumerate(quizzes):
-                archive_quizzes(quiz, True, index)
+                archive_quizzes(quiz)
         else:
             with progressbar(quizzes, length=quiz_total) as progress:
                 for quiz in progress:
