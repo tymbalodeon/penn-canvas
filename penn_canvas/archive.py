@@ -241,10 +241,12 @@ def archive_main(
             )
 
     def archive_quizzes(quiz):
+        title = quiz.title.replace("-", "").replace(" ", "_")
+        description = strip_tags(quiz.description)
         submissions = [submission for submission in quiz.get_submissions()]
-        quiz_path = (
-            QUIZ_DIRECTORY / f"{quiz.title.replace('- ', '').replace(' ', '_')}.csv"
-        )
+        quiz_path = QUIZ_DIRECTORY / title
+        description_path = quiz_path / f"{title}_DESCRIPTION.txt"
+        scores_path = quiz_path / f"{title}_SCORES.csv"
         if not quiz_path.exists():
             Path.mkdir(quiz_path)
         data = [
@@ -252,7 +254,9 @@ def archive_main(
             for submission in submissions
         ]
         users = DataFrame(data, columns=["Student", "Score"])
-        users.to_csv(quiz_path, index=False)
+        users.to_csv(scores_path, index=False)
+        with open(description_path, "w") as description_file:
+            description_file.write(description)
 
     CANVAS = get_canvas(instance)
     course = CANVAS.get_course(course_id)
