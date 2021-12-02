@@ -70,6 +70,7 @@ def process_submission(
     submission_index,
     total_submissions,
     assignment,
+    comments_path,
     canvas,
 ):
     user = canvas.get_user(submission.user_id).name
@@ -77,6 +78,13 @@ def process_submission(
         body = strip_tags(submission.body.replace("\n", " ")).strip()
     except Exception:
         body = ""
+    comments = [
+        [submission["author_name"], submission["comment"]]
+        for submission in submission.submission_comments
+    ]
+    comments = DataFrame(comments, columns=["Name", "Comment"])
+    submission_comments_path = comments_path / f"{assignment}_{user}.csv"
+    comments.to_csv(submission_comments_path, index=False)
     if verbose:
         user_display = color(user, "cyan")
         if submission_index == 0:
@@ -92,7 +100,7 @@ def process_submission(
             f" {submission.grade}"
             f" {body}"
         )
-    return [user, assignment, submission.grade, body]
+    return [user, submission.grade, body]
 
 
 def process_entry(
@@ -155,9 +163,15 @@ def archive_main(
         assignment_path = ASSIGNMENT_DIRECTORY / assignment_name
         if not assignment_path.exists():
             Path.mkdir(assignment_path)
-        submissions_path = assignment_path / f"{assignment_name}_SUBMISSIONS.csv"
         description_path = assignment_path / f"{assignment_name}.txt"
-        submissions = [submission for submission in assignment.get_submissions()]
+        submissions_path = assignment_path / f"{assignment_name}_SUBMISSIONS.csv"
+        comments_path = assignment_path / "Submission Comments"
+        if not comments_path.exists():
+            Path.mkdir(comments_path)
+        submissions = [
+            submission
+            for submission in assignment.get_submissions(include="submission_comments")
+        ]
         submissions = [
             process_submission(
                 submission,
@@ -166,7 +180,8 @@ def archive_main(
                 total,
                 submission_index,
                 len(submissions),
-                assignment.name.strip(),
+                assignment_name,
+                comments_path,
                 canvas,
             )
             for submission_index, submission in enumerate(submissions)
@@ -177,7 +192,7 @@ def archive_main(
             )
         except Exception:
             description = ""
-        columns = ["User", "Assignment", "Grade", "Body"]
+        columns = ["User", "Grade", "Body"]
         submissions = DataFrame(submissions, columns=columns)
         submissions.to_csv(submissions_path, index=False)
         with open(description_path, "w") as assignment_file:
