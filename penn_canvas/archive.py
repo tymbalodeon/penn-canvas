@@ -76,6 +76,18 @@ def process_submission(
     canvas,
 ):
     user = canvas.get_user(submission.user_id).name
+    try:
+        grader = canvas.get_user(submission.grader_id).name
+    except Exception:
+        grader = None
+    try:
+        grade = round(float(submission.grade), 2)
+    except Exception:
+        grade = submission.grade
+    try:
+        score = round(submission.score, 2)
+    except Exception:
+        score = submission.score
     submissions_path = assignment_path / "Submission Files"
     try:
         body = strip_tags(submission.body.replace("\n", " ")).strip()
@@ -120,17 +132,16 @@ def process_submission(
             )
         echo(
             f" - ({submission_index + 1}/{total_submissions})"
-            f" {user_display}"
-            f" {submission.grade}"
+            f" {user_display} {color(grade, 'yellow')}"
         )
     return [
         user,
         submission.submission_type.replace("_", " ")
         if submission.submission_type
         else submission.submission_type,
-        submission.grade,
-        submission.score,
-        str(submission.grader_id),
+        grade,
+        score,
+        grader,
     ]
 
 
@@ -229,19 +240,24 @@ def archive_main(
             )
         except Exception:
             description = ""
-        columns = ["User", "Submission type", "Grade", "Score", "Grader id"]
+        columns = ["User", "Submission type", "Grade", "Score", "Grader"]
         submissions = DataFrame(submissions, columns=columns)
         submissions.to_csv(submissions_path, index=False)
         with open(description_path, "w") as assignment_file:
             assignment_file.write(description)
 
     def archive_discussion(canvas, discussion, verbose=False, index=0, total=0):
-        discussion_name = discussion.title.strip().replace(" ", "_").replace("/", "-")
+        discussion_name = (
+            discussion.title.strip()
+            .replace(" ", "_")
+            .replace("/", "-")
+            .replace(":", "-")
+        )
         discussion_path = DISCUSSION_DIRECTORY / discussion_name
         if not discussion_path.exists():
             Path.mkdir(discussion_path)
         posts_path = discussion_path / f"{discussion_name}_POSTS.csv"
-        description_path = discussion_path / f"{discussion_name}.txt"
+        description_path = discussion_path / f"{discussion_name}_DESCRIPTION.txt"
         entries = [entry for entry in discussion.get_topic_entries()]
         if verbose and not entries:
             echo(f"==== DISCUSSION {index + 1} ====")
@@ -293,7 +309,12 @@ def archive_main(
             )
 
     def archive_quizzes(quiz):
-        title = quiz.title.replace("-", "").replace(" ", "_")
+        title = (
+            quiz.title.replace("-", "")
+            .replace(" ", "_")
+            .replace("/", "-")
+            .replace(":", "-")
+        )
         description = strip_tags(quiz.description)
         questions = [
             [
