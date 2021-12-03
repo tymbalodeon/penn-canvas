@@ -24,7 +24,7 @@ canvas = get_canvas()
 def format_timestamp(timestamp):
     if timestamp:
         date = datetime.fromisoformat(timestamp.replace("Z", ""))
-        return date.strftime("%b %w, %Y (%H:%M:%S)")
+        return date.strftime("%b %w, %Y (%I:%M:%S %p)")
     else:
         return timestamp
 
