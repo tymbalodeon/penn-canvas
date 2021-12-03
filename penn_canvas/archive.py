@@ -3,6 +3,7 @@ from html.parser import HTMLParser
 from io import StringIO
 from pathlib import Path
 
+import requests
 from pandas import DataFrame, read_csv
 from typer import echo, progressbar
 
@@ -70,20 +71,40 @@ def process_submission(
     submission_index,
     total_submissions,
     assignment,
+    assignment_path,
     comments_path,
     canvas,
 ):
     user = canvas.get_user(submission.user_id).name
+    submissions_path = assignment_path / "Submission Files"
     try:
         body = strip_tags(submission.body.replace("\n", " ")).strip()
+        with open(
+            submissions_path / f"{assignment}_SUBMISSION ({user}).txt", "w"
+        ) as submissions_file:
+            submissions_file.write(body)
     except Exception:
         body = ""
+    if not submissions_path.exists():
+        Path.mkdir(submissions_path)
+    try:
+        attachments = [
+            (attachment["url"], attachment["filename"])
+            for attachment in submission.attachments
+        ]
+        for url, filename in attachments:
+            with open(submissions_path / f"{filename} ({user})", "wb") as stream:
+                response = requests.get(url, stream=True)
+                for chunk in response.iter_content(chunk_size=128):
+                    stream.write(chunk)
+    except Exception:
+        attachments = []
     comments = [
         [submission["author_name"], submission["comment"]]
         for submission in submission.submission_comments
     ]
     comments = DataFrame(comments, columns=["Name", "Comment"])
-    submission_comments_path = comments_path / f"{assignment}_{user}.csv"
+    submission_comments_path = comments_path / f"{assignment}_COMMENTS ({user}).csv"
     comments.to_csv(submission_comments_path, index=False)
     if verbose:
         user_display = color(user, "cyan")
@@ -98,9 +119,16 @@ def process_submission(
             f" - ({submission_index + 1}/{total_submissions})"
             f" {user_display}"
             f" {submission.grade}"
-            f" {body}"
         )
-    return [user, submission.grade, body]
+    return [
+        user,
+        submission.submission_type.replace("_", " ")
+        if submission.submission_type
+        else submission.submission_type,
+        submission.grade,
+        submission.score,
+        str(submission.grader_id),
+    ]
 
 
 def process_entry(
@@ -159,12 +187,17 @@ def archive_main(
         assignments = discussions = grades = quizzes = True
 
     def archive_assignment(canvas, assignment, index=0, total=0):
-        assignment_name = assignment.name.strip().replace(" ", "_").replace("/", "-")
+        assignment_name = (
+            assignment.name.strip()
+            .replace(" ", "_")
+            .replace("/", "-")
+            .replace(":", "-")
+        )
         assignment_path = ASSIGNMENT_DIRECTORY / assignment_name
         if not assignment_path.exists():
             Path.mkdir(assignment_path)
-        description_path = assignment_path / f"{assignment_name}.txt"
-        submissions_path = assignment_path / f"{assignment_name}_SUBMISSIONS.csv"
+        description_path = assignment_path / f"{assignment_name}_DESCRIPTION.txt"
+        submissions_path = assignment_path / f"{assignment_name}_GRADES.csv"
         comments_path = assignment_path / "Submission Comments"
         if not comments_path.exists():
             Path.mkdir(comments_path)
@@ -181,6 +214,7 @@ def archive_main(
                 submission_index,
                 len(submissions),
                 assignment_name,
+                assignment_path,
                 comments_path,
                 canvas,
             )
@@ -192,7 +226,7 @@ def archive_main(
             )
         except Exception:
             description = ""
-        columns = ["User", "Grade", "Body"]
+        columns = ["User", "Submission type", "Grade", "Score", "Grader id"]
         submissions = DataFrame(submissions, columns=columns)
         submissions.to_csv(submissions_path, index=False)
         with open(description_path, "w") as assignment_file:
