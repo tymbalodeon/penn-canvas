@@ -1,6 +1,7 @@
 from typer import Argument, Option, Typer
 
 from penn_canvas.config import print_config, write_config_options
+from penn_canvas.investigate import investigate_main
 
 from .archive import archive_main
 from .bulk_enroll import bulk_enroll_main
@@ -408,6 +409,12 @@ def email(
     NOTE: Input filename must include the current date in order to be accepted.
     """
     email_main(test, verbose, new, force, clear_processed, no_data_warehouse)
+
+
+@app.command()
+def investigate():
+    """Investigate student assignments"""
+    investigate_main()
 
 
 @app.command()
