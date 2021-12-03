@@ -93,7 +93,10 @@ def process_submission(
             for attachment in submission.attachments
         ]
         for url, filename in attachments:
-            with open(submissions_path / f"{filename} ({user})", "wb") as stream:
+            name, extension = filename.split(".")
+            with open(
+                submissions_path / f"{name} ({user}).{extension}", "wb"
+            ) as stream:
                 response = requests.get(url, stream=True)
                 for chunk in response.iter_content(chunk_size=128):
                     stream.write(chunk)
