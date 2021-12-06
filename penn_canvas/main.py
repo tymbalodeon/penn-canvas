@@ -41,6 +41,11 @@ def archive(
         "--timestamp",
         help="Include the timestamp in the output.",
     ),
+    content: bool = Option(
+        False,
+        "--content",
+        help="Export course content in the archive output.",
+    ),
     assignments: bool = Option(
         False,
         "--assignments",
@@ -73,7 +78,15 @@ def archive(
     well as a list of users who submitted for each of the course's quizzes.
     """
     archive_main(
-        course, instance, verbose, timestamp, assignments, discussions, grades, quizzes
+        course,
+        instance,
+        verbose,
+        timestamp,
+        content,
+        assignments,
+        discussions,
+        grades,
+        quizzes,
     )
 
 

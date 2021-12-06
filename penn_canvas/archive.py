@@ -1,7 +1,11 @@
 from datetime import datetime
 from html.parser import HTMLParser
 from io import StringIO
+from os import remove
 from pathlib import Path
+from re import search
+from time import sleep
+from zipfile import ZipFile
 
 import requests
 from pandas import DataFrame, read_csv
@@ -192,13 +196,37 @@ def archive_main(
     instance,
     verbose,
     use_timestamp,
+    content,
     assignments,
     discussions,
     grades,
     quizzes,
 ):
-    if assignments == discussions == grades == quizzes is False:
+    if content == assignments == discussions == grades == quizzes is False:
         assignments = discussions = grades = quizzes = True
+
+    def archive_content(course, course_path, canvas, verbose):
+        export = course.export_content(export_type="zip", skip_notifications=True)
+        regex_search = search(r"\d*$", export.progress_url)
+        progress_id = regex_search.group() if regex_search else None
+        progress = canvas.get_progress(progress_id)
+        while progress.workflow_state != "completed":
+            if verbose:
+                echo(f"- {course.name} export {progress.workflow_state}...")
+            sleep(8)
+            progress = canvas.get_progress(progress_id)
+        url = course.get_content_export(export).attachment["url"]
+        response = requests.get(url, stream=True)
+        zip_path = course_path / "content.zip"
+        content_path = course_path / "Content"
+        if not content_path.exists():
+            Path.mkdir(content_path)
+        with open(course_path / "content.zip", "wb") as stream:
+            for chunk in response.iter_content(chunk_size=128):
+                stream.write(chunk)
+        with ZipFile(zip_path) as unzipper:
+            unzipper.extractall(content_path)
+        remove(zip_path)
 
     def archive_assignment(canvas, assignment, index=0, total=0):
         assignment_name = (
@@ -290,7 +318,7 @@ def archive_main(
         with open(description_path, "w") as description_file:
             description_file.write(description)
 
-    def archive_grade(canvas, student, index=0, total=0):
+    def archive_grade(canvas, student, index=0, total=0, verbose=False):
         grades_path = GRADE_DIRECTORY / "Grades.csv"
         name = canvas.get_user(student.user_id).name
         grade = student.grades["final_grade"]
@@ -385,7 +413,7 @@ def archive_main(
         echo(") Processing grades...")
         if verbose:
             for index, student in enumerate(students):
-                archive_grade(CANVAS, student, index, student_total)
+                archive_grade(CANVAS, student, index, student_total, verbose)
         else:
             with progressbar(students, length=student_total) as progress:
                 for assignment in progress:
@@ -400,6 +428,9 @@ def archive_main(
             with progressbar(quizzes, length=quiz_total) as progress:
                 for quiz in progress:
                     archive_quizzes(quiz)
+    if content:
+        echo(") Exporting content...")
+        archive_content(course, COURSE, CANVAS, verbose)
     color("SUMMARY", "yellow", True)
     echo(
         f"- Archived {color(discussion_total, 'magenta')} DISCUSSIONS for"
