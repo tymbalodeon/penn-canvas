@@ -197,12 +197,13 @@ def archive_main(
     verbose,
     use_timestamp,
     content,
+    pages,
     assignments,
     discussions,
     grades,
     quizzes,
 ):
-    if content == assignments == discussions == grades == quizzes is False:
+    if content == pages == assignments == discussions == grades == quizzes is False:
         assignments = discussions = grades = quizzes = True
 
     def archive_content(course, course_path, canvas, verbose):
@@ -227,6 +228,18 @@ def archive_main(
         with ZipFile(zip_path) as unzipper:
             unzipper.extractall(content_path)
         remove(zip_path)
+
+    def archive_pages(course, course_path):
+        pages_path = course_path / "Pages"
+        if not pages_path.exists():
+            Path.mkdir(pages_path)
+        pages_csv = pages_path / "pages.csv"
+        pages = [page for page in course.get_pages()]
+        pages = [
+            (page.title, strip_tags(page.show_latest_revision().body)) for page in pages
+        ]
+        pages = DataFrame(pages, columns=["Title", "Content"])
+        pages.to_csv(pages_csv, index=False)
 
     def archive_assignment(canvas, assignment, index=0, total=0):
         assignment_name = (
@@ -388,6 +401,12 @@ def archive_main(
     for path in PATHS:
         if not path.exists():
             Path.mkdir(path)
+    if content:
+        echo(") Exporting content...")
+        archive_content(course, COURSE, CANVAS, verbose)
+    if pages:
+        echo(") Exporting pages...")
+        archive_pages(course, COURSE)
     if assignments:
         assignments, assignment_total = get_assignments(course)
         echo(") Processing assignments...")
@@ -428,9 +447,6 @@ def archive_main(
             with progressbar(quizzes, length=quiz_total) as progress:
                 for quiz in progress:
                     archive_quizzes(quiz)
-    if content:
-        echo(") Exporting content...")
-        archive_content(course, COURSE, CANVAS, verbose)
     color("SUMMARY", "yellow", True)
     echo(
         f"- Archived {color(discussion_total, 'magenta')} DISCUSSIONS for"

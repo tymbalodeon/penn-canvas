@@ -301,6 +301,7 @@ def process_input(
     error = True
     abort = False
     report = None
+    data = None
 
     while error:
         try:
