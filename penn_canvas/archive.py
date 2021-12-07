@@ -220,7 +220,11 @@ def archive_main(
         == quizzes
         is False
     ):
-        assignments = discussions = grades = quizzes = True
+        content = (
+            announcements
+        ) = (
+            modules
+        ) = pages = syllabus = assignments = discussions = grades = quizzes = True
 
     def archive_content(course, course_path, canvas, verbose):
         export = course.export_content(export_type="zip", skip_notifications=True)
