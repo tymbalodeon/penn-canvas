@@ -253,8 +253,6 @@ def archive_main(
         announcements_path = course_path / "Announcements"
         if not announcements_path.exists():
             Path.mkdir(announcements_path)
-        course_string = f"course_{course.id}"
-        print(course_string)
         announcements = [
             announcement
             for announcement in course.get_discussion_topics(only_announcements=True)
