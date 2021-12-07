@@ -30,7 +30,7 @@ def archive(
         ..., help="The course whose discussions you want to archive."
     ),
     instance: str = Argument(
-        "open",
+        "prod",
         help="The Canvas instance to use.",
     ),
     verbose: bool = Option(
