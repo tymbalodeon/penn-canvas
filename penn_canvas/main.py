@@ -46,10 +46,25 @@ def archive(
         "--content",
         help="Export course content in the archive output.",
     ),
+    announcements: bool = Option(
+        False,
+        "--announcements",
+        help="Export course announcements in the archive output.",
+    ),
+    modules: bool = Option(
+        False,
+        "--modules",
+        help="Export course modules in the archive output.",
+    ),
     pages: bool = Option(
         False,
         "--pages",
         help="Export course pages in the archive output.",
+    ),
+    syllabus: bool = Option(
+        False,
+        "--syllabus",
+        help="Export course syllabus in the archive output.",
     ),
     assignments: bool = Option(
         False,
@@ -88,7 +103,10 @@ def archive(
         verbose,
         timestamp,
         content,
+        announcements,
+        modules,
         pages,
+        syllabus,
         assignments,
         discussions,
         grades,

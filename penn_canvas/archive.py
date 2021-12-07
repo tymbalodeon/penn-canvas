@@ -1,6 +1,7 @@
 from datetime import datetime
 from html.parser import HTMLParser
 from io import StringIO
+from json import loads
 from os import remove
 from pathlib import Path
 from re import search
@@ -11,6 +12,7 @@ import requests
 from pandas import DataFrame, read_csv
 from typer import echo, progressbar
 
+from .config import get_config_option
 from .helpers import get_canvas, get_command_paths
 from .style import color
 
@@ -197,13 +199,27 @@ def archive_main(
     verbose,
     use_timestamp,
     content,
+    announcements,
+    modules,
     pages,
+    syllabus,
     assignments,
     discussions,
     grades,
     quizzes,
 ):
-    if content == pages == assignments == discussions == grades == quizzes is False:
+    if (
+        content
+        == announcements
+        == modules
+        == pages
+        == syllabus
+        == assignments
+        == discussions
+        == grades
+        == quizzes
+        is False
+    ):
         assignments = discussions = grades = quizzes = True
 
     def archive_content(course, course_path, canvas, verbose):
@@ -229,17 +245,75 @@ def archive_main(
             unzipper.extractall(content_path)
         remove(zip_path)
 
+    def archive_announcements(course, course_path):
+        announcements_path = course_path / "Announcements"
+        if not announcements_path.exists():
+            Path.mkdir(announcements_path)
+        course_string = f"course_{course.id}"
+        print(course_string)
+        announcements = [
+            announcement
+            for announcement in course.get_discussion_topics(only_announcements=True)
+        ]
+        for announcement in announcements:
+            title = (
+                announcement.title.replace(" ", "_").replace("/", "-").replace(":", "-")
+            )
+            title_path = announcements_path / f"{title}.txt"
+            with open(title_path, "w") as announcement_file:
+                announcement_file.write(strip_tags(announcement.message))
+
+    def archive_modules(course, course_path):
+        modules_path = course_path / "Modules"
+        if not modules_path.exists():
+            Path.mkdir(modules_path)
+        modules = [module for module in course.get_modules()]
+        for module in modules:
+            module_name = (
+                module.name.replace(" ", "_").replace("/", "-").replace(":", "-")
+            )
+            module_path = modules_path / module_name
+            if not module_path.exists():
+                Path.mkdir(module_path)
+            items = [item for item in module.get_module_items()]
+            for item in items:
+                url = item.url
+                headers = {
+                    "Authorization": (
+                        f"Bearer {get_config_option('canvas_keys', 'canvas_prod_key')}"
+                    )
+                }
+                response = requests.get(url, headers=headers)
+                content = loads(response.content.decode("utf-8"))
+                body = content["body"] if "body" in content else ""
+                item_title = (
+                    item.title.replace(" ", "_").replace("/", "-").replace(":", "-")
+                )
+                with open(module_path / f"{item_title}.txt", "w") as item_file:
+                    if body:
+                        item_file.write(strip_tags(body))
+                    else:
+                        item_file.write(f"[{item.type}]")
+
     def archive_pages(course, course_path):
         pages_path = course_path / "Pages"
         if not pages_path.exists():
             Path.mkdir(pages_path)
-        pages_csv = pages_path / "pages.csv"
         pages = [page for page in course.get_pages()]
-        pages = [
-            (page.title, strip_tags(page.show_latest_revision().body)) for page in pages
-        ]
-        pages = DataFrame(pages, columns=["Title", "Content"])
-        pages.to_csv(pages_csv, index=False)
+        for page in pages:
+            title = page.title.replace(" ", "_").replace("/", "-").replace(":", "-")
+            page_path = pages_path / f"{title}.txt"
+            with open(page_path, "w") as page_file:
+                page_file.write(strip_tags.page.show_latest_revision().body)
+
+    def archive_syllabus(course, course_path):
+        syllabus_path = course_path / "Syllabus"
+        if not syllabus_path.exists():
+            Path.mkdir(syllabus_path)
+        syllabus = course.syllabus_body
+        if syllabus:
+            with open(syllabus_path / "syllabus.txt", "w") as syllabus_file:
+                syllabus_file.write(strip_tags(syllabus))
 
     def archive_assignment(canvas, assignment, index=0, total=0):
         assignment_name = (
@@ -383,10 +457,11 @@ def archive_main(
             description_file.write(description)
 
     CANVAS = get_canvas(instance)
-    course = CANVAS.get_course(course_id)
+    course = CANVAS.get_course(course_id, include=["syllabus_body"])
+    course_name = course.name.replace("/", "-").replace(":", "-")
     discussion_total = 0
     quiz_total = 0
-    COURSE = RESULTS / f"{course.name}"
+    COURSE = RESULTS / course_name
     ASSIGNMENT_DIRECTORY = COURSE / "Assignments"
     DISCUSSION_DIRECTORY = COURSE / "Discussions"
     GRADE_DIRECTORY = COURSE / "Grades"
@@ -404,9 +479,18 @@ def archive_main(
     if content:
         echo(") Exporting content...")
         archive_content(course, COURSE, CANVAS, verbose)
+    if announcements:
+        echo(") Exporting announcements...")
+        archive_announcements(course, COURSE)
+    if modules:
+        echo(") Exporting modules...")
+        archive_modules(course, COURSE)
     if pages:
         echo(") Exporting pages...")
         archive_pages(course, COURSE)
+    if syllabus:
+        echo(") Exporting syllabus...")
+        archive_syllabus(course, COURSE)
     if assignments:
         assignments, assignment_total = get_assignments(course)
         echo(") Processing assignments...")
