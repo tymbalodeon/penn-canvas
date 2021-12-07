@@ -281,23 +281,31 @@ def archive_main(
                 Path.mkdir(module_path)
             items = [item for item in module.get_module_items()]
             for item in items:
-                url = item.url
-                headers = {
-                    "Authorization": (
-                        f"Bearer {get_config_option('canvas_keys', 'canvas_prod_key')}"
-                    )
-                }
-                response = requests.get(url, headers=headers)
-                content = loads(response.content.decode("utf-8"))
-                body = content["body"] if "body" in content else ""
+                body = ""
+                try:
+                    url = item.url
+                except Exception:
+                    url = ""
+                if url:
+                    headers = {
+                        "Authorization": (
+                            "Bearer"
+                            f" {get_config_option('canvas_keys', 'canvas_prod_key')}"
+                        )
+                    }
+                    response = requests.get(url, headers=headers)
+                    content = loads(response.content.decode("utf-8"))
+                    body = content["body"] if "body" in content else ""
                 item_title = (
                     item.title.replace(" ", "_").replace("/", "-").replace(":", "-")
                 )
                 with open(module_path / f"{item_title}.txt", "w") as item_file:
                     if body:
                         item_file.write(strip_tags(body))
-                    else:
+                    elif url:
                         item_file.write(f"[{item.type}]")
+                    else:
+                        item_file.write("[missing url]")
 
     def archive_pages(course, course_path):
         pages_path = course_path / "Pages"
