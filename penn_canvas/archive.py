@@ -304,6 +304,12 @@ def archive_main(
                                 except Exception:
                                     name = item.title
                                     extension = ""
+                            name = (
+                                name.replace("/", "-")
+                                .replace(":", "-")
+                                .replace(" ", "_")
+                                .replace('"', "")
+                            )
                             filename = (
                                 f"{name}.{extension.lower()}"
                                 if extension
