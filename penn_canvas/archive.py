@@ -295,6 +295,29 @@ def archive_main(
                     }
                     response = requests.get(url, headers=headers)
                     content = loads(response.content.decode("utf-8"))
+                    if item.type == "File":
+                        file_url = content["url"] if "url" in content else ""
+                        if file_url:
+                            try:
+                                name, extension = item.filename.split(".")
+                            except Exception:
+                                try:
+                                    name, extension = item.title.split(".")
+                                except Exception:
+                                    name = item.title
+                                    extension = ""
+                            filename = (
+                                f"{name}.{extension.lower()}"
+                                if extension
+                                else f"{name}.txt"
+                            )
+                            with open(module_path / filename, "wb") as stream:
+                                response = requests.get(
+                                    file_url, headers=headers, stream=True
+                                )
+                                for chunk in response.iter_content(chunk_size=128):
+                                    stream.write(chunk)
+                            continue
                     body = content["body"] if "body" in content else ""
                 item_title = (
                     item.title.replace(" ", "_").replace("/", "-").replace(":", "-")
