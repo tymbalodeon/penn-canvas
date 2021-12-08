@@ -9,7 +9,7 @@ from time import sleep
 from zipfile import ZipFile
 
 import requests
-from pandas import DataFrame, read_csv
+from pandas import DataFrame
 from typer import echo, progressbar
 
 from .config import get_config_option
@@ -53,20 +53,28 @@ def get_discussions(course):
     return discussions, len(discussions)
 
 
-def get_students(course):
+def get_enrollments(course):
     echo(") Finding students...")
-    students = [
+    enrollments = [
         enrollment
         for enrollment in course.get_enrollments()
         if enrollment.type == "StudentEnrollment"
     ]
-    return students, len(students)
+    return enrollments
 
 
 def get_quizzes(course):
     echo(") Finding quizzes...")
     quizzes = [quiz for quiz in course.get_quizzes()]
     return quizzes, len(quizzes)
+
+
+def format_name(name):
+    return name.strip().replace("/", "-").replace(":", "-")
+
+
+def get_submission_score(submission):
+    return round(float(submission.score), 2) if submission.score else submission.score
 
 
 def process_submission(
@@ -258,9 +266,7 @@ def archive_main(
             for announcement in course.get_discussion_topics(only_announcements=True)
         ]
         for announcement in announcements:
-            title = (
-                announcement.title.replace(" ", "_").replace("/", "-").replace(":", "-")
-            )
+            title = format_name(announcement.title)
             title_path = announcements_path / f"{title}.txt"
             with open(title_path, "w") as announcement_file:
                 announcement_file.write(strip_tags(announcement.message))
@@ -271,9 +277,7 @@ def archive_main(
             Path.mkdir(modules_path)
         modules = [module for module in course.get_modules()]
         for module in modules:
-            module_name = (
-                module.name.replace(" ", "_").replace("/", "-").replace(":", "-")
-            )
+            module_name = format_name(module.name)
             module_path = modules_path / module_name
             if not module_path.exists():
                 Path.mkdir(module_path)
@@ -304,12 +308,7 @@ def archive_main(
                                 except Exception:
                                     name = item.title
                                     extension = ""
-                            name = (
-                                name.replace("/", "-")
-                                .replace(":", "-")
-                                .replace(" ", "_")
-                                .replace('"', "")
-                            )
+                            name = format_name(name)
                             filename = (
                                 f"{name}.{extension.lower()}"
                                 if extension
@@ -323,9 +322,7 @@ def archive_main(
                                     stream.write(chunk)
                             continue
                     body = content["body"] if "body" in content else ""
-                item_title = (
-                    item.title.replace(" ", "_").replace("/", "-").replace(":", "-")
-                )
+                item_title = format_name(item.title)
                 with open(module_path / f"{item_title}.txt", "w") as item_file:
                     if body:
                         item_file.write(strip_tags(body))
@@ -340,7 +337,7 @@ def archive_main(
             Path.mkdir(pages_path)
         pages = [page for page in course.get_pages()]
         for page in pages:
-            title = page.title.replace(" ", "_").replace("/", "-").replace(":", "-")
+            title = format_name(page.title)
             page_path = pages_path / f"{title}.txt"
             with open(page_path, "w") as page_file:
                 page_file.write(strip_tags.page.show_latest_revision().body)
@@ -354,13 +351,8 @@ def archive_main(
             with open(syllabus_path / "syllabus.txt", "w") as syllabus_file:
                 syllabus_file.write(strip_tags(syllabus))
 
-    def archive_assignment(canvas, assignment, index=0, total=0):
-        assignment_name = (
-            assignment.name.strip()
-            .replace(" ", "_")
-            .replace("/", "-")
-            .replace(":", "-")
-        )
+    def archive_assignment(canvas, assignment, index=0, total=0, verbose=False):
+        assignment_name = format_name(assignment.name)
         assignment_path = ASSIGNMENT_DIRECTORY / assignment_name
         if not assignment_path.exists():
             Path.mkdir(assignment_path)
@@ -400,13 +392,8 @@ def archive_main(
         with open(description_path, "w") as assignment_file:
             assignment_file.write(description)
 
-    def archive_discussion(canvas, discussion, verbose=False, index=0, total=0):
-        discussion_name = (
-            discussion.title.strip()
-            .replace(" ", "_")
-            .replace("/", "-")
-            .replace(":", "-")
-        )
+    def archive_discussion(canvas, discussion, index=0, total=0, verbose=False):
+        discussion_name = format_name(discussion.title)
         discussion_path = DISCUSSION_DIRECTORY / discussion_name
         if not discussion_path.exists():
             Path.mkdir(discussion_path)
@@ -444,31 +431,43 @@ def archive_main(
         with open(description_path, "w") as description_file:
             description_file.write(description)
 
-    def archive_grade(canvas, student, index=0, total=0, verbose=False):
-        grades_path = GRADE_DIRECTORY / "Grades.csv"
-        name = canvas.get_user(student.user_id).name
-        grade = student.grades["final_grade"]
-        score = student.grades["final_score"]
-        grades = DataFrame(
-            {"Student": [name], "Final Grade": [grade], "Final Score": [score]},
-        )
-        if grades_path.exists():
-            grades = read_csv(grades_path).append(grades).drop_duplicates("Student")
-        grades.to_csv(grades_path, index=False)
-        if verbose:
-            user_display = color(name, "cyan")
-            echo(
-                f" - ({index + 1}/{total}) {user_display}:"
-                f" {color(grade, 'yellow')} ({score})"
-            )
+    def archive_grade(enrollment, submissions):
+        def get_score_from_submissions(submissions, user_id):
+            return next(item[1] for item in submissions if item[0] == user_id)
+
+        user_id = enrollment.user_id
+        user = enrollment.user
+        name = user["sortable_name"]
+        sis_user_id = user["sis_user_id"]
+        login_id = user["login_id"]
+        section_id = enrollment.sis_section_id
+        student_data = [name, user_id, sis_user_id, login_id, section_id]
+        submission_scores = [
+            get_score_from_submissions(submission[1], user_id)
+            for submission in submissions
+        ]
+        current_score = enrollment.grades["current_score"]
+        unposted_current_score = enrollment.grades["unposted_current_score"]
+        final_score = enrollment.grades["final_score"]
+        unposted_final_score = enrollment.grades["unposted_final_score"]
+        current_grade = enrollment.grades["current_grade"]
+        unposted_current_grade = enrollment.grades["unposted_current_grade"]
+        final_grade = enrollment.grades["final_grade"]
+        unposted_final_grade = enrollment.grades["unposted_final_grade"]
+        total_scores = [
+            current_score,
+            unposted_current_score,
+            final_score,
+            unposted_final_score,
+            current_grade,
+            unposted_current_grade,
+            final_grade,
+            unposted_final_grade,
+        ]
+        return student_data + submission_scores + total_scores
 
     def archive_quizzes(quiz):
-        title = (
-            quiz.title.replace("-", "")
-            .replace(" ", "_")
-            .replace("/", "-")
-            .replace(":", "-")
-        )
+        title = format_name(quiz.title)
         description = strip_tags(quiz.description)
         questions = [
             [
@@ -497,7 +496,7 @@ def archive_main(
 
     CANVAS = get_canvas(instance)
     course = CANVAS.get_course(course_id, include=["syllabus_body"])
-    course_name = course.name.replace("/", "-").replace(":", "-")
+    course_name = format_name(course.name)
     discussion_total = 0
     quiz_total = 0
     COURSE = RESULTS / course_name
@@ -530,39 +529,78 @@ def archive_main(
     if syllabus:
         echo(") Exporting syllabus...")
         archive_syllabus(course, COURSE)
+    assignment_objects = []
     if assignments:
-        assignments, assignment_total = get_assignments(course)
         echo(") Processing assignments...")
+        assignment_objects, assignment_total = get_assignments(course)
         if verbose:
-            for index, assignment in enumerate(assignments):
-                archive_assignment(CANVAS, assignment, index, assignment_total)
+            for index, assignment in enumerate(assignment_objects):
+                archive_assignment(CANVAS, assignment, index, assignment_total, verbose)
         else:
-            with progressbar(assignments, length=assignment_total) as progress:
+            with progressbar(assignment_objects, length=assignment_total) as progress:
                 for assignment in progress:
                     archive_assignment(CANVAS, assignment)
     if discussions:
-        discussions, discussion_total = get_discussions(course)
         echo(") Processing discussions...")
+        discussions, discussion_total = get_discussions(course)
         if verbose:
             for index, discussion in enumerate(discussions):
-                archive_discussion(CANVAS, discussion, True, index, discussion_total)
+                archive_discussion(CANVAS, discussion, index, discussion_total, verbose)
         else:
             with progressbar(discussions, length=discussion_total) as progress:
                 for discussion in progress:
                     archive_discussion(CANVAS, discussion)
     if grades:
-        students, student_total = get_students(course)
         echo(") Processing grades...")
-        if verbose:
-            for index, student in enumerate(students):
-                archive_grade(CANVAS, student, index, student_total, verbose)
-        else:
-            with progressbar(students, length=student_total) as progress:
-                for assignment in progress:
-                    archive_assignment(CANVAS, assignment)
+        enrollments = get_enrollments(course)
+        if not assignments:
+            assignment_objects, assignment_total = get_assignments(course)
+        assignment_points = (
+            ["Points Possible"]
+            + [""] * 4
+            + [assignment.points_possible for assignment in assignment_objects]
+            + (["(read only)"] * 8)
+        )
+        submissions = [
+            (
+                format_name(assignment.name),
+                [
+                    (submission.user_id, get_submission_score(submission))
+                    for submission in assignment.get_submissions()
+                ],
+            )
+            for assignment in assignment_objects
+        ]
+        assignment_names = [submission[0] for submission in submissions]
+        columns = (
+            [
+                "Student",
+                "ID",
+                "SIS User ID",
+                "SIS Login ID",
+                "Section",
+            ]
+            + assignment_names
+            + [
+                "Current Score",
+                "Unposted Current Score",
+                "Final Score",
+                "Unposted Final Score",
+                "Current Grade",
+                "Unposted Current Grade",
+                "Final Grade",
+                "Unposted Final Grade",
+            ]
+        )
+        grades_path = GRADE_DIRECTORY / "Grades.csv"
+        rows = [assignment_points] + [
+            archive_grade(enrollment, submissions) for enrollment in enrollments
+        ]
+        grade_book = DataFrame(rows, columns=columns)
+        grade_book.to_csv(grades_path, index=False)
     if quizzes:
-        quizzes, quiz_total = get_quizzes(course)
         echo(") Processing quizzes...")
+        quizzes, quiz_total = get_quizzes(course)
         if verbose:
             for index, quiz in enumerate(quizzes):
                 archive_quizzes(quiz)
