@@ -2,6 +2,7 @@ from datetime import datetime
 from html.parser import HTMLParser
 from io import StringIO
 from json import loads
+from mimetypes import guess_extension
 from os import remove
 from pathlib import Path
 from re import search
@@ -9,6 +10,7 @@ from time import sleep
 from zipfile import ZipFile
 
 import requests
+from magic import from_file
 from pandas import DataFrame
 from typer import echo, progressbar
 
@@ -312,18 +314,24 @@ def archive_main(
                             filename = (
                                 f"{name}.{extension.lower()}"
                                 if extension
-                                else f"{name}.txt"
+                                else f"{name}"
                             )
-                            with open(module_path / filename, "wb") as stream:
+                            file_path = module_path / filename
+                            with open(file_path, "wb") as stream:
                                 response = requests.get(
                                     file_url, headers=headers, stream=True
                                 )
                                 for chunk in response.iter_content(chunk_size=128):
                                     stream.write(chunk)
+                            if not extension:
+                                mime_type = from_file(str(file_path), mime=True)
+                                file_path.rename(
+                                    f"{file_path}{guess_extension(mime_type)}"
+                                )
                             continue
                     body = content["body"] if "body" in content else ""
                 item_title = format_name(item.title)
-                with open(module_path / f"{item_title}.txt", "w") as item_file:
+                with open(module_path / f"{item_title}", "w") as item_file:
                     if body:
                         item_file.write(strip_tags(body))
                     elif url:
