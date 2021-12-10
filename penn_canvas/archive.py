@@ -9,9 +9,9 @@ from re import search
 from time import sleep
 from zipfile import ZipFile
 
-import requests
 from magic import from_file
 from pandas import DataFrame
+from requests import get
 from typer import echo, progressbar
 
 from .config import get_config_option
@@ -125,7 +125,7 @@ def process_submission(
             with open(
                 submissions_path / f"{name} ({user}).{extension}", "wb"
             ) as stream:
-                response = requests.get(url, stream=True)
+                response = get(url, stream=True)
                 for chunk in response.iter_content(chunk_size=128):
                     stream.write(chunk)
     except Exception:
@@ -247,7 +247,7 @@ def archive_main(
             sleep(8)
             progress = canvas.get_progress(progress_id)
         url = course.get_content_export(export).attachment["url"]
-        response = requests.get(url, stream=True)
+        response = get(url, stream=True)
         zip_path = course_path / "content.zip"
         content_path = course_path / "Content"
         if not content_path.exists():
@@ -285,11 +285,16 @@ def archive_main(
                 Path.mkdir(module_path)
             items = [item for item in module.get_module_items()]
             for item in items:
+                content = None
+                extension = ".txt"
                 body = ""
                 try:
                     url = item.url
                 except Exception:
-                    url = ""
+                    try:
+                        url = item.html_url
+                    except Exception:
+                        url = ""
                 if url:
                     headers = {
                         "Authorization": (
@@ -297,47 +302,54 @@ def archive_main(
                             f" {get_config_option('canvas_keys', 'canvas_prod_key')}"
                         )
                     }
-                    response = requests.get(url, headers=headers)
-                    content = loads(response.content.decode("utf-8"))
-                    if item.type == "File":
-                        file_url = content["url"] if "url" in content else ""
-                        if file_url:
-                            try:
-                                name, extension = item.filename.split(".")
-                            except Exception:
+                    response = get(url, headers=headers)
+                    try:
+                        content = loads(response.content.decode("utf-8"))
+                        if item.type == "File":
+                            file_url = content["url"] if "url" in content else ""
+                            if file_url:
                                 try:
-                                    name, extension = item.title.split(".")
+                                    name, extension = item.filename.split(".")
                                 except Exception:
-                                    name = item.title
-                                    extension = ""
-                            name = format_name(name)
-                            filename = (
-                                f"{name}.{extension.lower()}"
-                                if extension
-                                else f"{name}"
-                            )
-                            file_path = module_path / filename
-                            with open(file_path, "wb") as stream:
-                                response = requests.get(
-                                    file_url, headers=headers, stream=True
+                                    try:
+                                        name, extension = item.title.split(".")
+                                    except Exception:
+                                        name = item.title
+                                        extension = ""
+                                name = format_name(name)
+                                filename = (
+                                    f"{name}.{extension.lower()}"
+                                    if extension
+                                    else f"{name}"
                                 )
-                                for chunk in response.iter_content(chunk_size=128):
-                                    stream.write(chunk)
-                            if not extension:
-                                mime_type = from_file(str(file_path), mime=True)
-                                file_path.rename(
-                                    f"{file_path}{guess_extension(mime_type)}"
-                                )
+                                file_path = module_path / filename
+                                with open(file_path, "wb") as stream:
+                                    response = get(
+                                        file_url, headers=headers, stream=True
+                                    )
+                                    for chunk in response.iter_content(chunk_size=128):
+                                        stream.write(chunk)
+                                if not extension:
+                                    mime_type = from_file(str(file_path), mime=True)
+                                    file_path.rename(
+                                        f"{file_path}{guess_extension(mime_type)}"
+                                    )
                             continue
-                    body = content["body"] if "body" in content else ""
+                        body = content["body"] if "body" in content else ""
+                    except Exception:
+                        body = content = response.content.decode("latin_1")
+                        extension = ".html"
                 item_title = format_name(item.title)
-                with open(module_path / f"{item_title}", "w") as item_file:
-                    if body:
-                        item_file.write(strip_tags(body))
+                with open(module_path / f"{item_title}{extension}", "w") as item_file:
+                    if type(content) == str:
+                        file_content = body
+                    elif body:
+                        file_content = strip_tags(body)
                     elif url:
-                        item_file.write(f"[{item.type}]")
+                        file_content = f"[{item.type}]"
                     else:
-                        item_file.write("[missing url]")
+                        file_content = "[missing url]"
+                    item_file.write(file_content)
 
     def archive_pages(course, course_path):
         pages_path = course_path / "Pages"
