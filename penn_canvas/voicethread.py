@@ -69,7 +69,7 @@ def voicethread_main():
                 course.workflow_state,
                 voicethread_count,
             ]
-            row = [str(item) for item in row]
+            row = [str(item).replace(",", "-") for item in row]
             with open(results_path, "a") as results_file:
                 results_file.write("\n")
                 results_file.write(",".join(row))
