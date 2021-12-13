@@ -89,8 +89,7 @@ def filter_and_count_quizzes(quizzes, quiz_type, published):
 
 def is_new_quiz_assignment(assignment):
     try:
-        if assignment.is_quiz_lti_assignment:
-            return True
+        return assignment.is_quiz_lti_assignment
     except Exception:
         return False
 

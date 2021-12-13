@@ -1,20 +1,20 @@
 from typer import Argument, Option, Typer
 
-from penn_canvas.config import print_config, write_config_options
-from penn_canvas.investigate import investigate_main
-
 from .archive import archive_main
 from .bulk_enroll import bulk_enroll_main
 from .check_enrollment import check_enrollment_main
+from .config import print_config, write_config_options
 from .count_poll_everywhere import count_poll_everywhere_main
 from .count_quizzes import count_quizzes_main
 from .count_sites import count_sites_main
 from .email import email_main
+from .investigate import investigate_main
 from .module import module_main
 from .nso import nso_main
 from .open_canvas_bulk_action import open_canvas_bulk_action_main
 from .storage import storage_main
 from .tool import tool_main
+from .voicethread import voicethread_main
 
 app = Typer(
     help=(
@@ -22,6 +22,11 @@ app = Typer(
         " easier!"
     )
 )
+
+
+@app.command()
+def voicethread():
+    voicethread_main()
 
 
 @app.command()
