@@ -15,9 +15,9 @@ RESULTS = get_command_paths(COMMAND, no_input=True)[0]
 HEADERS = [
     "canvas course id",
     "course id",
-    "short name",
+    "course name",
     "account",
-    "term id",
+    "term",
     "status",
     "voicethread assignments",
 ]
