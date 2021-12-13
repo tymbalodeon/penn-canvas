@@ -16,7 +16,7 @@ HEADERS = [
     "canvas course id",
     "course id",
     "short name",
-    "account id",
+    "account",
     "term id",
     "status",
     "voicethread assignments",
@@ -59,12 +59,12 @@ def voicethread_main():
                 if is_voicethread_assignments(assignment)
             ]
             voicethread_count = len(assignments)
-            account_name = canvas.get_account(course.account_id).name
+            account_object = canvas.get_account(course.account_id)
             row = [
                 course.id,
                 course.sis_course_id,
                 course.name,
-                account_name,
+                account_object,
                 term,
                 course.workflow_state,
                 voicethread_count,
