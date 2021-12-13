@@ -59,23 +59,17 @@ def get_command_paths(
     COMMAND_DIRECTORY = BASE / f"{command}"
     INPUT = COMMAND_DIRECTORY / "Input"
     PATHS = [INPUT, (COMMAND_DIRECTORY / "RESULTS")]
-
     if logs:
         PATHS.append(COMMAND_DIRECTORY / "logs")
-
     if processed:
         PATHS.append(COMMAND_DIRECTORY / ".processed")
-
     if no_input:
         PATHS.remove(INPUT)
-
     if completed:
         PATHS.append(COMMAND_DIRECTORY / "Completed")
-
     for path in PATHS:
         if not path.exists():
             Path.mkdir(path, parents=True)
-
     return tuple(PATHS)
 
 
