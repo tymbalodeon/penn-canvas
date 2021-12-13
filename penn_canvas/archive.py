@@ -488,7 +488,9 @@ def archive_main(
 
     def archive_quizzes(quiz):
         title = format_name(quiz.title)
-        description = strip_tags(quiz.description)
+        description = (
+            strip_tags(quiz.description) if quiz.description else quiz.description
+        )
         questions = [
             [
                 strip_tags(question.question_text),
@@ -511,8 +513,9 @@ def archive_main(
         questions = DataFrame(questions, columns=["Question", "Answers"])
         user_scores.to_csv(scores_path, index=False)
         questions.to_csv(questions_path, index=False)
-        with open(description_path, "w") as description_file:
-            description_file.write(description)
+        if description:
+            with open(description_path, "w") as description_file:
+                description_file.write(description)
 
     CANVAS = get_canvas(instance)
     course = CANVAS.get_course(course_id, include=["syllabus_body"])
