@@ -170,24 +170,24 @@ def process_entry(
     total_entries,
     discussion,
     canvas,
-    use_timestamp,
+    csv_style,
 ):
     user = " ".join(entry.user["display_name"].split())
     user_id = entry.user["id"]
     canvas_user = canvas.get_user(user_id)
-    email = canvas_user.email
+    email = canvas_user.email if csv_style else ""
     message = " ".join(strip_tags(entry.message.replace("\n", " ")).strip().split())
     timestamp = (
-        datetime.strptime(entry.created_at, "%Y-%m-%dT%H:%M:%SZ").strftime(
+        ""
+        if csv_style
+        else datetime.strptime(entry.created_at, "%Y-%m-%dT%H:%M:%SZ").strftime(
             "%m/%d/%Y, %H:%M:%S"
         )
-        if use_timestamp
-        else ""
     )
     if verbose:
         user_display = color(user, "cyan")
-        timestamp_display = color(timestamp, "yellow") if use_timestamp else ""
-        email_display = color(email, "yellow") if not use_timestamp else ""
+        timestamp_display = color(timestamp, "yellow") if csv_style else ""
+        email_display = color(email, "yellow") if not csv_style else ""
         discussion_display = color(discussion.title.strip(), "magenta")
         if entry_index == 0:
             echo(f"==== DISCUSSION {discussion_index + 1} ====")
@@ -195,12 +195,10 @@ def process_entry(
             f"- [{discussion_index + 1}/{total_discussions}]"
             f" ({entry_index + 1}/{total_entries}) {discussion_display}"
             f" {user_display}"
-            f" {timestamp_display if use_timestamp else email_display}"
+            f" {timestamp_display if csv_style else email_display}"
             f" {message[:40]}..."
         )
-    return (
-        [user, email, timestamp, message] if use_timestamp else [user, email, message]
-    )
+    return [user, email, message] if csv_style else (user, timestamp, message)
 
 
 def archive_main(
@@ -337,13 +335,14 @@ def archive_main(
                             continue
                         body = content["body"] if "body" in content else ""
                     except Exception:
-                        body = content = response.content.decode("latin_1")
-                        extension = ".html"
+                        body = (
+                            f"[ExternalUrl]: {item.external_url}"
+                            if item.type == "ExternalUrl"
+                            else ""
+                        )
                 item_title = format_name(item.title)
                 with open(module_path / f"{item_title}{extension}", "w") as item_file:
-                    if type(content) == str:
-                        file_content = body
-                    elif body:
+                    if body:
                         file_content = strip_tags(body)
                     elif url:
                         file_content = f"[{item.type}]"
@@ -412,12 +411,13 @@ def archive_main(
         with open(description_path, "w") as assignment_file:
             assignment_file.write(description)
 
-    def archive_discussion(canvas, discussion, index=0, total=0, verbose=False):
+    def archive_discussion(
+        canvas, discussion, csv_style=False, index=0, total=0, verbose=False
+    ):
         discussion_name = format_name(discussion.title)
         discussion_path = DISCUSSION_DIRECTORY / discussion_name
         if not discussion_path.exists():
             Path.mkdir(discussion_path)
-        posts_path = discussion_path / f"{discussion_name}_POSTS.csv"
         description_path = discussion_path / f"{discussion_name}_DESCRIPTION.txt"
         entries = [entry for entry in discussion.get_topic_entries()]
         if verbose and not entries:
@@ -433,7 +433,7 @@ def archive_main(
                 len(entries),
                 discussion,
                 canvas,
-                use_timestamp,
+                csv_style,
             )
             for entry_index, entry in enumerate(entries)
         ]
@@ -446,12 +446,19 @@ def archive_main(
         columns = ["User", "Email", "Timestamp", "Post"]
         if not use_timestamp:
             columns.remove("Timestamp")
-        entries = DataFrame(entries, columns=columns)
-        entries.to_csv(posts_path, index=False)
+        if csv_style:
+            entries = DataFrame(entries, columns=columns)
+            posts_path = discussion_path / f"{discussion_name}_POSTS.csv"
+            entries.to_csv(posts_path, index=False)
+        else:
+            posts_path = discussion_path / f"{discussion_name}_POSTS.txt"
+            with open(posts_path, "w") as posts_file:
+                for user, timestamp, message in entries:
+                    posts_file.write(f"\n{user}\n{timestamp}\n\n{message}\n")
         with open(description_path, "w") as description_file:
             description_file.write(description)
 
-    def archive_grade(enrollment, submissions):
+    def archive_grade(canvas, enrollment, submissions):
         def get_score_from_submissions(submissions, user_id):
             return next(item[1] for item in submissions if item[0] == user_id)
 
@@ -460,7 +467,7 @@ def archive_main(
         name = user["sortable_name"]
         sis_user_id = user["sis_user_id"]
         login_id = user["login_id"]
-        section_id = enrollment.sis_section_id
+        section_id = canvas.get_section(enrollment.course_section_id).name
         student_data = [name, user_id, sis_user_id, login_id, section_id]
         submission_scores = [
             get_score_from_submissions(submission[1], user_id)
@@ -568,18 +575,34 @@ def archive_main(
         discussions, discussion_total = get_discussions(course)
         if verbose:
             for index, discussion in enumerate(discussions):
-                archive_discussion(CANVAS, discussion, index, discussion_total, verbose)
+                archive_discussion(
+                    CANVAS,
+                    discussion,
+                    index=index,
+                    total=discussion_total,
+                    verbose=verbose,
+                )
         else:
             with progressbar(discussions, length=discussion_total) as progress:
                 for discussion in progress:
                     archive_discussion(CANVAS, discussion)
     if grades:
+
+        def get_manual_posting(assignment):
+            return "Manual Posting" if assignment.post_manually else ""
+
         echo(") Processing grades...")
         enrollments = get_enrollments(course)
         if not assignments:
             assignment_objects, assignment_total = get_assignments(course)
+        assignment_objects = [
+            assignment for assignment in assignment_objects if assignment.published
+        ]
+        assignment_posted = [""] * 4 + [
+            get_manual_posting(assignment) for assignment in assignment_objects
+        ]
         assignment_points = (
-            ["Points Possible"]
+            ["    Points Possible"]
             + [""] * 4
             + [assignment.points_possible for assignment in assignment_objects]
             + (["(read only)"] * 8)
@@ -616,9 +639,14 @@ def archive_main(
             ]
         )
         grades_path = GRADE_DIRECTORY / "Grades.csv"
-        rows = [assignment_points] + [
-            archive_grade(enrollment, submissions) for enrollment in enrollments
-        ]
+        rows = (
+            [assignment_posted]
+            + [assignment_points]
+            + [
+                archive_grade(CANVAS, enrollment, submissions)
+                for enrollment in enrollments
+            ]
+        )
         grade_book = DataFrame(rows, columns=columns)
         grade_book.to_csv(grades_path, index=False)
     if quizzes:
