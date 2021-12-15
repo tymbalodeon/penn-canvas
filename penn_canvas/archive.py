@@ -598,7 +598,7 @@ def archive_main(
         assignment_objects = [
             assignment for assignment in assignment_objects if assignment.published
         ]
-        assignment_posted = [""] * 4 + [
+        assignment_posted = [""] * 5 + [
             get_manual_posting(assignment) for assignment in assignment_objects
         ]
         assignment_points = (
