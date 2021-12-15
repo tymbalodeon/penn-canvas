@@ -359,7 +359,7 @@ def archive_main(
             title = format_name(page.title)
             page_path = pages_path / f"{title}.txt"
             with open(page_path, "w") as page_file:
-                page_file.write(strip_tags.page.show_latest_revision().body)
+                page_file.write(strip_tags(page.show_latest_revision().body))
 
     def archive_syllabus(course, course_path):
         syllabus_path = course_path / "Syllabus"
