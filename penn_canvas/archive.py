@@ -513,7 +513,10 @@ def archive_main(
         if not quiz_path.exists():
             Path.mkdir(quiz_path)
         user_scores = [
-            [CANVAS.get_user(submission.user_id).name, round(submission.score, 2)]
+            [
+                CANVAS.get_user(submission.user_id).name,
+                round(submission.score, 2) if submission.score else submission.score,
+            ]
             for submission in submissions
         ]
         user_scores = DataFrame(user_scores, columns=["Student", "Score"])
