@@ -565,6 +565,30 @@ def archive_main(
     assignment_objects = []
     if assignments:
         echo(") Processing assignments...")
+        categories = [category for category in course.get_group_categories()]
+        for category in categories:
+            groups = [group for group in category.get_groups()]
+            groups_directory = ASSIGNMENT_DIRECTORY / category.name
+            if not groups_directory.exists():
+                Path.mkdir(groups_directory)
+            for group in groups:
+                group_directory = groups_directory / group.name
+                if not group_directory.exists():
+                    Path.mkdir(group_directory)
+                files = [group_file for group_file in group.get_files()]
+                for group_file in files:
+                    try:
+                        name, extension = group_file.display_name.split(".")
+                    except Exception:
+                        name = group_file.filename
+                        extension = "txt"
+                    with open(
+                        group_directory / f"{name}.{extension}",
+                        "wb",
+                    ) as stream:
+                        response = get(group_file.url, stream=True)
+                        for chunk in response.iter_content(chunk_size=128):
+                            stream.write(chunk)
         assignment_objects, assignment_total = get_assignments(course)
         if verbose:
             for index, assignment in enumerate(assignment_objects):
