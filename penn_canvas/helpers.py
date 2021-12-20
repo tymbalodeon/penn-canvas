@@ -14,7 +14,7 @@ from .config import get_penn_canvas_config
 from .style import color
 
 COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
-BOX_PATH = Path.home() / "Box"
+BOX_PATH = Path.home() / "Library/CloudStorage/Box-Box"
 BOX_CLI_PATH = BOX_PATH / "Penn Canvas CLI"
 YEAR = datetime.now().strftime("%Y")
 MONTH = datetime.now().strftime("%B")
