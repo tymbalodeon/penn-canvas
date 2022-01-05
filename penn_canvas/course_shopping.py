@@ -15,11 +15,13 @@ get a provisioning report of all courses
 
 from datetime import datetime
 
-from pandas import read_csv
+from pandas import read_csv, concat
 from typer import echo
+from csv import writer
 
 from .helpers import (
     TODAY,
+    get_processed,
     YEAR,
     color,
     find_input,
@@ -36,18 +38,32 @@ from .helpers import (
 
 HEADERS = ["canvas_course_id", "course_id", "canvas_account_id", "status"]
 CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:4]]
+PROCESSED_HEADERS = [HEADERS[0], HEADERS[-1]]
 
 
-def cleanup_data(data):
+def cleanup_data(data, args):
+    processed_courses, processed_errors, new = args
     data.drop_duplicates(subset=["canvas_course_id"], inplace=True)
     data.dropna(subset=["course_id"], inplace=True)
     data = data.astype("string", copy=False, errors="ignore")
+    data = data[~data["canvas_course_id"].isin(processed_courses)]
+    already_processed_count = len(processed_courses)
+    if new:
+        data = data[~data["canvas_course_id"].isin(processed_errors)]
+        already_processed_count = already_processed_count + len(processed_errors)
+    if already_processed_count:
+        message = color(
+            f"SKIPPING {already_processed_count:,} PREVIOUSLY PROCESSED"
+            f" {'USER' if already_processed_count == 1 else 'USERS'}...",
+            "yellow",
+        )
+        echo(f") {message}")
     return data
 
 
 COMMAND = "Course Shopping"
 INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
-REPORTS, RESULTS = get_command_paths(COMMAND)
+REPORTS, RESULTS, PROCESSED = get_command_paths(COMMAND, processed=True)
 TIME = datetime.now().strftime("%d_%b_%Y")
 canvas_id_in_master = []
 SAS_ONL_ACCOUNT = "132413"
@@ -203,12 +219,10 @@ def course_contains_srs(course_id):
 #     outFile.close()
 
 
-def course_shopping_main(test, force, verbose):
+def course_shopping_main(test, force, verbose, new):
     def enable_course_shopping(course, canvas, verbose):
         index, canvas_course_id, course_id, canvas_account_id, status = course
-        if canvas_course_id in canvas_id_in_master:
-            status = "already enabled"
-        elif not canvas_account_id.isnumeric():
+        if not canvas_account_id.isnumeric():
             status = "invalid account id"
         elif not course_contains_srs(course_id):
             status = "not SRS"
@@ -270,10 +284,42 @@ def course_shopping_main(test, force, verbose):
                 f" {color(course_id, 'magenta')}:"
                 f" {color(status.upper(), 'green') if status == 'enabled' else color(status, 'yellow')}"
             )
+        if status in {
+            "not SRS",
+            "course opted out",
+            "school opted out",
+            "ignored subject",
+            "enabled",
+            "grad course",
+        }:
+            if canvas_course_id in PROCESSED_ERRORS:
+                processed_errors_csv = read_csv(PROCESSED_ERRORS_PATH)
+                processed_errors_csv = processed_errors_csv[
+                    processed_errors_csv["canvas course id"] != canvas_course_id
+                ]
+                processed_errors_csv.to_csv(PROCESSED_ERRORS_PATH, index=False)
+            with open(PROCESSED_PATH, "a+", newline="") as processed_file:
+                writer(processed_file).writerow([canvas_course_id, status])
+        elif canvas_course_id not in PROCESSED_ERRORS:
+            with open(PROCESSED_ERRORS_PATH, "a+", newline="") as processed_file:
+                writer(processed_file).writerow([canvas_course_id, status])
 
     reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
     RESULT_PATH = RESULTS / f"{YEAR}_course_shopping_enabled_{TODAY}.csv"
     START = get_start_index(force, RESULT_PATH, RESULTS)
+    PROCESSED_PATH = (
+        PROCESSED
+        / f"{YEAR}_course_shopping_processed_courses{'_test' if test else ''}.csv"
+    )
+    PROCESSED_ERRORS_PATH = (
+        PROCESSED
+        / f"{YEAR}_course_shopping_processed_errors{'_test' if test else ''}.csv"
+    )
+    PROCESSED_COURSES = get_processed(PROCESSED, PROCESSED_PATH, PROCESSED_HEADERS)
+    PROCESSED_ERRORS = get_processed(
+        PROCESSED, PROCESSED_ERRORS_PATH, PROCESSED_HEADERS
+    )
+    cleanup_data_args = (PROCESSED_COURSES, PROCESSED_ERRORS, new)
     report, TOTAL = process_input(
         reports,
         INPUT_FILE_NAME,
@@ -281,7 +327,8 @@ def course_shopping_main(test, force, verbose):
         CLEANUP_HEADERS,
         cleanup_data,
         missing_file_message,
-        start=START,
+        cleanup_data_args,
+        START,
     )
     make_csv_paths(
         RESULTS,
@@ -318,9 +365,38 @@ def process_result(result_path):
     for index, header in enumerate(renamed_headers):
         renamed_columns[HEADERS[index]] = header
     result.rename(columns=renamed_columns, inplace=True)
-    result["total"] = result["total"].astype(int, errors="ignore")
-    result.sort_values("total", ascending=False, inplace=True)
     result.fillna("N/A", inplace=True)
+    result = result[result["status"] != "already enabled"]
+    result.sort_values("course id", inplace=True)
+    invalid_id = result[result["status"] == "invalid account id"]
+    not_SRS = result[result["status"] == "not SRS"]
+    course_opted_out = result[result["status"] == "course opted out"]
+    school_opted_out = result[result["status"] == "school opted out"]
+    course_not_found = result[result["status"] == "course not found"]
+    ignored_subject = result[result["status"] == "ignored subject"]
+    failed_to_parse = result[result["status"] == "failed to parse course code"]
+    enabled = result[result["status"] == "enabled"]
+    failed_to_enable = result[result["status"] == "failed to enable"]
+    grad_course = result[result["status"] == "grad course"]
+    errors = concat(
+        [
+            failed_to_enable,
+            invalid_id,
+            course_not_found,
+            failed_to_parse,
+        ]
+    )
+    processed = concat(
+        [
+            not_SRS,
+            course_opted_out,
+            school_opted_out,
+            ignored_subject,
+            grad_course,
+            enabled,
+        ]
+    )
+    result = concat([errors, processed])
     result.to_csv(result_path, index=False)
 
 

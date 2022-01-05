@@ -52,8 +52,16 @@ def course_shopping(
     verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
     ),
+    new: bool = Option(
+        False,
+        "--new",
+        help=(
+            "Process only newly added users, skipping previous users that encountered"
+            " errors."
+        ),
+    ),
 ):
-    course_shopping_main(test, force, verbose)
+    course_shopping_main(test, force, verbose, new)
 
 
 @app.command()
