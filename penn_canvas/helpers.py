@@ -344,6 +344,13 @@ def get_canvas(instance="prod", verbose=True):
     return Canvas(url, key)
 
 
+def get_sub_accounts(canvas, account_id):
+    account = canvas.get_account(account_id)
+    return [str(account_id)] + [
+        str(account.id) for account in account.get_subaccounts(recursive=True)
+    ]
+
+
 def dynamic_to_csv(path, data_frame, condition):
     mode = "a" if condition else "w"
     data_frame.to_csv(path, mode=mode, header=not condition, index=False)

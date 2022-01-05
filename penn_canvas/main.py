@@ -1,5 +1,7 @@
 from typer import Argument, Option, Typer
 
+from penn_canvas.course_shopping import course_shopping_main
+
 from .archive import archive_main
 from .bulk_enroll import bulk_enroll_main
 from .check_enrollment import check_enrollment_main
@@ -27,6 +29,31 @@ app = Typer(
 @app.command()
 def voicethread():
     voicethread_main()
+
+
+@app.command()
+def course_shopping(
+    test: bool = Option(
+        False,
+        "--test",
+        help=(
+            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
+            " of production (https://canvas.upenn.edu/)."
+        ),
+    ),
+    force: bool = Option(
+        False,
+        "--force",
+        help=(
+            "Force the task to start from the beginning despite the presence of a"
+            " pre-existing incomplete result file and overwrite that file."
+        ),
+    ),
+    verbose: bool = Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
+):
+    course_shopping_main(test, force, verbose)
 
 
 @app.command()

@@ -2,7 +2,7 @@
 ~~~~~~~~~~~~ COURSE SHOPPING ~~~~~~~~~~~~~~~~
 get a provisioning report of all courses
 1. delete all columns but: canvas_id, sis_id, short_name, account_id, status
-2. delete all rows with blank sis_ids
+2. delete all rows with blank sis_ids !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 3. compare with master and remove and previously seen courses
 4. create one file for WH (sis_id !startwith SRS_) and one for rest
 5. run enable_course_shopping() on non wharton file
@@ -15,572 +15,351 @@ get a provisioning report of all courses
 
 from datetime import datetime
 
-import typer
+from pandas import read_csv
+from typer import echo
 
-from .helpers import find_subaccounts, get_canvas
+from .helpers import (
+    TODAY,
+    YEAR,
+    color,
+    find_input,
+    get_canvas,
+    get_command_paths,
+    get_start_index,
+    get_sub_accounts,
+    make_csv_paths,
+    make_index_headers,
+    make_skip_message,
+    process_input,
+    toggle_progress_bar,
+)
 
-TESTING = False
-TERM = "2021A"
+HEADERS = ["canvas_course_id", "course_id", "canvas_account_id", "status"]
+CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:4]]
 
+
+def cleanup_data(data):
+    data.drop_duplicates(subset=["canvas_course_id"], inplace=True)
+    data.dropna(subset=["course_id"], inplace=True)
+    data = data.astype("string", copy=False, errors="ignore")
+    return data
+
+
+COMMAND = "Course Shopping"
+INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
+REPORTS, RESULTS = get_command_paths(COMMAND)
 TIME = datetime.now().strftime("%d_%b_%Y")
-
-INFILE = f"data/course_shopping_{TIME}{'_test' if TESTING else ''}.csv"
-OUTFILE = f"data/course_shopping_enabled_{TIME}{'_test' if TESTING else ''}.csv"
-WH_OUTFILE = f"data/WH_course_shopping_enabled_{TIME}{'_test' if TESTING else ''}.csv"
-DISABLE_OUTFILE = (
-    f"data/course_shopping_disabled_{TIME}{'_test' if TESTING else ''}.csv"
-)
-WH_DISABLE_OUTFILE = (
-    f"data/WH_course_shopping_disabled_{TIME}{'_test' if TESTING else ''}.csv"
-)
-MASTER_FILE = f"data/course_shopping_master_{TERM}{'_test' if TESTING else ''}.csv"
-
 canvas_id_in_master = []
-
-WH_EXCLUDE = (
-    1570395,
-    1561313,
-    1547534,
-    1570415,
-    1557428,
-    1561900,
-    1569679,
-    1570197,
-    1556491,
-    1568283,
-    1571450,
-    1569376,
-    1568956,
-    1571142,
-    1557429,
-    1569235,
-    1556348,
-    1568292,
-    1560829,
-    1562996,
-    1569378,
-    1561940,
-    1557344,
-    1561720,
-    1562001,
-    1570626,
-    1561675,
-    1562002,
-    1568363,
-    1568432,
-    1570977,
-    1569407,
-    1561254,
-    1560744,
-    1561759,
-    1570413,
-    1571335,
-    1571258,
-    1571346,
-    1567954,
-    1567952,
-    1567970,
-    1570982,
-    1571220,
-    1571223,
-    1571226,
-    1571259,
-    1571247,
-    1571213,
-    1571228,
-    1561671,
-    1561674,
-    1561001,
-    1571466,
-    1571465,
-    1571464,
-    1571262,
-    1571480,
-    1571482,
-    1571481,
-    1571479,
-    1569321,
-    1558823,
-    1571264,
-    1557348,
-    1569541,
-    1569542,
-    1560288,
-    1567879,
-    1557350,
-    1568926,
-    1569318,
-    1571265,
-    1571266,
-    1558648,
-    1561859,
-    1571246,
-    1569543,
-    1570202,
-    1570446,
-    1570717,
-    1570718,
-    1571252,
-    1571364,
-    1570301,
-    1556034,
-    1554947,
-    1568466,
-    1568827,
-    1561296,
-    1561297,
-    1561298,
-    1561299,
-    1561264,
-    1571251,
-    1568963,
-    1569346,
-    1571267,
-    1570668,
-    1568923,
-    1570600,
-    1562905,
-    1567756,
-    1568631,
-    1571469,
-    1560739,
-    1560996,
-    1568515,
-    1568517,
-    1568518,
-    1568520,
-    1568522,
-    1568524,
-    1568526,
-    1568528,
-    1568530,
-    1568532,
-    1568534,
-    1568536,
-    1568538,
-    1568540,
-    1568542,
-    1568544,
-    1568546,
-    1568548,
-    1568550,
-    1568552,
-    1568554,
-    1568556,
-    1568558,
-    1568560,
-    1568561,
-    1568516,
-    1568519,
-    1568521,
-    1568523,
-    1568525,
-    1568527,
-    1568529,
-    1568531,
-    1568533,
-    1568535,
-    1568537,
-    1568539,
-    1568541,
-    1568543,
-    1568545,
-    1568547,
-    1568549,
-    1568551,
-    1568553,
-    1568555,
-    1568557,
-    1568559,
-    1568562,
-    1568563,
-    1568564,
-    1568511,
-    1568512,
-    1568513,
-    1568514,
-    1568565,
-    1568566,
-    1568567,
-    1568568,
-    1568569,
-    1557340,
-    1557268,
-    1557336,
-    1557341,
-    1557338,
-    1561872,
-    1557337,
-    1569470,
-    1569471,
-    1569472,
-    1569473,
-    1569474,
-    1569475,
-    1569476,
-    1569477,
-    1569478,
-    1569479,
-    1569480,
-    1569481,
-    1569482,
-    1569483,
-    1569484,
-    1569485,
-    1569486,
-    1569487,
-    1569488,
-    1569489,
-    1569490,
-    1569491,
-    1569492,
-    1569493,
-    1569494,
-    1569495,
-    1569496,
-    1569497,
-    1569498,
-    1569499,
-    1569500,
-    1569501,
-    1569502,
-    1569503,
-    1569504,
-    1569505,
-    1569506,
-    1569507,
-    1569508,
-    1569509,
-    1569510,
-    1569511,
-    1569512,
-    1560922,
-    1571374,
-    1571375,
-    1571376,
-    1571377,
-    1571378,
-    1571379,
-    1571380,
-    1571387,
-    1571381,
-    1571382,
-    1571383,
-    1571384,
-    1571388,
-    1571385,
-    1571386,
-    1569548,
-)
-
-
-SAS_ONL_ACCOUNT = 132413
-ADMIN_ACCOUNT = 131963
-WHARTON_ACCOUNT_ID = 81471
-SAS_ACCOUNT_ID = 99237
-SEAS_ACCOUNT_ID = 99238
-NURS_ACCOUNT_ID = 99239
-AN_ACCOUNT_ID = 99243
+SAS_ONL_ACCOUNT = "132413"
+ADMIN_ACCOUNT = "131963"
+WHARTON_ACCOUNT_ID = "81471"
+SAS_ACCOUNT_ID = "99237"
+SEAS_ACCOUNT_ID = "99238"
+NURS_ACCOUNT_ID = "99239"
+AN_ACCOUNT_ID = "99243"
 IGNORED_SUBJECTS = ["MAPP", "IMPA", "DYNM"]
 IGNORED_SITES = ["1529220"]
+SAS_IGNORED_ACCOUNTS = [SAS_ONL_ACCOUNT, ADMIN_ACCOUNT]
 
 
 def course_contains_srs(course_id):
-    return course_id.startswith("SRS_")
+    try:
+        return course_id.startswith("SRS_")
+    except Exception:
+        return False
 
 
-def section_contains_srs(canvas, canvas_id):
-    course = canvas.get_course(canvas_id)
-    sections = course.get_sections()
-
-    srs_section = next(
-        filter(lambda section: section.sis_section_id.startswith("SRS_"), sections),
-        None,
-    )
-
-    return bool(srs_section)
+# def section_contains_srs(canvas, canvas_id):
+#     course = canvas.get_course(canvas_id)
+#     sections = course.get_sections()
+#     srs_section = next(
+#         filter(lambda section: section.sis_section_id.startswith("SRS_"), sections),
+#         None,
+#     )
+#     return bool(srs_section)
 
 
-def load_master():
-    master = open(MASTER_FILE, "r")
-    master.readline()
+# def load_master():
+#     master = open(MASTER_FILE, "r")
+#     master.readline()
 
-    for line in master:
-        sis_id, canvas_id, visibility_status, published, notes = line.strip().split(",")
-        if visibility_status.strip() == "public_to_auth_users":
-            canvas_id_in_master.append(canvas_id.strip())
+#     for line in master:
+#         sis_id, canvas_id, visibility_status, published, notes = line.strip().split(",")
+#         if visibility_status.strip() == "public_to_auth_users":
+#             canvas_id_in_master.append(canvas_id.strip())
 
-    master.close()
+#     master.close()
 
 
-def enable_wharton_course_shopping(inputfile, outputfile):
-    canvas = get_canvas(TESTING)
+# def enable_wharton_course_shopping(inputfile, outputfile):
+#     canvas = get_canvas(TESTING)
 
-    WHARTON_ACCOUNT_ID = 81471
-    WHARTON_ACCOUNTS = find_subaccounts(canvas, WHARTON_ACCOUNT_ID)
-    SUB_ACCOUNT_EXCLUDE = 82603
+#     WHARTON_ACCOUNT_ID = 81471
+#     WHARTON_ACCOUNTS = get_sub_accounts(canvas, WHARTON_ACCOUNT_ID)
+#     SUB_ACCOUNT_EXCLUDE = 82603
 
-    dataFile = open(inputfile, "r")
-    dataFile.readline()
+#     dataFile = open(inputfile, "r")
+#     dataFile.readline()
 
-    outFile = open(outputfile, "w+")
-    outFile.write("sis_id, canvas_id, visibility_status, published, notes\n")
+#     outFile = open(outputfile, "w+")
+#     outFile.write("sis_id, canvas_id, visibility_status, published, notes\n")
 
-    for line in dataFile:
-        canvas_id, sis_id, short_name, account_id, status = line.replace(
-            "\n", ""
-        ).split(",")
+#     for line in dataFile:
+#         canvas_id, sis_id, short_name, account_id, status = line.replace(
+#             "\n", ""
+#         ).split(",")
 
-        if len(sis_id) > 0 and canvas_id not in canvas_id_in_master:
-            notes = ""
+#         if len(sis_id) > 0 and canvas_id not in canvas_id_in_master:
+#             notes = ""
+#             canvas_course = None
+
+#             try:
+#                 canvas_course = canvas.get_course(canvas_id)
+#                 published = status
+#             except Exception:
+#                 notes = "couldnt find course"
+#                 published = "ERROR"
+
+#             if canvas_course:
+#                 if not account_id.isnumeric():
+#                     print("\t Invalid account_id %s", account_id)
+#                 elif (
+#                     int(account_id) not in WHARTON_ACCOUNTS
+#                 ):  # then we should not update this site!!!!
+#                     print("\t school not participating")
+#                     notes += "/ NOT WHARTON"
+#                     outFile.write(
+#                         "%s, %s, %s, %s, %s\n"
+#                         % (sis_id, canvas_id, status, published, notes)
+#                     )
+
+#                 else:  # account id in WHARTON_ACCOUNTS
+#                     update = False
+#                     try:
+#                         # see if the course is connected to SRS
+#                         print("\t", canvas_id, sis_id, short_name, account_id, status)
+#                         update = False
+
+#                         in_SRS = section_contains_srs(canvas, canvas_id)
+#                         if in_SRS == False:
+#                             print("\t not in SRS")
+#                             notes += "\ not liked to SRS"
+#                             update = False
+#                         elif (
+#                             int(canvas_id) in WH_EXCLUDE
+#                             or account_id == SUB_ACCOUNT_EXCLUDE
+#                         ):
+#                             print("\t single site to ignore")
+#                             notes += "\ in exclude list"
+#                             update = False
+#                         else:  # we know the course is connected to SRS and not a special ignore site
+#                             update = True
+#                     except:
+#                         print("ERROR WITH COURSE: ", sis_id, canvas_id)
+#                         outFile.write(
+#                             "%s, %s, %s, %s, %s\n"
+#                             % (sis_id, canvas_id, "err", "err", "err")
+#                         )
+
+#                     if update:
+#                         print("\t\tshould update course")
+#                         try:
+#                             canvas_course.update(
+#                                 course={"is_public_to_auth_users": True}
+#                             )
+#                             status = "public_to_auth_users"
+#                         except:
+#                             status = "ERROR"
+
+#                         print(sis_id, canvas_id, status, published, notes)
+
+#                     outFile.write(
+#                         "%s, %s, %s, %s, %s\n"
+#                         % (sis_id, canvas_id, status, published, notes)
+#                     )
+
+#                     # add this line to master file
+#                     master = open(MASTER_FILE, "a")
+#                     master.write(
+#                         "%s, %s, %s, %s, %s\n"
+#                         % (sis_id, canvas_id, status, published, notes)
+#                     )
+#                     master.close()
+#         """
+
+#                 # NEED TO SWAP ALL THE FALSES TO TRUES
+#                 # Check if in Wharton
+#                 if int(account_id) in WHARTON_ACCOUNTS:
+#                     # check if linked to SRS -- use helper function
+#                     in_SRS = linked_to_SRS(course_id)
+#                     # STILL NEED TO MAKE CASE FOR EXECUTIVE MBA
+#                     if in_SRS == True:
+#                         update = True
+#                 else:
+#                     #CHeck if course's sections are associated with SRS (
+#         """
+
+#     dataFile.close()
+#     outFile.close()
+
+
+def course_shopping_main(test, force, verbose):
+    def enable_course_shopping(course, canvas, verbose):
+        index, canvas_course_id, course_id, canvas_account_id, status = course
+        if canvas_course_id in canvas_id_in_master:
+            status = "already enabled"
+        elif not canvas_account_id.isnumeric():
+            status = "invalid account id"
+        elif not course_contains_srs(course_id):
+            status = "not SRS"
+        elif canvas_course_id in IGNORED_SITES:
+            status = "course opted out"
+        elif canvas_account_id not in SUB_ACCOUNTS:
+            status = "school opted out"
+        else:
             canvas_course = None
-
             try:
-                canvas_course = canvas.get_course(canvas_id)
-                published = status
-            except:
-                notes = "couldnt find course"
-                published = "ERROR"
-
-            if canvas_course:
-                if not account_id.isnumeric():
-                    print("\t Invalid account_id %s", account_id)
-                elif (
-                    int(account_id) not in WHARTON_ACCOUNTS
-                ):  # then we should not update this site!!!!
-                    print("\t school not participating")
-                    notes += "/ NOT WHARTON"
-                    outFile.write(
-                        "%s, %s, %s, %s, %s\n"
-                        % (sis_id, canvas_id, status, published, notes)
-                    )
-
-                else:  # account id in WHARTON_ACCOUNTS
-                    update = False
-                    try:
-                        # see if the course is connected to SRS
-                        print("\t", canvas_id, sis_id, short_name, account_id, status)
-                        update = False
-
-                        in_SRS = section_contains_srs(canvas, canvas_id)
-                        if in_SRS == False:
-                            print("\t not in SRS")
-                            notes += "\ not liked to SRS"
-                            update = False
-                        elif (
-                            int(canvas_id) in WH_EXCLUDE
-                            or account_id == SUB_ACCOUNT_EXCLUDE
-                        ):
-                            print("\t single site to ignore")
-                            notes += "\ in exclude list"
-                            update = False
-                        else:  # we know the course is connected to SRS and not a special ignore site
-                            update = True
-                    except:
-                        print("ERROR WITH COURSE: ", sis_id, canvas_id)
-                        outFile.write(
-                            "%s, %s, %s, %s, %s\n"
-                            % (sis_id, canvas_id, "err", "err", "err")
-                        )
-
-                    if update:
-                        print("\t\tshould update course")
-                        try:
-                            canvas_course.update(
-                                course={"is_public_to_auth_users": True}
-                            )
-                            status = "public_to_auth_users"
-                        except:
-                            status = "ERROR"
-
-                        print(sis_id, canvas_id, status, published, notes)
-
-                    outFile.write(
-                        "%s, %s, %s, %s, %s\n"
-                        % (sis_id, canvas_id, status, published, notes)
-                    )
-
-                    # add this line to master file
-                    master = open(MASTER_FILE, "a")
-                    master.write(
-                        "%s, %s, %s, %s, %s\n"
-                        % (sis_id, canvas_id, status, published, notes)
-                    )
-                    master.close()
-        """
-
-                # NEED TO SWAP ALL THE FALSES TO TRUES
-                # Check if in Wharton
-                if int(account_id) in WHARTON_ACCOUNTS:
-                    # check if linked to SRS -- use helper function
-                    in_SRS = linked_to_SRS(course_id)
-                    # STILL NEED TO MAKE CASE FOR EXECUTIVE MBA
-                    if in_SRS == True:
-                        update = True
-                else:
-                    #CHeck if course's sections are associated with SRS (
-        """
-
-    dataFile.close()
-    outFile.close()
-
-
-def enable_course_shopping(courses, outputfile):
-    canvas = get_canvas(TESTING)
-
-    WHARTON_ACCOUNTS = find_subaccounts(canvas, WHARTON_ACCOUNT_ID)
-    SAS_ACCOUNTS = find_subaccounts(canvas, SAS_ACCOUNT_ID)
-    SAS_ACCOUNTS.remove(SAS_ONL_ACCOUNT)
-    SAS_ACCOUNTS.remove(ADMIN_ACCOUNT)
-    SEAS_ACCOUNTS = find_subaccounts(canvas, SEAS_ACCOUNT_ID)
-    NURS_ACCOUNTS = find_subaccounts(canvas, NURS_ACCOUNT_ID)
-    AN_ACCOUNTS = find_subaccounts(canvas, AN_ACCOUNT_ID)
-    SUB_ACCOUNTS = SAS_ACCOUNTS + SEAS_ACCOUNTS + NURS_ACCOUNTS + AN_ACCOUNTS
-
-    dataFile = open(courses, "r")
-    dataFile.readline()
-
-    outFile = open(outputfile, "w+")
-    outFile.write("sis_id, canvas_id, visibility_status, published, notes\n")
-
-    for course in courses.itertuples():
-        index, canvas_id, sis_id, short_name, account_id, status = course
-
-        if len(sis_id) > 0 and canvas_id not in canvas_id_in_master:
-
-            notes = ""
-            canvas_course = None
-
-            try:
-                canvas_course = canvas.get_course(canvas_id)
-                published = status
+                canvas_course = canvas.get_course(canvas_course_id)
             except Exception:
-                notes = "couldnt find course"
-                published = "ERROR"
-
+                status = "course not found"
             if canvas_course:
-                if not account_id.isnumeric():
-                    print(f"- ERROR: Invalid account id: {account_id}")
-                elif int(account_id) not in SUB_ACCOUNTS:
-                    print("- School not participating")
-                    notes += "/ subaccount opt out"
-                    outFile.write(
-                        f"{sis_id}, {canvas_id}, {status}, {published}, {notes}"
-                    )
-                else:
-                    try:
-                        update = False
-
-                        if not course_contains_srs(sis_id):
-                            print("- Course not in SRS.")
-                        elif int(canvas_id) in IGNORED_SITES:
-                            print("- Ignored course.")
-                        else:
-                            course_number = sis_id.split("-")[1]
-                            subject = sis_id.split("-")[0][4:]
-                            print(f"- COURSE NUMBER: {course_number}")
-                            print(f"- SUBJECT: {subject}")
-
-                            if int(account_id) in SEAS_ACCOUNTS:
-                                update = True
-                            else:
-                                if int(account_id) in NURS_ACCOUNTS:
-                                    if int(course_number) <= 600:
-                                        update = True
-                                elif (
-                                    int(account_id) in SAS_ACCOUNTS
-                                    and int(course_number) <= 500
-                                ):
-                                    if subject in IGNORED_SUBJECTS:
-                                        print("- Ignored subject.")
-                                    else:
-                                        update = True
-                                elif (
-                                    int(account_id) in AN_ACCOUNTS
-                                    and int(course_number) <= 500
-                                ):
-                                    if subject == "COMM":
-                                        update = True
-                    except Exception as error:
-                        print(
-                            "- ERROR: Failed to enable course shopping for"
-                            f" {sis_id} ({canvas_id}) ({error})"
+                update = False
+                try:
+                    course_number = int(course_id.split("-")[1])
+                    subject = course_id.split("-")[0][4:]
+                    if (
+                        canvas_account_id in SEAS_ACCOUNTS
+                        or (canvas_account_id in NURS_ACCOUNTS and course_number <= 600)
+                        or (
+                            canvas_account_id in AN_ACCOUNTS
+                            and course_number <= 500
+                            and subject == "COMM"
                         )
-                        outFile.write(f"{sis_id}, {canvas_id}, 'err', 'err', 'err'")
-
+                    ):
+                        update = True
+                    elif canvas_account_id in SAS_ACCOUNTS and course_number <= 500:
+                        if subject in IGNORED_SUBJECTS:
+                            echo("- Ignored subject.")
+                            status = "ignored subject"
+                        else:
+                            update = True
+                except Exception:
+                    status = "failed to parse course code"
+                if canvas_course:
                     if update:
-                        print(f") Updating course...")
-
                         try:
                             canvas_course.update(
                                 course={"is_public_to_auth_users": True}
                             )
-                            status = "public to auth users"
+                            status = "enabled"
                         except Exception:
-                            status = "ERROR"
+                            status = "failed to enable"
+                    else:
+                        status = "grad course"
 
-                        outFile.write(
-                            f"{sis_id}, {canvas_id}, {status}, {published}, {notes}"
-                        )
-
-                        master = open(MASTER_FILE, "a")
-                        master.write(
-                            f"{sis_id}, {canvas_id}, {status}, {published}, {notes}"
-                        )
-                        master.close()
-
-    dataFile.close()
-    outFile.close()
-
-
-def disable_course_shopping(inputfile=MASTER_FILE, outputfile=DISABLE_OUTFILE):
-    canvas = get_canvas(TESTING)
-
-    dataFile = open(inputfile, "r")
-    dataFile.readline()
-
-    outFile = open(outputfile, "w+")
-    outFile.write("sis_id, canvas_id, visibility_status, published, notes\n")
-
-    forWH = False
-
-    if "WH_" in inputfile:
-        forWH = True
-
-    for line in dataFile:
-        sis_id, canvas_id, visibility_status, published, notes = line.replace(
-            "\n", ""
-        ).split(",")
-
-        if (not forWH and visibility_status.strip() == "public_to_auth_users") or (
-            forWH and "NOT WHARTON" not in notes
-        ):
-            try:
-                canvas_course = canvas.get_course(canvas_id)
-                canvas_course.update(
-                    course={
-                        "is_public": False,
-                        "is_public_to_auth_users": False,
-                        "public_syllabus": False,
-                        "public_syllabus_to_auth": False,
-                    }
-                )
-                status = "disabled"
-
-            except Exception as ex:
-                notes = "Exception: %s" % (ex)
-                status = "Exception"
-
-            print(sis_id, canvas_id, status, published, notes)
-            outFile.write(
-                "%s, %s, %s, %s, %s\n" % (sis_id, canvas_id, status, published, notes)
+        report.at[index, HEADERS] = [
+            canvas_course_id,
+            course_id,
+            canvas_account_id,
+            status,
+        ]
+        report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
+        if verbose:
+            echo(
+                f"- ({(index + 1):,}/{TOTAL})"
+                f" {color(course_id, 'magenta')}:"
+                f" {color(status.upper(), 'green') if status == 'enabled' else color(status, 'yellow')}"
             )
 
+    reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
+    RESULT_PATH = RESULTS / f"{YEAR}_course_shopping_enabled_{TODAY}.csv"
+    START = get_start_index(force, RESULT_PATH, RESULTS)
+    report, TOTAL = process_input(
+        reports,
+        INPUT_FILE_NAME,
+        REPORTS,
+        CLEANUP_HEADERS,
+        cleanup_data,
+        missing_file_message,
+        start=START,
+    )
+    make_csv_paths(
+        RESULTS,
+        RESULT_PATH,
+        make_index_headers(HEADERS),
+    )
+    make_skip_message(START, "course")
+    INSTANCE = "test" if test else "prod"
+    CANVAS = get_canvas(INSTANCE)
+    SAS_ACCOUNTS = get_sub_accounts(CANVAS, SAS_ACCOUNT_ID)
+    for account in SAS_IGNORED_ACCOUNTS:
+        SAS_ACCOUNTS.remove(account)
+    SEAS_ACCOUNTS = get_sub_accounts(CANVAS, SEAS_ACCOUNT_ID)
+    NURS_ACCOUNTS = get_sub_accounts(CANVAS, NURS_ACCOUNT_ID)
+    AN_ACCOUNTS = get_sub_accounts(CANVAS, AN_ACCOUNT_ID)
+    SUB_ACCOUNTS = SAS_ACCOUNTS + SEAS_ACCOUNTS + NURS_ACCOUNTS + AN_ACCOUNTS
+    echo(") Processing courses...")
+    toggle_progress_bar(report, enable_course_shopping, CANVAS, verbose)
+    process_result(RESULT_PATH)
+    print_messages(TOTAL)
 
-def course_shopping_main(term, test):
-    if test:
-        typer.echo("~~This is a TEST~~")
-    typer.echo(term)
+
+def print_messages(total):
+    color("SUMMARY:", "yellow", True)
+    echo(f"- Processed {color(total)} courses.")
+    color("FINISHED", "yellow", True)
+
+
+def process_result(result_path):
+    result = read_csv(result_path, dtype=str)
+    result.drop(columns=["index"], inplace=True)
+    renamed_headers = [header.replace("_", " ") for header in HEADERS[:5]]
+    renamed_columns = {}
+    for index, header in enumerate(renamed_headers):
+        renamed_columns[HEADERS[index]] = header
+    result.rename(columns=renamed_columns, inplace=True)
+    result["total"] = result["total"].astype(int, errors="ignore")
+    result.sort_values("total", ascending=False, inplace=True)
+    result.fillna("N/A", inplace=True)
+    result.to_csv(result_path, index=False)
+
+
+# def disable_course_shopping(inputfile=MASTER_FILE, outputfile=DISABLE_OUTFILE):
+#     canvas = get_canvas()
+#     dataFile = open(inputfile, "r")
+#     dataFile.readline()
+#     outFile = open(outputfile, "w+")
+#     outFile.write("sis_id, canvas_id, visibility_status, published, notes\n")
+#     forWH = False
+#     if "WH_" in inputfile:
+#         forWH = True
+#     for line in dataFile:
+#         sis_id, canvas_id, visibility_status, published, notes = line.replace(
+#             "\n", ""
+#         ).split(",")
+
+#         if (not forWH and visibility_status.strip() == "public_to_auth_users") or (
+#             forWH and "NOT WHARTON" not in notes
+#         ):
+#             try:
+#                 canvas_course = canvas.get_course(canvas_id)
+#                 canvas_course.update(
+#                     course={
+#                         "is_public": False,
+#                         "is_public_to_auth_users": False,
+#                         "public_syllabus": False,
+#                         "public_syllabus_to_auth": False,
+#                     }
+#                 )
+#                 status = "disabled"
+#             except Exception as ex:
+#                 notes = "Exception: %s" % (ex)
+#                 status = "Exception"
+
+#             print(sis_id, canvas_id, status, published, notes)
+#             outFile.write(
+#                 "%s, %s, %s, %s, %s\n" % (sis_id, canvas_id, status, published, notes)
+#             )
 
 
 # load_master()
