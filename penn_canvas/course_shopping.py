@@ -16,6 +16,7 @@ get a provisioning report of all courses
 from datetime import datetime
 
 import typer
+
 from .helpers import find_subaccounts, get_canvas
 
 TESTING = False
