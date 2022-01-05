@@ -13,20 +13,20 @@ get a provisioning report of all courses
 
 """
 
+from csv import writer
 from datetime import datetime
 
-from pandas import read_csv, concat
+from pandas import concat, read_csv
 from typer import echo
-from csv import writer
 
 from .helpers import (
     TODAY,
-    get_processed,
     YEAR,
     color,
     find_input,
     get_canvas,
     get_command_paths,
+    get_processed,
     get_start_index,
     get_sub_accounts,
     make_csv_paths,
