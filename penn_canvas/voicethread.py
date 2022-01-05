@@ -24,12 +24,9 @@ HEADERS = [
 terms = ["A", "B", "C"]
 year_and_terms = [f"2021{term}" for term in terms]
 account_id = 99237
-canvas = get_canvas()
-account = canvas.get_account(account_id)
-main_account = canvas.get_account(MAIN_ACCOUNT_ID)
 
 
-def get_courses(term):
+def get_courses(term, main_account, account):
     enrollment_term_id = next(
         (
             enrollment_term.id
@@ -44,12 +41,15 @@ def get_courses(term):
 
 
 def voicethread_main():
+    canvas = get_canvas()
+    main_account = canvas.get_account(MAIN_ACCOUNT_ID)
+    account = canvas.get_account(account_id)
     for term in year_and_terms:
         results_path = RESULTS / f"{term}_voicethread_usage.csv"
         if not results_path.exists():
             with open(results_path, "w") as results_file:
                 results_file.write(",".join(HEADERS))
-        courses = get_courses(term)
+        courses = get_courses(term, main_account, account)
         courses_count = len(courses)
         for index, course in enumerate(courses):
             assignments = [assignment for assignment in course.get_assignments()]
