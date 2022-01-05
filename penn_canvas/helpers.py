@@ -38,14 +38,12 @@ def get_data_warehouse_cursor():
 def make_index_headers(headers):
     INDEX_HEADERS = headers[:]
     INDEX_HEADERS.insert(0, "index")
-
     return INDEX_HEADERS
 
 
 def make_csv_paths(csv_dir, csv_file, headers):
     if not csv_dir.exists():
         Path.mkdir(csv_dir)
-
     if not csv_file.is_file():
         with open(csv_file, "w", newline="") as result:
             writer(result).writerow(headers)
@@ -75,7 +73,6 @@ def get_command_paths(
 
 def get_completed_result(result_directory):
     CSV_FILES = [result for result in Path(result_directory).glob("*.csv")]
-
     return next(
         (
             result
@@ -99,12 +96,9 @@ def print_task_complete_message(result_path):
 
 def check_previous_output(result_path, result_directory):
     echo(") Checking for previous results...")
-
     index = 0
-
     if result_path.is_file():
         INCOMPLETE = read_csv(result_path)
-
         if "index" in INCOMPLETE.columns:
             try:
                 index = INCOMPLETE.at[INCOMPLETE.index[-1], "index"]
@@ -116,16 +110,12 @@ def check_previous_output(result_path, result_directory):
                 index = 0
         else:
             print_task_complete_message(result_path)
-
             raise Exit()
     elif result_directory:
         completed_result = get_completed_result(result_directory)
-
         if completed_result:
             print_task_complete_message(completed_result)
-
             raise Exit()
-
     return index
 
 
@@ -133,7 +123,6 @@ def get_start_index(force, result_path, result_directory=None):
     if force:
         if result_path.exists():
             remove(result_path)
-
         return 0
     else:
         return check_previous_output(result_path, result_directory)
@@ -146,7 +135,6 @@ def make_skip_message(start, item):
         item = f"{item.upper()}"
     else:
         item = f"{item.upper()}S"
-
     message = color(f"SKIPPING {start:,} PREVIOUSLY PROCESSED {item}...", "yellow")
     echo(f") {message}")
 
@@ -154,7 +142,6 @@ def make_skip_message(start, item):
 def handle_clear_processed(clear_processed, processed_path, item_plural="users"):
     if type(processed_path) != list:
         processed_path = [processed_path]
-
     if clear_processed:
         message = color(
             f"You have asked to clear the list of {item_plural} already processed."
@@ -168,7 +155,6 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
 
     if proceed:
         echo(f") Clearing list of {item_plural} already processed...")
-
         for path in processed_path:
             if path.exists():
                 remove(path)
@@ -178,12 +164,10 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
 
 def print_missing_input_and_exit(input_file_name, please_add_message, date=True):
     date_message = " matching today's date " if date else ""
-
     error = color(
         f"- ERROR: A {input_file_name}{date_message}was not found.",
         "yellow",
     )
-
     return f"{error}\n- {please_add_message}"
 
 
@@ -201,15 +185,12 @@ def find_input(
             for input_file in Path(path).glob("*.zip")
             if "provisioning" in input_file.name
         ]
-
         if ZIP_FILES:
             for zip_file in ZIP_FILES:
                 with ZipFile(zip_file) as unzipper:
                     unzipper.extractall(path)
                 remove(zip_file)
-
         INPUT_FILES = [input_file for input_file in Path(path).glob(extension)]
-
         if bulk_enroll:
             return [
                 input_file
@@ -227,9 +208,7 @@ def find_input(
             ]
 
     echo(f") Finding {input_file_name}...")
-
     date_message = " matching today's date " if date else ""
-
     please_add_message = (
         "Please add a"
         f" {input_file_name}{date_message if date else ' '}to the following"
@@ -245,9 +224,7 @@ def find_input(
             f"{error} \n- Creating one for you at:"
             f" {color(input_directory, 'green')}\n- {please_add_message}"
         )
-
         raise Exit()
-
     if open_canvas:
         TODAYS_INPUT = get_input(input_directory)
     else:
@@ -256,22 +233,17 @@ def find_input(
         PATHS = [HOME / path for path in ["Desktop", "Documents"]]
         PATHS.append(input_directory)
         PATHS = iter(PATHS)
-
         while not TODAYS_INPUT:
             try:
                 TODAYS_INPUT = get_input(next(PATHS))
             except Exception:
                 TODAYS_INPUT = None
-
                 break
-
     missing_file_message = print_missing_input_and_exit(
         input_file_name, please_add_message, date
     )
-
     if not TODAYS_INPUT:
         echo(missing_file_message)
-
         raise Exit()
     else:
         return TODAYS_INPUT, missing_file_message
@@ -290,17 +262,14 @@ def process_input(
     open_canvas=False,
 ):
     echo(f") Preparing {input_file_name}...")
-
     reports = iter(input_files)
     error = True
     abort = False
     report = None
     data = None
-
     while error:
         try:
             report = next(reports, None)
-
             if not report:
                 error = False
                 abort = True
@@ -308,33 +277,26 @@ def process_input(
             else:
                 data = read_csv(report, encoding="latin1" if open_canvas else "utf-8")
                 data = data.loc[:, headers]
-
                 if TODAY not in report.name:
                     report = report.rename(
                         report.parents[0] / f"{report.stem}_{TODAY}{report.suffix}"
                     )
-
                 if not report.parents[0] == input_directory:
                     copy(report, input_directory / report.name)
                     remove(report)
-
                 error = False
         except Exception:
             error = True
-
     if abort:
         raise Exit()
-
     if args:
         data = cleanup_data(data, args)
     else:
         data = cleanup_data(data)
-
     if not bulk_enroll:
         data.reset_index(drop=True, inplace=True)
         TOTAL = len(data.index)
         data = data.loc[start:TOTAL, :]
-
         return (data, f"{TOTAL:,}", report) if open_canvas else (data, f"{TOTAL:,}")
     else:
         return data
@@ -343,14 +305,11 @@ def process_input(
 def get_processed(processed_directory, processed_path, columns="pennkey"):
     if type(columns) != list:
         columns = [columns]
-
     if processed_path.is_file():
         result = read_csv(processed_path, dtype=str)
-
         return result[columns[0]].tolist()
     else:
         make_csv_paths(processed_directory, processed_path, columns)
-
         return list()
 
 
