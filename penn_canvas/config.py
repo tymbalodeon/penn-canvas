@@ -78,7 +78,7 @@ def get_all_config_options_as_tuple():
     )
 
 
-def get_new_config_value(option, first_time):
+def get_new_config_value(section, option, first_time):
     option_display = option.replace("_", " ").upper()
     confirm_message = f"Would you like to update the {option_display} value?"
     prompt_message = f"Please provide your {option_display} value"
@@ -87,13 +87,13 @@ def get_new_config_value(option, first_time):
     return (
         prompt(prompt_message, hide_input=hide_input, default="", show_default=False)
         if updating
-        else ""
+        else get_config_option(section, option)
     )
 
 
 def get_new_config_values(section, first_time):
     return [
-        (option, get_new_config_value(option, first_time))
+        (option, get_new_config_value(section, option, first_time))
         for option in CONFIG_OPTIONS[section]
     ]
 
