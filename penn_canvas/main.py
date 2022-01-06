@@ -41,6 +41,11 @@ def course_shopping(
             " of production (https://canvas.upenn.edu/)."
         ),
     ),
+    disable: bool = Option(
+        False,
+        "--disable",
+        help="Disable course shopping instead of enable",
+    ),
     force: bool = Option(
         False,
         "--force",
@@ -61,7 +66,7 @@ def course_shopping(
         ),
     ),
 ):
-    course_shopping_main(test, force, verbose, new)
+    course_shopping_main(test, disable, force, verbose, new)
 
 
 @app.command()
