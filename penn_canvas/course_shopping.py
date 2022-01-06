@@ -44,7 +44,6 @@ IGNORED_SITES = ["1529220"]
 SAS_IGNORED_ACCOUNTS = [SAS_ONL_ACCOUNT, ADMIN_ACCOUNT]
 WHARTON_ACCOUNT_ID = "81471"
 SUB_ACCOUNT_EXCLUDE = "82603"
-WHARTON_EXCLUDE = []
 
 
 def cleanup_data(data, args):
@@ -195,7 +194,7 @@ def course_shopping_main(test, disable, force, verbose, new):
                     elif canvas_account_id in WHARTON_ACCOUNTS:
                         if not section_contains_srs(canvas_course):
                             status = "not SRS"
-                        elif canvas_course_id in WHARTON_EXCLUDE:
+                        elif canvas_course_id in WHARTON_IGNORED_COURSES:
                             status = "course opted out"
                         elif canvas_account_id == SUB_ACCOUNT_EXCLUDE:
                             status = "school opted out"
@@ -255,6 +254,7 @@ def course_shopping_main(test, disable, force, verbose, new):
                 result_file.write(
                     f"{','.join(make_index_headers(PROCESSED_HEADERS))}\n"
                 )
+        total = len(processed.index)
         for course in processed.itertuples():
             index, canvas_course_id = course[:2]
             course_display = canvas_course_id
@@ -274,9 +274,12 @@ def course_shopping_main(test, disable, force, verbose, new):
                 status = "failed to disable"
             with open(result_path, "a") as writer:
                 writer.write(f"{index},{canvas_course_id},{status}\n")
+            processed = read_csv(processed_path)
+            processed = processed[processed["canvas course id"] != canvas_course_id]
+            processed.to_csv(processed_path, index=False)
             if verbose:
                 echo(
-                    f"- ({(index + 1):,}/{processed.size})"
+                    f"- ({(index + 1):,}/{total})"
                     f" {color(course_display, 'magenta')}:"
                     f" {color(status.upper(), 'green') if status == 'disabled' else color(status, 'yellow')}"
                 )
@@ -334,6 +337,13 @@ def course_shopping_main(test, disable, force, verbose, new):
     SUB_ACCOUNTS = (
         SAS_ACCOUNTS + SEAS_ACCOUNTS + NURS_ACCOUNTS + AN_ACCOUNTS + WHARTON_ACCOUNTS
     )
+    WHARTON_IGNORED_PATH = REPORTS / "wharton_ignored_courses.csv"
+    if WHARTON_IGNORED_PATH.is_file():
+        WHARTON_IGNORED_COURSES = read_csv(WHARTON_IGNORED_PATH)[
+            "canvas course id"
+        ].tolist()
+    else:
+        WHARTON_IGNORED_COURSES = []
     echo(") Processing courses...")
     if disable:
         disable_course_shopping(PROCESSED_PATH, RESULT_PATH, CANVAS, verbose)

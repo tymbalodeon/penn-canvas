@@ -100,7 +100,7 @@ def cleanup_data(input_file, start=0):
         categories=natsorted(facilitators["Group Name"].unique()),
     )
     facilitators = facilitators.sort_values("Group Name")
-    group_names = facilitators["Group Name"].to_list()
+    group_names = facilitators["Group Name"].tolist()
     group_numbers = [
         int(
             (
