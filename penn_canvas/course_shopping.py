@@ -339,7 +339,7 @@ def course_shopping_main(test, disable, force, verbose, new):
     )
     WHARTON_IGNORED_PATH = REPORTS / "wharton_ignored_courses.csv"
     if WHARTON_IGNORED_PATH.is_file():
-        WHARTON_IGNORED_COURSES = read_csv(WHARTON_IGNORED_PATH)[
+        WHARTON_IGNORED_COURSES = read_csv(WHARTON_IGNORED_PATH, dtype=str)[
             "canvas course id"
         ].tolist()
     else:
