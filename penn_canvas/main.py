@@ -27,49 +27,6 @@ app = Typer(
 
 
 @app.command()
-def voicethread():
-    voicethread_main()
-
-
-@app.command()
-def course_shopping(
-    test: bool = Option(
-        False,
-        "--test",
-        help=(
-            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)."
-        ),
-    ),
-    disable: bool = Option(
-        False,
-        "--disable",
-        help="Disable course shopping instead of enable",
-    ),
-    force: bool = Option(
-        False,
-        "--force",
-        help=(
-            "Force the task to start from the beginning despite the presence of a"
-            " pre-existing incomplete result file and overwrite that file."
-        ),
-    ),
-    verbose: bool = Option(
-        False, "--verbose", help="Print out detailed information as the task runs."
-    ),
-    new: bool = Option(
-        False,
-        "--new",
-        help=(
-            "Process only newly added users, skipping previous users that encountered"
-            " errors."
-        ),
-    ),
-):
-    course_shopping_main(test, disable, force, verbose, new)
-
-
-@app.command()
 def archive(
     course: int = Argument(
         ..., help="The course whose discussions you want to archive."
@@ -423,6 +380,44 @@ def count_sites(
 
 
 @app.command()
+def course_shopping(
+    test: bool = Option(
+        False,
+        "--test",
+        help=(
+            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
+            " of production (https://canvas.upenn.edu/)."
+        ),
+    ),
+    disable: bool = Option(
+        False,
+        "--disable",
+        help="Disable course shopping instead of enable",
+    ),
+    force: bool = Option(
+        False,
+        "--force",
+        help=(
+            "Force the task to start from the beginning despite the presence of a"
+            " pre-existing incomplete result file and overwrite that file."
+        ),
+    ),
+    verbose: bool = Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
+    new: bool = Option(
+        False,
+        "--new",
+        help=(
+            "Process only newly added users, skipping previous users that encountered"
+            " errors."
+        ),
+    ),
+):
+    course_shopping_main(test, disable, force, verbose, new)
+
+
+@app.command()
 def email(
     test: bool = Option(
         False,
@@ -708,3 +703,8 @@ def tool(
     output file.
     """
     tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed)
+
+
+@app.command()
+def voicethread():
+    voicethread_main()

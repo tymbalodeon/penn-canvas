@@ -1,7 +1,8 @@
 from csv import writer
 
 from pandas import concat, read_csv
-from typer import echo
+from pandas.core.frame import DataFrame
+from typer import Exit, echo
 
 from .helpers import (
     TODAY,
@@ -20,12 +21,17 @@ from .helpers import (
     toggle_progress_bar,
 )
 
+
+def remove_underscores(word):
+    return word.replace("_", " ")
+
+
 COMMAND = "Course Shopping"
 INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
 REPORTS, RESULTS, PROCESSED = get_command_paths(COMMAND, processed=True)
 HEADERS = ["canvas_course_id", "course_id", "canvas_account_id", "status"]
-CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:4]]
-PROCESSED_HEADERS = [HEADERS[0], HEADERS[-1]]
+CLEANUP_HEADERS = HEADERS[:4]
+PROCESSED_HEADERS = [remove_underscores(header) for header in [HEADERS[0], HEADERS[-1]]]
 SAS_ONL_ACCOUNT = "132413"
 ADMIN_ACCOUNT = "131963"
 WHARTON_ACCOUNT_ID = "81471"
@@ -86,8 +92,11 @@ def print_messages(total):
     color("FINISHED", "yellow", True)
 
 
-def process_result(result_path):
+def process_result(result_path, processed_path):
     result = read_csv(result_path, dtype=str)
+    processed = read_csv(processed_path, dtype=str)
+    processed.sort_values("status", inplace=True)
+    processed.to_csv(processed_path, index=False)
     result.drop(columns=["index"], inplace=True)
     renamed_headers = [header.replace("_", " ") for header in HEADERS[:5]]
     renamed_columns = {}
@@ -235,9 +244,20 @@ def course_shopping_main(test, disable, force, verbose, new):
             with open(PROCESSED_ERRORS_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow([canvas_course_id, status])
 
-    def disable_course_shopping(course, canvas, verbose):
-        index, canvas_course_id, course_id = course
-        if canvas_course_id in PROCESSED_COURSES:
+    def disable_course_shopping(processed_path, result_path, canvas, verbose):
+        processed = read_csv(processed_path)
+        processed = processed[processed["status"] == "enabled"]
+        if processed.empty:
+            echo("- No courses to disable.")
+            Exit()
+        if not result_path.is_file():
+            with open(result_path, "w+") as result_file:
+                result_file.write(
+                    f"{','.join(make_index_headers(PROCESSED_HEADERS))}\n"
+                )
+        for course in processed.itertuples():
+            index, canvas_course_id = course[:2]
+            course_display = canvas_course_id
             try:
                 canvas_course = canvas.get_course(canvas_course_id)
                 canvas_course.update(
@@ -249,23 +269,21 @@ def course_shopping_main(test, disable, force, verbose, new):
                     }
                 )
                 status = "disabled"
+                course_display = canvas_course.name
             except Exception:
                 status = "failed to disable"
-            report.at[index, HEADERS] = [canvas_course_id, course_id, status]
-            report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
+            with open(result_path, "a") as writer:
+                writer.write(f"{index},{canvas_course_id},{status}\n")
             if verbose:
                 echo(
-                    f"- ({(index + 1):,}/{TOTAL})"
-                    f" {color(course_id, 'magenta')}:"
+                    f"- ({(index + 1):,}/{processed.size})"
+                    f" {color(course_display, 'magenta')}:"
                     f" {color(status.upper(), 'green') if status == 'disabled' else color(status, 'yellow')}"
                 )
+        result = read_csv(result_path)
+        result.drop(columns=["index"], inplace=True)
+        result.to_csv(result_path, index=False)
 
-    reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
-    RESULT_PATH = (
-        RESULTS
-        / f"{YEAR}_course_shopping_{'disabled' if disable else 'enabled'}_{TODAY}.csv"
-    )
-    START = get_start_index(force, RESULT_PATH, RESULTS)
     PROCESSED_PATH = (
         PROCESSED
         / f"{YEAR}_course_shopping_processed_courses{'_test' if test else ''}.csv"
@@ -278,23 +296,32 @@ def course_shopping_main(test, disable, force, verbose, new):
     PROCESSED_ERRORS = get_processed(
         PROCESSED, PROCESSED_ERRORS_PATH, PROCESSED_HEADERS
     )
-    cleanup_data_args = (PROCESSED_COURSES, PROCESSED_ERRORS, new)
-    report, TOTAL = process_input(
-        reports,
-        INPUT_FILE_NAME,
-        REPORTS,
-        CLEANUP_HEADERS,
-        cleanup_data,
-        missing_file_message,
-        cleanup_data_args,
-        START,
+    TOTAL = ""
+    report = DataFrame()
+    RESULT_PATH = (
+        RESULTS
+        / f"{YEAR}_course_shopping_{'disabled' if disable else 'enabled'}_{TODAY}{'_test' if test else ''}.csv"
     )
-    make_csv_paths(
-        RESULTS,
-        RESULT_PATH,
-        make_index_headers(HEADERS),
-    )
-    make_skip_message(START, "course")
+    if not disable:
+        reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
+        START = get_start_index(force, RESULT_PATH, RESULTS)
+        cleanup_data_args = (PROCESSED_COURSES, PROCESSED_ERRORS, new)
+        report, TOTAL = process_input(
+            reports,
+            INPUT_FILE_NAME,
+            REPORTS,
+            CLEANUP_HEADERS,
+            cleanup_data,
+            missing_file_message,
+            cleanup_data_args,
+            START,
+        )
+        make_csv_paths(
+            RESULTS,
+            RESULT_PATH,
+            make_index_headers(HEADERS),
+        )
+        make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
     SAS_ACCOUNTS = get_sub_accounts(CANVAS, SAS_ACCOUNT_ID)
@@ -309,8 +336,8 @@ def course_shopping_main(test, disable, force, verbose, new):
     )
     echo(") Processing courses...")
     if disable:
-        toggle_progress_bar(report, disable_course_shopping, CANVAS, verbose)
+        disable_course_shopping(PROCESSED_PATH, RESULT_PATH, CANVAS, verbose)
     else:
         toggle_progress_bar(report, enable_course_shopping, CANVAS, verbose)
-    process_result(RESULT_PATH)
-    print_messages(TOTAL)
+        process_result(RESULT_PATH, PROCESSED_PATH)
+        print_messages(TOTAL)
