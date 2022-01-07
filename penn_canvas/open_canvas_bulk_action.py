@@ -41,9 +41,7 @@ def email_in_use(user, email):
 
 def enroll_user_in_course(canvas, user, canvas_id, section, notify):
     try:
-        canvas_section = (
-            canvas.get_section(canvas_id) if section else canvas.get_course(canvas_id)
-        )
+        canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
     except Exception:
         return "course not found", canvas_id
     try:
@@ -56,7 +54,9 @@ def enroll_user_in_course(canvas, user, canvas_id, section, notify):
 def find_user_by_email(account, email):
     users = account.get_users(search_term=email)
     users = [
-        user for user in users if user.login_id == email or email_in_use(user, email)
+        user
+        for user in users
+        if user.login_id.lower() == email.lower() or email_in_use(user, email)
     ]
     return users
 
@@ -100,32 +100,77 @@ def enroll_user(canvas, email, canvas_id, section, notify):
     return status, course_or_enrollment
 
 
+def get_canvas_section_or_course(canvas, canvas_id, section):
+    return canvas.get_section(canvas_id) if section else canvas.get_course(canvas_id)
+
+
+def unenroll_user(canvas, email, canvas_id, section, task="conclude"):
+    try:
+        canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
+    except Exception:
+        return "course not found", canvas_id
+    try:
+        enrollments = [enrollment for enrollment in canvas_section.get_enrollments()]
+        enrollments = [
+            {"enrollment": enrollment, "user": canvas.get_user(enrollment.user["id"])}
+            for enrollment in enrollments
+        ]
+        enrollment = next(
+            (
+                enrollment
+                for enrollment in enrollments
+                if enrollment["user"].login_id.lower() == email.lower()
+                or enrollment["user"].email.lower() == email.lower()
+            ),
+            None,
+        )
+    except Exception:
+        enrollment = None
+    if not enrollment:
+        return "enrollment not found", canvas_section
+    else:
+        try:
+            unenrollment = enrollment["enrollment"].deactivate(task)
+            return "unenrolled", unenrollment
+        except Exception:
+            return "failed to unenroll", enrollment
+
+
 def process_result(result_path):
     result = read_csv(result_path)
     created = result[result["Status"] == "created"]
     removed = result[result["Status"] == "removed"]
     enrolled = result[result["Status"] == "enrolled"]
+    unenrolled = result[result["Status"] == "unenrolled"]
     failed_to_enroll = result[result["Status"] == "failed to enroll"]
+    failed_to_unenroll = result[result["Status"] == "failed to unenroll"]
     already_in_use = result[result["Status"] == "already in use"]
     course_not_found = result[result["Status"] == "course not found"]
+    enrollment_not_found = result[result["Status"] == "enrollment not found"]
     missing_value = result[result["Status"] == "missing value"]
     error = result[
         (result["Status"] != "created")
         & (result["Status"] != "removed")
         & (result["Status"] != "enrolled")
+        & (result["Status"] != "unenrolled")
         & (result["Status"] != "failed to enroll")
+        & (result["Status"] != "failed to unenroll")
         & (result["Status"] != "already in use")
         & (result["Status"] != "course not found")
+        & (result["Status"] != "enrollment not found")
         & (result["Status"] != "missing value")
     ]
     result = concat(
         [
             missing_value,
             course_not_found,
+            enrollment_not_found,
             failed_to_enroll,
+            failed_to_unenroll,
             error,
             already_in_use,
             enrolled,
+            unenrolled,
             created,
             removed,
         ]
@@ -136,10 +181,13 @@ def process_result(result_path):
         len(created.index),
         len(removed.index),
         len(enrolled.index),
+        len(unenrolled.index),
         len(failed_to_enroll.index),
+        len(failed_to_unenroll.index),
         len(error.index),
         len(already_in_use.index),
         len(course_not_found.index),
+        len(enrollment_not_found.index),
         len(missing_value.index),
     )
 
@@ -149,10 +197,13 @@ def print_messages(
     created,
     removed,
     enrolled,
+    unenrolled,
     failed_to_enroll,
+    failed_to_unenroll,
     not_found,
     already_in_use,
     course_not_found,
+    enrollment_not_found,
     missing_value,
 ):
     echo(f"- Processed {color(total, 'magenta')} {'user' if total == 1 else 'users'}.")
@@ -170,10 +221,22 @@ def print_messages(
             "- Enrolled"
             f" {color(enrolled, 'green')} {'user' if enrolled == 1 else 'users'}."
         )
+    if unenrolled:
+        echo(
+            "- Unenrolled"
+            f" {color(unenrolled, 'green')} {'user' if unenrolled == 1 else 'users'}."
+        )
     if failed_to_enroll:
         color(
             "- ERROR: Failed to enroll"
             f" {failed_to_enroll} {'user' if failed_to_enroll == 1 else 'users'}.",
+            "red",
+            True,
+        )
+    if failed_to_unenroll:
+        color(
+            "- ERROR: Failed to unenroll"
+            f" {failed_to_unenroll} {'user' if failed_to_unenroll == 1 else 'users'}.",
             "red",
             True,
         )
@@ -198,6 +261,13 @@ def print_messages(
             "red",
             True,
         )
+    if enrollment_not_found:
+        color(
+            f"- ERROR: Failed to find {enrollment_not_found}"
+            f" {'enrollment' if enrollment_not_found == 1 else 'enrollments'}.",
+            "red",
+            True,
+        )
     if missing_value:
         color(
             "- ERROR: Found"
@@ -218,6 +288,9 @@ def open_canvas_bulk_action_main(verbose, force, test):
             section = args[2]
             index, full_name, email, canvas_id, notify = user[:-1]
             notify = bool("true" in notify.lower())
+        elif action == "unenroll":
+            section = args[2]
+            index, full_name, email, canvas_id = user[:-1]
         else:
             index, full_name, email = user[:-1]
         status = "removed" if action == "remove" else "created"
@@ -230,7 +303,9 @@ def open_canvas_bulk_action_main(verbose, force, test):
                     raise Exception("missing value")
             full_name = " ".join(full_name.strip().split())
             email = email.strip()
-            if action == "enroll":
+            if action == "unenroll":
+                status, course = unenroll_user(canvas, email, canvas_id, section)
+            elif action == "enroll":
                 try:
                     status, course = enroll_user(
                         canvas, email, canvas_id, section, notify
@@ -282,7 +357,12 @@ def open_canvas_bulk_action_main(verbose, force, test):
         action = "create"
         display_action = "Creating"
         section = False
-        if "enroll" in input_file.stem.lower():
+        if "unenroll" in input_file.stem.lower():
+            action = "unenroll"
+            display_action = "Unenrolling"
+            if "section" in input_file.stem.lower():
+                section = True
+        elif "enroll" in input_file.stem.lower():
             action = "enroll"
             display_action = "Enrolling"
             if "section" in input_file.stem.lower():
@@ -297,7 +377,12 @@ def open_canvas_bulk_action_main(verbose, force, test):
         RESULT_STRING = f"{input_file.stem}_RESULT.csv"
         RESULT_PATH = RESULTS / RESULT_STRING
         START = get_start_index(force, RESULT_PATH)
-        action_headers = HEADERS if action == "enroll" else HEADERS[:2]
+        if action == "enroll":
+            action_headers = HEADERS
+        elif action == "unenroll":
+            action_headers = HEADERS[:3]
+        else:
+            action_headers = HEADERS[:2]
         users, TOTAL, dated_input_file = process_input(
             input_files,
             INPUT_FILE_NAME,
@@ -319,15 +404,19 @@ def open_canvas_bulk_action_main(verbose, force, test):
             COLOR_MAP = {
                 "created": "green",
                 "enrolled": "green",
+                "unenrolled": "green",
                 "removed": "yellow",
                 "failed to enroll": "red",
+                "failed to unenroll": "red",
                 "not found": "red",
+                "enrollment not found": "red",
+                "failed to unenroll": "red",
                 "already in use": "red",
                 "course not found": "red",
             }
         ARGS = (
             (CANVAS.get_account(ACCOUNT), action, section)
-            if action == "enroll"
+            if action == "enroll" or action == "unenroll"
             else (CANVAS.get_account(ACCOUNT), action)
         )
         toggle_progress_bar(users, create_or_delete_canvas_user, CANVAS, verbose, ARGS)
@@ -346,10 +435,13 @@ def open_canvas_bulk_action_main(verbose, force, test):
             created,
             removed,
             enrolled,
+            unenrolled,
             failed_to_enroll,
+            failed_to_unenroll,
             not_found,
             already_in_use,
             course_not_found,
+            enrollment_not_found,
             missing_value,
         ) = process_result(result_path)
         print_messages(
@@ -357,10 +449,13 @@ def open_canvas_bulk_action_main(verbose, force, test):
             created,
             removed,
             enrolled,
+            unenrolled,
             failed_to_enroll,
+            failed_to_unenroll,
             not_found,
             already_in_use,
             course_not_found,
+            enrollment_not_found,
             missing_value,
         )
     color("FINISHED", "yellow", True)
