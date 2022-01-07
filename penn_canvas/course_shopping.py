@@ -27,17 +27,37 @@ REPORTS, RESULTS, PROCESSED = get_command_paths(COMMAND, processed=True)
 HEADERS = ["canvas_course_id", "course_id", "canvas_account_id", "status"]
 CLEANUP_HEADERS = HEADERS[:4]
 PROCESSED_HEADERS = [header.replace("_", " ") for header in [HEADERS[0], HEADERS[-1]]]
-SAS_ONL_ACCOUNT = "132413"
-ADMIN_ACCOUNT = "131963"
 WHARTON_ACCOUNT_ID = "81471"
 SAS_ACCOUNT_ID = "99237"
 SEAS_ACCOUNT_ID = "99238"
 NURS_ACCOUNT_ID = "99239"
 AN_ACCOUNT_ID = "99243"
+PENN_LPS_ONLINE = "132413"
+SAS_ADMIN_SITES = "131963"
 IGNORED_SUBJECTS = ["MAPP", "IMPA", "DYNM"]
-SAS_IGNORED_ACCOUNTS = [SAS_ONL_ACCOUNT, ADMIN_ACCOUNT]
-WHARTON_ACCOUNT_ID = "81471"
-SUB_ACCOUNT_EXCLUDE = "82603"
+SAS_IGNORED_ACCOUNTS = [PENN_LPS_ONLINE, SAS_ADMIN_SITES]
+EXECUTIVE_EDUCATION = "108285"
+LAUDER_INSTITUTE = "82588"
+MODULAR_COURSES = "85361"
+SEMESTER_IN_SAN_FRANCISCO = "98257"
+WEMBA = "82603"
+WHARTON_GLOBAL_YOUTH = "132393"
+WHCP_UNDERGRAD = "132058"
+TEST_SITES = "89339"
+TRAINING_SITES = "131927"
+WHCP_MBA_COMMUNICATION = "82595"
+WHARTON_IGNORED_ACCOUNTS = [
+    EXECUTIVE_EDUCATION,
+    LAUDER_INSTITUTE,
+    MODULAR_COURSES,
+    SEMESTER_IN_SAN_FRANCISCO,
+    WEMBA,
+    WHARTON_GLOBAL_YOUTH,
+    WHCP_UNDERGRAD,
+    TEST_SITES,
+    TRAINING_SITES,
+    WHCP_MBA_COMMUNICATION,
+]
 
 
 def cleanup_data(data, args):
@@ -131,17 +151,35 @@ def process_result(result_path, processed_path):
     result.to_csv(result_path, index=False)
 
 
-def course_shopping_main(test, disable, force, verbose, new):
-    def is_participating_nursing_course(canvas_course_id, course_number):
-        return canvas_course_id in NURS_ACCOUNTS and course_number <= 600
+def parse_course(course_id):
+    subject = course_id.split("-")[0][4:]
+    course_number = int(course_id.split("-")[1])
+    return subject, course_number
 
-    def is_participating_comm_course(canvas_course_id, subject, course_number):
+
+def parse_wharton_course(course_id):
+    course_id = course_id.replace(YEAR, "")
+    subject = "".join(character for character in course_id if character.isalpha())
+    course_number = int(
+        "".join(character for character in course_id if character.isnumeric())
+    )
+    return subject, course_number
+
+
+def course_shopping_main(test, disable, force, verbose, new):
+    def is_participating_nursing_course(canvas_account_id, course_number):
+        return canvas_account_id in NURS_ACCOUNTS and course_number < 600
+
+    def is_participating_comm_course(canvas_account_id, subject, course_number):
         ignored_numbers = [491, 495, 499]
         return (
-            canvas_course_id in AN_ACCOUNTS
+            canvas_account_id in AN_ACCOUNTS
             and subject == "COMM"
             and course_number not in ignored_numbers
         )
+
+    def is_sas_undergrad_course(canvas_account_id, course_number):
+        return canvas_account_id in SAS_ACCOUNTS and course_number < 600
 
     def enable_course_shopping(course, canvas, verbose):
         index, canvas_course_id, course_id, canvas_account_id, status = course
@@ -166,33 +204,21 @@ def course_shopping_main(test, disable, force, verbose, new):
                 update = False
                 try:
                     if canvas_account_id in WHARTON_ACCOUNTS:
-                        course_id = course_id.replace(YEAR, "")
-                        subject = "".join(
-                            character for character in course_id if character.isalpha()
-                        )
-                        course_number = int(
-                            "".join(
-                                character
-                                for character in course_id
-                                if character.isnumeric()
-                            )
-                        )
+                        subject, course_number = parse_wharton_course(course_id)
                     else:
-                        subject = course_id.split("-")[0][4:]
-                        course_number = int(course_id.split("-")[1])
+                        subject, course_number = parse_course(course_id)
                     if (
                         canvas_account_id in SEAS_ACCOUNTS
                         or is_participating_nursing_course(
-                            canvas_course_id, course_number
+                            canvas_account_id, course_number
                         )
                         or is_participating_comm_course(
-                            canvas_course_id, subject, course_number
+                            canvas_account_id, subject, course_number
                         )
                     ):
                         update = True
-                    elif canvas_account_id in SAS_ACCOUNTS and course_number <= 500:
+                    elif is_sas_undergrad_course(canvas_account_id, course_number):
                         if subject in IGNORED_SUBJECTS:
-                            echo("- Ignored subject.")
                             status = "ignored subject"
                         else:
                             update = True
@@ -201,7 +227,7 @@ def course_shopping_main(test, disable, force, verbose, new):
                             status = "not SRS"
                         elif canvas_course_id in WHARTON_IGNORED_COURSES:
                             status = "course opted out"
-                        elif canvas_account_id == SUB_ACCOUNT_EXCLUDE:
+                        elif canvas_account_id == WHARTON_IGNORED_ACCOUNTS:
                             status = "school opted out"
                         else:
                             update = True
@@ -213,7 +239,7 @@ def course_shopping_main(test, disable, force, verbose, new):
                         status = "enabled"
                     except Exception:
                         status = "failed to enable"
-                else:
+                elif status != "failed to parse course code":
                     status = "grad course"
         report.at[index, HEADERS] = [
             canvas_course_id,
