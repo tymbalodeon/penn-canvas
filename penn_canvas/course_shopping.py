@@ -233,7 +233,12 @@ def course_shopping_main(test, disable, force, verbose, new):
                     status = "failed to parse course code"
                 if update:
                     try:
-                        canvas_course.update(course={"is_public_to_auth_users": True})
+                        canvas_course.update(
+                            course={
+                                "is_public_to_auth_users": True,
+                                "public_syllabus_to_auth": True,
+                            }
+                        )
                         status = "enabled"
                     except Exception:
                         status = "failed to enable"
