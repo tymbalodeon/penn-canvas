@@ -21,17 +21,12 @@ from .helpers import (
     toggle_progress_bar,
 )
 
-
-def remove_underscores(word):
-    return word.replace("_", " ")
-
-
 COMMAND = "Course Shopping"
 INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
 REPORTS, RESULTS, PROCESSED = get_command_paths(COMMAND, processed=True)
 HEADERS = ["canvas_course_id", "course_id", "canvas_account_id", "status"]
 CLEANUP_HEADERS = HEADERS[:4]
-PROCESSED_HEADERS = [remove_underscores(header) for header in [HEADERS[0], HEADERS[-1]]]
+PROCESSED_HEADERS = [header.replace("_", " ") for header in [HEADERS[0], HEADERS[-1]]]
 SAS_ONL_ACCOUNT = "132413"
 ADMIN_ACCOUNT = "131963"
 WHARTON_ACCOUNT_ID = "81471"
@@ -40,7 +35,6 @@ SEAS_ACCOUNT_ID = "99238"
 NURS_ACCOUNT_ID = "99239"
 AN_ACCOUNT_ID = "99243"
 IGNORED_SUBJECTS = ["MAPP", "IMPA", "DYNM"]
-IGNORED_SITES = ["1529220"]
 SAS_IGNORED_ACCOUNTS = [SAS_ONL_ACCOUNT, ADMIN_ACCOUNT]
 WHARTON_ACCOUNT_ID = "81471"
 SUB_ACCOUNT_EXCLUDE = "82603"
@@ -138,6 +132,17 @@ def process_result(result_path, processed_path):
 
 
 def course_shopping_main(test, disable, force, verbose, new):
+    def is_participating_nursing_course(canvas_course_id, course_number):
+        return canvas_course_id in NURS_ACCOUNTS and course_number <= 600
+
+    def is_participating_comm_course(canvas_course_id, subject, course_number):
+        ignored_numbers = [491, 495, 499]
+        return (
+            canvas_course_id in AN_ACCOUNTS
+            and subject == "COMM"
+            and course_number not in ignored_numbers
+        )
+
     def enable_course_shopping(course, canvas, verbose):
         index, canvas_course_id, course_id, canvas_account_id, status = course
         if not canvas_account_id.isnumeric():
@@ -147,7 +152,7 @@ def course_shopping_main(test, disable, force, verbose, new):
             and canvas_account_id not in WHARTON_ACCOUNTS
         ):
             status = "not SRS"
-        elif canvas_course_id in IGNORED_SITES:
+        elif canvas_course_id in IGNORED_COURSES:
             status = "course opted out"
         elif canvas_account_id not in SUB_ACCOUNTS:
             status = "school opted out"
@@ -161,7 +166,7 @@ def course_shopping_main(test, disable, force, verbose, new):
                 update = False
                 try:
                     if canvas_account_id in WHARTON_ACCOUNTS:
-                        course_id = course_id.replace("2021", "")
+                        course_id = course_id.replace(YEAR, "")
                         subject = "".join(
                             character for character in course_id if character.isalpha()
                         )
@@ -177,11 +182,11 @@ def course_shopping_main(test, disable, force, verbose, new):
                         course_number = int(course_id.split("-")[1])
                     if (
                         canvas_account_id in SEAS_ACCOUNTS
-                        or (canvas_account_id in NURS_ACCOUNTS and course_number <= 600)
-                        or (
-                            canvas_account_id in AN_ACCOUNTS
-                            and course_number <= 500
-                            and subject == "COMM"
+                        or is_participating_nursing_course(
+                            canvas_course_id, course_number
+                        )
+                        or is_participating_comm_course(
+                            canvas_course_id, subject, course_number
                         )
                     ):
                         update = True
@@ -337,7 +342,12 @@ def course_shopping_main(test, disable, force, verbose, new):
     SUB_ACCOUNTS = (
         SAS_ACCOUNTS + SEAS_ACCOUNTS + NURS_ACCOUNTS + AN_ACCOUNTS + WHARTON_ACCOUNTS
     )
+    IGNORED_PATH = REPORTS / "ignored_courses.csv"
     WHARTON_IGNORED_PATH = REPORTS / "wharton_ignored_courses.csv"
+    if IGNORED_PATH.is_file():
+        IGNORED_COURSES = read_csv(IGNORED_PATH, dtype=str)["canvas course id"].tolist()
+    else:
+        IGNORED_COURSES = []
     if WHARTON_IGNORED_PATH.is_file():
         WHARTON_IGNORED_COURSES = read_csv(WHARTON_IGNORED_PATH, dtype=str)[
             "canvas course id"
