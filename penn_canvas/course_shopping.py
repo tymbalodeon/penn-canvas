@@ -172,6 +172,7 @@ def course_shopping_main(test, disable, force, verbose, new):
         return (
             canvas_account_id in AN_ACCOUNTS
             and subject == "COMM"
+            and course_number < 500
             and course_number not in ignored_numbers
         )
 
