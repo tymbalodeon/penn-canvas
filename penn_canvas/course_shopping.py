@@ -167,9 +167,6 @@ def parse_wharton_course(course_id):
 
 
 def course_shopping_main(test, disable, force, verbose, new):
-    def is_participating_nursing_course(canvas_account_id, course_number):
-        return canvas_account_id in NURS_ACCOUNTS and course_number < 600
-
     def is_participating_comm_course(canvas_account_id, subject, course_number):
         ignored_numbers = [491, 495, 499]
         return (
@@ -177,6 +174,9 @@ def course_shopping_main(test, disable, force, verbose, new):
             and subject == "COMM"
             and course_number not in ignored_numbers
         )
+
+    def is_participating_nursing_course(canvas_account_id, course_number):
+        return canvas_account_id in NURS_ACCOUNTS and course_number < 600
 
     def is_sas_undergrad_course(canvas_account_id, course_number):
         return canvas_account_id in SAS_ACCOUNTS and course_number < 600
@@ -227,8 +227,6 @@ def course_shopping_main(test, disable, force, verbose, new):
                             status = "not SRS"
                         elif canvas_course_id in WHARTON_IGNORED_COURSES:
                             status = "course opted out"
-                        elif canvas_account_id == WHARTON_IGNORED_ACCOUNTS:
-                            status = "school opted out"
                         else:
                             update = True
                 except Exception:
@@ -365,6 +363,8 @@ def course_shopping_main(test, disable, force, verbose, new):
     NURS_ACCOUNTS = get_sub_accounts(CANVAS, NURS_ACCOUNT_ID)
     AN_ACCOUNTS = get_sub_accounts(CANVAS, AN_ACCOUNT_ID)
     WHARTON_ACCOUNTS = get_sub_accounts(CANVAS, WHARTON_ACCOUNT_ID)
+    for account in WHARTON_IGNORED_ACCOUNTS:
+        WHARTON_ACCOUNTS.remove(account)
     SUB_ACCOUNTS = (
         SAS_ACCOUNTS + SEAS_ACCOUNTS + NURS_ACCOUNTS + AN_ACCOUNTS + WHARTON_ACCOUNTS
     )
