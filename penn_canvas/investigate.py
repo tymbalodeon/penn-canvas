@@ -6,6 +6,7 @@ from typer import echo
 
 from penn_canvas.helpers import BOX_PATH, get_canvas
 
+user_id = 5408866
 course_ids = [
     1398885,
     1417301,

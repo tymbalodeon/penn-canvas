@@ -105,6 +105,8 @@ def get_canvas_section_or_course(canvas, canvas_id, section):
 
 
 def unenroll_user(canvas, email, canvas_id, section, task="conclude"):
+    tasks = {"conclude", "delete", "deactivate", "inactivate"}
+    task = task.lower() if task in tasks else "conclude"
     try:
         canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
     except Exception:
@@ -283,6 +285,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
         account, action = args[:2]
         canvas_id = ""
         notify = ""
+        task = ""
         section = None
         if action == "enroll":
             section = args[2]
@@ -290,7 +293,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
             notify = bool("true" in notify.lower())
         elif action == "unenroll":
             section = args[2]
-            index, full_name, email, canvas_id = user[:-1]
+            index, full_name, email, canvas_id, task = user[:-1]
         else:
             index, full_name, email = user[:-1]
         status = "removed" if action == "remove" else "created"
@@ -304,7 +307,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
             full_name = " ".join(full_name.strip().split())
             email = email.strip()
             if action == "unenroll":
-                status, course = unenroll_user(canvas, email, canvas_id, section)
+                status, course = unenroll_user(canvas, email, canvas_id, section, task)
             elif action == "enroll":
                 try:
                     status, course = enroll_user(
