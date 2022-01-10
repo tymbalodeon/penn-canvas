@@ -384,6 +384,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
             action_headers = HEADERS
         elif action == "unenroll":
             action_headers = HEADERS[:3]
+            action_headers.append("Task")
         else:
             action_headers = HEADERS[:2]
         users, TOTAL, dated_input_file = process_input(
