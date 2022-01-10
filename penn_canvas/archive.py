@@ -575,6 +575,16 @@ def archive_main(
                 group_directory = groups_directory / group.name
                 if not group_directory.exists():
                     Path.mkdir(group_directory)
+                memberships = [
+                    CANVAS.get_user(membership.user_id)
+                    for membership in group.get_memberships()
+                ]
+                memberships = [[user.id, user.name] for user in memberships]
+                memberships = DataFrame(memberships, columns=["Canvas User ID", "Name"])
+                memberships_path = (
+                    group_directory / f"{format_name(group.name)}_users.csv"
+                )
+                memberships.to_csv(memberships_path, index=False)
                 files = [group_file for group_file in group.get_files()]
                 for group_file in files:
                     try:
