@@ -32,32 +32,13 @@ SAS_ACCOUNT_ID = "99237"
 SEAS_ACCOUNT_ID = "99238"
 NURS_ACCOUNT_ID = "99239"
 AN_ACCOUNT_ID = "99243"
-PENN_LPS_ONLINE = "132413"
-SAS_ADMIN_SITES = "131963"
-IGNORED_SUBJECTS = ["MAPP", "IMPA", "DYNM"]
-SAS_IGNORED_ACCOUNTS = [PENN_LPS_ONLINE, SAS_ADMIN_SITES]
-EXECUTIVE_EDUCATION = "108285"
-LAUDER_INSTITUTE = "82588"
-MODULAR_COURSES = "85361"
-SEMESTER_IN_SAN_FRANCISCO = "98257"
-WEMBA = "82603"
-WHARTON_GLOBAL_YOUTH = "132393"
-WHCP_UNDERGRAD = "132058"
-TEST_SITES = "89339"
-TRAINING_SITES = "131927"
-WHCP_MBA_COMMUNICATION = "82595"
-WHARTON_IGNORED_ACCOUNTS = [
-    EXECUTIVE_EDUCATION,
-    LAUDER_INSTITUTE,
-    MODULAR_COURSES,
-    SEMESTER_IN_SAN_FRANCISCO,
-    WEMBA,
-    WHARTON_GLOBAL_YOUTH,
-    WHCP_UNDERGRAD,
-    TEST_SITES,
-    TRAINING_SITES,
-    WHCP_MBA_COMMUNICATION,
-]
+
+
+def get_csv_as_list(csv_file, column):
+    if csv_file.is_file():
+        return read_csv(csv_file, dtype=str)[column].tolist()
+    else:
+        return list()
 
 
 def cleanup_data(data, args):
@@ -206,30 +187,29 @@ def course_shopping_main(test, disable, force, verbose, new):
                 try:
                     if canvas_account_id in WHARTON_ACCOUNTS:
                         subject, course_number = parse_wharton_course(course_id)
-                    else:
-                        subject, course_number = parse_course(course_id)
-                    if (
-                        canvas_account_id in SEAS_ACCOUNTS
-                        or is_participating_nursing_course(
-                            canvas_account_id, course_number
-                        )
-                        or is_participating_comm_course(
-                            canvas_account_id, subject, course_number
-                        )
-                    ):
-                        update = True
-                    elif is_sas_undergrad_course(canvas_account_id, course_number):
-                        if subject in IGNORED_SUBJECTS:
-                            status = "ignored subject"
-                        else:
-                            update = True
-                    elif canvas_account_id in WHARTON_ACCOUNTS:
                         if not section_contains_srs(canvas_course):
                             status = "not SRS"
                         elif canvas_course_id in WHARTON_IGNORED_COURSES:
                             status = "course opted out"
                         else:
                             update = True
+                    else:
+                        subject, course_number = parse_course(course_id)
+                        if (
+                            canvas_account_id in SEAS_ACCOUNTS
+                            or is_participating_nursing_course(
+                                canvas_account_id, course_number
+                            )
+                            or is_participating_comm_course(
+                                canvas_account_id, subject, course_number
+                            )
+                        ):
+                            update = True
+                        elif is_sas_undergrad_course(canvas_account_id, course_number):
+                            if subject in SAS_IGNORED_SUBJECTS:
+                                status = "ignored subject"
+                            else:
+                                update = True
                 except Exception:
                     status = "failed to parse course code"
                 if update:
@@ -362,30 +342,40 @@ def course_shopping_main(test, disable, force, verbose, new):
         make_skip_message(START, "course")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
-    SAS_ACCOUNTS = get_sub_accounts(CANVAS, SAS_ACCOUNT_ID)
-    for account in SAS_IGNORED_ACCOUNTS:
-        SAS_ACCOUNTS.remove(account)
+    IGNORED_PATH = REPORTS / "ignored_courses.csv"
+    WHARTON_IGNORED_COURSES_PATH = REPORTS / "wharton_ignored_courses.csv"
+    WHARTON_IGNORED_ACCOUNTS_PATH = REPORTS / "wharton_ignored_accounts.csv"
+    SAS_IGNORED_PATH = REPORTS / "sas_ignored_accounts_and_subjects.csv"
+    IGNORED_COURSES = get_csv_as_list(IGNORED_PATH, "Canvas Course ID")
+    WHARTON_IGNORED_COURSES = get_csv_as_list(
+        WHARTON_IGNORED_COURSES_PATH, "Canvas Course ID"
+    )
+    WHARTON_IGNORED_ACCOUNTS = get_csv_as_list(
+        WHARTON_IGNORED_ACCOUNTS_PATH, "Account ID"
+    )
+    WHARTON_IGNORED_SUB_ACCOUNTS = list()
+    for account in WHARTON_IGNORED_ACCOUNTS:
+        WHARTON_IGNORED_SUB_ACCOUNTS += [
+            sub_account for sub_account in get_sub_accounts(CANVAS, account)
+        ]
+    WHARTON_ACCOUNTS = [
+        account
+        for account in get_sub_accounts(CANVAS, WHARTON_ACCOUNT_ID)
+        if not account in WHARTON_IGNORED_SUB_ACCOUNTS
+    ]
+    SAS_IGNORED_ACCOUNTS = get_csv_as_list(SAS_IGNORED_PATH, "Account ID")
+    SAS_IGNORED_SUBJECTS = get_csv_as_list(SAS_IGNORED_PATH, "Abbreviation")
+    SAS_ACCOUNTS = [
+        account
+        for account in get_sub_accounts(CANVAS, SAS_ACCOUNT_ID)
+        if not account in SAS_IGNORED_ACCOUNTS
+    ]
     SEAS_ACCOUNTS = get_sub_accounts(CANVAS, SEAS_ACCOUNT_ID)
     NURS_ACCOUNTS = get_sub_accounts(CANVAS, NURS_ACCOUNT_ID)
     AN_ACCOUNTS = get_sub_accounts(CANVAS, AN_ACCOUNT_ID)
-    WHARTON_ACCOUNTS = get_sub_accounts(CANVAS, WHARTON_ACCOUNT_ID)
-    for account in WHARTON_IGNORED_ACCOUNTS:
-        WHARTON_ACCOUNTS.remove(account)
     SUB_ACCOUNTS = (
         SAS_ACCOUNTS + SEAS_ACCOUNTS + NURS_ACCOUNTS + AN_ACCOUNTS + WHARTON_ACCOUNTS
     )
-    IGNORED_PATH = REPORTS / "ignored_courses.csv"
-    WHARTON_IGNORED_PATH = REPORTS / "wharton_ignored_courses.csv"
-    if IGNORED_PATH.is_file():
-        IGNORED_COURSES = read_csv(IGNORED_PATH, dtype=str)["canvas course id"].tolist()
-    else:
-        IGNORED_COURSES = []
-    if WHARTON_IGNORED_PATH.is_file():
-        WHARTON_IGNORED_COURSES = read_csv(WHARTON_IGNORED_PATH, dtype=str)[
-            "canvas course id"
-        ].tolist()
-    else:
-        WHARTON_IGNORED_COURSES = []
     echo(") Processing courses...")
     if disable:
         disable_course_shopping(PROCESSED_PATH, RESULT_PATH, CANVAS, verbose)
