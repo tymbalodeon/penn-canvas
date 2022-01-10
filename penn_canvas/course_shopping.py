@@ -35,10 +35,9 @@ AN_ACCOUNT_ID = "99243"
 
 
 def get_csv_as_list(csv_file, column):
-    if csv_file.is_file():
-        return read_csv(csv_file, dtype=str)[column].tolist()
-    else:
-        return list()
+    return (
+        read_csv(csv_file, dtype=str)[column].tolist() if csv_file.is_file() else list()
+    )
 
 
 def cleanup_data(data, args):
@@ -310,7 +309,9 @@ def course_shopping_main(test, disable, force, verbose, new):
         PROCESSED
         / f"{YEAR}_course_shopping_processed_errors{'_test' if test else ''}.csv"
     )
-    PROCESSED_COURSES = get_processed(PROCESSED, PROCESSED_PATH, PROCESSED_HEADERS)
+    PROCESSED_COURSES = get_processed(
+        PROCESSED, PROCESSED_PATH, PROCESSED_HEADERS, True
+    )
     PROCESSED_ERRORS = get_processed(
         PROCESSED, PROCESSED_ERRORS_PATH, PROCESSED_HEADERS
     )

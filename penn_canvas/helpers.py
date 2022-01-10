@@ -302,12 +302,19 @@ def process_input(
         return data
 
 
-def get_processed(processed_directory, processed_path, columns="pennkey"):
+def get_processed(
+    processed_directory, processed_path, columns="pennkey", course_shopping=False
+):
     if type(columns) != list:
         columns = [columns]
     if processed_path.is_file():
-        result = read_csv(processed_path, dtype=str)
-        return result[columns[0]].tolist()
+        if course_shopping:
+            result = read_csv(processed_path, dtype=str)
+            result = result[result["status"] == "enabled"]
+            return result[columns[0]].tolist()
+        else:
+            result = read_csv(processed_path, dtype=str)
+            return result[columns[0]].tolist()
     else:
         make_csv_paths(processed_directory, processed_path, columns)
         return list()
