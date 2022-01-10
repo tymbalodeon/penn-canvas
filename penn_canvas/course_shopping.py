@@ -166,15 +166,15 @@ def course_shopping_main(test, disable, force, verbose, new):
         index, canvas_course_id, course_id, canvas_account_id, status = course
         if not canvas_account_id.isnumeric():
             status = "invalid account id"
+        elif canvas_course_id in IGNORED_COURSES:
+            status = "course opted out"
+        elif canvas_account_id not in SUB_ACCOUNTS:
+            status = "school opted out"
         elif (
             not course_contains_srs(course_id)
             and canvas_account_id not in WHARTON_ACCOUNTS
         ):
             status = "not SRS"
-        elif canvas_course_id in IGNORED_COURSES:
-            status = "course opted out"
-        elif canvas_account_id not in SUB_ACCOUNTS:
-            status = "school opted out"
         else:
             canvas_course = None
             try:
@@ -186,10 +186,10 @@ def course_shopping_main(test, disable, force, verbose, new):
                 try:
                     if canvas_account_id in WHARTON_ACCOUNTS:
                         subject, course_number = parse_wharton_course(course_id)
-                        if not section_contains_srs(canvas_course):
-                            status = "not SRS"
-                        elif canvas_course_id in WHARTON_IGNORED_COURSES:
+                        if canvas_course_id in WHARTON_IGNORED_COURSES:
                             status = "course opted out"
+                        elif not section_contains_srs(canvas_course):
+                            status = "not SRS"
                         else:
                             update = True
                     else:
