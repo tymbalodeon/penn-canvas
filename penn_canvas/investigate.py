@@ -61,7 +61,7 @@ def process_conversation(
         character for character in conversation.context_code if character.isnumeric()
     )
     course_ids = [str(course_id) for course_id in course_ids]
-    if not course_id in course_ids:
+    if course_id not in course_ids:
         return (None, None)
     subject = conversation.subject
     participants = ", ".join(
