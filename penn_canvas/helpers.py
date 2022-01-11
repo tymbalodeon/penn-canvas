@@ -216,7 +216,6 @@ def find_input(
         f" {color(input_directory,'green')}\n- (If you need instructions for"
         " generating one, run this command with the '--help' flag.)"
     )
-
     if not input_directory.exists():
         Path.mkdir(input_directory, parents=True)
         error = color("- ERROR: {command} Input directory not found.", "yellow")

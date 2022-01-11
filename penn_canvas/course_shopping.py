@@ -262,7 +262,7 @@ def course_shopping_main(test, disable, force, verbose, new):
         processed = processed[processed["status"] == "enabled"]
         if processed.empty:
             echo("- No courses to disable.")
-            Exit()
+            raise Exit()
         if not result_path.is_file():
             with open(result_path, "w+") as result_file:
                 result_file.write(
