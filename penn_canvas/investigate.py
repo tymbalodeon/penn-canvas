@@ -53,6 +53,40 @@ def get_grader(grader_id, canvas):
         return None
 
 
+def process_conversation(
+    conversation, course_ids, index, total, user_canvas_instance, canvas
+):
+    conversation = user_canvas_instance.get_conversation(conversation)
+    course_id = "".join(
+        character for character in conversation.context_code if character.isnumeric()
+    )
+    course_ids = [str(course_id) for course_id in course_ids]
+    if not course_id in course_ids:
+        return (None, None)
+    subject = conversation.subject
+    participants = ", ".join(
+        [participant["full_name"] for participant in conversation.participants]
+    )
+    course_name = conversation.context_name
+    messages = "\n\n".join(
+        [
+            f"{canvas.get_user(message['author_id']).name}"
+            f"\n{format_timestamp(message['created_at'])}\n\n{message['body']}"
+            for message in conversation.messages
+        ]
+    )
+    course_path = RESULTS / course_name.strip().replace(" ", "_").replace("/", "-")
+    if not course_path.exists():
+        Path.mkdir(course_path)
+    conversation_path = course_path / "conversations.txt"
+    data = (
+        conversation_path,
+        f"{subject}\n{participants}\n{course_name}\n\n{messages}\n\n",
+    )
+    echo(f" - ({index + 1:,}/{total:,}) {color(subject)}")
+    return data
+
+
 def process_assignment(assignment, user_id, canvas, index, total, course_path):
     name = assignment.name
     submission_types = ", ".join(
@@ -220,6 +254,30 @@ def investigate_main():
     canvas = get_canvas()
     canvas_user = canvas.get_user(user_id)
     echo(f"Investigating student {canvas_user.name}...")
+    echo("\tGetting conversations...")
+    user_canvas_instance = get_canvas(
+        override_key=input("Please enter the user's API Token: ")
+    )
+    conversations = [
+        conversation for conversation in user_canvas_instance.get_conversations()
+    ]
+    conversations = [
+        process_conversation(
+            conversation,
+            course_ids,
+            index,
+            len(conversations),
+            user_canvas_instance,
+            canvas,
+        )
+        for index, conversation in enumerate(conversations)
+    ]
+    for conversation in conversations:
+        conversation_path, data = conversation
+        if conversation_path and data:
+            with open(conversation_path, "a+") as conversation_file:
+                conversation_file.write(data)
+    return
     for course_id in course_ids:
         course = canvas.get_course(course_id)
         echo(f"Processing {course.name}...")

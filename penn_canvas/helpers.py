@@ -319,7 +319,7 @@ def get_processed(
         return list()
 
 
-def get_canvas(instance="prod", verbose=True):
+def get_canvas(instance="prod", verbose=True, override_key=False):
     if verbose:
         echo(") Reading Canvas Access Tokens from config file...")
     canvas_urls = get_penn_canvas_config("canvas_urls")
@@ -337,16 +337,16 @@ def get_canvas(instance="prod", verbose=True):
         open_canvas_test_url,
     ) = canvas_urls
     url = canvas_prod_url
-    key = canvas_prod_key
+    key = override_key or canvas_prod_key
     if instance == "test":
         url = canvas_test_url
-        key = canvas_test_key
+        key = override_key or canvas_test_key
     elif instance == "open":
         url = open_canvas_url
-        key = open_canvas_key
+        key = override_key or open_canvas_key
     elif instance == "open_test":
         url = open_canvas_test_url
-        key = open_canvas_test_key
+        key = override_key or open_canvas_test_key
     return Canvas(url, key)
 
 
