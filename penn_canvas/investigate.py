@@ -53,7 +53,7 @@ def get_grader(grader_id, canvas):
         return None
 
 
-def process_assignment(assignment, user_id, canvas, index, total):
+def process_assignment(assignment, user_id, canvas, index, total, course_path):
     name = assignment.name
     submission_types = ", ".join(
         [assignment.replace("_", " ") for assignment in assignment.submission_types]
@@ -82,6 +82,16 @@ def process_assignment(assignment, user_id, canvas, index, total):
     seconds_late = timedelta(seconds=submission.seconds_late)
     extra_attempts = submission.extra_attempts
     submission_comments = submission.submission_comments
+    if submission_comments:
+        comments_path = course_path / "assignment_submission_comments.csv"
+        comments = list()
+        for comment in submission_comments:
+            author = comment["author"]["display_name"]
+            message = comment["comment"]
+            created_at = format_timestamp(comment["created_at"])
+            comments.append([author, created_at, message])
+        comments = DataFrame(comments, columns=["Name", "Created At", "Comment"])
+        comments.to_csv(comments_path, index=False)
     assignment_row = [
         name,
         submission_types,
@@ -220,7 +230,9 @@ def investigate_main():
         echo("\tGetting assignments...")
         assignments = [assignment for assignment in course.get_assignments()]
         assignments_rows = [
-            process_assignment(assignment, user_id, canvas, index, len(assignments))
+            process_assignment(
+                assignment, user_id, canvas, index, len(assignments), course_path
+            )
             for index, assignment in enumerate(assignments)
         ]
         assignments = DataFrame(
