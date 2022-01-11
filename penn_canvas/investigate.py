@@ -34,7 +34,7 @@ def get_investigate_input_file():
 def format_timestamp(timestamp):
     if timestamp:
         date = datetime.fromisoformat(timestamp.replace("Z", ""))
-        return date.strftime("%b %w, %Y (%I:%M:%S %p)")
+        return date.strftime("%b %d, %Y (%I:%M:%S %p)")
     else:
         return None
 
@@ -81,6 +81,7 @@ def process_assignment(assignment, user_id, canvas, index, total):
     points_deducted = submission.points_deducted
     seconds_late = timedelta(seconds=submission.seconds_late)
     extra_attempts = submission.extra_attempts
+    submission_comments = submission.submission_comments
     assignment_row = [
         name,
         submission_types,
@@ -102,6 +103,7 @@ def process_assignment(assignment, user_id, canvas, index, total):
         points_deducted,
         seconds_late,
         extra_attempts,
+        submission_comments,
     ]
     late_display = "LATE" if late else "ON TIME"
     echo(
@@ -109,6 +111,90 @@ def process_assignment(assignment, user_id, canvas, index, total):
         f" {color(late_display, 'red' if late else 'green')}"
     )
     return assignment_row
+
+
+def process_discussion(discussion, user_id, index, total):
+    title = discussion.title
+    created_at = discussion.created_at
+    posted_at = discussion.posted_at
+    entry = next(
+        (entry for entry in discussion.get_topic_entries() if entry.user_id == user_id),
+        None,
+    )
+    lock_at = discussion.lock_at
+    entry_created_at = format_timestamp(entry.created_at) if entry else ""
+    entry_updated_at = format_timestamp(entry.updated_at) if entry else ""
+    discussion_row = [
+        title,
+        created_at,
+        posted_at,
+        lock_at,
+        entry_created_at,
+        entry_updated_at,
+    ]
+    echo(
+        f" - ({index + 1:,}/{total:,}) {color(title)}:"
+        f" {color(entry_created_at, 'yellow')}"
+    )
+    return discussion_row
+
+
+def process_quiz(quiz, user_id, index, total):
+    title = quiz.title
+    due_at = format_timestamp(quiz.due_at)
+    unlock_at = format_timestamp(quiz.unlock_at)
+    lock_at = format_timestamp(quiz.lock_at)
+    points_possible = quiz.points_possible
+    allowed_attempts = quiz.allowed_attempts
+    time_limit = quiz.time_limit
+    submission = next(
+        (
+            submission
+            for submission in quiz.get_submissions()
+            if submission.user_id == user_id
+        ),
+        None,
+    )
+    end_at = format_timestamp(submission.end_at) if submission else ""
+    started_at = format_timestamp(submission.started_at) if submission else ""
+    finished_at = format_timestamp(submission.finished_at) if submission else ""
+    time_spent = timedelta(seconds=submission.time_spent) if submission else ""
+    extra_time = submission.extra_time if submission else ""
+    attempt = submission.attempt if submission else ""
+    attempts_left = submission.attempts_left if submission else ""
+    extra_attempts = submission.extra_attempts if submission else ""
+    overdue_and_needs_submission = (
+        submission.overdue_and_needs_submission if submission else ""
+    )
+    excused = getattr(submission, "excused?") if submission else ""
+    score = submission.score if submission else ""
+    score_before_regrade = submission.score_before_regrade if submission else ""
+    quiz_row = [
+        title,
+        due_at,
+        unlock_at,
+        lock_at,
+        points_possible,
+        allowed_attempts,
+        time_limit,
+        end_at,
+        started_at,
+        finished_at,
+        time_spent,
+        extra_time,
+        attempt,
+        attempts_left,
+        extra_attempts,
+        overdue_and_needs_submission,
+        excused,
+        score,
+        score_before_regrade,
+    ]
+    echo(
+        f" - ({index + 1:,}/{total:,}) {color(title)}:"
+        f" {color(f'{score}/{points_possible}', 'green' if score else 'red')}"
+    )
+    return quiz_row
 
 
 def investigate_main():
@@ -158,34 +244,58 @@ def investigate_main():
                 f"Missing",
                 f"Late Policy Status",
                 f"Points Deducted",
-                f"Seconds Late",
+                f"Time Late",
                 f"Extra Attempts",
+                f"Submission Comments",
             ],
         )
         assignments.to_csv(assignments_path, index=False)
         echo("\tGetting discussions...")
+        discussions = [discussion for discussion in course.get_discussion_topics()]
         discussions = [
-            [discussion.title, discussion.lock_at]
-            for discussion in course.get_discussion_topics()
-        ]
-        echo("\tGetting quizzes...")
-        quizzes = [
-            [
-                quiz.title,
-                format_timestamp(quiz.due_at),
-                format_timestamp(quiz.unlock_at),
-                format_timestamp(quiz.lock_at),
-                quiz.points_possible,
-            ]
-            for quiz in course.get_quizzes()
+            process_discussion(discussion, user_id, index, len(discussions))
+            for index, discussion in enumerate(discussions)
         ]
         discussions = DataFrame(
             discussions,
-            columns=["Name", "Lock Date"],
+            columns=[
+                "Name",
+                "Created At",
+                "Posted At",
+                "Lock Date",
+                "Entry Created At",
+                "Entry Updated At",
+            ],
         )
         discussions.to_csv(discussions_path, index=False)
+        echo("\tGetting quizzes...")
+        quizzes = [quiz for quiz in course.get_quizzes()]
+        quizzes = [
+            process_quiz(quiz, user_id, index, len(quizzes))
+            for index, quiz in enumerate(quizzes)
+        ]
         quizzes = DataFrame(
             quizzes,
-            columns=["Name", "Due Date", "Unlock Date", "Lock Date", "Points Possible"],
+            columns=[
+                "Name",
+                "Due Date",
+                "Unlock Date",
+                "Lock Date",
+                "Points Possible",
+                "Allowed Attempts",
+                "Time Limit",
+                "End At",
+                "Started At",
+                "Finished At",
+                "Time Spent",
+                "Extra Time",
+                "Attempt",
+                "Attempts Left",
+                "Extra Attempts",
+                "Overdue And Needs Submission",
+                "Excused",
+                "Score",
+                "Score Before Regrade",
+            ],
         )
         quizzes.to_csv(quizzes_path, index=False)
