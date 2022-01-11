@@ -92,6 +92,8 @@ def process_assignment(assignment, user_id, canvas, index, total, course_path):
             comments.append([author, created_at, message])
         comments = DataFrame(comments, columns=["Name", "Created At", "Comment"])
         comments.to_csv(comments_path, index=False)
+    else:
+        submission_comments = None
     assignment_row = [
         name,
         submission_types,
