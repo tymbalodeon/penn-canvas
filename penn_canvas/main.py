@@ -679,6 +679,9 @@ def tool(
             " '--enable' is also used."
         ),
     ),
+    account_id: str = Option(
+        None, "--account-id", help="Operate on the specified sub-account only."
+    ),
 ):
     """
     Returns a list of courses with TOOL enabled or enables TOOL for a list of
@@ -702,7 +705,9 @@ def tool(
     be included in the task. The results will always be combined into a single
     output file.
     """
-    tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed)
+    tool_main(
+        tool, use_id, enable, test, verbose, new, force, clear_processed, account_id
+    )
 
 
 @app.command()
