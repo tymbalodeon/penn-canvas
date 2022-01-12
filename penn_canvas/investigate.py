@@ -7,9 +7,7 @@ from typer import Exit, echo
 from penn_canvas.helpers import BOX_PATH, TODAY_AS_Y_M_D, color, get_canvas
 
 COMMAND = "Investigate"
-INPUT_FILE_NAME = "Input file"
 RESULTS = BOX_PATH / "OGC Request"
-INPUT_FILE_NAME = RESULTS / "investigate.csv"
 
 
 def get_investigate_input_file():
@@ -304,21 +302,21 @@ def investigate_main():
                 "Unlock Date",
                 "Lock Date",
                 "Points Possible",
-                f"Submitted At Date",
-                f"Attempt",
-                f"Grade",
-                f"Grade Matches Current Submission",
-                f"Score",
-                f"Grader ID",
-                f"Graded At Date",
-                f"Late",
-                f"Excused",
-                f"Missing",
-                f"Late Policy Status",
-                f"Points Deducted",
-                f"Time Late",
-                f"Extra Attempts",
-                f"Submission Comments",
+                "Submitted At Date",
+                "Attempt",
+                "Grade",
+                "Grade Matches Current Submission",
+                "Score",
+                "Grader ID",
+                "Graded At Date",
+                "Late",
+                "Excused",
+                "Missing",
+                "Late Policy Status",
+                "Points Deducted",
+                "Time Late",
+                "Extra Attempts",
+                "Submission Comments",
             ],
         )
         assignments.to_csv(assignments_path, index=False)
