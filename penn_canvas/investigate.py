@@ -275,7 +275,6 @@ def investigate_main():
         if conversation_path and data:
             with open(conversation_path, "a+") as conversation_file:
                 conversation_file.write(data)
-    return
     for course_id in course_ids:
         course = canvas.get_course(course_id)
         echo(f"Processing {course.name}...")
