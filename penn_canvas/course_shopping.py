@@ -62,7 +62,7 @@ def cleanup_data(data, args):
 
 def course_contains_srs(course_id):
     try:
-        return course_id.startswith("SRS_")
+        return course_id.strip().startswith("SRS_")
     except Exception:
         return False
 
