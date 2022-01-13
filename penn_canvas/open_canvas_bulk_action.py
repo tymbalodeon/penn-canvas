@@ -162,9 +162,9 @@ def process_result(result_path):
     result = read_csv(result_path)
     penn_id = "penn_id" in str(result_path)
     if penn_id:
-        penn_ids = result[result["Penn ID"].str.isnumeric()]
+        penn_ids = result[result["Penn ID"].astype(str).str.isnumeric()]
         not_found = result[result["Penn ID"] == "not found"]
-        error = result[result["Penn ID"].str.contains("ERROR", regex=False)]
+        error = result[result["Penn ID"].astype(str).str.contains("ERROR", regex=False)]
         result = concat([error, not_found, penn_ids])
         counts = (
             len(penn_ids.index),
