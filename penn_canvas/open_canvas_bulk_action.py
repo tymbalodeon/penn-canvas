@@ -152,7 +152,7 @@ def get_penn_id_from_penn_key(penn_key):
         WHERE
             pennkey = :pennkey
         """,
-        pennkey=penn_key,
+        pennkey=penn_key.strip().lower(),
     )
     for penn_id in cursor:
         return penn_id[0]
