@@ -62,7 +62,7 @@ def cleanup_data(data, args):
 
 def course_contains_srs(course_id):
     try:
-        return course_id.startswith("SRS_")
+        return course_id.strip().startswith("SRS_")
     except Exception:
         return False
 
@@ -232,10 +232,12 @@ def course_shopping_main(test, disable, force, verbose, new):
         ]
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
         if verbose:
+            green_status = color(status.upper(), "green")
+            yellow_status = color(status, "yellow")
             echo(
                 f"- ({(index + 1):,}/{TOTAL})"
                 f" {color(course_id, 'magenta')}:"
-                f" {color(status.upper(), 'green') if status == 'enabled' else color(status, 'yellow')}"
+                f" {green_status if status == 'enabled' else yellow_status}"
             )
         if status in {
             "not SRS",
@@ -292,10 +294,12 @@ def course_shopping_main(test, disable, force, verbose, new):
             processed = processed[processed["canvas course id"] != canvas_course_id]
             processed.to_csv(processed_path, index=False)
             if verbose:
+                green_status = color(status.upper(), "green")
+                yellow_status = color(status, "yellow")
                 echo(
                     f"- ({(index + 1):,}/{total})"
                     f" {color(course_display, 'magenta')}:"
-                    f" {color(status.upper(), 'green') if status == 'disabled' else color(status, 'yellow')}"
+                    f" {green_status if status == 'disabled' else yellow_status}"
                 )
         result = read_csv(result_path)
         result.drop(columns=["index"], inplace=True)
@@ -317,10 +321,11 @@ def course_shopping_main(test, disable, force, verbose, new):
     )
     TOTAL = ""
     report = DataFrame()
-    RESULT_PATH = (
-        RESULTS
-        / f"{YEAR}_course_shopping_{'disabled' if disable else 'enabled'}_{TODAY}{'_test' if test else ''}.csv"
+    result_path_string = (
+        f"{YEAR}_course_shopping_{'disabled' if disable else 'enabled'}_"
+        f"{TODAY}{'_test' if test else ''}.csv"
     )
+    RESULT_PATH = RESULTS / result_path_string
     if not disable:
         reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
         START = get_start_index(force, RESULT_PATH, RESULTS)
@@ -362,14 +367,14 @@ def course_shopping_main(test, disable, force, verbose, new):
     WHARTON_ACCOUNTS = [
         account
         for account in get_sub_accounts(CANVAS, WHARTON_ACCOUNT_ID)
-        if not account in WHARTON_IGNORED_SUB_ACCOUNTS
+        if account not in WHARTON_IGNORED_SUB_ACCOUNTS
     ]
     SAS_IGNORED_ACCOUNTS = get_csv_as_list(SAS_IGNORED_PATH, "Account ID")
     SAS_IGNORED_SUBJECTS = get_csv_as_list(SAS_IGNORED_PATH, "Abbreviation")
     SAS_ACCOUNTS = [
         account
         for account in get_sub_accounts(CANVAS, SAS_ACCOUNT_ID)
-        if not account in SAS_IGNORED_ACCOUNTS
+        if account not in SAS_IGNORED_ACCOUNTS
     ]
     SEAS_ACCOUNTS = get_sub_accounts(CANVAS, SEAS_ACCOUNT_ID)
     NURS_ACCOUNTS = get_sub_accounts(CANVAS, NURS_ACCOUNT_ID)

@@ -58,14 +58,16 @@ def get_account_names(accounts, canvas):
 def check_tool(tool):
     if tool.lower() in {"reserve", "reserves"}:
         return "Course Materials @ Penn Libraries"
+    elif tool.lower() == "panopto":
+        return "Class Recordings"
     else:
         return tool
 
 
 def cleanup_data(data, args):
-    enable, processed_courses, processed_errors, new = args
+    enable, processed_courses, processed_errors, new, account_id = args
 
-    def cleanup_report(report):
+    def cleanup_report(report, account_id=None):
         data = report[
             [
                 "canvas_course_id",
@@ -80,12 +82,14 @@ def cleanup_data(data, args):
         data.drop_duplicates(inplace=True)
         data.sort_values("course_id", inplace=True, ignore_index=True)
         data = data.astype("string", copy=False, errors="ignore")
+        if account_id:
+            data = data[data["canvas_account_id"] == account_id]
         if enable:
             data = data[~data["canvas_course_id"].isin(processed_courses)]
         return data
 
     if enable:
-        data_frame = cleanup_report(data)
+        data_frame = cleanup_report(data, account_id=account_id)
         data_frame.reset_index(drop=True, inplace=True)
         already_processed_count = len(processed_courses)
         if new:
@@ -239,7 +243,9 @@ def print_messages(
     color("FINISHED", "yellow", True)
 
 
-def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
+def tool_main(
+    tool, use_id, enable, test, verbose, new, force, clear_processed, account_id
+):
     def check_tool_usage(course, canvas, verbose, args):
         tool, use_id, enable = args
         tool_display = color(tool, "blue")
@@ -338,7 +344,7 @@ def tool_main(tool, use_id, enable, test, verbose, new, force, clear_processed):
             PROCESSED, PROCESSED_ERRORS_PATH, "canvas course id"
         )
     CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:7]]
-    cleanup_data_args = (enable, PROCESSED_COURSES, PROCESSED_ERRORS, new)
+    cleanup_data_args = (enable, PROCESSED_COURSES, PROCESSED_ERRORS, new, account_id)
     report, TOTAL = process_input(
         reports,
         INPUT_FILE_NAME,
