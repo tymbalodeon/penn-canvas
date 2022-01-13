@@ -20,6 +20,11 @@ YEAR = datetime.now().strftime("%Y")
 MONTH = datetime.now().strftime("%B")
 TODAY = datetime.now().strftime("%d_%b_%Y")
 TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
+CURRENT_DATE = datetime.now()
+CURRENT_YEAR = CURRENT_DATE.year
+CURRENT_MONTH = CURRENT_DATE.month
+NEXT_YEAR = CURRENT_YEAR + 1
+PREVIOUS_YEAR = CURRENT_YEAR - 1
 MAIN_ACCOUNT_ID = 96678
 
 lib_dir = Path.home() / "Downloads/instantclient_19_8"
@@ -27,6 +32,48 @@ config_dir = lib_dir / "network/admin"
 init_oracle_client(
     lib_dir=str(lib_dir),
     config_dir=str(config_dir),
+)
+
+
+def get_term_letters():
+    return "A", "B", "C"
+
+
+SPRING, SUMMER, FALL = get_term_letters()
+
+
+def get_term_by_month(month):
+    if month >= 9:
+        return FALL
+    elif month >= 5:
+        return SUMMER
+    else:
+        return SPRING
+
+
+def get_current_term():
+    return {month: get_term_by_month(month) for month in range(1, 13)}.get(
+        CURRENT_MONTH, "A"
+    )
+
+
+CURRENT_TERM = get_current_term()
+
+
+def get_next_term():
+    return {SPRING: SUMMER, SUMMER: FALL, FALL: SPRING}.get(get_current_term())
+
+
+def get_previous_term():
+    return {SPRING: FALL, SUMMER: SPRING, FALL: SUMMER}.get(get_current_term())
+
+
+NEXT_TERM = get_next_term()
+PREVIOUS_TERM = get_previous_term()
+CURRENT_YEAR_AND_TERM = f"{CURRENT_YEAR}{CURRENT_TERM}"
+NEXT_YEAR_AND_TERM = f"{NEXT_YEAR if CURRENT_TERM == FALL else CURRENT_YEAR}{NEXT_TERM}"
+PREVIOUS_YEAR_AND_TERM = (
+    f"{PREVIOUS_YEAR if CURRENT_TERM == SPRING else CURRENT_YEAR}{PREVIOUS_TERM}"
 )
 
 

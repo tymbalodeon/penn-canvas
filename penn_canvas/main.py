@@ -1,6 +1,7 @@
 from typer import Argument, Option, Typer
 
 from penn_canvas.course_shopping import course_shopping_main
+from penn_canvas.helpers import MAIN_ACCOUNT_ID
 
 from .archive import archive_main
 from .bulk_enroll import bulk_enroll_main
@@ -16,6 +17,7 @@ from .nso import nso_main
 from .open_canvas_bulk_action import open_canvas_bulk_action_main
 from .storage import storage_main
 from .tool import tool_main
+from .update_term import update_term_main
 from .voicethread import voicethread_main
 
 app = Typer(
@@ -708,6 +710,38 @@ def tool(
     tool_main(
         tool, use_id, enable, test, verbose, new, force, clear_processed, account_id
     )
+
+
+@app.command()
+def update_term(
+    account: int = Option(
+        MAIN_ACCOUNT_ID,
+        help=(
+            "The Canvas Sub-account ID whose course's enrollment terms need to be"
+            " changed"
+        ),
+    ),
+    current_term: str = Option(
+        "",
+        help="The existing enrollment term value to be updated",
+    ),
+    new_term: str = Option(
+        "Penn Term",
+        help="The new enrollment term value to udpate courses with",
+    ),
+    test: bool = Option(
+        False,
+        "--test",
+        help=(
+            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
+            " of production (https://canvas.upenn.edu/)."
+        ),
+    ),
+):
+    """
+    Update enrollment term for courses in specified sub-account.
+    """
+    update_term_main(account, current_term, new_term, test)
 
 
 @app.command()
