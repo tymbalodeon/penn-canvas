@@ -4,13 +4,14 @@ from os import remove
 from pathlib import Path
 
 from pandas import concat, read_csv
-from typer import confirm, echo
+from typer import Exit, echo
 
 from .helpers import (
     TODAY_AS_Y_M_D,
     YEAR,
     add_headers_to_empty_files,
     color,
+    confirm_global_protect_enabled,
     drop_duplicate_errors,
     dynamic_to_csv,
     find_input,
@@ -441,9 +442,8 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
                 )
 
     if not no_data_warehouse:
-        global_protect_enabled = confirm("HAVE YOU ENABLED GLOBALPROTECT VPN?")
-        if not global_protect_enabled:
-            return
+        if not confirm_global_protect_enabled():
+            raise Exit()
     RESULT_PATH = RESULTS / f"{YEAR}_email_result{'_test' if test else ''}.csv"
     PROCESSED_PATH = (
         PROCESSED / f"{YEAR}_email_processed_users{'_test' if test else ''}.csv"

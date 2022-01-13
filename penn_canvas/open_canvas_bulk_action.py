@@ -5,9 +5,11 @@ from typer import echo
 
 from .helpers import (
     color,
+    confirm_global_protect_enabled,
     find_input,
     get_canvas,
     get_command_paths,
+    get_data_warehouse_cursor,
     get_start_index,
     make_csv_paths,
     make_index_headers,
@@ -23,8 +25,9 @@ HEADERS = ["Name", "Email", "Canvas ID", "Notify"]
 ACCOUNT = 1
 
 
-def cleanup_data(data):
-    data.drop_duplicates(subset=["Email"], inplace=True)
+def cleanup_data(data, action):
+    subset = "Pennkey" if action == "penn_id" else "Email"
+    data.drop_duplicates(subset=[subset], inplace=True)
     data = data.astype("string", errors="ignore")
     return data
 
@@ -138,154 +141,211 @@ def unenroll_user(canvas, email, canvas_id, section, task="conclude"):
             return "failed to unenroll", enrollment
 
 
+def get_penn_id_from_penn_key(penn_key):
+    cursor = get_data_warehouse_cursor()
+    cursor.execute(
+        """
+        SELECT
+            penn_id
+        FROM
+            person_all_v
+        WHERE
+            pennkey = :pennkey
+        """,
+        pennkey=penn_key,
+    )
+    for penn_id in cursor:
+        return penn_id[0]
+
+
 def process_result(result_path):
     result = read_csv(result_path)
-    created = result[result["Status"] == "created"]
-    removed = result[result["Status"] == "removed"]
-    enrolled = result[result["Status"] == "enrolled"]
-    unenrolled = result[result["Status"] == "unenrolled"]
-    failed_to_enroll = result[result["Status"] == "failed to enroll"]
-    failed_to_unenroll = result[result["Status"] == "failed to unenroll"]
-    already_in_use = result[result["Status"] == "already in use"]
-    course_not_found = result[result["Status"] == "course not found"]
-    enrollment_not_found = result[result["Status"] == "enrollment not found"]
-    missing_value = result[result["Status"] == "missing value"]
-    error = result[
-        (result["Status"] != "created")
-        & (result["Status"] != "removed")
-        & (result["Status"] != "enrolled")
-        & (result["Status"] != "unenrolled")
-        & (result["Status"] != "failed to enroll")
-        & (result["Status"] != "failed to unenroll")
-        & (result["Status"] != "already in use")
-        & (result["Status"] != "course not found")
-        & (result["Status"] != "enrollment not found")
-        & (result["Status"] != "missing value")
-    ]
-    result = concat(
-        [
-            missing_value,
-            course_not_found,
-            enrollment_not_found,
-            failed_to_enroll,
-            failed_to_unenroll,
-            error,
-            already_in_use,
-            enrolled,
-            unenrolled,
-            created,
-            removed,
+    penn_id = "penn_id" in str(result_path)
+    if penn_id:
+        penn_ids = result[result["Penn ID"].str.isnumeric()]
+        not_found = result[result["Penn ID"] == "not found"]
+        error = result[result["Penn ID"].str.contains("ERROR", regex=False)]
+        result = concat([error, not_found, penn_ids])
+        counts = (
+            len(penn_ids.index),
+            len(not_found.index),
+            len(error.index),
+        )
+    else:
+        created = result[result["Status"] == "created"]
+        removed = result[result["Status"] == "removed"]
+        enrolled = result[result["Status"] == "enrolled"]
+        unenrolled = result[result["Status"] == "unenrolled"]
+        failed_to_enroll = result[result["Status"] == "failed to enroll"]
+        failed_to_unenroll = result[result["Status"] == "failed to unenroll"]
+        already_in_use = result[result["Status"] == "already in use"]
+        course_not_found = result[result["Status"] == "course not found"]
+        enrollment_not_found = result[result["Status"] == "enrollment not found"]
+        missing_value = result[result["Status"] == "missing value"]
+        error = result[
+            (result["Status"] != "created")
+            & (result["Status"] != "removed")
+            & (result["Status"] != "enrolled")
+            & (result["Status"] != "unenrolled")
+            & (result["Status"] != "failed to enroll")
+            & (result["Status"] != "failed to unenroll")
+            & (result["Status"] != "already in use")
+            & (result["Status"] != "course not found")
+            & (result["Status"] != "enrollment not found")
+            & (result["Status"] != "missing value")
         ]
-    )
+        result = concat(
+            [
+                missing_value,
+                course_not_found,
+                enrollment_not_found,
+                failed_to_enroll,
+                failed_to_unenroll,
+                error,
+                already_in_use,
+                enrolled,
+                unenrolled,
+                created,
+                removed,
+            ]
+        )
+        counts = (
+            len(created.index),
+            len(removed.index),
+            len(enrolled.index),
+            len(unenrolled.index),
+            len(failed_to_enroll.index),
+            len(failed_to_unenroll.index),
+            len(error.index),
+            len(already_in_use.index),
+            len(course_not_found.index),
+            len(enrollment_not_found.index),
+            len(missing_value.index),
+        )
     result.drop(["index"], axis=1, inplace=True)
     result.to_csv(result_path, index=False)
-    return (
-        len(created.index),
-        len(removed.index),
-        len(enrolled.index),
-        len(unenrolled.index),
-        len(failed_to_enroll.index),
-        len(failed_to_unenroll.index),
-        len(error.index),
-        len(already_in_use.index),
-        len(course_not_found.index),
-        len(enrollment_not_found.index),
-        len(missing_value.index),
-    )
+    return counts, penn_id
 
 
-def print_messages(
-    total,
-    created,
-    removed,
-    enrolled,
-    unenrolled,
-    failed_to_enroll,
-    failed_to_unenroll,
-    not_found,
-    already_in_use,
-    course_not_found,
-    enrollment_not_found,
-    missing_value,
-):
+def print_messages(total, counts, penn_id):
     echo(f"- Processed {color(total, 'magenta')} {'user' if total == 1 else 'users'}.")
-    if created:
-        echo(
-            "- Created"
-            f" {color(created, 'green')} {'user' if created == 1 else 'users'}."
-        )
-    if removed:
-        echo(
-            f"- Removed {color(removed, 'red')} {'user' if removed == 1 else 'users'}."
-        )
-    if enrolled:
-        echo(
-            "- Enrolled"
-            f" {color(enrolled, 'green')} {'user' if enrolled == 1 else 'users'}."
-        )
-    if unenrolled:
-        echo(
-            "- Unenrolled"
-            f" {color(unenrolled, 'green')} {'user' if unenrolled == 1 else 'users'}."
-        )
-    if failed_to_enroll:
-        color(
-            "- ERROR: Failed to enroll"
-            f" {failed_to_enroll} {'user' if failed_to_enroll == 1 else 'users'}.",
-            "red",
-            True,
-        )
-    if failed_to_unenroll:
-        color(
-            "- ERROR: Failed to unenroll"
-            f" {failed_to_unenroll} {'user' if failed_to_unenroll == 1 else 'users'}.",
-            "red",
-            True,
-        )
-    if not_found:
-        color(
-            "- ERROR: Failed to find"
-            f" {not_found} {'user' if not_found == 1 else 'users'}.",
-            "red",
-            True,
-        )
-    if already_in_use:
-        color(
-            f"- ERROR: Found {already_in_use} user"
-            f" {'account' if already_in_use == 1 else 'accounts'} already in use.",
-            "red",
-            True,
-        )
-    if course_not_found:
-        color(
-            f"- ERROR: Failed to find {course_not_found}"
-            f" {'course' if course_not_found == 1 else 'courses'}.",
-            "red",
-            True,
-        )
-    if enrollment_not_found:
-        color(
-            f"- ERROR: Failed to find {enrollment_not_found}"
-            f" {'enrollment' if enrollment_not_found == 1 else 'enrollments'}.",
-            "red",
-            True,
-        )
-    if missing_value:
-        color(
-            "- ERROR: Found"
-            f" {missing_value} {'field' if missing_value == 1 else 'fields'} with"
-            " missing values",
-            "red",
-            True,
-        )
+    if penn_id:
+        penn_ids, not_found, error = counts
+        if penn_ids:
+            echo(
+                "- Found Penn IDs for"
+                f" {color(penn_ids, 'green')} {'user' if penn_ids == 1 else 'users'}."
+            )
+        if not_found:
+            color(
+                "- ERROR: Failed to find"
+                f" {not_found} {'user' if not_found == 1 else 'users'}.",
+                "red",
+                True,
+            )
+        if error:
+            color(
+                "- ERROR: Encountered an error for"
+                f" {error} {'user' if error == 1 else 'users'}.",
+                "red",
+                True,
+            )
+    else:
+        (
+            created,
+            removed,
+            enrolled,
+            unenrolled,
+            failed_to_enroll,
+            failed_to_unenroll,
+            not_found,
+            already_in_use,
+            course_not_found,
+            enrollment_not_found,
+            missing_value,
+        ) = counts
+        if created:
+            echo(
+                "- Created"
+                f" {color(created, 'green')} {'user' if created == 1 else 'users'}."
+            )
+        if removed:
+            echo(
+                "- Removed"
+                f" {color(removed, 'red')} {'user' if removed == 1 else 'users'}."
+            )
+        if enrolled:
+            echo(
+                "- Enrolled"
+                f" {color(enrolled, 'green')} {'user' if enrolled == 1 else 'users'}."
+            )
+        if unenrolled:
+            echo(
+                "- Unenrolled"
+                f" {color(unenrolled, 'green')} "
+                f"{'user' if unenrolled == 1 else 'users'}."
+            )
+        if failed_to_enroll:
+            color(
+                "- ERROR: Failed to enroll"
+                f" {failed_to_enroll} {'user' if failed_to_enroll == 1 else 'users'}.",
+                "red",
+                True,
+            )
+        if failed_to_unenroll:
+            color(
+                "- ERROR: Failed to unenroll"
+                f" {failed_to_unenroll} "
+                f"{'user' if failed_to_unenroll == 1 else 'users'}.",
+                "red",
+                True,
+            )
+        if not_found:
+            color(
+                "- ERROR: Failed to find"
+                f" {not_found} {'user' if not_found == 1 else 'users'}.",
+                "red",
+                True,
+            )
+        if already_in_use:
+            color(
+                f"- ERROR: Found {already_in_use} user"
+                f" {'account' if already_in_use == 1 else 'accounts'} already in use.",
+                "red",
+                True,
+            )
+        if course_not_found:
+            color(
+                f"- ERROR: Failed to find {course_not_found}"
+                f" {'course' if course_not_found == 1 else 'courses'}.",
+                "red",
+                True,
+            )
+        if enrollment_not_found:
+            color(
+                f"- ERROR: Failed to find {enrollment_not_found}"
+                f" {'enrollment' if enrollment_not_found == 1 else 'enrollments'}.",
+                "red",
+                True,
+            )
+        if missing_value:
+            color(
+                "- ERROR: Found"
+                f" {missing_value} {'field' if missing_value == 1 else 'fields'} with"
+                " missing values",
+                "red",
+                True,
+            )
 
 
 def open_canvas_bulk_action_main(verbose, force, test):
     def create_or_delete_canvas_user(user, canvas, verbose, args):
         account, action = args[:2]
+        email = ""
         canvas_id = ""
         notify = ""
         task = ""
+        penn_key = ""
         section = None
         if action == "enroll":
             section = args[2]
@@ -294,6 +354,8 @@ def open_canvas_bulk_action_main(verbose, force, test):
         elif action == "unenroll":
             section = args[2]
             index, full_name, email, canvas_id, task = user[:-1]
+        elif action == "penn_id":
+            index, full_name, penn_key = user[:-1]
         else:
             index, full_name, email = user[:-1]
         status = "removed" if action == "remove" else "created"
@@ -301,11 +363,12 @@ def open_canvas_bulk_action_main(verbose, force, test):
         error_message = False
         canvas_user = False
         try:
-            for item in [full_name, email, canvas_id]:
+            for item in [full_name, email, canvas_id, penn_key]:
                 if not isinstance(item, str):
                     raise Exception("missing value")
             full_name = " ".join(full_name.strip().split())
-            email = email.strip()
+            if email:
+                email = email.strip()
             if action == "unenroll":
                 status, course = unenroll_user(canvas, email, canvas_id, section, task)
             elif action == "enroll":
@@ -326,26 +389,38 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 status = remove_user(account, email)
             elif action == "update":
                 status = update_user_name(account, full_name, email)
+            elif action == "penn_id":
+                status = get_penn_id_from_penn_key(penn_key) or "not found"
             else:
                 status, canvas_user = create_user(account, full_name, email)
         except Exception as error:
-            status = str(error)
+            status = f"ERROR {str(error)}"
             error_message = True
-        users.at[index, ["Status"]] = status
+        if action == "penn_id":
+            users.at[index, ["Penn ID"]] = status
+        else:
+            users.at[index, ["Status"]] = status
         users.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
         if verbose and error_message:
             color(
                 f"- ({index + 1}/{TOTAL}) ERROR: Failed to"
-                f" {'remove' if action == 'remove' else action} {full_name}"
+                f" {'get Penn ID for' if action == 'penn_id' else action} {full_name}"
                 f" ({email}){f' in course {course}' if course else ''}: {status}.",
                 "red",
                 True,
             )
         elif verbose:
+            if action == "penn_id":
+                if error_message:
+                    display_color = "red"
+                else:
+                    display_color = "green" if status != "not found" else "yellow"
+            else:
+                display_color = COLOR_MAP.get(status)
             echo(
                 f"- ({index + 1}/{TOTAL})"
                 f" {color(full_name, 'yellow')}{':' if canvas_user else ''}"
-                f" {color(status.upper(), COLOR_MAP.get(status))}"
+                f" {color(status.upper(), display_color)}"
                 f"{color(' ' + str(canvas_user), 'magenta') if canvas_user else ''}."
             )
 
@@ -355,8 +430,6 @@ def open_canvas_bulk_action_main(verbose, force, test):
     RESULT_PATHS = list()
     input_files.sort(reverse=True)
     for index, input_file in enumerate(input_files):
-        if verbose:
-            echo(f"==== FILE {index + 1}/{len(input_files)} ====")
         action = "create"
         display_action = "Creating"
         section = False
@@ -376,6 +449,11 @@ def open_canvas_bulk_action_main(verbose, force, test):
         elif "update" in input_file.stem.lower():
             action = "update"
             display_action = "Updating"
+        elif "penn_id" in input_file.stem.lower():
+            if not confirm_global_protect_enabled():
+                continue
+            action = "penn_id"
+            display_action = "Getting Penn IDs for"
         open_test = test or "test" in input_file.stem.lower()
         RESULT_STRING = f"{input_file.stem}_RESULT.csv"
         RESULT_PATH = RESULTS / RESULT_STRING
@@ -383,8 +461,9 @@ def open_canvas_bulk_action_main(verbose, force, test):
         if action == "enroll":
             action_headers = HEADERS
         elif action == "unenroll":
-            action_headers = HEADERS[:3]
-            action_headers.append("Task")
+            action_headers = HEADERS[:3] + ["Task"]
+        elif action == "penn_id":
+            action_headers = HEADERS[:1] + ["Pennkey"]
         else:
             action_headers = HEADERS[:2]
         users, TOTAL, dated_input_file = process_input(
@@ -394,15 +473,20 @@ def open_canvas_bulk_action_main(verbose, force, test):
             action_headers,
             cleanup_data,
             missing_file_message,
+            args=action,
             start=START,
             open_canvas=True,
         )
-        users["Status"] = ""
-        RESULT_HEADERS = action_headers + ["Status"]
+        if action == "penn_id":
+            users["Penn ID"] = ""
+            RESULT_HEADERS = action_headers + ["Penn ID"]
+        else:
+            users["Status"] = ""
+            RESULT_HEADERS = action_headers + ["Status"]
         make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(RESULT_HEADERS))
         make_skip_message(START, "user")
         INSTANCE = "open_test" if open_test else "open"
-        CANVAS = get_canvas(INSTANCE)
+        CANVAS = get_canvas(INSTANCE) if action != "penn_id" else None
         echo(f") {display_action} {len(users)} users...")
         if verbose:
             COLOR_MAP = {
@@ -419,10 +503,12 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 "course not found": "red",
             }
         ARGS = (
-            (CANVAS.get_account(ACCOUNT), action, section)
+            (CANVAS.get_account(ACCOUNT) if CANVAS else CANVAS, action, section)
             if action == "enroll" or action == "unenroll"
-            else (CANVAS.get_account(ACCOUNT), action)
+            else (CANVAS.get_account(ACCOUNT) if CANVAS else CANVAS, action)
         )
+        if verbose:
+            echo(f"==== FILE {index + 1}/{len(input_files)} ====")
         toggle_progress_bar(users, create_or_delete_canvas_user, CANVAS, verbose, ARGS)
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         new_path = RESULT_PATH.rename(
@@ -435,31 +521,6 @@ def open_canvas_bulk_action_main(verbose, force, test):
     echo(f"- PROCESSED {color(len(RESULT_PATHS))} FILES.")
     for result_path, total in RESULT_PATHS:
         echo(f"==== {color(result_path.stem, 'green')} ====")
-        (
-            created,
-            removed,
-            enrolled,
-            unenrolled,
-            failed_to_enroll,
-            failed_to_unenroll,
-            not_found,
-            already_in_use,
-            course_not_found,
-            enrollment_not_found,
-            missing_value,
-        ) = process_result(result_path)
-        print_messages(
-            total,
-            created,
-            removed,
-            enrolled,
-            unenrolled,
-            failed_to_enroll,
-            failed_to_unenroll,
-            not_found,
-            already_in_use,
-            course_not_found,
-            enrollment_not_found,
-            missing_value,
-        )
+        counts, penn_id = process_result(result_path)
+        print_messages(total, counts, penn_id)
     color("FINISHED", "yellow", True)

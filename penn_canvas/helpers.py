@@ -35,6 +35,10 @@ def get_data_warehouse_cursor():
     return connect(user, password, dsn).cursor()
 
 
+def confirm_global_protect_enabled():
+    return confirm("HAVE YOU ENABLED THE GLOBAL PROTECT VPN?")
+
+
 def make_index_headers(headers):
     INDEX_HEADERS = headers[:]
     INDEX_HEADERS.insert(0, "index")
@@ -163,7 +167,7 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
 
 
 def print_missing_input_and_exit(input_file_name, please_add_message, date=True):
-    date_message = " matching today's date " if date else ""
+    date_message = " matching today's date " if date else " "
     error = color(
         f"- ERROR: A {input_file_name}{date_message}was not found.",
         "yellow",
