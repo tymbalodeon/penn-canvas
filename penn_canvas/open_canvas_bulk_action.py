@@ -21,7 +21,7 @@ from .helpers import (
 COMMAND = "Open Canvas Bulk Action"
 INPUT_FILE_NAME = "Open Canvas Bulk Action csv file"
 REPORTS, RESULTS, COMPLETED = get_command_paths(COMMAND, completed=True)
-HEADERS = ["Name", "Email", "Canvas ID", "Notify"]
+HEADERS = ["Name", "Email", "Course ID", "Section ID", "Notify"]
 ACCOUNT = 1
 
 
@@ -160,6 +160,13 @@ def get_penn_id_from_penn_key(penn_key):
     )
     for penn_id in cursor:
         return penn_id[0]
+
+
+def get_enrollment_id(course_id, section_id):
+    try:
+        return int(section_id), True
+    except Exception:
+        return course_id, False
 
 
 def process_result(result_path):
@@ -346,20 +353,22 @@ def print_messages(total, counts, penn_id):
 
 def open_canvas_bulk_action_main(verbose, force, test):
     def create_or_delete_canvas_user(user, canvas, verbose, args):
-        account, action = args[:2]
+        account, action = args
         email = ""
+        course_id = ""
+        section_id = ""
         canvas_id = ""
         notify = ""
         task = ""
         penn_key = ""
         section = None
         if action == "enroll":
-            section = args[2]
-            index, full_name, email, canvas_id, notify, error = user[:-1]
+            index, full_name, email, course_id, section_id, notify, error = user[:-1]
             notify = bool("true" in notify.lower())
+            canvas_id, section = get_enrollment_id(course_id, section_id)
         elif action == "unenroll":
-            section = args[2]
-            index, full_name, email, canvas_id, task = user[:-1]
+            index, full_name, email, course_id, section_id, task = user[:-1]
+            canvas_id, section = get_enrollment_id(course_id, section_id)
         elif action == "penn_id":
             index, full_name, penn_key = user[:-1]
         else:
@@ -370,7 +379,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
         enroll_error = ""
         canvas_user = False
         try:
-            for item in [full_name, email, canvas_id, penn_key]:
+            for item in [full_name, email, course_id, section_id, penn_key]:
                 if not isinstance(item, str):
                     raise Exception("missing value")
             full_name = " ".join(full_name.strip().split())
@@ -441,17 +450,12 @@ def open_canvas_bulk_action_main(verbose, force, test):
     for index, input_file in enumerate(input_files):
         action = "create"
         display_action = "Creating"
-        section = False
         if "unenroll" in input_file.stem.lower():
             action = "unenroll"
             display_action = "Unenrolling"
-            if "section" in input_file.stem.lower():
-                section = True
         elif "enroll" in input_file.stem.lower():
             action = "enroll"
             display_action = "Enrolling"
-            if "section" in input_file.stem.lower():
-                section = True
         elif "remove" in input_file.stem.lower():
             action = "remove"
             display_action = "Removing"
@@ -470,7 +474,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
         if action == "enroll":
             action_headers = HEADERS
         elif action == "unenroll":
-            action_headers = HEADERS[:3] + ["Task"]
+            action_headers = HEADERS[:-1] + ["Task"]
         elif action == "penn_id":
             action_headers = HEADERS[:1] + ["Pennkey"]
         else:
@@ -514,11 +518,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 "already in use": "red",
                 "course not found": "red",
             }
-        ARGS = (
-            (CANVAS.get_account(ACCOUNT) if CANVAS else CANVAS, action, section)
-            if action == "enroll" or action == "unenroll"
-            else (CANVAS.get_account(ACCOUNT) if CANVAS else CANVAS, action)
-        )
+        ARGS = (CANVAS.get_account(ACCOUNT) if CANVAS else CANVAS, action)
         if verbose:
             echo(f"==== FILE {index + 1}/{len(input_files)} ====")
             color(input_file.stem, "blue", True)
