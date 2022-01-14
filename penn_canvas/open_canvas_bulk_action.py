@@ -23,6 +23,7 @@ INPUT_FILE_NAME = "Open Canvas Bulk Action csv file"
 REPORTS, RESULTS, COMPLETED = get_command_paths(COMMAND, completed=True)
 HEADERS = ["Name", "Email", "Course ID", "Section ID", "Notify"]
 ACCOUNT = 1
+COURSES_CACHE = {}
 
 
 def cleanup_data(data, action):
@@ -43,10 +44,9 @@ def email_in_use(user, email):
 
 
 def enroll_user_in_course(canvas, user, canvas_id, section, notify):
-    try:
-        canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
-    except Exception:
-        return "course not found", canvas_id, ""
+    canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
+    if canvas_section == "course not found":
+        return canvas_section, canvas_id, ""
     try:
         enrollment = canvas_section.enroll_user(user, enrollment={"notify": notify})
         return "enrolled", enrollment, ""
@@ -108,28 +108,69 @@ def enroll_user(canvas, email, canvas_id, section, notify):
 
 
 def get_canvas_section_or_course(canvas, canvas_id, section):
-    return canvas.get_section(canvas_id) if section else canvas.get_course(canvas_id)
+    if canvas_id in COURSES_CACHE and "section" in COURSES_CACHE[canvas_id]:
+        return COURSES_CACHE[canvas_id]["section"]
+    else:
+        try:
+            canvas_section = (
+                canvas.get_section(canvas_id)
+                if section
+                else canvas.get_course(canvas_id)
+            )
+        except Exception:
+            canvas_section = "course not found"
+        COURSES_CACHE[canvas_id] = dict()
+        COURSES_CACHE[canvas_id]["section"] = canvas_section
+        return canvas_section
+
+
+def get_enrollments(canvas, canvas_id, canvas_section):
+    if canvas_id in COURSES_CACHE and "enrollments" in COURSES_CACHE[canvas_id]:
+        return COURSES_CACHE[canvas_id]["enrollments"]
+    else:
+        try:
+            enrollments = [
+                enrollment for enrollment in canvas_section.get_enrollments()
+            ]
+            enrollments = [
+                {
+                    "enrollment": enrollment,
+                    "user": canvas.get_user(enrollment.user["id"]),
+                }
+                for enrollment in enrollments
+            ]
+            enrollments = [
+                {
+                    "enrollment": enrollment["enrollment"],
+                    "login_id": enrollment["user"].login_id.lower()
+                    if enrollment["user"].login_id
+                    else "",
+                    "email": enrollment["user"].email.lower()
+                    if enrollment["user"].email
+                    else "",
+                }
+                for enrollment in enrollments
+            ]
+        except Exception:
+            enrollments = []
+        COURSES_CACHE[canvas_id]["enrollments"] = enrollments
+        return enrollments
 
 
 def unenroll_user(canvas, email, canvas_id, section, task="conclude"):
     tasks = {"conclude", "delete", "deactivate", "inactivate"}
     task = task.lower() if task in tasks else "conclude"
+    canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
+    if not canvas_section or canvas_section == "course not found":
+        return canvas_section, canvas_id
     try:
-        canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
-    except Exception:
-        return "course not found", canvas_id
-    try:
-        enrollments = [enrollment for enrollment in canvas_section.get_enrollments()]
-        enrollments = [
-            {"enrollment": enrollment, "user": canvas.get_user(enrollment.user["id"])}
-            for enrollment in enrollments
-        ]
+        enrollments = get_enrollments(canvas, canvas_id, canvas_section)
         enrollment = next(
             (
                 enrollment
                 for enrollment in enrollments
-                if enrollment["user"].login_id.lower() == email.lower()
-                or enrollment["user"].email.lower() == email.lower()
+                if enrollment["login_id"] == email.lower()
+                or enrollment["email"] == email.lower()
             ),
             None,
         )

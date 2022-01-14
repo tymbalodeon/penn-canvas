@@ -364,8 +364,6 @@ def get_processed(processed_directory, processed_path, columns="pennkey"):
 
 
 def get_canvas(instance="prod", verbose=True, override_key=False):
-    if verbose:
-        echo(") Reading Canvas Access Tokens from config file...")
     canvas_urls = get_penn_canvas_config("canvas_urls")
     canvas_keys = get_penn_canvas_config("canvas_keys")
     (
@@ -382,15 +380,21 @@ def get_canvas(instance="prod", verbose=True, override_key=False):
     ) = canvas_urls
     url = canvas_prod_url
     key = override_key or canvas_prod_key
+    instance_name = "PRODUCTION"
     if instance == "test":
         url = canvas_test_url
         key = override_key or canvas_test_key
+        instance_name = "TEST"
     elif instance == "open":
         url = open_canvas_url
         key = override_key or open_canvas_key
+        instance_name = "OPEN"
     elif instance == "open_test":
         url = open_canvas_test_url
         key = override_key or open_canvas_test_key
+        instance_name = "TEST OPEN"
+    if verbose:
+        echo(f") Accessing {instance_name} Canvas...")
     return Canvas(url, key)
 
 
