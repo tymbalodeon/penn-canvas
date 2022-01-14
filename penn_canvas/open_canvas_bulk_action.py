@@ -46,12 +46,16 @@ def enroll_user_in_course(canvas, user, canvas_id, section, notify):
     try:
         canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
     except Exception:
-        return "course not found", canvas_id
+        return "course not found", canvas_id, ""
     try:
         enrollment = canvas_section.enroll_user(user, enrollment={"notify": notify})
-        return "enrolled", enrollment
-    except Exception:
-        return "failed to enroll", canvas_section
+        return "enrolled", enrollment, ""
+    except Exception as error:
+        try:
+            error_message = error.message
+        except Exception:
+            error_message = error
+        return "failed to enroll", canvas_section, error_message
 
 
 def find_user_by_email(account, email):
@@ -97,10 +101,10 @@ def update_user_name(account, new_name, email):
 
 def enroll_user(canvas, email, canvas_id, section, notify):
     users = find_user_by_email(canvas.get_account(ACCOUNT), email)
-    status, course_or_enrollment = enroll_user_in_course(
+    status, course_or_enrollment, error_message = enroll_user_in_course(
         canvas, users[0], canvas_id, section, notify
     )
-    return status, course_or_enrollment
+    return status, course_or_enrollment, error_message
 
 
 def get_canvas_section_or_course(canvas, canvas_id, section):
@@ -223,6 +227,8 @@ def process_result(result_path):
             len(missing_value.index),
         )
     result.drop(["index"], axis=1, inplace=True)
+    if result["Error"].isna().all():
+        result.drop(["Error"], axis=1, inplace=True)
     result.to_csv(result_path, index=False)
     return counts, penn_id
 
@@ -349,7 +355,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
         section = None
         if action == "enroll":
             section = args[2]
-            index, full_name, email, canvas_id, notify = user[:-1]
+            index, full_name, email, canvas_id, notify, error = user[:-1]
             notify = bool("true" in notify.lower())
         elif action == "unenroll":
             section = args[2]
@@ -361,6 +367,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
         status = "removed" if action == "remove" else "created"
         course = None
         error_message = False
+        enroll_error = ""
         canvas_user = False
         try:
             for item in [full_name, email, canvas_id, penn_key]:
@@ -373,14 +380,14 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 status, course = unenroll_user(canvas, email, canvas_id, section, task)
             elif action == "enroll":
                 try:
-                    status, course = enroll_user(
+                    status, course, enroll_error = enroll_user(
                         canvas, email, canvas_id, section, notify
                     )
                 except Exception:
                     status, canvas_user = create_user(account, full_name, email)
                     if status == "created":
                         try:
-                            status, course = enroll_user(
+                            status, course, enroll_error = enroll_user(
                                 canvas, email, canvas_id, section, notify
                             )
                         except Exception as error:
@@ -400,6 +407,8 @@ def open_canvas_bulk_action_main(verbose, force, test):
             users.at[index, ["Penn ID"]] = status
         else:
             users.at[index, ["Status"]] = status
+        if enroll_error:
+            users.at[index, ["Error"]] = enroll_error
         users.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
         if verbose and error_message:
             color(
@@ -483,6 +492,9 @@ def open_canvas_bulk_action_main(verbose, force, test):
         else:
             users["Status"] = ""
             RESULT_HEADERS = action_headers + ["Status"]
+            if action == "enroll":
+                users["Error"] = ""
+                RESULT_HEADERS = RESULT_HEADERS + ["Error"]
         make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(RESULT_HEADERS))
         make_skip_message(START, "user")
         INSTANCE = "open_test" if open_test else "open"
@@ -509,6 +521,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
         )
         if verbose:
             echo(f"==== FILE {index + 1}/{len(input_files)} ====")
+            color(input_file.stem, "blue", True)
         toggle_progress_bar(users, create_or_delete_canvas_user, CANVAS, verbose, ARGS)
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         new_path = RESULT_PATH.rename(
