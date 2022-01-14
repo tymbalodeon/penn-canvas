@@ -234,7 +234,12 @@ def process_result(result_path):
             len(missing_value.index),
         )
     result.drop(["index"], axis=1, inplace=True)
-    if "enroll" in result_path.stem.lower() and result["Error"].isna().all():
+    file_name = result_path.stem.lower()
+    if (
+        "enroll" in file_name
+        and not "unenroll" in file_name
+        and result["Error"].isna().all()
+    ):
         result.drop(["Error"], axis=1, inplace=True)
     result.to_csv(result_path, index=False)
     return counts, penn_id
@@ -382,8 +387,11 @@ def open_canvas_bulk_action_main(verbose, force, test):
             for item in [full_name, email, penn_key]:
                 if not isinstance(item, str):
                     raise Exception("missing value")
-            if not course_id and not section_id:
-                raise Exception("missing value")
+            if not section:
+                try:
+                    int(course_id)
+                except Exception:
+                    raise Exception("missing value")
             full_name = " ".join(full_name.strip().split())
             if email:
                 email = email.strip()
@@ -412,7 +420,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
             else:
                 status, canvas_user = create_user(account, full_name, email)
         except Exception as error:
-            status = f"ERROR {str(error)}"
+            status = f"ERROR: {str(error)}"
             error_message = True
         if action == "penn_id":
             users.at[index, ["Penn ID"]] = status
