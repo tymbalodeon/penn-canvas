@@ -181,6 +181,11 @@ def unenroll_user(canvas, email, canvas_id, section, task="conclude"):
     else:
         try:
             unenrollment = enrollment["enrollment"].deactivate(task)
+            COURSES_CACHE[canvas_id]["enrollments"] = [
+                enrollment
+                for enrollment in COURSES_CACHE[canvas_id]["enrollments"]
+                if not enrollment["enrollment"].id == unenrollment.id
+            ]
             return "unenrolled", unenrollment
         except Exception:
             return "failed to unenroll", enrollment
@@ -278,7 +283,7 @@ def process_result(result_path):
     file_name = result_path.stem.lower()
     if (
         "enroll" in file_name
-        and not "unenroll" in file_name
+        and "unenroll" not in file_name
         and result["Error"].isna().all()
     ):
         result.drop(["Error"], axis=1, inplace=True)
