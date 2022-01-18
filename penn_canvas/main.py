@@ -416,6 +416,7 @@ def course_shopping(
         ),
     ),
 ):
+    """Enable or disable Course Shopping 'Institution' level visibility for courses."""
     course_shopping_main(test, disable, force, verbose, new)
 
 
@@ -578,6 +579,7 @@ def open_canvas_bulk_action(
         help="Use the Open Canvas test instance instead of production.",
     ),
 ):
+    """Run any Open Canvas Bulk Action input files currently in the Input folder"""
     open_canvas_bulk_action_main(verbose, force, test)
 
 
@@ -746,4 +748,5 @@ def update_term(
 
 @app.command()
 def voicethread():
+    """Generate a report of Voicethread usage."""
     voicethread_main()
