@@ -22,8 +22,8 @@ from .helpers import (
 )
 
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
-INPUT, RESULTS, PROCESSED = get_command_paths("NSO", processed=True)
-FINAL_LIST_PATH = RESULTS / f"{YEAR}_nso_final_list.csv"
+INPUT, RESULTS, PROCESSED = get_command_paths("New Student Orientation", processed=True)
+FINAL_LIST_PATH = RESULTS / f"{YEAR}_new_student_orientation_final_list.csv"
 HEADERS = [
     "index",
     "canvas course id",
@@ -34,18 +34,20 @@ HEADERS = [
 ]
 
 
-def find_nso_file():
-    echo(") Finding NSO file...")
+def find_new_student_orientation_file():
+    echo(") Finding New Student Orientation file...")
 
     if not INPUT.exists():
         Path.mkdir(INPUT, parents=True)
-        error = color("- ERROR: NSO input directory not found.", "yellow")
+        error = color(
+            "- ERROR: New Student Orientation input directory not found.", "yellow"
+        )
         echo(
-            f"{error}\n- Creating one for you at: {color(INPUT, 'green')}\n- Please"
-            " add an NSO input file matching the graduation year of this year's"
-            " incoming freshmen to this directory and then run this script again.\n-"
-            " (If you need detailed instructions, run this command with the '--help'"
-            " flag.)"
+            f"{error}\n- Creating one for you at: {color(INPUT, 'green')}\n- Please add"
+            " an New Student Orientation input file matching the graduation year of"
+            " this year's incoming freshmen to this directory and then run this script"
+            " again.\n- (If you need detailed instructions, run this command with the"
+            " '--help' flag.)"
         )
 
         raise Exit()
@@ -62,16 +64,16 @@ def find_nso_file():
 
         if not CURRENT_FILE:
             error = color(
-                "- ERROR: A nso file matching the graduation year of this"
-                " year's incoming freshmen was not found.",
+                "- ERROR: A New Student Orientation file matching the graduation year"
+                " of this year's incoming freshmen was not found.",
                 "yellow",
             )
             echo(
-                f"{error}\n- Please add a NSO input file matching the"
-                " graduation year of this year's incoming freshmen to the following"
-                " directory and then run this script again:"
-                f" {color(INPUT, 'green')}\n- (If you need detailed instructions,"
-                " run this command with the '--help' flag.)"
+                f"{error}\n- Please add a New Student Orientation input file matching"
+                " the graduation year of this year's incoming freshmen to the"
+                " following directory and then run this script again:"
+                f" {color(INPUT, 'green')}\n- (If you need detailed instructions, run"
+                " this command with the '--help' flag.)"
             )
 
             raise Exit()
@@ -80,7 +82,7 @@ def find_nso_file():
 
 
 def cleanup_data(input_file, start=0):
-    echo(") Preparing NSO file...")
+    echo(") Preparing New Student Orientation file...")
     data = read_excel(input_file, engine="openpyxl", sheet_name=None)
     try:
         facilitators = data[0]
@@ -285,7 +287,7 @@ def print_messages(
     color("FINISHED", "yellow", True)
 
 
-def nso_main(test, verbose, force, clear_processed):
+def new_student_orientation_main(test, verbose, force, clear_processed):
     def create_group_membership(
         canvas, course_id, group_set_name, group_name, penn_key, enroll_in_course=False
     ):
@@ -411,12 +413,14 @@ def nso_main(test, verbose, force, clear_processed):
                 writer(processed_file).writerow([penn_key])
 
     RESULT_PATH = (
-        RESULTS / f"{YEAR}_nso_result_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
+        RESULTS
+        / f"{YEAR}_new_student_orientation_result_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
     )
     PROCESSED_PATH = (
-        PROCESSED / f"nso_processed_users_{YEAR}{'_test' if test else ''}.csv"
+        PROCESSED
+        / f"new_student_orientation_processed_users_{YEAR}{'_test' if test else ''}.csv"
     )
-    DATA = find_nso_file()
+    DATA = find_new_student_orientation_file()
     START = get_start_index(force, RESULT_PATH)
     DATA, TOTAL = cleanup_data(DATA, START)
     handle_clear_processed(clear_processed, PROCESSED_PATH)
