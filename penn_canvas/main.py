@@ -13,7 +13,7 @@ from .count_sites import count_sites_main
 from .email import email_main
 from .investigate import investigate_main
 from .module import module_main
-from .nso import nso_main
+from .new_student_orientation import new_student_orientation_main
 from .open_canvas_bulk_action import open_canvas_bulk_action_main
 from .storage import storage_main
 from .tool import tool_main
@@ -517,7 +517,7 @@ def module(
 
 
 @app.command()
-def nso(
+def new_student_orientation(
     test: bool = Option(
         False,
         "--test",
@@ -544,7 +544,7 @@ def nso(
     ),
 ):
     """
-    ('NSO' stands for 'New Student Orientation'.) Enrolls incoming freshmen into
+    Enrolls incoming freshmen into
     Canvas Groups as part of the 'Thrive at Penn' site.
 
     INPUT: An xlsx file (assumes graduation year is in the file name) with the
@@ -557,7 +557,7 @@ def nso(
     year when the command is run. A file whose name contains any other year will
     not be accepted.
     """
-    nso_main(test, verbose, force, clear_processed)
+    new_student_orientation_main(test, verbose, force, clear_processed)
 
 
 @app.command()
