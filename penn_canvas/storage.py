@@ -19,6 +19,7 @@ from .helpers import (
     process_input,
     toggle_progress_bar,
 )
+from .style import print_item
 
 COMMAND = "Storage"
 INPUT_FILE_NAME = "Canvas Course Storage report"
@@ -68,11 +69,11 @@ def check_percent_storage(course, canvas, verbose, total):
         percentage_used = float(storage_used) / canvas_course.storage_quota_mb
         if verbose:
             percentage_color = "yellow" if percentage_used >= 0.79 else "green"
-            echo(
-                f"- ({(index + 1):,}/{total})"
-                f" {color(sis_id, 'yellow')} ({canvas_id}):"
+            message = (
+                f"{color(sis_id, 'yellow')} ({canvas_id}):"
                 f" {color(f'{int(percentage_used * 100)}%', percentage_color)}"
             )
+            print_item(index, total, message)
         if percentage_used >= 0.79:
             if verbose:
                 color("\t* INCREASE REQUIRED", "yellow", True)
@@ -83,7 +84,7 @@ def check_percent_storage(course, canvas, verbose, total):
                         f" {canvas_id}",
                         "yellow",
                     )
-                    echo(f"({(index + 1):,}/{total}) {message}")
+                    print_item(index, total, message)
                 return False, "missing sis id"
             else:
                 return True, sis_id
@@ -92,7 +93,7 @@ def check_percent_storage(course, canvas, verbose, total):
     except Exception:
         if verbose:
             message = color(f"ERROR: {sis_id} ({canvas_id}) NOT FOUND", "red")
-            echo(f"- ({(index + 1):,}/{total}) {message}")
+            print_item(index, total, message)
         return False, "course not found"
 
 

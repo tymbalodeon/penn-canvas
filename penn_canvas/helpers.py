@@ -35,11 +35,7 @@ init_oracle_client(
 )
 
 
-def get_term_letters():
-    return "A", "B", "C"
-
-
-SPRING, SUMMER, FALL = get_term_letters()
+SPRING, SUMMER, FALL = "A", "B", "C"
 
 
 def get_term_by_month(month):
