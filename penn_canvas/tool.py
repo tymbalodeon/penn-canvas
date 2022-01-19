@@ -397,11 +397,14 @@ def tool_main(
     STYLED_TERMS = color(f"{', '.join(terms)}", "yellow")
     if enable:
         if tool == "Course Materials @ Penn Libraries":
+            separator = "\n\t"
             ACCOUNTS = color(
-                f"{''.join(get_account_names(RESERVE_ACCOUNTS, CANVAS))}", "magenta"
+                f"{f'{separator}'.join(get_account_names(RESERVE_ACCOUNTS, CANVAS))}",
+                "magenta",
             )
             echo(
-                f') Enabling "{tool_display}" for {STYLED_TERMS} courses in: {ACCOUNTS}'
+                f') Enabling "{tool_display}" for {STYLED_TERMS} courses in:'
+                f" \n\t{ACCOUNTS}"
             )
         else:
             echo(f') Enabling "{tool_display}" for {STYLED_TERMS} courses...')
