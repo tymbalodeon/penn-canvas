@@ -23,167 +23,21 @@ INPUT_FILE_NAME = "Open Canvas Bulk Action csv file"
 REPORTS, RESULTS, COMPLETED = get_command_paths(COMMAND, completed=True)
 HEADERS = ["Name", "Email", "Course ID", "Section ID", "Notify"]
 ACCOUNT = 1
+UNENROLL_TASKS = {"conclude", "delete", "deactivate", "inactivate"}
 COURSES_CACHE = {}
 
 
 def cleanup_data(data, action):
     subset = "Pennkey" if action == "penn_id" else "Email"
     data.drop_duplicates(subset=[subset], inplace=True)
-    data = data.astype("string", errors="ignore")
-    return data
+    return data.astype("string", errors="ignore")
 
 
-def email_in_use(user, email):
-    channels = [
-        channel
-        for channel in user.get_communication_channels()
-        if channel.type == "email"
-    ]
-    email = [channel for channel in channels if channel.address == email]
-    return bool(email)
-
-
-def enroll_user_in_course(canvas, user, canvas_id, section, notify):
-    canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
-    if canvas_section == "course not found":
-        return canvas_section, canvas_id, ""
+def get_enrollment_id(course_id, section_id):
     try:
-        enrollment = canvas_section.enroll_user(user, enrollment={"notify": notify})
-        return "enrolled", enrollment, ""
-    except Exception as error:
-        try:
-            error_message = error.message
-        except Exception:
-            error_message = error
-        return "failed to enroll", canvas_section, error_message
-
-
-def find_user_by_email(account, email):
-    users = account.get_users(search_term=email)
-    users = [
-        user
-        for user in users
-        if user.login_id.lower() == email.lower() or email_in_use(user, email)
-    ]
-    return users
-
-
-def create_user(account, full_name, email):
-    user = find_user_by_email(account, email)
-    if user:
-        return "already in use", user[0]
-    pseudonym = {"unique_id": email}
-    user_object = {"name": full_name}
-    try:
-        canvas_user = account.create_user(pseudonym, user=user_object)
-        return "created", canvas_user
+        return int(section_id), True
     except Exception:
-        return "already in use", None
-
-
-def remove_user(account, email):
-    user = find_user_by_email(account, email)
-    if not user:
-        return "not found"
-    else:
-        account.delete_user(user[0])
-        return "removed"
-
-
-def update_user_name(account, new_name, email):
-    user = find_user_by_email(account, email)
-    if not user:
-        return "not found"
-    else:
-        user[0].edit(user={"name": new_name})
-        return "updated"
-
-
-def enroll_user(canvas, email, canvas_id, section, notify):
-    users = find_user_by_email(canvas.get_account(ACCOUNT), email)
-    status, course_or_enrollment, error_message = enroll_user_in_course(
-        canvas, users[0], canvas_id, section, notify
-    )
-    return status, course_or_enrollment, error_message
-
-
-def get_canvas_section_or_course(canvas, canvas_id, section):
-    if canvas_id in COURSES_CACHE and "section" in COURSES_CACHE[canvas_id]:
-        return COURSES_CACHE[canvas_id]["section"]
-    else:
-        try:
-            canvas_section = (
-                canvas.get_section(canvas_id)
-                if section
-                else canvas.get_course(canvas_id)
-            )
-        except Exception:
-            canvas_section = "course not found"
-        COURSES_CACHE[canvas_id] = dict()
-        COURSES_CACHE[canvas_id]["section"] = canvas_section
-        return canvas_section
-
-
-def get_enrollments(canvas, canvas_id, canvas_section):
-    if canvas_id in COURSES_CACHE and "enrollments" in COURSES_CACHE[canvas_id]:
-        return COURSES_CACHE[canvas_id]["enrollments"]
-    else:
-        try:
-            enrollments = [
-                enrollment for enrollment in canvas_section.get_enrollments()
-            ]
-            enrollments = [
-                {
-                    "enrollment": enrollment,
-                    "user": canvas.get_user(enrollment.user["id"]),
-                }
-                for enrollment in enrollments
-            ]
-            enrollments = [
-                {
-                    "enrollment": enrollment["enrollment"],
-                    "login_id": enrollment["user"].login_id.lower()
-                    if enrollment["user"].login_id
-                    else "",
-                    "email": enrollment["user"].email.lower()
-                    if enrollment["user"].email
-                    else "",
-                }
-                for enrollment in enrollments
-            ]
-        except Exception:
-            enrollments = []
-        COURSES_CACHE[canvas_id]["enrollments"] = enrollments
-        return enrollments
-
-
-def unenroll_user(canvas, email, canvas_id, section, task="conclude"):
-    tasks = {"conclude", "delete", "deactivate", "inactivate"}
-    task = task.lower() if task in tasks else "conclude"
-    canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
-    if not canvas_section or canvas_section == "course not found":
-        return canvas_section, canvas_id
-    try:
-        enrollments = get_enrollments(canvas, canvas_id, canvas_section)
-        enrollment = next(
-            (
-                enrollment
-                for enrollment in enrollments
-                if enrollment["login_id"] == email.lower()
-                or enrollment["email"] == email.lower()
-            ),
-            None,
-        )
-    except Exception:
-        enrollment = None
-    if not enrollment:
-        return "enrollment not found", canvas_section
-    else:
-        try:
-            unenrollment = enrollment["enrollment"].deactivate(task)
-            return "unenrolled", unenrollment
-        except Exception:
-            return "failed to unenroll", enrollment
+        return course_id, False
 
 
 def get_penn_id_from_penn_key(penn_key):
@@ -203,11 +57,145 @@ def get_penn_id_from_penn_key(penn_key):
         return penn_id[0]
 
 
-def get_enrollment_id(course_id, section_id):
+def email_in_use(user, email):
+    channels = [
+        channel
+        for channel in user.get_communication_channels()
+        if channel.type == "email"
+    ]
+    return bool([channel for channel in channels if channel.address == email])
+
+
+def find_user_by_email(account, email):
+    users = [
+        user
+        for user in account.get_users(search_term=email)
+        if user.login_id.lower() == email.lower() or email_in_use(user, email)
+    ]
+    return next(iter(users))
+
+
+def create_user(account, full_name, email):
+    user = find_user_by_email(account, email)
+    if user:
+        return "already in use", user
+    pseudonym = {"unique_id": email}
+    user_object = {"name": full_name}
     try:
-        return int(section_id), True
+        canvas_user = account.create_user(pseudonym, user=user_object)
+        return "created", canvas_user
     except Exception:
-        return course_id, False
+        return "already in use", None
+
+
+def update_user_name(account, new_name, email):
+    user = find_user_by_email(account, email)
+    if not user:
+        return "not found"
+    else:
+        user.edit(user={"name": new_name})
+        return "updated"
+
+
+def remove_user(account, email):
+    user = find_user_by_email(account, email)
+    if not user:
+        return "not found"
+    else:
+        account.delete_user(user)
+        return "removed"
+
+
+def get_canvas_section_or_course(canvas, canvas_id, section):
+    if canvas_id in COURSES_CACHE and "section" in COURSES_CACHE[canvas_id]:
+        return COURSES_CACHE[canvas_id]["section"]
+    else:
+        try:
+            canvas_section = (
+                canvas.get_section(canvas_id)
+                if section
+                else canvas.get_course(canvas_id)
+            )
+        except Exception:
+            canvas_section = "course not found"
+        COURSES_CACHE[canvas_id] = dict()
+        COURSES_CACHE[canvas_id]["section"] = canvas_section
+        return canvas_section
+
+
+def get_enrollment_login(canvas, enrollment):
+    user = canvas.get_user(enrollment.user["id"])
+    return {
+        "enrollment": enrollment,
+        "login_id": user.login_id.lower() if user.login_id else "",
+        "email": user.email.lower() if user.email else "",
+    }
+
+
+def get_enrollments(canvas, canvas_id, canvas_section):
+    if canvas_id in COURSES_CACHE and "enrollments" in COURSES_CACHE[canvas_id]:
+        return COURSES_CACHE[canvas_id]["enrollments"]
+    else:
+        try:
+            enrollments = [
+                enrollment for enrollment in canvas_section.get_enrollments()
+            ]
+            enrollments = [
+                get_enrollment_login(canvas, enrollment) for enrollment in enrollments
+            ]
+        except Exception:
+            enrollments = []
+        COURSES_CACHE[canvas_id]["enrollments"] = enrollments
+        return enrollments
+
+
+def get_enrollment_by_email(email, enrollments):
+    email = email.lower()
+    return next(
+        (
+            enrollment
+            for enrollment in enrollments
+            if enrollment["login_id"].lower() == email
+            or enrollment["email"].lower() == email
+        ),
+        None,
+    )
+
+
+def enroll_user(canvas, email, canvas_id, section, notify):
+    user = find_user_by_email(canvas.get_account(ACCOUNT), email)
+    canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
+    if canvas_section == "course not found":
+        return canvas_section, canvas_id, ""
+    try:
+        enrollment = canvas_section.enroll_user(user, enrollment={"notify": notify})
+        return "enrolled", enrollment, ""
+    except Exception as error:
+        try:
+            error_message = error.message
+        except Exception:
+            error_message = error
+        return "failed to enroll", canvas_section, error_message
+
+
+def unenroll_user(canvas, email, canvas_id, section, task="conclude"):
+    task = task.lower() if task in UNENROLL_TASKS else "conclude"
+    canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
+    if not canvas_section or canvas_section == "course not found":
+        return canvas_section, canvas_id
+    try:
+        enrollments = get_enrollments(canvas, canvas_id, canvas_section)
+        enrollment = get_enrollment_by_email(email, enrollments)
+    except Exception:
+        enrollment = None
+    if not enrollment:
+        return "enrollment not found", canvas_section
+    else:
+        try:
+            unenrollment = enrollment["enrollment"].deactivate(task)
+            return "unenrolled", unenrollment
+        except Exception:
+            return "failed to unenroll", enrollment
 
 
 def process_result(result_path):
@@ -278,7 +266,7 @@ def process_result(result_path):
     file_name = result_path.stem.lower()
     if (
         "enroll" in file_name
-        and not "unenroll" in file_name
+        and "unenroll" not in file_name
         and result["Error"].isna().all()
     ):
         result.drop(["Error"], axis=1, inplace=True)
