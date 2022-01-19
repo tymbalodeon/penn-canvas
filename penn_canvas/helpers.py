@@ -8,7 +8,7 @@ from zipfile import ZipFile
 from canvasapi import Canvas
 from cx_Oracle import connect, init_oracle_client
 from pandas import read_csv
-from typer import Exit, confirm, echo, progressbar
+from typer import Exit, confirm, echo, progressbar, style
 
 from .config import get_penn_canvas_config
 from .style import color
@@ -35,11 +35,7 @@ init_oracle_client(
 )
 
 
-def get_term_letters():
-    return "A", "B", "C"
-
-
-SPRING, SUMMER, FALL = get_term_letters()
+SPRING, SUMMER, FALL = "A", "B", "C"
 
 
 def get_term_by_month(month):
@@ -394,7 +390,7 @@ def get_canvas(instance="prod", verbose=True, override_key=False):
         key = override_key or open_canvas_test_key
         instance_name = "TEST OPEN"
     if verbose:
-        echo(f") Accessing {instance_name} Canvas...")
+        echo(f") Accessing {style(instance_name, bold=True)} Canvas...")
     return Canvas(url, key)
 
 

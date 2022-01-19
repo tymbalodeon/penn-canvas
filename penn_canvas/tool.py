@@ -64,7 +64,7 @@ def check_tool(tool):
         return tool
 
 
-def cleanup_data(data, args):
+def cleanup_data(incoming_data, args):
     enable, processed_courses, processed_errors, new, account_id = args
 
     def cleanup_report(report, account_id=None):
@@ -89,7 +89,7 @@ def cleanup_data(data, args):
         return data
 
     if enable:
-        data_frame = cleanup_report(data, account_id=account_id)
+        data_frame = cleanup_report(incoming_data, account_id=account_id)
         data_frame.reset_index(drop=True, inplace=True)
         already_processed_count = len(processed_courses)
         if new:
@@ -105,11 +105,7 @@ def cleanup_data(data, args):
             )
             echo(f") {message}")
     else:
-        data_frames = list()
-        for report in data:
-            data = cleanup_report(report)
-            data_frames.append(data)
-        data_frame = concat(data_frames, ignore_index=True)
+        data_frame = cleanup_report(incoming_data, account_id=account_id)
     return data_frame
 
 
@@ -153,6 +149,8 @@ def process_result(terms, enable, result_path, new):
             )
     else:
         BASE = RESULTS / "Reports"
+        if not BASE.exists():
+            Path.mkdir(BASE)
         ENABLED_STEM = (
             f"{'_'.join(terms).replace('/', '')}_{result_path.stem}_REPORT_ENABLED.csv"
         )
@@ -355,7 +353,8 @@ def tool_main(
         cleanup_data_args,
         start=START,
     )
-    report = report.loc[START:TOTAL, :]
+    if enable:
+        report = report.loc[START:TOTAL, :]
     report["term_id"].fillna("N/A", inplace=True)
     terms = report["term_id"].drop_duplicates().tolist()
     if not force and not enable and not RESULT_PATH.exists():
@@ -398,11 +397,14 @@ def tool_main(
     STYLED_TERMS = color(f"{', '.join(terms)}", "yellow")
     if enable:
         if tool == "Course Materials @ Penn Libraries":
+            separator = "\n\t"
             ACCOUNTS = color(
-                f"{''.join(get_account_names(RESERVE_ACCOUNTS, CANVAS))}", "magenta"
+                f"{f'{separator}'.join(get_account_names(RESERVE_ACCOUNTS, CANVAS))}",
+                "magenta",
             )
             echo(
-                f') Enabling "{tool_display}" for {STYLED_TERMS} courses in: {ACCOUNTS}'
+                f') Enabling "{tool_display}" for {STYLED_TERMS} courses in:'
+                f" \n\t{ACCOUNTS}"
             )
         else:
             echo(f') Enabling "{tool_display}" for {STYLED_TERMS} courses...')
