@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 from pandas import concat, read_csv
 from typer import echo
@@ -37,12 +38,13 @@ def cleanup_data(data, action):
 
 def get_timestamped_path(result_path, open_test):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    if not result_path.is_file():
-        with open(result_path, "w"):
-            pass
-    return result_path.rename(
-        RESULTS / f"{'TEST_' if open_test else ''}{result_path.stem}_{timestamp}.csv"
-    )
+    new_path_stem = f"{'TEST_' if open_test else ''}{result_path.stem}_{timestamp}.csv"
+    new_path = RESULTS / new_path_stem
+    if result_path.is_file():
+        result_path.rename(new_path)
+    else:
+        Path.touch(new_path)
+    return new_path
 
 
 def get_enrollment_id(course_id, section_id):
@@ -545,7 +547,9 @@ def open_canvas_bulk_action_main(verbose, force, test):
             user_agent_courses = len(courses)
             for course in courses:
                 new_path = get_timestamped_path(RESULT_PATH, open_test)
-                new_path.rename(RESULTS / f"{new_path.stem}_COURSE_{course}.csv")
+                new_path = new_path.rename(
+                    RESULTS / f"{new_path.stem}_COURSE_{course}.csv"
+                )
                 browser_main([course], INSTANCE, new_path)
                 new_path.rename(RESULTS / f"{new_path.stem}_COMPLETED.csv")
             RESULT_PATHS.append((input_file, None))
