@@ -541,11 +541,12 @@ def open_canvas_bulk_action_main(verbose, force, test):
         else:
             action_headers = HEADERS[:2]
         if action == "user_agent":
-            new_path = get_timestamped_path(RESULT_PATH, open_test)
             courses = read_csv(input_file)["Course ID"].tolist()
             user_agent_courses = len(courses)
-            RESULT_PATHS.append((new_path, None))
-            browser_main(courses, INSTANCE, new_path)
+            for course in courses:
+                new_path = get_timestamped_path(RESULT_PATH, open_test)
+                browser_main(course, INSTANCE, new_path)
+            RESULT_PATHS.append((input_file, None))
             input_file.rename(COMPLETED / input_file.name)
         else:
             users, TOTAL, dated_input_file = process_input(
