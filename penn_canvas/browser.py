@@ -63,7 +63,7 @@ def browser_main(courses, instance):
         echo(f"==== COURSE {index + 1:,} of {total_courses:,} ====")
         course = canvas.get_course(course)
         echo(f") Fetching users for {color(course, 'blue')}...")
-        users = [user for user in course.get_users(enrollment_type=["student"])][:1]
+        users = [user for user in course.get_users(enrollment_type=["student"])]
         total_users = len(users)
         users = [
             get_user_account_data(user) + get_user_agents(index, total_users, user)
