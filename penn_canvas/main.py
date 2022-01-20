@@ -4,6 +4,7 @@ from penn_canvas.course_shopping import course_shopping_main
 from penn_canvas.helpers import MAIN_ACCOUNT_ID
 
 from .archive import archive_main
+from .browser import browser_main
 from .bulk_enroll import bulk_enroll_main
 from .check_enrollment import check_enrollment_main
 from .config import print_config, write_config_options
@@ -116,6 +117,30 @@ def archive(
         grades,
         quizzes,
     )
+
+
+@app.command()
+def browser(
+    courses: list[int] = Argument(
+        ...,
+        help=(
+            "The Canvas Sub-account ID whose course's enrollment terms need to be"
+            " changed"
+        ),
+    ),
+    instance: str = Option(
+        "prod",
+        "--instance",
+        help=(
+            'The Canvas instnace to check. Can be one of the following: "prod", "test",'
+            ' "open", "open_test".'
+        ),
+    ),
+):
+    """
+    Get browser information for Canvas users.
+    """
+    browser_main(courses, instance)
 
 
 @app.command()
