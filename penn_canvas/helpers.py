@@ -83,9 +83,7 @@ def confirm_global_protect_enabled():
 
 
 def make_index_headers(headers):
-    INDEX_HEADERS = headers[:]
-    INDEX_HEADERS.insert(0, "index")
-    return INDEX_HEADERS
+    return ["index"] + headers[:]
 
 
 def make_csv_paths(csv_dir, csv_file, headers):
@@ -99,31 +97,31 @@ def make_csv_paths(csv_dir, csv_file, headers):
 def get_command_paths(
     command, logs=False, processed=False, no_input=False, completed=False
 ):
-    BOX = BOX_PATH.exists()
-    BASE = BOX_CLI_PATH if BOX else COMMAND_DIRECTORY_BASE
-    COMMAND_DIRECTORY = BASE / f"{command}"
-    INPUT = COMMAND_DIRECTORY / "Input"
-    PATHS = [INPUT, (COMMAND_DIRECTORY / "RESULTS")]
+    box_exists = BOX_PATH.exists()
+    base_path = BOX_CLI_PATH if box_exists else COMMAND_DIRECTORY_BASE
+    command_directory = base_path / f"{command}"
+    input_directory = command_directory / "Input"
+    paths = [input_directory, (command_directory / "RESULTS")]
     if logs:
-        PATHS.append(COMMAND_DIRECTORY / "logs")
+        paths.append(command_directory / "logs")
     if processed:
-        PATHS.append(COMMAND_DIRECTORY / ".processed")
+        paths.append(command_directory / ".processed")
     if no_input:
-        PATHS.remove(INPUT)
+        paths.remove(input_directory)
     if completed:
-        PATHS.append(COMMAND_DIRECTORY / "Completed")
-    for path in PATHS:
+        paths.append(command_directory / "Completed")
+    for path in paths:
         if not path.exists():
             Path.mkdir(path, parents=True)
-    return tuple(PATHS)
+    return tuple(paths)
 
 
 def get_completed_result(result_directory):
-    CSV_FILES = [result for result in Path(result_directory).glob("*.csv")]
+    csv_files = [result for result in Path(result_directory).glob("*.csv")]
     return next(
         (
             result
-            for result in CSV_FILES
+            for result in csv_files
             if TODAY_AS_Y_M_D in result.name and "ACTIVATED" in result.name
         ),
         None,
