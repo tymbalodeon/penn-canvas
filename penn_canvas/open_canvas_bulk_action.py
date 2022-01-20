@@ -545,7 +545,9 @@ def open_canvas_bulk_action_main(verbose, force, test):
             user_agent_courses = len(courses)
             for course in courses:
                 new_path = get_timestamped_path(RESULT_PATH, open_test)
+                new_path.rename(RESULTS / f"{new_path.stem}_COURSE_{course}.csv")
                 browser_main(course, INSTANCE, new_path)
+                new_path.rename(RESULTS / f"{new_path.stem}_COMPLETED.csv")
             RESULT_PATHS.append((input_file, None))
             input_file.rename(COMPLETED / input_file.name)
         else:
