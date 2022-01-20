@@ -51,14 +51,13 @@ def fill_empty_columns(data_list, total_columns):
         return data_list
 
 
-def browser_main(courses, instance):
+def browser_main(courses, instance, result_path=Path.home() / "Desktop/results.csv"):
     if not courses:
         echo("No courses provided.")
         raise Exit()
 
     canvas = get_canvas(instance)
     total_courses = len(courses)
-    result_path = Path.home() / "Desktop" / "results.csv"
     for index, course in enumerate(courses):
         echo(f"==== COURSE {index + 1:,} of {total_courses:,} ====")
         course = canvas.get_course(course)

@@ -3,6 +3,8 @@ from datetime import datetime
 from pandas import concat, read_csv
 from typer import echo
 
+from penn_canvas.browser import browser_main
+
 from .helpers import (
     color,
     confirm_global_protect_enabled,
@@ -31,6 +33,16 @@ def cleanup_data(data, action):
     subset = "Pennkey" if action == "penn_id" else "Email"
     data.drop_duplicates(subset=[subset], inplace=True)
     return data.astype("string", errors="ignore")
+
+
+def get_timestamped_path(result_path, open_test):
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    if not result_path.is_file():
+        with open(result_path, "w"):
+            pass
+    return result_path.rename(
+        RESULTS / f"{'TEST_' if open_test else ''}{result_path.stem}_{timestamp}.csv"
+    )
 
 
 def get_enrollment_id(course_id, section_id):
@@ -386,8 +398,9 @@ def print_messages(total, counts, penn_id):
 
 
 def open_canvas_bulk_action_main(verbose, force, test):
-    def create_or_delete_canvas_user(user, canvas, verbose, args):
+    def perform_canvas_action(user, canvas, verbose, args):
         account, action = args
+        full_name = ""
         email = ""
         course_id = ""
         section_id = ""
@@ -405,6 +418,8 @@ def open_canvas_bulk_action_main(verbose, force, test):
             canvas_id, section = get_enrollment_id(course_id, section_id)
         elif action == "penn_id":
             index, full_name, penn_key = user[:-1]
+        elif action == "user_agent":
+            index, course_id = user
         else:
             index, full_name, email = user[:-1]
         status = "removed" if action == "remove" else "created"
@@ -413,15 +428,16 @@ def open_canvas_bulk_action_main(verbose, force, test):
         enroll_error = ""
         canvas_user = False
         try:
-            for item in [full_name, email, penn_key]:
-                if not isinstance(item, str):
+            for user in [full_name, email, penn_key]:
+                if not isinstance(user, str):
                     raise Exception("missing value")
-            if not section:
+            if action in {"enroll", "unenroll"} and not section:
                 try:
                     int(course_id)
                 except Exception:
                     raise Exception("missing value")
-            full_name = " ".join(full_name.strip().split())
+            if full_name:
+                full_name = " ".join(full_name.strip().split())
             if email:
                 email = email.strip()
             if action == "unenroll":
@@ -446,7 +462,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 status = update_user_name(account, full_name, email)
             elif action == "penn_id":
                 status = get_penn_id_from_penn_key(penn_key) or "not found"
-            else:
+            elif not action == "user_agent":
                 status, canvas_user = create_user(account, full_name, email)
         except Exception as error:
             status = f"ERROR: {str(error)}"
@@ -481,6 +497,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 f"{color(' ' + str(canvas_user), 'magenta') if canvas_user else ''}."
             )
 
+    user_agent_courses = ""
     input_files, missing_file_message = find_input(
         INPUT_FILE_NAME, REPORTS, date=False, open_canvas=True
     )
@@ -489,27 +506,32 @@ def open_canvas_bulk_action_main(verbose, force, test):
     for index, input_file in enumerate(input_files):
         action = "create"
         display_action = "Creating"
-        if "unenroll" in input_file.stem.lower():
+        file_name = input_file.stem.lower()
+        if "unenroll" in file_name:
             action = "unenroll"
             display_action = "Unenrolling"
-        elif "enroll" in input_file.stem.lower():
+        elif "enroll" in file_name:
             action = "enroll"
             display_action = "Enrolling"
-        elif "remove" in input_file.stem.lower():
+        elif "remove" in file_name:
             action = "remove"
             display_action = "Removing"
-        elif "update" in input_file.stem.lower():
+        elif "update" in file_name:
             action = "update"
             display_action = "Updating"
-        elif "penn_id" in input_file.stem.lower():
+        elif "penn_id" in file_name:
             if not confirm_global_protect_enabled():
                 continue
             action = "penn_id"
             display_action = "Getting Penn IDs for"
-        open_test = test or "test" in input_file.stem.lower()
+        elif "user_agent" in file_name:
+            action = "user_agent"
+            display_action = "Getting user agent information for"
+        open_test = test or "test" in file_name
         RESULT_STRING = f"{input_file.stem}_RESULT.csv"
         RESULT_PATH = RESULTS / RESULT_STRING
         START = get_start_index(force, RESULT_PATH)
+        INSTANCE = "open_test" if open_test else "open"
         if action == "enroll":
             action_headers = HEADERS
         elif action == "unenroll":
@@ -518,61 +540,77 @@ def open_canvas_bulk_action_main(verbose, force, test):
             action_headers = HEADERS[:1] + ["Pennkey"]
         else:
             action_headers = HEADERS[:2]
-        users, TOTAL, dated_input_file = process_input(
-            input_files,
-            INPUT_FILE_NAME,
-            REPORTS,
-            action_headers,
-            cleanup_data,
-            missing_file_message,
-            args=action,
-            start=START,
-            open_canvas=True,
-        )
-        if action == "penn_id":
-            users["Penn ID"] = ""
-            RESULT_HEADERS = action_headers + ["Penn ID"]
+        if action == "user_agent":
+            new_path = get_timestamped_path(RESULT_PATH, open_test)
+            courses = read_csv(input_file)["Course ID"].tolist()
+            user_agent_courses = len(courses)
+            RESULT_PATHS.append((new_path, None))
+            browser_main(courses, INSTANCE, new_path)
+            input_file.rename(COMPLETED / input_file.name)
         else:
-            users["Status"] = ""
-            RESULT_HEADERS = action_headers + ["Status"]
-            if action == "enroll":
-                users["Error"] = ""
-                RESULT_HEADERS = RESULT_HEADERS + ["Error"]
-        make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(RESULT_HEADERS))
-        make_skip_message(START, "user")
-        INSTANCE = "open_test" if open_test else "open"
-        CANVAS = get_canvas(INSTANCE) if action != "penn_id" else None
-        echo(f") {display_action} {len(users)} users...")
-        if verbose:
-            COLOR_MAP = {
-                "created": "green",
-                "enrolled": "green",
-                "unenrolled": "green",
-                "removed": "yellow",
-                "failed to enroll": "red",
-                "failed to unenroll": "red",
-                "not found": "red",
-                "enrollment not found": "red",
-                "failed to unenroll": "red",
-                "already in use": "red",
-                "course not found": "red",
-            }
-        ARGS = (CANVAS.get_account(ACCOUNT) if CANVAS else CANVAS, action)
-        if verbose:
-            echo(f"==== FILE {index + 1}/{len(input_files)} ====")
-            color(input_file.stem, "blue", True)
-        toggle_progress_bar(users, create_or_delete_canvas_user, CANVAS, verbose, ARGS)
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        new_path = RESULT_PATH.rename(
-            RESULTS
-            / f"{'TEST_' if open_test else ''}{RESULT_PATH.stem}_{timestamp}.csv"
-        )
-        RESULT_PATHS.append((new_path, TOTAL))
-        dated_input_file.rename(COMPLETED / dated_input_file.name)
+            users, TOTAL, dated_input_file = process_input(
+                input_files,
+                INPUT_FILE_NAME,
+                REPORTS,
+                action_headers,
+                cleanup_data,
+                missing_file_message,
+                args=action,
+                start=START,
+                open_canvas=True,
+            )
+            if action == "penn_id":
+                users["Penn ID"] = ""
+                RESULT_HEADERS = action_headers + ["Penn ID"]
+            elif action == "user_agent":
+                RESULT_HEADERS = ["Canvas User ID", "Name", "Email"]
+                users[RESULT_HEADERS] = ""
+            else:
+                users["Status"] = ""
+                RESULT_HEADERS = action_headers + ["Status"]
+                if action == "enroll":
+                    users["Error"] = ""
+                    RESULT_HEADERS = RESULT_HEADERS + ["Error"]
+            make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(RESULT_HEADERS))
+            make_skip_message(START, "user")
+            CANVAS = get_canvas(INSTANCE) if action != "penn_id" else None
+            echo(
+                f") {display_action} {len(users)} "
+                f"user{'s' if len(users) > 1 else ''}..."
+            )
+            if verbose:
+                COLOR_MAP = {
+                    "created": "green",
+                    "enrolled": "green",
+                    "unenrolled": "green",
+                    "removed": "yellow",
+                    "failed to enroll": "red",
+                    "failed to unenroll": "red",
+                    "not found": "red",
+                    "enrollment not found": "red",
+                    "failed to unenroll": "red",
+                    "already in use": "red",
+                    "course not found": "red",
+                }
+            ARGS = (CANVAS.get_account(ACCOUNT) if CANVAS else CANVAS, action)
+            if verbose:
+                echo(f"==== FILE {index + 1}/{len(input_files)} ====")
+                color(input_file.stem, "blue", True)
+            toggle_progress_bar(users, perform_canvas_action, CANVAS, verbose, ARGS)
+            new_path = get_timestamped_path(RESULT_PATH, open_test)
+            RESULT_PATHS.append((new_path, TOTAL))
+            dated_input_file.rename(COMPLETED / dated_input_file.name)
     color("SUMMARY:", "yellow", True)
     echo(f"- PROCESSED {color(len(RESULT_PATHS))} FILES.")
     for result_path, total in RESULT_PATHS:
         echo(f"==== {color(result_path.stem, 'green')} ====")
-        counts, penn_id = process_result(result_path)
-        print_messages(total, counts, penn_id)
+        if total is None:
+            echo(
+                "- Processed"
+                f" {color(user_agent_courses)} "
+                f"{'course' if user_agent_courses == 1 else 'courses'}"
+            )
+        else:
+            counts, penn_id = process_result(result_path)
+            print_messages(total, counts, penn_id)
     color("FINISHED", "yellow", True)
