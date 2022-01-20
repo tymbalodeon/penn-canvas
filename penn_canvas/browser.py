@@ -15,21 +15,18 @@ def get_user_account_data(user):
 
 def parse_user_agent_string(user_agent_string):
     browser = user_agent_parser.ParseUserAgent(user_agent_string)
-    print(browser)
     user_os = user_agent_parser.ParseOS(user_agent_string)
-    print(user_os)
     browser_family = browser["family"]
     browser_major = f" {browser['major']}" if browser["major"] else ""
     browser_minor = f".{browser['minor']}" if browser["minor"] else ""
     browser_patch = f".{browser['patch']}" if browser["patch"] else ""
     os_family = user_os["family"]
     os_major = f" {user_os['major']}" if user_os["major"] else ""
-    os_minor = f" {user_os['minor']}" if user_os["minor"] else ""
-    os_patch = f" {user_os['patch']}" if user_os["patch"] else ""
+    os_minor = f".{user_os['minor']}" if user_os["minor"] else ""
+    os_patch = f".{user_os['patch']}" if user_os["patch"] else ""
     browser_name = f"{browser_family}{browser_major}{browser_minor}{browser_patch}"
     os_name = f"{os_family}{os_major}{os_minor}{os_patch}"
     device_name = user_agent_parser.ParseDevice(user_agent_string)["family"]
-    print(user_agent_parser.ParseDevice(user_agent_string))
     return " / ".join([browser_name, os_name, device_name])
 
 
