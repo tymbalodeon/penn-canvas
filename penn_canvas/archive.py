@@ -133,7 +133,7 @@ def process_submission(
         f"{submission['author_name']}\nCreated:"
         f" {format_timestamp(submission['created_at'])}\nEdited:"
         f" {format_timestamp(submission['edited_at'])}\n\n{submission['comment']}"
-        f"{submission['media_comment']['url'] if submission['media_comment'] else ''}"
+        f"{submission['media_comment']['url'] if 'media_comment' in submission else ''}"
         for submission in submission.submission_comments
     ]
     comments_body = "\n\n".join(comments)
