@@ -131,8 +131,9 @@ def process_submission(
         attachments = []
     comments = [
         f"{submission['author_name']}\nCreated:"
-        f" {format_timestamp(submission['created_at'])}\nEdited:"
-        f" {format_timestamp(submission['edited_at'])}\n\n{submission['comment']}"
+        f" {format_timestamp(submission['created_at'])}\nEdited: "
+        f"{format_timestamp(submission['edited_at']) if submission['edited_at'] else ''}"
+        f"\n\n{submission['comment']}"
         f"{submission['media_comment']['url'] if 'media_comment' in submission else ''}"
         for submission in submission.submission_comments
     ]
