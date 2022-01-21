@@ -1,10 +1,10 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 from pandas import DataFrame, read_csv
 from typer import Exit, echo
 
-from penn_canvas.helpers import BOX_PATH, TODAY_AS_Y_M_D, color, get_canvas
+from .helpers import BOX_PATH, TODAY_AS_Y_M_D, color, format_timestamp, get_canvas
 
 COMMAND = "Investigate"
 RESULTS = BOX_PATH / "OGC Request"
@@ -27,14 +27,6 @@ def get_investigate_input_file():
         raise Exit()
     else:
         return input_file
-
-
-def format_timestamp(timestamp):
-    if timestamp:
-        date = datetime.fromisoformat(timestamp.replace("Z", ""))
-        return date.strftime("%b %d, %Y (%I:%M:%S %p)")
-    else:
-        return None
 
 
 def get_submitted_at_date(submission):

@@ -1,4 +1,3 @@
-from datetime import datetime
 from html.parser import HTMLParser
 from io import StringIO
 from json import loads
@@ -15,7 +14,7 @@ from requests import get
 from typer import echo, progressbar
 
 from .config import get_config_option
-from .helpers import get_canvas, get_command_paths
+from .helpers import format_timestamp, get_canvas, get_command_paths
 from .style import color
 
 COMMAND = "Archive"
@@ -131,12 +130,16 @@ def process_submission(
     except Exception:
         attachments = []
     comments = [
-        [submission["author_name"], submission["comment"]]
+        f"{submission['author_name']}\nCreated:"
+        f" {format_timestamp(submission['created_at'])}\nEdited:"
+        f" {format_timestamp(submission['edited_at'])}\n\n{submission['comment']}"
+        f"{submission['media_comment']['url'] if submission['media_comment'] else ''}"
         for submission in submission.submission_comments
     ]
-    comments = DataFrame(comments, columns=["Name", "Comment"])
-    submission_comments_path = comments_path / f"{assignment}_COMMENTS ({user}).csv"
-    comments.to_csv(submission_comments_path, index=False)
+    comments_body = "\n\n".join(comments)
+    submission_comments_path = comments_path / f"{assignment}_COMMENTS ({user}).txt"
+    with open(submission_comments_path, "w") as submission_comments_file:
+        submission_comments_file.write(comments_body)
     if verbose:
         user_display = color(user, "cyan")
         if submission_index == 0:
@@ -177,13 +180,7 @@ def process_entry(
     canvas_user = canvas.get_user(user_id)
     email = canvas_user.email if csv_style else ""
     message = " ".join(strip_tags(entry.message.replace("\n", " ")).strip().split())
-    timestamp = (
-        ""
-        if csv_style
-        else datetime.strptime(entry.created_at, "%Y-%m-%dT%H:%M:%SZ").strftime(
-            "%m/%d/%Y, %H:%M:%S"
-        )
-    )
+    timestamp = "" if csv_style else format_timestamp(entry.created_at)
     if verbose:
         user_display = color(user, "cyan")
         timestamp_display = color(timestamp, "yellow") if csv_style else ""

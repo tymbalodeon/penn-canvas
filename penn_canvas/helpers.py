@@ -416,6 +416,14 @@ def add_headers_to_empty_files(paths, headers):
                 writer(output_file).writerow(headers)
 
 
+def format_timestamp(timestamp):
+    if timestamp:
+        date = datetime.fromisoformat(timestamp.replace("Z", ""))
+        return date.strftime("%b %d, %Y (%I:%M:%S %p)")
+    else:
+        return None
+
+
 def toggle_progress_bar(data, callback, canvas, verbose, args=None):
     def verbose_mode():
         for item in data.itertuples():
