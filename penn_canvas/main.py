@@ -91,6 +91,11 @@ def archive(
         "--quizzes",
         help="Inlcude quizzes in the archive output.",
     ),
+    rubrics: bool = Option(
+        False,
+        "--rubrics",
+        help="Inlcude rubrics in the archive output.",
+    ),
 ):
     """
     Archives a Canvas course's discussions and quiz participation.
@@ -116,6 +121,7 @@ def archive(
         discussions,
         grades,
         quizzes,
+        rubrics,
     )
 
 

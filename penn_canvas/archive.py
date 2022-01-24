@@ -70,6 +70,12 @@ def get_quizzes(course):
     return quizzes, len(quizzes)
 
 
+def get_rubrics(course):
+    echo(") Finding rubrics...")
+    rubrics = [rubric for rubric in course.get_rubrics()]
+    return rubrics, len(rubrics)
+
+
 def format_name(name):
     return name.strip().replace("/", "-").replace(":", "-")
 
@@ -213,6 +219,7 @@ def archive_main(
     discussions,
     grades,
     quizzes,
+    rubrics,
 ):
     if (
         content
@@ -224,13 +231,16 @@ def archive_main(
         == discussions
         == grades
         == quizzes
+        == rubrics
         is False
     ):
         content = (
             announcements
         ) = (
             modules
-        ) = pages = syllabus = assignments = discussions = grades = quizzes = True
+        ) = (
+            pages
+        ) = syllabus = assignments = discussions = grades = quizzes = rubrics = True
 
     def archive_content(course, course_path, canvas, verbose):
         export = course.export_content(export_type="zip", skip_notifications=True)
@@ -525,6 +535,33 @@ def archive_main(
             with open(description_path, "w") as description_file:
                 description_file.write(description)
 
+    def archive_rubrics(rubric):
+        title = rubric.title.strip()
+        rubric_path = RUBRIC_DIRECTORY / f"{title}.csv"
+        criteria = [
+            [
+                criteria["description"],
+                " / ".join(
+                    [
+                        " ".join(
+                            [
+                                str(rating["points"]),
+                                rating["description"],
+                                f"({rating['long_description']})"
+                                if rating["long_description"]
+                                else "",
+                            ]
+                        )
+                        for rating in criteria["ratings"]
+                    ]
+                ),
+                criteria["points"],
+            ]
+            for criteria in rubric.data
+        ]
+        criteria = DataFrame(criteria, columns=["Criteria", "Ratings", "Pts"])
+        criteria.to_csv(rubric_path, index=False)
+
     CANVAS = get_canvas(instance)
     course = CANVAS.get_course(course_id, include=["syllabus_body"])
     course_name = format_name(course.name)
@@ -535,12 +572,14 @@ def archive_main(
     DISCUSSION_DIRECTORY = COURSE / "Discussions"
     GRADE_DIRECTORY = COURSE / "Grades"
     QUIZ_DIRECTORY = COURSE / "Quizzes"
+    RUBRIC_DIRECTORY = COURSE / "Rubrics"
     PATHS = [
         COURSE,
         ASSIGNMENT_DIRECTORY,
         DISCUSSION_DIRECTORY,
         GRADE_DIRECTORY,
         QUIZ_DIRECTORY,
+        RUBRIC_DIRECTORY,
     ]
     for path in PATHS:
         if not path.exists():
@@ -694,6 +733,16 @@ def archive_main(
             with progressbar(quizzes, length=quiz_total) as progress:
                 for quiz in progress:
                     archive_quizzes(quiz)
+    if rubrics:
+        echo(") Processing rubrics...")
+        rubrics, rubric_total = get_rubrics(course)
+        if verbose:
+            for index, rubric in enumerate(rubrics):
+                archive_rubrics(rubric)
+        else:
+            with progressbar(rubrics, length=rubric_total) as progress:
+                for rubric in progress:
+                    archive_rubrics(rubric)
     color("SUMMARY", "yellow", True)
     echo(
         f"- Archived {color(discussion_total, 'magenta')} DISCUSSIONS for"
