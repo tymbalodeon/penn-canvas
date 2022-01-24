@@ -12,6 +12,7 @@ from .count_poll_everywhere import count_poll_everywhere_main
 from .count_quizzes import count_quizzes_main
 from .count_sites import count_sites_main
 from .email import email_main
+from .integrity import integrity_main
 from .investigate import investigate_main
 from .module import module_main
 from .new_student_orientation import new_student_orientation_main
@@ -520,6 +521,34 @@ def email(
     NOTE: Input filename must include the current date in order to be accepted.
     """
     email_main(test, verbose, new, force, clear_processed, no_data_warehouse)
+
+
+@app.command()
+def integrity(
+    course: int = Option(..., "--course", help="The course id to check"),
+    users: str = Option(
+        ...,
+        "--users",
+        help="The user ids to check",
+    ),
+    quizzes: str = Option(
+        ...,
+        "--quizzes",
+        help="The quiz ids to check",
+    ),
+    test: bool = Option(
+        False,
+        "--test",
+        help=(
+            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
+            " of production (https://canvas.upenn.edu/)."
+        ),
+    ),
+):
+    """
+    Check page views for students taking quizzes.
+    """
+    integrity_main(course, users, quizzes, test)
 
 
 @app.command()

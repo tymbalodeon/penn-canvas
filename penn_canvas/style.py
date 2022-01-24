@@ -16,5 +16,5 @@ def color(text, color="magenta", echo=False):
     return secho(text, fg=COLORS[color]) if echo else style(text, fg=COLORS[color])
 
 
-def print_item(index, total, message):
-    echo(f"- ({(index + 1):,}/{total}) {message}")
+def print_item(index, total, message, prefix="-"):
+    echo(f"{prefix} ({(index + 1):,}/{total}) {message}")
