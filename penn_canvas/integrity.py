@@ -25,83 +25,6 @@ def parse_args(course, users, quizzes, test):
     return course, users, quizzes, start
 
 
-def get_quiz_times(user, user_object, submissions, quizzes, user_directory):
-    submissions = [
-        submission for submission in submissions if submission.user_id == user
-    ]
-    user_submissions = list()
-    for quiz in quizzes:
-        user_submissions = user_submissions + [
-            [user_object, quiz, submission]
-            for submission in submissions
-            if submission.quiz_id == quiz.id
-        ]
-    user_submissions = [
-        [
-            submission[0],
-            submission[1],
-            format_timestamp(submission[2].started_at),
-            format_timestamp(submission[2].finished_at),
-            format_timedelta(timedelta(seconds=submission[2].time_spent)),
-            submission[2].score,
-            submission[2].quiz_points_possible,
-        ]
-        for submission in user_submissions
-    ]
-    submission_columns = [
-        "Student",
-        "Quiz",
-        "Started At",
-        "Finished At",
-        "Time Spent",
-        "Score",
-        "Quiz Points Possible",
-    ]
-    submissions_path = user_directory / f"{user_object}_submissions.csv"
-    user_submissions = DataFrame(user_submissions, columns=submission_columns)
-    user_submissions.to_csv(submissions_path, index=False)
-
-
-def get_page_views(user_object, start, quizzes, user_directory):
-    page_views = list()
-    for index, quiz in enumerate(quizzes):
-        message = f"Pulling page views for {color(quiz, 'yellow', bold=True)}..."
-        print_item(index, len(quizzes), message)
-        page_views = page_views + [
-            [user_object, quiz, view]
-            for view in (
-                tqdm(user_object.get_page_views(start_time=start))
-                if start
-                else tqdm(user_object.get_page_views())
-            )
-            if f"/quizzes/{quiz.id}" in view.url
-        ]
-    page_views = [
-        [
-            view[0],
-            view[1],
-            format_timestamp(view[2].created_at),
-            view[2].participated,
-            view[2].remote_ip,
-            view[2].url,
-            view[2].user_agent,
-        ]
-        for view in page_views
-    ]
-    page_view_columns = [
-        "Student",
-        "Quiz",
-        "Created At",
-        "Participated",
-        "Remote IP",
-        "URL",
-        "User Agent",
-    ]
-    page_views_path = user_directory / f"{user_object}_page_views.csv"
-    page_views = DataFrame(page_views, columns=page_view_columns)
-    page_views.to_csv(page_views_path, index=False)
-
-
 def get_user_data(
     course, quizzes, submissions, user, start, index, total, skip_page_views
 ):
@@ -114,9 +37,50 @@ def get_user_data(
         f"{f' starting on {color(start)}' if start else ''}..."
     )
     print_item(index, total, message)
-    get_quiz_times(user, user_object, submissions, quizzes, user_directory)
+    submissions = [
+        submission for submission in submissions if submission.user_id == user
+    ]
+    user_data = list()
+    for quiz_index, quiz in enumerate(quizzes):
+        user_data = user_data + [
+            [
+                user_object,
+                quiz,
+                format_timestamp(submission[2].started_at),
+                format_timestamp(submission[2].finished_at),
+                format_timedelta(timedelta(seconds=submission[2].time_spent)),
+            ]
+            for submission in submissions
+            if submission.quiz_id == quiz.id
+        ]
+        if not skip_page_views:
+            message = f"Pulling page views for {color(quiz, 'yellow', bold=True)}..."
+            print_item(quiz_index, len(quizzes), message)
+            ip_addresses = ", ".join(
+                {
+                    view.remote_ip
+                    for view in (
+                        tqdm(user_object.get_page_views(start_time=start))
+                        if start
+                        else tqdm(user_object.get_page_views())
+                    )
+                    if f"/quizzes/{quiz.id}" in view.url and view.participated
+                }
+            )
+            for submission_data, remote_ips in zip(user_data, ip_addresses):
+                submission_data.append(remote_ips)
+    columns = [
+        "Student",
+        "Quiz",
+        "Started At",
+        "Finished At",
+        "Time Spent",
+    ]
     if not skip_page_views:
-        get_page_views(user_object, start, quizzes, user_directory)
+        columns.append("IP Addresses")
+    result_path = user_directory / f"{user_object}.csv"
+    user_data = DataFrame(user_data, columns=columns)
+    user_data.to_csv(result_path, index=False)
 
 
 def integrity_main(course, users, quizzes, test, skip_page_views):
