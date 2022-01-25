@@ -42,7 +42,7 @@ def get_user_data(course, quizzes, submissions, user, start, index, total):
         message = f"Pulling page views for {color(quiz, 'yellow', bold=True)}..."
         print_item(index, len(quizzes), message)
         page_views = page_views + [
-            [quiz, view]
+            [user_object, quiz, view]
             for view in (
                 tqdm(user_object.get_page_views(start_time=start))
                 if start
@@ -51,28 +51,30 @@ def get_user_data(course, quizzes, submissions, user, start, index, total):
             if f"/quizzes/{quiz.id}" in view.url
         ]
         user_submissions = user_submissions + [
-            [quiz, submission]
+            [user_object, quiz, submission]
             for submission in submissions
             if submission.quiz_id == quiz.id
         ]
     page_views = [
         [
             view[0],
-            format_timestamp(view[1].created_at),
-            view[1].interaction_seconds,
-            view[1].participated,
-            view[1].remote_ip,
-            view[1].url,
-            view[1].user_agent,
+            view[1],
+            format_timestamp(view[2].created_at),
+            view[2].interaction_seconds,
+            view[2].participated,
+            view[2].remote_ip,
+            view[2].url,
+            view[2].user_agent,
         ]
         for view in page_views
     ]
     user_submissions = [
         [
             submission[0],
-            format_timestamp(submission[1].started_at),
-            format_timestamp(submission[1].finished_at),
-            format_timedelta(timedelta(seconds=submission[1].time_spent)),
+            submission[1],
+            format_timestamp(submission[2].started_at),
+            format_timestamp(submission[2].finished_at),
+            format_timedelta(timedelta(seconds=submission[2].time_spent)),
         ]
         for submission in user_submissions
     ]
