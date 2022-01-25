@@ -79,6 +79,7 @@ def get_user_data(course, quizzes, submissions, user, start, index, total):
         for submission in user_submissions
     ]
     page_view_columns = [
+        "Student",
         "Quiz",
         "Created At",
         "Interaction Seconds",
@@ -88,6 +89,7 @@ def get_user_data(course, quizzes, submissions, user, start, index, total):
         "User Agent",
     ]
     submission_columns = [
+        "Student",
         "Quiz",
         "Started At",
         "Finished At",
