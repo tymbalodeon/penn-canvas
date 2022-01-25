@@ -544,11 +544,16 @@ def integrity(
             " of production (https://canvas.upenn.edu/)."
         ),
     ),
+    skip_page_views: bool = Option(
+        False,
+        "--skip-page-views",
+        help="Skip pulling page view data, which is time consuming.",
+    ),
 ):
     """
     Check page views for students taking quizzes.
     """
-    integrity_main(course, users, quizzes, test)
+    integrity_main(course, users, quizzes, test, skip_page_views)
 
 
 @app.command()
