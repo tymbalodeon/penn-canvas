@@ -428,10 +428,10 @@ def format_timedelta(timedelta):
     days = timedelta.days
     hours, remainder = divmod(timedelta.seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
-    days = f"{days} days" if days else ""
-    hours = f"{hours} hours" if hours else ""
-    minutes = f"{minutes} minutes" if minutes else ""
-    seconds = f"{seconds} seconds" if seconds else ""
+    days = f"{days} {'days' if days > 1 else 'day'}" if days else ""
+    hours = f"{hours} {'hours' if hours > 1 else 'hour'}" if hours else ""
+    minutes = f"{minutes} {'minutes' if minutes > 1 else 'minute'}" if minutes else ""
+    seconds = f"{seconds} {'seconds' if seconds > 1 else 'second'}" if seconds else ""
     return ", ".join([time for time in [days, hours, minutes, seconds] if time])
 
 

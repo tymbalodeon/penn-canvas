@@ -75,6 +75,8 @@ def get_user_data(course, quizzes, submissions, user, start, index, total):
             format_timestamp(submission[2].started_at),
             format_timestamp(submission[2].finished_at),
             format_timedelta(timedelta(seconds=submission[2].time_spent)),
+            submission[2].score,
+            submission[2].quiz_points_possible,
         ]
         for submission in user_submissions
     ]
@@ -94,6 +96,8 @@ def get_user_data(course, quizzes, submissions, user, start, index, total):
         "Started At",
         "Finished At",
         "Time Spent",
+        "Score",
+        "Quiz Points Possible",
     ]
     page_views = DataFrame(page_views, columns=page_view_columns)
     page_views.to_csv(page_views_path, index=False)
