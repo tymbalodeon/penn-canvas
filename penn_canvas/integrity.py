@@ -79,7 +79,7 @@ def get_user_data(
     rows = list()
     for key in user_data.keys():
         rows = rows + user_data[key]
-    user_data = DataFrame(user_data, columns=columns)
+    user_data = DataFrame(rows, columns=columns)
     user_data.to_csv(result_path, index=False)
 
 
