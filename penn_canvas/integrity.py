@@ -1,8 +1,10 @@
+from datetime import timedelta
+
 from pandas import DataFrame
 from tqdm import tqdm
 from typer import echo
 
-from .helpers import format_timestamp, get_canvas, get_command_paths
+from .helpers import format_timedelta, format_timestamp, get_canvas, get_command_paths
 from .style import color, print_item
 
 COMMAND = "Integrity"
@@ -14,23 +16,31 @@ def parse_args(course, users, quizzes, test):
     course = canvas.get_course(course)
     users = [int(user) for user in users.split(" ")]
     quizzes = quizzes.split(" ")
-    start = course.start_at_date if course.start_at_date else ""
+    start = (
+        start.strftime("%b %d, %Y (%I:%M:%S %p)")
+        if (start := course.start_at_date)
+        else ""
+    )
     return course, users, quizzes, start
 
 
-def get_user_data(course, quizzes, user, start, index, total):
+def get_user_data(course, quizzes, submissions, user, start, index, total):
     user_object = course.get_user(user)
+    submissions = [
+        submission for submission in submissions if submission.user_id == user
+    ]
     page_views_path = RESULTS / f"{user_object}_page_views.csv"
-    submissions_path = RESULTS / f"{user_object}_submission.csv"
+    submissions_path = RESULTS / f"{user_object}_submissions.csv"
     message = (
-        f"Pulling page views for {user_object}"
-        f"{f' starting on {start}' if start else ''}..."
+        f"Pulling page views for {color(user_object, 'cyan', bold=True)}"
+        f"{f' starting on {color(start)}' if start else ''}..."
     )
-    print_item(index, total, message, ")")
+    print_item(index, total, message)
     page_views = list()
+    user_submissions = list()
     for index, quiz in enumerate(quizzes):
-        message = f"Pulling page views for {quiz}..."
-        print_item(index, len(quizzes), message, ")")
+        message = f"Pulling page views for {color(quiz, 'yellow', bold=True)}..."
+        print_item(index, len(quizzes), message)
         page_views = page_views + [
             [quiz, view]
             for view in (
@@ -39,6 +49,11 @@ def get_user_data(course, quizzes, user, start, index, total):
                 else tqdm(user_object.get_page_views())
             )
             if f"/quizzes/{quiz.id}" in view.url
+        ]
+        user_submissions = user_submissions + [
+            [quiz, submission]
+            for submission in submissions
+            if submission.quiz_id == quiz.id
         ]
     page_views = [
         [
@@ -52,6 +67,15 @@ def get_user_data(course, quizzes, user, start, index, total):
         ]
         for view in page_views
     ]
+    user_submissions = [
+        [
+            submission[0],
+            format_timestamp(submission[1].started_at),
+            format_timestamp(submission[1].finished_at),
+            format_timedelta(timedelta(seconds=submission[1].time_spent)),
+        ]
+        for submission in user_submissions
+    ]
     page_view_columns = [
         "Quiz",
         "Created At",
@@ -62,43 +86,27 @@ def get_user_data(course, quizzes, user, start, index, total):
         "User Agent",
     ]
     submission_columns = [
-        "Attempt",
-        "Attempts Left",
-        "End At",
-        "Excused?",
-        "Extra Attempts",
-        "Extra Time",
-        "Finished At",
-        "Fudge Points",
-        "Has Seen Results",
-        "Kept Score",
-        "Manually Unlocked",
-        "Overdue And Needs Submission",
-        "Quiz Points Possible",
-        "Quiz Version",
-        "Score",
-        "Score Before Regrade",
+        "Quiz",
         "Started At",
+        "Finished At",
         "Time Spent",
-        "Workflow State",
     ]
     page_views = DataFrame(page_views, columns=page_view_columns)
     page_views.to_csv(page_views_path, index=False)
+    user_submissions = DataFrame(user_submissions, columns=submission_columns)
+    user_submissions.to_csv(submissions_path, index=False)
 
 
 def integrity_main(course, users, quizzes, test):
     course, users, quizzes, start = parse_args(course, users, quizzes, test)
     echo(f") Checking student activity in {color(course, 'blue', bold=True)}...")
-    quizzes = [
-        {
-            "quiz": (quiz_object := course.get_quiz(quiz)),
-            "submissions": [
-                submission
-                for submission in quiz_object.get_submissions()
-                if submission.user_id in users
-            ],
-        }
-        for quiz in quizzes
-    ]
+    quizzes = [course.get_quiz(quiz) for quiz in quizzes]
+    submissions = list()
+    for quiz in quizzes:
+        submissions = submissions + [
+            submission
+            for submission in quiz.get_submissions()
+            if submission.user_id in users
+        ]
     for index, user in enumerate(users):
-        get_user_data(course, quizzes, user, start, index, len(users))
+        get_user_data(course, quizzes, submissions, user, start, index, len(users))

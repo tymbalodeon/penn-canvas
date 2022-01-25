@@ -424,6 +424,17 @@ def format_timestamp(timestamp):
         return None
 
 
+def format_timedelta(timedelta):
+    days = timedelta.days
+    hours, remainder = divmod(timedelta.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    days = f"{days} days" if days else ""
+    hours = f"{hours} hours" if hours else ""
+    minutes = f"{minutes} minutes" if minutes else ""
+    seconds = f"{seconds} seconds" if seconds else ""
+    return ", ".join([time for time in [days, hours, minutes, seconds] if time])
+
+
 def toggle_progress_bar(data, callback, canvas, verbose, args=None):
     def verbose_mode():
         for item in data.itertuples():
