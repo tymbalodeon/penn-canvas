@@ -1,4 +1,5 @@
 from datetime import timedelta
+from pathlib import Path
 
 from pandas import DataFrame
 from tqdm import tqdm
@@ -26,11 +27,14 @@ def parse_args(course, users, quizzes, test):
 
 def get_user_data(course, quizzes, submissions, user, start, index, total):
     user_object = course.get_user(user)
+    user_directory = RESULTS / str(user_object)
+    if not user_directory.exists():
+        Path.mkdir(user_directory)
     submissions = [
         submission for submission in submissions if submission.user_id == user
     ]
-    page_views_path = RESULTS / f"{user_object}_page_views.csv"
-    submissions_path = RESULTS / f"{user_object}_submissions.csv"
+    page_views_path = user_directory / f"{user_object}_page_views.csv"
+    submissions_path = user_directory / f"{user_object}_submissions.csv"
     message = (
         f"Pulling page views for {color(user_object, 'cyan', bold=True)}"
         f"{f' starting on {color(start)}' if start else ''}..."
