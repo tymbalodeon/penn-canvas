@@ -36,12 +36,12 @@ def get_user_data(
     submissions = [
         submission for submission in submissions if submission.user_id == user
     ]
-    user_data = list()
+    user_data = dict()
     for quiz_index, quiz in enumerate(quizzes):
-        user_data = user_data + [
+        user_data[quiz.id] = [
             [
-                user_object,
-                quiz,
+                str(user_object),
+                str(quiz),
                 format_timestamp(submission.started_at),
                 format_timestamp(submission.finished_at),
                 format_timedelta(timedelta(seconds=submission.time_spent)),
@@ -63,7 +63,9 @@ def get_user_data(
                     if f"/quizzes/{quiz.id}" in view.url and view.participated
                 }
             )
-            user_data = [submission + [ip_addresses] for submission in user_data]
+            user_data[quiz.id] = [
+                submission + [ip_addresses] for submission in user_data
+            ]
     columns = [
         "Student",
         "Quiz",
@@ -72,8 +74,11 @@ def get_user_data(
         "Time Spent",
     ]
     if not skip_page_views:
-        columns.append("IP Addresse")
+        columns.append("IP Address")
     result_path = RESULTS / f"{user_object}.csv"
+    rows = list()
+    for key in user_data.keys():
+        rows = rows + user_data[key]
     user_data = DataFrame(user_data, columns=columns)
     user_data.to_csv(result_path, index=False)
 
