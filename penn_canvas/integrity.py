@@ -46,9 +46,9 @@ def get_user_data(
             [
                 user_object,
                 quiz,
-                format_timestamp(submission[2].started_at),
-                format_timestamp(submission[2].finished_at),
-                format_timedelta(timedelta(seconds=submission[2].time_spent)),
+                format_timestamp(submission.started_at),
+                format_timestamp(submission.finished_at),
+                format_timedelta(timedelta(seconds=submission.time_spent)),
             ]
             for submission in submissions
             if submission.quiz_id == quiz.id
