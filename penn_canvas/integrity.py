@@ -1,5 +1,4 @@
 from datetime import timedelta
-from pathlib import Path
 
 from pandas import DataFrame
 from tqdm import tqdm
@@ -29,9 +28,6 @@ def get_user_data(
     course, quizzes, submissions, user, start, index, total, skip_page_views
 ):
     user_object = course.get_user(user)
-    user_directory = RESULTS / str(user_object)
-    if not user_directory.exists():
-        Path.mkdir(user_directory)
     message = (
         f"Pulling data for {color(user_object, 'cyan', bold=True)}"
         f"{f' starting on {color(start)}' if start else ''}..."
@@ -67,8 +63,7 @@ def get_user_data(
                     if f"/quizzes/{quiz.id}" in view.url and view.participated
                 }
             )
-            for submission_data, remote_ips in zip(user_data, ip_addresses):
-                submission_data.append(remote_ips)
+            user_data = [submission + [ip_addresses] for submission in user_data]
     columns = [
         "Student",
         "Quiz",
@@ -77,8 +72,8 @@ def get_user_data(
         "Time Spent",
     ]
     if not skip_page_views:
-        columns.append("IP Addresses")
-    result_path = user_directory / f"{user_object}.csv"
+        columns.append("IP Addresse")
+    result_path = RESULTS / f"{user_object}.csv"
     user_data = DataFrame(user_data, columns=columns)
     user_data.to_csv(result_path, index=False)
 
