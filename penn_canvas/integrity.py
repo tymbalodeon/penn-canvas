@@ -50,7 +50,7 @@ def get_user_data(
             if submission.quiz_id == quiz.id
         ]
         if not skip_page_views:
-            message = f"Pulling page views for {color(quiz, 'yellow', bold=True)}..."
+            message = f"Pulling page views for {color(quiz, 'yellow')}..."
             print_item(quiz_index, len(quizzes), message)
             ip_addresses = ", ".join(
                 {
