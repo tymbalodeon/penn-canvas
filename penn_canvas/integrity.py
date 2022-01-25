@@ -64,7 +64,7 @@ def get_user_data(
                 }
             )
             user_data[quiz.id] = [
-                submission + [ip_addresses] for submission in user_data
+                submission + [ip_addresses] for submission in user_data[quiz.id]
             ]
     columns = [
         "Student",
