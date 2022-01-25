@@ -8,6 +8,7 @@ from zipfile import ZipFile
 from canvasapi import Canvas
 from cx_Oracle import connect, init_oracle_client
 from pandas import read_csv
+from pytz import timezone, utc
 from typer import Exit, confirm, echo, progressbar, style
 
 from .config import get_penn_canvas_config
@@ -416,9 +417,15 @@ def add_headers_to_empty_files(paths, headers):
                 writer(output_file).writerow(headers)
 
 
-def format_timestamp(timestamp):
+def convert_to_est(timestamp):
+    return utc.localize(timestamp).astimezone(timezone("US/Eastern"))
+
+
+def format_timestamp(timestamp, localize=True):
     if timestamp:
         date = datetime.fromisoformat(timestamp.replace("Z", ""))
+        if localize:
+            date = convert_to_est(date)
         return date.strftime("%b %d, %Y (%I:%M:%S %p)")
     else:
         return None
