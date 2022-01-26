@@ -21,4 +21,4 @@ def color(text, color="magenta", echo=False, bold=False):
 
 
 def print_item(index, total, message, prefix="- "):
-    echo(f"{prefix} ({(index + 1):,}/{total}) {message}")
+    echo(f"{prefix} ({(index + 1):,}/{total:,}) {message}")
