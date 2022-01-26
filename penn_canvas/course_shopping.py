@@ -262,6 +262,7 @@ def course_shopping_main(test, disable, force, verbose, new):
     def disable_course_shopping(processed_path, result_path, canvas, verbose):
         processed = read_csv(processed_path)
         processed = processed[processed["status"] == "enabled"]
+        processed.reset_index(inplace=True)
         if processed.empty:
             echo("- No courses to disable.")
             raise Exit()
