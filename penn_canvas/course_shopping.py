@@ -20,6 +20,7 @@ from .helpers import (
     process_input,
     toggle_progress_bar,
 )
+from .style import print_item
 
 COMMAND = "Course Shopping"
 INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
@@ -297,13 +298,14 @@ def course_shopping_main(test, disable, force, verbose, new):
             if verbose:
                 green_status = color(status.upper(), "green")
                 yellow_status = color(status, "yellow")
-                echo(
-                    f"- ({(index + 1):,}/{total})"
-                    f" {color(course_display, 'magenta')}:"
+                message = (
+                    f"{color(course_display, 'magenta')}:"
                     f" {green_status if status == 'disabled' else yellow_status}"
                 )
+                print_item(index, total, message)
         result = read_csv(result_path)
         result.drop(columns=["index"], inplace=True)
+        result.sort_values("status", ascending=False, inplace=True)
         result.to_csv(result_path, index=False)
 
     PROCESSED_PATH = (
