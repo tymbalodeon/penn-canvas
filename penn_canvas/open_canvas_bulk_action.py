@@ -86,7 +86,7 @@ def find_user_by_email(account, email):
         for user in account.get_users(search_term=email)
         if user.login_id.lower() == email.lower() or email_in_use(user, email)
     ]
-    return next(iter(users))
+    return next(iter(users), None)
 
 
 def create_user(account, full_name, email):
@@ -176,8 +176,10 @@ def get_enrollment_by_email(email, enrollments):
     )
 
 
-def enroll_user(canvas, email, canvas_id, section, notify):
-    user = find_user_by_email(canvas.get_account(ACCOUNT), email)
+def enroll_user(canvas, account, full_name, email, canvas_id, section, notify):
+    user = find_user_by_email(account, email)
+    if not user:
+        user = create_user(account, full_name, email)[1]
     canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
     if canvas_section == "course not found":
         return canvas_section, canvas_id, ""
@@ -445,19 +447,9 @@ def open_canvas_bulk_action_main(verbose, force, test):
             if action == "unenroll":
                 status, course = unenroll_user(canvas, email, canvas_id, section, task)
             elif action == "enroll":
-                try:
-                    status, course, enroll_error = enroll_user(
-                        canvas, email, canvas_id, section, notify
-                    )
-                except Exception:
-                    status, canvas_user = create_user(account, full_name, email)
-                    if status == "created":
-                        try:
-                            status, course, enroll_error = enroll_user(
-                                canvas, email, canvas_id, section, notify
-                            )
-                        except Exception as error:
-                            status = str(error)
+                status, course, enroll_error = enroll_user(
+                    canvas, account, full_name, email, canvas_id, section, notify
+                )
             elif action == "remove":
                 status = remove_user(account, email)
             elif action == "update":
@@ -466,8 +458,8 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 status = get_penn_id_from_penn_key(penn_key) or "not found"
             elif not action == "user_agent":
                 status, canvas_user = create_user(account, full_name, email)
-        except Exception as error:
-            status = f"ERROR: {str(error)}"
+        except Exception as error_status:
+            status = f"ERROR: {str(error_status)}"
             error_message = True
         if action == "penn_id":
             users.at[index, ["Penn ID"]] = status
