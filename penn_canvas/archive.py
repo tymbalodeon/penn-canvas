@@ -275,17 +275,17 @@ def archive_main(
             url = course.get_content_export(export).attachment["url"]
             response = get(url, stream=True)
             file_name = f"{export_type}_content.zip"
-            content_path = (
-                course_path / "Content" / export_type.replace("_", " ").title()
-            )
-            if not content_path.exists():
-                Path.mkdir(content_path)
-            file_path = content_path / file_name
+            content_path = course_path / "Content"
+            export_path = content_path / export_type.replace("_", " ").title()
+            for path in [content_path, export_path]:
+                if not path.exists():
+                    Path.mkdir(path)
+            file_path = export_path / file_name
             with open(file_path, "wb") as stream:
                 for chunk in response.iter_content(chunk_size=128):
                     stream.write(chunk)
             with ZipFile(file_path) as unzipper:
-                unzipper.extractall(content_path)
+                unzipper.extractall(export_path)
             remove(file_path)
 
     def archive_announcements(course, course_path):
