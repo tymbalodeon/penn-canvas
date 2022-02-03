@@ -412,10 +412,11 @@ def new_student_orientation_main(test, verbose, force, clear_processed):
             with open(PROCESSED_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow([penn_key])
 
-    RESULT_PATH = (
-        RESULTS
-        / f"{YEAR}_new_student_orientation_result_{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
+    RESULT_STRING = (
+        f"{YEAR}_new_student_orientation_result_"
+        f"{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
     )
+    RESULT_PATH = RESULTS / RESULT_STRING
     PROCESSED_PATH = (
         PROCESSED
         / f"new_student_orientation_processed_users_{YEAR}{'_test' if test else ''}.csv"

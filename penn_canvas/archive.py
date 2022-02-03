@@ -135,11 +135,13 @@ def process_submission(
                     stream.write(chunk)
     except Exception:
         attachments = []
+    created_at = format_timestamp(submission["created_at"])
+    edited_at = (
+        format_timestamp(submission["edited_at"]) if submission["edited_at"] else ""
+    )
     comments = [
-        f"{submission['author_name']}\nCreated:"
-        f" {format_timestamp(submission['created_at'])}\nEdited: "
-        f"{format_timestamp(submission['edited_at']) if submission['edited_at'] else ''}"
-        f"\n\n{submission['comment']}"
+        f"{submission['author_name']}\nCreated: {created_at}\nEdited:"
+        f" {edited_at}\n\n{submission['comment']}"
         f"{submission['media_comment']['url'] if 'media_comment' in submission else ''}"
         for submission in submission.submission_comments
     ]
@@ -216,6 +218,7 @@ def archive_main(
     pages,
     syllabus,
     assignments,
+    groups,
     discussions,
     grades,
     quizzes,
@@ -228,6 +231,7 @@ def archive_main(
         == pages
         == syllabus
         == assignments
+        == groups
         == discussions
         == grades
         == quizzes
@@ -240,7 +244,9 @@ def archive_main(
             modules
         ) = (
             pages
-        ) = syllabus = assignments = discussions = grades = quizzes = rubrics = True
+        ) = (
+            syllabus
+        ) = assignments = groups = discussions = grades = quizzes = rubrics = True
 
     def archive_content(course, course_path, canvas, verbose):
         export = course.export_content(export_type="zip", skip_notifications=True)
@@ -564,13 +570,14 @@ def archive_main(
 
     CANVAS = get_canvas(instance)
     course = CANVAS.get_course(course_id, include=["syllabus_body"])
-    course_name = format_name(course.name)
+    course_name = f"{format_name(course.name)} (course.id)"
     discussion_total = 0
     quiz_total = 0
     COURSE = RESULTS / course_name
     ASSIGNMENT_DIRECTORY = COURSE / "Assignments"
     DISCUSSION_DIRECTORY = COURSE / "Discussions"
     GRADE_DIRECTORY = COURSE / "Grades"
+    GROUP_DIRECTORY = COURSE / "Groups"
     QUIZ_DIRECTORY = COURSE / "Quizzes"
     RUBRIC_DIRECTORY = COURSE / "Rubrics"
     PATHS = [
@@ -602,10 +609,20 @@ def archive_main(
     assignment_objects = []
     if assignments:
         echo(") Processing assignments...")
+        assignment_objects, assignment_total = get_assignments(course)
+        if verbose:
+            for index, assignment in enumerate(assignment_objects):
+                archive_assignment(CANVAS, assignment, index, assignment_total, verbose)
+        else:
+            with progressbar(assignment_objects, length=assignment_total) as progress:
+                for assignment in progress:
+                    archive_assignment(CANVAS, assignment)
+    if groups:
+        echo(") Processing groups...")
         categories = [category for category in course.get_group_categories()]
         for category in categories:
             groups = [group for group in category.get_groups()]
-            groups_directory = ASSIGNMENT_DIRECTORY / category.name
+            groups_directory = GROUP_DIRECTORY / category.name
             if not groups_directory.exists():
                 Path.mkdir(groups_directory)
             for group in groups:
@@ -636,14 +653,6 @@ def archive_main(
                         response = get(group_file.url, stream=True)
                         for chunk in response.iter_content(chunk_size=128):
                             stream.write(chunk)
-        assignment_objects, assignment_total = get_assignments(course)
-        if verbose:
-            for index, assignment in enumerate(assignment_objects):
-                archive_assignment(CANVAS, assignment, index, assignment_total, verbose)
-        else:
-            with progressbar(assignment_objects, length=assignment_total) as progress:
-                for assignment in progress:
-                    archive_assignment(CANVAS, assignment)
     if discussions:
         echo(") Processing discussions...")
         discussions, discussion_total = get_discussions(course)

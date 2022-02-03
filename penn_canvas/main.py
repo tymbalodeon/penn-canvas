@@ -57,6 +57,11 @@ def archive(
         "--announcements",
         help="Export course announcements in the archive output.",
     ),
+    groups: bool = Option(
+        False,
+        "--groups",
+        help="Export course groups in the archive output.",
+    ),
     modules: bool = Option(
         False,
         "--modules",
@@ -119,6 +124,7 @@ def archive(
         pages,
         syllabus,
         assignments,
+        groups,
         discussions,
         grades,
         quizzes,

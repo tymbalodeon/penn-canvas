@@ -27,7 +27,7 @@ REPORTS, RESULTS, COMPLETED = get_command_paths(COMMAND, completed=True)
 HEADERS = ["Name", "Email", "Course ID", "Section ID", "Notify"]
 ACCOUNT = 1
 UNENROLL_TASKS = {"conclude", "delete", "deactivate", "inactivate"}
-COURSES_CACHE = {}
+COURSES_CACHE: dict[int, dict] = {}
 
 
 def cleanup_data(data, action):
