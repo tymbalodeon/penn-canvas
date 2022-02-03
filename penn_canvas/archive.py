@@ -135,15 +135,24 @@ def process_submission(
                     stream.write(chunk)
     except Exception:
         attachments = []
-    created_at = format_timestamp(submission["created_at"])
-    edited_at = (
-        format_timestamp(submission["edited_at"]) if submission["edited_at"] else ""
-    )
+
+    def process_comments(submission):
+        author = submission["author_name"]
+        created_at = format_timestamp(submission["created_at"])
+        edited_at = (
+            format_timestamp(submission["edited_at"]) if submission["edited_at"] else ""
+        )
+        comment = submission["comment"]
+        media_comment = (
+            submission["media_comment"]["url"] if "media_comment" in submission else ""
+        )
+        return (
+            f"{author}\nCreated: {created_at}\nEdited:"
+            f" {edited_at}\n\n{comment}{media_comment}"
+        )
+
     comments = [
-        f"{submission['author_name']}\nCreated: {created_at}\nEdited:"
-        f" {edited_at}\n\n{submission['comment']}"
-        f"{submission['media_comment']['url'] if 'media_comment' in submission else ''}"
-        for submission in submission.submission_comments
+        process_comments(submission) for submission in submission.submission_comments
     ]
     comments_body = "\n\n".join(comments)
     submission_comments_path = comments_path / f"{assignment}_COMMENTS ({user}).txt"
@@ -249,27 +258,33 @@ def archive_main(
         ) = assignments = groups = discussions = grades = quizzes = rubrics = True
 
     def archive_content(course, course_path, canvas, verbose):
-        export = course.export_content(export_type="zip", skip_notifications=True)
-        regex_search = search(r"\d*$", export.progress_url)
-        progress_id = regex_search.group() if regex_search else None
-        progress = canvas.get_progress(progress_id)
-        while progress.workflow_state != "completed":
-            if verbose:
-                echo(f"- {course.name} export {progress.workflow_state}...")
-            sleep(8)
+        export_types = [("zip", "zip"), ("common_cartridge", "imscc")]
+        for export_type, extension in export_types:
+            export = course.export_content(
+                export_type=export_type, skip_notifications=True
+            )
+            regex_search = search(r"\d*$", export.progress_url)
+            progress_id = regex_search.group() if regex_search else None
             progress = canvas.get_progress(progress_id)
-        url = course.get_content_export(export).attachment["url"]
-        response = get(url, stream=True)
-        zip_path = course_path / "content.zip"
-        content_path = course_path / "Content"
-        if not content_path.exists():
-            Path.mkdir(content_path)
-        with open(course_path / "content.zip", "wb") as stream:
-            for chunk in response.iter_content(chunk_size=128):
-                stream.write(chunk)
-        with ZipFile(zip_path) as unzipper:
-            unzipper.extractall(content_path)
-        remove(zip_path)
+            while progress.workflow_state != "completed":
+                if verbose:
+                    echo(f"- {course.name} export {progress.workflow_state}...")
+                sleep(8)
+                progress = canvas.get_progress(progress_id)
+            url = course.get_content_export(export).attachment["url"]
+            response = get(url, stream=True)
+            file_name = f"{export_type}_content.{extension}"
+            file_path = course_path / file_name
+            content_path = course_path / "Content"
+            if not content_path.exists():
+                Path.mkdir(content_path)
+            with open(course_path / file_name, "wb") as stream:
+                for chunk in response.iter_content(chunk_size=128):
+                    stream.write(chunk)
+            if export_type == "zip":
+                with ZipFile(file_path) as unzipper:
+                    unzipper.extractall(content_path)
+                remove(file_path)
 
     def archive_announcements(course, course_path):
         announcements_path = course_path / "Announcements"
@@ -585,6 +600,7 @@ def archive_main(
         ASSIGNMENT_DIRECTORY,
         DISCUSSION_DIRECTORY,
         GRADE_DIRECTORY,
+        GROUP_DIRECTORY,
         QUIZ_DIRECTORY,
         RUBRIC_DIRECTORY,
     ]
@@ -608,7 +624,7 @@ def archive_main(
         archive_syllabus(course, COURSE)
     assignment_objects = []
     if assignments:
-        echo(") Processing assignments...")
+        echo(") Exporting assignments...")
         assignment_objects, assignment_total = get_assignments(course)
         if verbose:
             for index, assignment in enumerate(assignment_objects):
@@ -618,7 +634,7 @@ def archive_main(
                 for assignment in progress:
                     archive_assignment(CANVAS, assignment)
     if groups:
-        echo(") Processing groups...")
+        echo(") Exporting groups...")
         categories = [category for category in course.get_group_categories()]
         for category in categories:
             groups = [group for group in category.get_groups()]
@@ -654,7 +670,7 @@ def archive_main(
                         for chunk in response.iter_content(chunk_size=128):
                             stream.write(chunk)
     if discussions:
-        echo(") Processing discussions...")
+        echo(") Exporting discussions...")
         discussions, discussion_total = get_discussions(course)
         if verbose:
             for index, discussion in enumerate(discussions):
@@ -674,7 +690,7 @@ def archive_main(
         def get_manual_posting(assignment):
             return "Manual Posting" if assignment.post_manually else ""
 
-        echo(") Processing grades...")
+        echo(") Exporting grades...")
         enrollments = get_enrollments(course)
         if not assignments:
             assignment_objects, assignment_total = get_assignments(course)
@@ -733,7 +749,7 @@ def archive_main(
         grade_book = DataFrame(rows, columns=columns)
         grade_book.to_csv(grades_path, index=False)
     if quizzes:
-        echo(") Processing quizzes...")
+        echo(") Exporting quizzes...")
         quizzes, quiz_total = get_quizzes(course)
         if verbose:
             for index, quiz in enumerate(quizzes):
@@ -743,7 +759,7 @@ def archive_main(
                 for quiz in progress:
                     archive_quizzes(quiz)
     if rubrics:
-        echo(") Processing rubrics...")
+        echo(") Exporting rubrics...")
         rubrics, rubric_total = get_rubrics(course)
         if verbose:
             for index, rubric in enumerate(rubrics):
