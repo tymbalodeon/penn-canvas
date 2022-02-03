@@ -570,7 +570,7 @@ def archive_main(
 
     CANVAS = get_canvas(instance)
     course = CANVAS.get_course(course_id, include=["syllabus_body"])
-    course_name = f"{format_name(course.name)} (course.id)"
+    course_name = f"{format_name(course.name)} ({course.id})"
     discussion_total = 0
     quiz_total = 0
     COURSE = RESULTS / course_name
