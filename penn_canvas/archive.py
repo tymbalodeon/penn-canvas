@@ -258,8 +258,9 @@ def archive_main(
         ) = assignments = groups = discussions = grades = quizzes = rubrics = True
 
     def archive_content(course, course_path, canvas, verbose):
-        export_types = [("zip", "zip"), ("common_cartridge", "imscc")]
-        for export_type, extension in export_types:
+        export_types = ["zip", "common_cartridge"]
+        for export_type in export_types:
+            echo(f') Starting "{export_type}" export...')
             export = course.export_content(
                 export_type=export_type, skip_notifications=True
             )
@@ -273,18 +274,19 @@ def archive_main(
                 progress = canvas.get_progress(progress_id)
             url = course.get_content_export(export).attachment["url"]
             response = get(url, stream=True)
-            file_name = f"{export_type}_content.{extension}"
-            file_path = course_path / file_name
-            content_path = course_path / "Content"
+            file_name = f"{export_type}_content.zip"
+            content_path = (
+                course_path / "Content" / export_type.replace("_", " ").title()
+            )
             if not content_path.exists():
                 Path.mkdir(content_path)
-            with open(course_path / file_name, "wb") as stream:
+            file_path = content_path / file_name
+            with open(file_path, "wb") as stream:
                 for chunk in response.iter_content(chunk_size=128):
                     stream.write(chunk)
-            if export_type == "zip":
-                with ZipFile(file_path) as unzipper:
-                    unzipper.extractall(content_path)
-                remove(file_path)
+            with ZipFile(file_path) as unzipper:
+                unzipper.extractall(content_path)
+            remove(file_path)
 
     def archive_announcements(course, course_path):
         announcements_path = course_path / "Announcements"
