@@ -342,7 +342,7 @@ def process_input(
         data.reset_index(drop=True, inplace=True)
         TOTAL = len(data.index)
         data = data.loc[start:TOTAL, :]
-        return (data, f"{TOTAL:,}", report) if open_canvas else (data, f"{TOTAL:,}")
+        return (data, TOTAL, report) if open_canvas else (data, TOTAL)
     else:
         return data
 
