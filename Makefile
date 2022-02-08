@@ -33,7 +33,7 @@ mypy: ## Type-check code
 
 sandbox: ## Open an interactive Python shell with connections to Canvas
 	tmux new-session -d; \
-	tmux send-keys '$(POETRY) python' C-m; \
+	tmux send-keys '$(POETRY) bpython' C-m; \
 	tmux send-keys 'from sandbox import *' C-m; \
 	tmux attach
 
