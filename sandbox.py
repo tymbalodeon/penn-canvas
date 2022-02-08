@@ -35,8 +35,8 @@ def get_section(section, use_sis_id=False, instance="prod"):
     return section
 
 
-def get_enrollments(enrollment_container: Course | Section | User, first=False):
-    if first:
+def get_enrollments(enrollment_container: Course | Section | User, first_only=False):
+    if first_only:
         enrollments = next(
             (enrollment for enrollment in enrollment_container.get_enrollments()), None
         )
