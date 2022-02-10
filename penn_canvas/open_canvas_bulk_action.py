@@ -573,7 +573,8 @@ def open_canvas_bulk_action_main(verbose, force, test):
         START = get_start_index(force, RESULT_PATH)
         INSTANCE = "open_test" if open_test else "open"
         if action == "enroll":
-            action_headers = HEADERS
+            action_headers = HEADERS[:]
+            action_headers.insert(2, "Type")
         elif action == "unenroll":
             action_headers = HEADERS[:-1] + ["Task"]
         elif action == "penn_id":
