@@ -214,7 +214,7 @@ def enroll_user(
 
 
 def unenroll_user(canvas, email, canvas_id, section, task="conclude"):
-    task = task.lower() if task in UNENROLL_TASKS else "conclude"
+    task = task.lower() if task.lower() in UNENROLL_TASKS else "conclude"
     canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
     if not canvas_section or canvas_section == "course not found":
         return canvas_section, canvas_id
