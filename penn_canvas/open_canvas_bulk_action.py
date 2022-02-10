@@ -27,6 +27,13 @@ REPORTS, RESULTS, COMPLETED = get_command_paths(COMMAND, completed=True)
 HEADERS = ["Name", "Email", "Course ID", "Section ID", "Notify"]
 ACCOUNT = 1
 UNENROLL_TASKS = {"conclude", "delete", "deactivate", "inactivate"}
+ENROLLMENT_TYPES = {
+    "student": "StudentEnrollment",
+    "teacher": "TeacherEnrollment",
+    "ta": "TaEnrollment",
+    "observer": "ObserverEnrollment",
+    "designer": "DesignerEnrollment",
+}
 COURSES_CACHE: dict[int, dict] = {}
 
 
@@ -45,6 +52,13 @@ def get_timestamped_path(result_path, open_test):
     else:
         Path.touch(new_path)
     return new_path
+
+
+def get_enrollment_type(enrollment_type):
+    try:
+        return ENROLLMENT_TYPES[enrollment_type.lower()]
+    except Exception:
+        return None
 
 
 def get_enrollment_id(course_id, section_id):
@@ -176,22 +190,24 @@ def get_enrollment_by_email(email, enrollments):
     )
 
 
-def enroll_user(canvas, account, full_name, email, canvas_id, section, notify):
+def enroll_user(
+    canvas, account, full_name, email, enrollment_type, canvas_id, section, notify
+):
     user = find_user_by_email(account, email)
     if not user:
         user = create_user(account, full_name, email)[1]
     canvas_section = get_canvas_section_or_course(canvas, canvas_id, section)
     if canvas_section == "course not found":
         return canvas_section, canvas_id, ""
+    if not enrollment_type:
+        return "invalid enrollment type", canvas_section, ""
     try:
-        enrollment = canvas_section.enroll_user(user, enrollment={"notify": notify})
+        enrollment = canvas_section.enroll_user(
+            user, enrollment={"notify": notify, "type": enrollment_type}
+        )
         return "enrolled", enrollment, ""
     except Exception as error:
-        try:
-            error_message = error.message
-        except Exception:
-            error_message = error
-        return "failed to enroll", canvas_section, error_message
+        return "failed to enroll", canvas_section, str(error)
 
 
 def unenroll_user(canvas, email, canvas_id, section, task="conclude"):
@@ -238,6 +254,7 @@ def process_result(result_path):
         course_not_found = result[result["Status"] == "course not found"]
         enrollment_not_found = result[result["Status"] == "enrollment not found"]
         missing_value = result[result["Status"] == "missing value"]
+        invalid_enrollment_type = result[result["Status"] == "invalid enrollment type"]
         error = result[
             (result["Status"] != "created")
             & (result["Status"] != "removed")
@@ -249,9 +266,11 @@ def process_result(result_path):
             & (result["Status"] != "course not found")
             & (result["Status"] != "enrollment not found")
             & (result["Status"] != "missing value")
+            & (result["Status"] != "invalid enrollment type")
         ]
         result = concat(
             [
+                invalid_enrollment_type,
                 missing_value,
                 course_not_found,
                 enrollment_not_found,
@@ -277,6 +296,7 @@ def process_result(result_path):
             len(course_not_found.index),
             len(enrollment_not_found.index),
             len(missing_value.index),
+            len(invalid_enrollment_type.index),
         )
     result.drop(["index"], axis=1, inplace=True)
     file_name = result_path.stem.lower()
@@ -326,6 +346,7 @@ def print_messages(total, counts, penn_id):
             course_not_found,
             enrollment_not_found,
             missing_value,
+            invalid_enrollment_type,
         ) = counts
         if created:
             echo(
@@ -399,6 +420,14 @@ def print_messages(total, counts, penn_id):
                 "red",
                 True,
             )
+        if invalid_enrollment_type:
+            color(
+                "- ERROR: Found"
+                f" {invalid_enrollment_type} {'user' if missing_value == 1 else 'users'} with"
+                " invalid enrollment types",
+                "red",
+                True,
+            )
 
 
 def open_canvas_bulk_action_main(verbose, force, test):
@@ -406,6 +435,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
         account, action = args
         full_name = ""
         email = ""
+        enrollment_type = ""
         course_id = ""
         section_id = ""
         canvas_id = ""
@@ -414,9 +444,18 @@ def open_canvas_bulk_action_main(verbose, force, test):
         penn_key = ""
         section = None
         if action == "enroll":
-            index, full_name, email, course_id, section_id, notify, error = user[:-1]
+            (
+                index,
+                full_name,
+                email,
+                enrollment_type,
+                course_id,
+                section_id,
+                notify,
+            ) = user[:-1]
             notify = bool("true" in notify.lower())
             canvas_id, section = get_enrollment_id(course_id, section_id)
+            enrollment_type = get_enrollment_type(enrollment_type)
         elif action == "unenroll":
             index, full_name, email, course_id, section_id, task = user[:-1]
             canvas_id, section = get_enrollment_id(course_id, section_id)
@@ -448,7 +487,14 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 status, course = unenroll_user(canvas, email, canvas_id, section, task)
             elif action == "enroll":
                 status, course, enroll_error = enroll_user(
-                    canvas, account, full_name, email, canvas_id, section, notify
+                    canvas,
+                    account,
+                    full_name,
+                    email,
+                    enrollment_type,
+                    canvas_id,
+                    section,
+                    notify,
                 )
             elif action == "remove":
                 status = remove_user(account, email)
