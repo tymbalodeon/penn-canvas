@@ -452,7 +452,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 course_id,
                 section_id,
                 notify,
-            ) = user[:-1]
+            ) = user[:-2]
             notify = bool("true" in notify.lower())
             canvas_id, section = get_enrollment_id(course_id, section_id)
             enrollment_type = get_enrollment_type(enrollment_type)
