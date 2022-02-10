@@ -152,11 +152,14 @@ def get_canvas_section_or_course(canvas, canvas_id, section):
 
 
 def get_enrollment_login(canvas, enrollment):
-    user = canvas.get_user(enrollment.user["id"])
+    try:
+        user = canvas.get_user(enrollment.user["id"])
+    except Exception:
+        user = None
     return {
         "enrollment": enrollment,
-        "login_id": user.login_id.lower() if user.login_id else "",
-        "email": user.email.lower() if user.email else "",
+        "login_id": user.login_id.lower() if user and user.login_id else "",
+        "email": user.email.lower() if user and user.email else "",
     }
 
 
