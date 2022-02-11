@@ -456,7 +456,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 section_id,
                 notify,
             ) = user[:-2]
-            notify = bool("true" in notify.lower())
+            notify = bool((lower := notify.lower()) == "true" or lower == "1")
             canvas_id, section = get_enrollment_id(course_id, section_id)
             enrollment_type = get_enrollment_type(enrollment_type)
         elif action == "unenroll":
