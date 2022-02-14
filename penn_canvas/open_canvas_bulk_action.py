@@ -38,8 +38,9 @@ COURSES_CACHE: dict[int, dict] = {}
 
 
 def cleanup_data(data, action):
-    subset = "Pennkey" if action == "penn_id" else "Email"
-    data.drop_duplicates(subset=[subset], inplace=True)
+    if action in {"create", "remove", "penn_id"}:
+        subset = "Pennkey" if action == "penn_id" else "Email"
+        data.drop_duplicates(subset=[subset], inplace=True)
     return data.astype("string", errors="ignore")
 
 
