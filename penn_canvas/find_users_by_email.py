@@ -1,24 +1,9 @@
 from requests import get
+
 from .config import get_config_option
 from .helpers import MAIN_ACCOUNT_ID
 
-
-emails = [
-    "201800966@ub.ac.bw",
-    "m.farries@uq.net.au",
-    "Rhsta.rosa@student.hau.edu.ph",
-    "s171156@oslomet.no",
-    "alexandria.bennet@uq.net.au",
-    "mcsabay@student.hau.edu.ph",
-    "s335178@oslomet.no",
-    "peter.lewis@uq.edu.au",
-    "19019145@brookes.ac.uk",
-    "ecm568@york.ac.uk",
-    "7413844@philasd.org",
-    "7726346@philasd.org",
-    "amhowe1234@gmail.com",
-]
-
+emails = []
 prod_key = get_config_option("canvas_keys", "canvas_prod_key")
 open_key = get_config_option("canvas_keys", "open_canvas_prod_key")
 prod_base_url = get_config_option("canvas_urls", "canvas_prod_url")
