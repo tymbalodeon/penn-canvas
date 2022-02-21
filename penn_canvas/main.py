@@ -1,6 +1,7 @@
 from typer import Argument, Option, Typer
 
 from penn_canvas.course_shopping import course_shopping_main
+from penn_canvas.find_users_by_email import find_users_by_email_main
 from penn_canvas.helpers import MAIN_ACCOUNT_ID
 
 from .archive import archive_main
@@ -527,6 +528,23 @@ def email(
     NOTE: Input filename must include the current date in order to be accepted.
     """
     email_main(test, verbose, new, force, clear_processed, no_data_warehouse)
+
+
+@app.command()
+def find_users_by_email(
+    emails_path: str = Argument(
+        "",
+        help="The path to the emails csv.",
+    ),
+    instance: str = Argument(
+        "",
+        help="The Canvas instance to use.",
+    ),
+):
+    """
+    Find users in Canvas when all you have is an email.
+    """
+    find_users_by_email_main(emails_path, instance)
 
 
 @app.command()
