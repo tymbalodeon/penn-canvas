@@ -80,17 +80,17 @@ def find_users_by_email_main(emails_path, instance):
     results = DataFrame(
         rows,
         columns=[
-            "Email",
             "First Name",
             "Last Name",
+            "Email",
             "Position",
             "DW Email",
             "Currently Employed",
         ],
     )
-    faculty = results[results["Position"] == "FA"]
+    faculty = results[results["Position"] == "Faculty"]
     faculty = faculty.sort_values("Currently Employed", ascending=False)
-    rest = results[results["Position"] != "FA"]
+    rest = results[results["Position"] != "Faculty"]
     rest = rest.sort_values("Currently Employed")
     results = concat([faculty, rest])
     results_path = emails_path.parent / f"{emails_path.stem}_DW.csv"
