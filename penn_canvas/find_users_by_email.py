@@ -21,6 +21,18 @@ INSTANCES = {
     "open": (open_base_url, open_headers, 1),
 }
 
+POSITIONS = {
+    "AP": "Administrative/Professional",
+    "EX": "Executive Pay (not included in the Data Warehouse)",
+    "FA": "Faculty",
+    "NC": "No category",
+    "NE": "Non-employees (courtesy appointments, etc.)",
+    "SS": "Support Staff",
+    "ST": "Student",
+    "TS": "Temporary Staff",
+    "US": "Unionized Staff",
+}
+
 
 def find_users_by_email_main(emails_path, instance):
     emails_path = Path(emails_path)
@@ -32,7 +44,12 @@ def find_users_by_email_main(emails_path, instance):
         pennkey = next(iter(email.split("@")), "")
         cursor.execute(
             """
-        SELECT job.personnel_class, person.email_address, person.currently_employed
+        SELECT
+            person.first_name,
+            person.last_name,
+            job.personnel_class,
+            person.email_address,
+            person.currently_employed
         FROM dwadmin.employee_general_v person
         JOIN dwadmin.job_class job
         ON job.job_class = person.pri_acad_appt_job_class
@@ -40,19 +57,36 @@ def find_users_by_email_main(emails_path, instance):
         """,
             pennkey=pennkey,
         )
-        for dw_position, dw_email, currently_employed in cursor:
+        for first_name, last_name, position, dw_email, currently_employed in cursor:
             try:
                 dw_email = dw_email.strip().lower()
             except Exception:
                 dw_email = ""
             message = (
-                f"{email}, {color(dw_position)}, {dw_email} "
+                f"{first_name} {last_name}, {email}, {color(position)}, {dw_email} "
                 f" currently employed: {currently_employed}"
             )
             print_item(index, total, message)
-            rows.append([email, dw_position, dw_email, currently_employed])
+            rows.append(
+                [
+                    first_name.title(),
+                    last_name.title(),
+                    email,
+                    POSITIONS.get(position, ""),
+                    dw_email,
+                    currently_employed,
+                ]
+            )
     results = DataFrame(
-        rows, columns=["Email", "Position", "DW Email", "Currently Employed"]
+        rows,
+        columns=[
+            "Email",
+            "First Name",
+            "Last Name",
+            "Position",
+            "DW Email",
+            "Currently Employed",
+        ],
     )
     faculty = results[results["Position"] == "FA"]
     faculty = faculty.sort_values("Currently Employed", ascending=False)
