@@ -12,12 +12,14 @@ CONFIG_OPTIONS = {
     "canvas_urls": [
         "canvas_prod_url",
         "canvas_test_url",
+        "canvas_beta_url",
         "open_canvas_url",
         "open_canvas_test_url",
     ],
     "canvas_keys": [
         "canvas_prod_key",
         "canvas_test_key",
+        "canvas_beta_key",
         "open_canvas_prod_key",
         "open_canvas_test_key",
     ],

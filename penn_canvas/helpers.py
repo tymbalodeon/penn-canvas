@@ -364,12 +364,14 @@ def get_canvas(instance="prod", verbose=True, override_key=False):
     (
         canvas_prod_key,
         canvas_test_key,
+        canvas_beta_key,
         open_canvas_key,
         open_canvas_test_key,
     ) = canvas_keys
     (
         canvas_prod_url,
         canvas_test_url,
+        canvas_beta_url,
         open_canvas_url,
         open_canvas_test_url,
     ) = canvas_urls
@@ -380,6 +382,10 @@ def get_canvas(instance="prod", verbose=True, override_key=False):
         url = canvas_test_url
         key = override_key or canvas_test_key
         instance_name = "TEST"
+    elif instance == "beta":
+        url = canvas_beta_url
+        key = override_key or canvas_beta_key
+        instance_name = "BETA"
     elif instance == "open":
         url = open_canvas_url
         key = override_key or open_canvas_key
