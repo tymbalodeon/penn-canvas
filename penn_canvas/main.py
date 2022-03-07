@@ -21,7 +21,7 @@ from .open_canvas_bulk_action import open_canvas_bulk_action_main
 from .storage import storage_main
 from .tool import tool_main
 from .update_term import update_term_main
-from .voicethread import voicethread_main
+from .usage_count import usage_count_main
 
 app = Typer(
     help=(
@@ -836,6 +836,6 @@ def update_term(
 
 
 @app.command()
-def voicethread():
-    """Generate a report of Voicethread usage."""
-    voicethread_main()
+def usage_count(tool: str = Option("turnitin", help="The tool to count usage for")):
+    """Generate a report of tool usage."""
+    usage_count_main(tool)

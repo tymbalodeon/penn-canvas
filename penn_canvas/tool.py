@@ -267,37 +267,17 @@ def tool_main(
             try:
                 course = canvas.get_course(canvas_course_id)
                 tabs = course.get_tabs()
-                if tool == "turnitin":
-
-                    def uses_turnitin(assignment):
-                        if "url" in assignment.external_tool_tag_attributes:
-                            return (
-                                "turnitin"
-                                in assignment.external_tool_tag_attributes["url"]
-                            )
-                        else:
-                            return False
-
-                    assignment = next(
-                        assignment
-                        for assignment in course.get_assignments()
-                        if uses_turnitin(assignment)
-                    )
-                    tool_status = "enabled" if assignment else "disabled"
+                if use_id:
+                    tool_tab = next((tab for tab in tabs if tab.id == tool), None)
                 else:
-                    if use_id:
-                        tool_tab = next((tab for tab in tabs if tab.id == tool), None)
-                    else:
-                        tool_tab = next(
-                            (tab for tab in tabs if tab.label == tool), None
-                        )
-                    if tool_tab and tool_tab.visibility == "public":
-                        tool_status = "already enabled" if enable else "enabled"
-                    elif tool_tab and enable:
-                        tool_tab.update(hidden=False, position=3)
-                        tool_status = "enabled"
-                    else:
-                        tool_status = "disabled"
+                    tool_tab = next((tab for tab in tabs if tab.label == tool), None)
+                if tool_tab and tool_tab.visibility == "public":
+                    tool_status = "already enabled" if enable else "enabled"
+                elif tool_tab and enable:
+                    tool_tab.update(hidden=False, position=3)
+                    tool_status = "enabled"
+                else:
+                    tool_status = "disabled"
             except Exception as error_message:
                 tool_status = f"{str(error_message)}"
                 error = True

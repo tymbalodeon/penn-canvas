@@ -31,7 +31,8 @@ HEADERS = [
     "status",
 ]
 terms = ["A", "B", "C"]
-year_and_terms = [f"2021{term}" for term in terms]
+# year_and_terms = [f"2021{term}" for term in terms]
+year_and_terms = ["2021C", "2022A"]
 account_id = 99237
 
 
@@ -49,7 +50,7 @@ def get_courses(term, main_account, account):
     ]
 
 
-def voicethread_main(tool):
+def usage_count_main(tool):
     canvas = get_canvas()
     main_account = canvas.get_account(MAIN_ACCOUNT_ID)
     account = canvas.get_account(account_id)
@@ -105,6 +106,7 @@ def voicethread_main(tool):
                 results_file.write(",".join(row))
             display_color = "green" if count else "yellow"
             echo(
-                f" - ({index + 1}/{courses_count}) {color(course.name)}:"
-                f" {color(count, display_color)}"
+                f" - ({index + 1}/{courses_count:,}) {color(course.name)}:"
+                f" {color(count, display_color)},"
+                f" {color(published_count, display_color)}"
             )
