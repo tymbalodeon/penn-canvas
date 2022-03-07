@@ -155,9 +155,11 @@ def process_result(terms, enable, result_path, new):
             f"{'_'.join(terms).replace('/', '')}_{result_path.stem}_REPORT_ENABLED.csv"
         )
         enabled_path = BASE / ENABLED_STEM
-        enabled = enabled[["term id", "canvas course id", "course id"]]
+        enabled = enabled[
+            ["term id", "canvas course id", "course id", "canvas account id"]
+        ]
         enabled = enabled.groupby(
-            ["canvas course id", "term id"], group_keys=False
+            ["canvas course id", "canvas account id", "term id"], group_keys=False
         ).apply(DataFrame.sort_values, "course id")
         enabled.to_csv(enabled_path, index=False)
         error_path = (

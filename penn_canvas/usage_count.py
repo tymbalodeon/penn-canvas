@@ -31,7 +31,6 @@ HEADERS = [
     "status",
 ]
 terms = ["A", "B", "C"]
-# year_and_terms = [f"2021{term}" for term in terms]
 year_and_terms = ["2021C", "2022A"]
 account_id = 99237
 
