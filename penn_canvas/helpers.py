@@ -2,10 +2,12 @@ from csv import writer
 from datetime import datetime
 from os import remove
 from pathlib import Path
+from pprint import PrettyPrinter
 from shutil import copy
 from zipfile import ZipFile
 
 from canvasapi import Canvas
+from canvasapi.account import Account
 from cx_Oracle import connect, init_oracle_client
 from pandas import read_csv
 from pytz import timezone, utc
@@ -399,6 +401,27 @@ def get_canvas(instance="prod", verbose=True, override_key=False):
     return Canvas(url, key)
 
 
+def pprint(thing):
+    if isinstance(thing, list):
+        for item in thing[:5]:
+            PrettyPrinter().pprint(vars(item))
+    else:
+        PrettyPrinter().pprint(vars(thing))
+
+
+def collect(paginator):
+    return [item for item in paginator]
+
+
+def get_account(
+    account=MAIN_ACCOUNT_ID, use_sis_id=False, instance="prod", verbose=False
+) -> Account:
+    account = get_canvas(instance).get_account(account, use_sis_id=use_sis_id)
+    if verbose:
+        pprint(account)
+    return account
+
+
 def get_sub_accounts(canvas, account_id):
     account = canvas.get_account(account_id)
     return [str(account_id)] + [
@@ -477,3 +500,17 @@ def toggle_progress_bar(data, callback, canvas, verbose, args=None):
             verbose_mode()
         else:
             progress_bar_mode()
+
+
+def get_external_tool_names(verbose=False):
+    account = get_account()
+    sub_accounts = collect(account.get_subaccounts(recursive=True))
+    external_tool_names = list()
+    for sub_account in sub_accounts:
+        external_tool_names = external_tool_names + [
+            tool.name.lower() for tool in collect(sub_account.get_external_tools())
+        ]
+    external_tool_names = sorted(set(external_tool_names))
+    if verbose:
+        print(*external_tool_names, sep="\n")
+    return external_tool_names

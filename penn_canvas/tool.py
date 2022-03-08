@@ -5,6 +5,7 @@ from pathlib import Path
 from pandas import DataFrame, concat, isna, read_csv
 from typer import Exit, confirm, echo
 
+from .constants import TOOLS
 from .helpers import (
     YEAR,
     add_headers_to_empty_files,
@@ -56,6 +57,10 @@ def get_account_names(accounts, canvas):
 
 
 def check_tool(tool):
+    tool = tool.lower()
+    if tool not in TOOLS:
+        raise Exit()
+
     if tool.lower() in {"reserve", "reserves"}:
         return "Course Materials @ Penn Libraries"
     elif tool.lower() == "panopto":
