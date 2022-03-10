@@ -36,7 +36,7 @@ POSITIONS = {
 
 def find_users_by_email_main(emails_path, instance):
     emails_path = Path(emails_path)
-    emails = read_csv(emails_path)["Email"].tolist()
+    emails = read_csv(emails_path)["email"].tolist()
     rows = list()
     total = len(emails)
     for index, email in enumerate(emails):
@@ -57,26 +57,32 @@ def find_users_by_email_main(emails_path, instance):
         """,
             pennkey=pennkey,
         )
+        first = last = pos = dwemail = employed = ""
         for first_name, last_name, position, dw_email, currently_employed in cursor:
             try:
                 dw_email = dw_email.strip().lower()
             except Exception:
                 dw_email = ""
-            message = (
-                f"{first_name} {last_name}, {email}, {color(position)}, {dw_email} "
-                f" currently employed: {currently_employed}"
-            )
-            print_item(index, total, message)
-            rows.append(
-                [
-                    first_name.title(),
-                    last_name.title(),
-                    email,
-                    POSITIONS.get(position, ""),
-                    dw_email,
-                    currently_employed,
-                ]
-            )
+            first = first_name
+            last = last_name
+            pos = position
+            dwemail = dw_email
+            employed = currently_employed
+        message = (
+            f"{first} {last}, {email}, {color(pos)}, {dwemail} "
+            f" currently employed: {employed}"
+        )
+        print_item(index, total, message)
+        rows.append(
+            [
+                first.title(),
+                last.title(),
+                email,
+                POSITIONS.get(pos, ""),
+                dwemail,
+                employed,
+            ]
+        )
     results = DataFrame(
         rows,
         columns=[
