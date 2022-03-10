@@ -1,25 +1,11 @@
 from pathlib import Path
 
-from pandas import read_csv, concat
+from pandas import concat, read_csv
 from pandas.core.frame import DataFrame
-from requests import get
 
 from penn_canvas.style import print_item
 
-from .config import get_config_option
-from .helpers import MAIN_ACCOUNT_ID, get_canvas, get_data_warehouse_cursor, color
-
-emails = []
-prod_key = get_config_option("canvas_keys", "canvas_prod_key")
-open_key = get_config_option("canvas_keys", "open_canvas_prod_key")
-prod_base_url = get_config_option("canvas_urls", "canvas_prod_url")
-open_base_url = get_config_option("canvas_urls", "open_canvas_url")
-prod_headers = {"Authorization": f"Bearer {prod_key}"}
-open_headers = {"Authorization": f"Bearer {open_key}"}
-INSTANCES = {
-    "prod": (prod_base_url, prod_headers, MAIN_ACCOUNT_ID),
-    "open": (open_base_url, open_headers, 1),
-}
+from .helpers import color, get_data_warehouse_cursor
 
 POSITIONS = {
     "AP": "Administrative/Professional",
@@ -31,34 +17,89 @@ POSITIONS = {
     "ST": "Student",
     "TS": "Temporary Staff",
     "US": "Unionized Staff",
+    "": "Student",
 }
 
 
-def find_users_by_email_main(emails_path, instance):
+def find_users_by_email_main(emails_path):
     emails_path = Path(emails_path)
-    emails = read_csv(emails_path)["email"].tolist()
+    try:
+        emails = read_csv(emails_path)["Email"].tolist()
+    except Exception:
+        emails = read_csv(emails_path)["email"].tolist()
     rows = list()
     total = len(emails)
     for index, email in enumerate(emails):
+        first = last = pos = dwemail = employed = last_degree = pennkey = ""
+        last_degrees = list()
+        email_search = f"%{email}%"
         cursor = get_data_warehouse_cursor()
-        pennkey = next(iter(email.split("@")), "")
         cursor.execute(
             """
-        SELECT
-            person.first_name,
-            person.last_name,
-            job.personnel_class,
-            person.email_address,
-            person.currently_employed
-        FROM dwadmin.employee_general_v person
-        JOIN dwadmin.job_class job
-        ON job.job_class = person.pri_acad_appt_job_class
-        WHERE person.pennkey = :pennkey
-        """,
+            SELECT
+                person.first_name,
+                person.last_name,
+                person.email_address,
+                degree.last_degree_term,
+                person.pennkey
+            FROM dwadmin.person_all_v person
+            JOIN dwadmin.degree_pursual_all_v degree
+            ON degree.penn_id = person.penn_id
+            WHERE person.email_address LIKE :email
+            """,
+            email=email_search,
+        )
+        for first_name, last_name, dw_email, deg, pkey in cursor:
+            try:
+                dw_email = dw_email.strip().lower()
+            except Exception:
+                dw_email = ""
+            first = first_name
+            last = last_name
+            dwemail = dw_email
+            pennkey = pkey
+            last_degrees.append(deg)
+        if not pennkey:
+            pennkey = next(iter(email.split("@")), "")
+            cursor.execute(
+                """
+                SELECT
+                    person.first_name,
+                    person.last_name,
+                    person.email_address,
+                    degree.last_degree_term
+                FROM dwadmin.person_all_v person
+                JOIN dwadmin.degree_pursual_all_v degree
+                ON degree.penn_id = person.penn_id
+                WHERE person.pennkey = :pennkey
+                """,
+                pennkey=pennkey,
+            )
+            for first_name, last_name, dw_email, deg in cursor:
+                try:
+                    dw_email = dw_email.strip().lower()
+                except Exception:
+                    dw_email = ""
+                first = first_name
+                last = last_name
+                dwemail = dw_email
+                last_degrees.append(deg)
+        cursor.execute(
+            """
+            SELECT
+                person.first_name,
+                person.last_name,
+                job.personnel_class,
+                person.email_address,
+                person.currently_employed
+            FROM dwadmin.employee_general_v person
+            JOIN dwadmin.job_class job
+            ON job.job_class = person.pri_acad_appt_job_class
+            WHERE person.pennkey = :pennkey
+            """,
             pennkey=pennkey,
         )
-        first = last = pos = dwemail = employed = ""
-        for first_name, last_name, position, dw_email, currently_employed in cursor:
+        for first_name, last_name, position, dw_email, emp in cursor:
             try:
                 dw_email = dw_email.strip().lower()
             except Exception:
@@ -67,20 +108,30 @@ def find_users_by_email_main(emails_path, instance):
             last = last_name
             pos = position
             dwemail = dw_email
-            employed = currently_employed
+            employed = emp
+        years = [
+            int("".join(character for character in degree if character.isnumeric()))
+            for degree in last_degrees
+            if degree
+        ]
+        last_degree = sorted(years)[-1] if years else ""
+        first = first.strip().title()
+        last = last.strip().title()
+        pos = POSITIONS.get(pos, "")
         message = (
-            f"{first} {last}, {email}, {color(pos)}, {dwemail} "
-            f" currently employed: {employed}"
+            f"{first} {last}, {email}, {color(pos)}, {dwemail}  employed: {employed},"
+            f" last_degree: {color(last_degree, 'blue', use_comma=False)}"
         )
         print_item(index, total, message)
         rows.append(
             [
-                first.title(),
-                last.title(),
+                first,
+                last,
                 email,
-                POSITIONS.get(pos, ""),
+                pos,
                 dwemail,
                 employed,
+                last_degree,
             ]
         )
     results = DataFrame(
@@ -92,6 +143,7 @@ def find_users_by_email_main(emails_path, instance):
             "Position",
             "DW Email",
             "Currently Employed",
+            "Last Degree Term",
         ],
     )
     faculty = results[results["Position"] == "Faculty"]
@@ -101,33 +153,3 @@ def find_users_by_email_main(emails_path, instance):
     results = concat([faculty, rest])
     results_path = emails_path.parent / f"{emails_path.stem}_DW.csv"
     results.to_csv(results_path, index=False)
-
-
-# def find_users_by_email_main(emails_path, instance):
-#     instances = (
-#         [INSTANCES[instance]] if instance else [value for value in INSTANCES.values()]
-#     )
-#     emails_path = Path(emails_path)
-#     emails = read_csv(emails_path)["email"].tolist()
-#     rows = list()
-#     for url, headers, account_id in instances:
-#         canvas_instance = "prod" if url == prod_base_url else "open"
-#         print(canvas_instance.upper())
-#         canvas = get_canvas(canvas_instance)
-#         for email in emails:
-#             search_url = f"{url}api/v1/accounts/{account_id}/users?search_term={email}"
-#             response = get(search_url, headers=headers).json()
-#             if response:
-#                 response = response[0]
-#                 name = response["name"]
-#                 user = canvas.get_user(response["id"])
-#                 enrollments = {enrollment.type for enrollment in user.get_enrollments()}
-#                 roles = ", ".join(enrollments)
-#                 rows.append([email, name, roles])
-#                 print(email, name, roles)
-#             else:
-#                 print(email, response)
-#                 rows.append([email, "not found", "not found"])
-#     results = DataFrame(rows, columns=["Email", "Name", "Roles"])
-#     results_path = emails_path.parent / f"{emails_path.stem}_results.csv"
-#     results.to_csv(results_path)

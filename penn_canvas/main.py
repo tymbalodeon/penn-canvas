@@ -535,16 +535,12 @@ def find_users_by_email(
     emails_path: str = Argument(
         "",
         help="The path to the emails csv.",
-    ),
-    instance: str = Argument(
-        "",
-        help="The Canvas instance to use.",
-    ),
+    )
 ):
     """
     Find users in Canvas when all you have is an email.
     """
-    find_users_by_email_main(emails_path, instance)
+    find_users_by_email_main(emails_path)
 
 
 @app.command()

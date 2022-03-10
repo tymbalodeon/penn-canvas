@@ -11,8 +11,9 @@ COLORS = {
 }
 
 
-def color(text, color="magenta", echo=False, bold=False):
-    text = f"{text:,}" if isinstance(text, int) else str(text)
+def color(text, color="magenta", echo=False, bold=False, use_comma=True):
+    if use_comma:
+        text = f"{text:,}" if isinstance(text, int) else str(text)
     return (
         secho(text, fg=COLORS[color], bold=bold)
         if echo
