@@ -8,6 +8,7 @@ from zipfile import ZipFile
 
 from canvasapi import Canvas
 from canvasapi.account import Account
+from canvasapi.paginated_list import PaginatedList
 from cx_Oracle import connect, init_oracle_client
 from pandas import read_csv
 from pytz import timezone, utc
@@ -409,8 +410,11 @@ def pprint(thing):
         PrettyPrinter().pprint(vars(thing))
 
 
-def collect(paginator):
-    return [item for item in paginator]
+def collect(paginator: PaginatedList | list, function=None) -> list:
+    if function:
+        return [function(item) for item in paginator]
+    else:
+        return [item for item in paginator]
 
 
 def get_account(

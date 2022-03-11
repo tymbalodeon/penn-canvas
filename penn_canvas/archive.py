@@ -14,7 +14,7 @@ from requests import get
 from typer import echo, progressbar
 
 from .config import get_config_option
-from .helpers import format_timestamp, get_canvas, get_command_paths
+from .helpers import format_timestamp, get_canvas, get_command_paths, collect
 from .style import color
 
 COMMAND = "Archive"
@@ -536,16 +536,52 @@ def archive_main(
             ]
             for question in quiz.get_questions()
         ]
-        submissions = [submission for submission in quiz.get_submissions()]
+        course = CANVAS.get_course(quiz.course_id)
+        assignment = course.get_assignment(quiz.assignment_id)
+        submissions = collect(
+            assignment.get_submissions(include=["submission_history", "user"])
+        )
         quiz_path = QUIZ_DIRECTORY / title
         description_path = quiz_path / f"{title}_DESCRIPTION.txt"
         questions_path = quiz_path / f"{title}_QUESTIONS.csv"
         scores_path = quiz_path / f"{title}_SCORES.csv"
         if not quiz_path.exists():
             Path.mkdir(quiz_path)
+        submission_histories = [
+            (submission.user["name"], submission.submission_history)
+            for submission in submissions
+        ]
+        for submission_history in submission_histories:
+            name, histories = submission_history
+            student_path = quiz_path / name
+            if not student_path.exists():
+                Path.mkdir(student_path)
+            for history in histories:
+                submission_data = (
+                    [
+                        [
+                            name,
+                            submission_data["correct"],
+                            submission_data["points"],
+                            submission_data["question_id"],
+                            strip_tags(submission_data["text"]),
+                        ]
+                        for submission_data in history["submission_data"]
+                    ]
+                    if "submission_data" in history
+                    else []
+                )
+                submission_data = DataFrame(
+                    submission_data,
+                    columns=["Student", "Correct", "Points", "Question ID", "Text"],
+                )
+                submission_data_path = (
+                    student_path / f"{name}_submissions_{history['id']}.csv"
+                )
+                submission_data.to_csv(submission_data_path, index=False)
         user_scores = [
             [
-                CANVAS.get_user(submission.user_id).name,
+                submission.user["name"],
                 round(submission.score, 2) if submission.score else submission.score,
             ]
             for submission in submissions
