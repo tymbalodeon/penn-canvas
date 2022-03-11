@@ -14,7 +14,7 @@ from requests import get
 from typer import echo, progressbar
 
 from .config import get_config_option
-from .helpers import format_timestamp, get_canvas, get_command_paths, collect
+from .helpers import collect, format_timestamp, get_canvas, get_command_paths
 from .style import color
 
 COMMAND = "Archive"
