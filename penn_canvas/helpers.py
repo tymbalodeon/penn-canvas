@@ -17,9 +17,17 @@ from typer import Exit, confirm, echo, progressbar, style
 from .config import get_penn_canvas_config
 from .style import color
 
+
+def create_directory(new_directory: Path) -> Path:
+    if not new_directory.exists():
+        Path.mkdir(new_directory)
+    return new_directory
+
+
 COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
 BOX_PATH = Path.home() / "Library/CloudStorage/Box-Box"
 BOX_CLI_PATH = BOX_PATH / "Penn Canvas CLI"
+REPORTS = create_directory(BOX_CLI_PATH / "REPORTS")
 YEAR = datetime.now().strftime("%Y")
 MONTH = datetime.now().strftime("%B")
 TODAY = datetime.now().strftime("%d_%b_%Y")
@@ -39,7 +47,7 @@ init_oracle_client(
 )
 
 
-SPRING, SUMMER, FALL = "A", "B", "C"
+SPRING, SUMMER, FALL = "10", "20", "30"
 
 
 def get_term_by_month(month):
@@ -53,7 +61,7 @@ def get_term_by_month(month):
 
 def get_current_term():
     return {month: get_term_by_month(month) for month in range(1, 13)}.get(
-        CURRENT_MONTH, "A"
+        CURRENT_MONTH, "10"
     )
 
 
@@ -418,12 +426,17 @@ def collect(paginator: PaginatedList | list, function=None) -> list:
 
 
 def get_account(
-    account=MAIN_ACCOUNT_ID, use_sis_id=False, instance="prod", verbose=False
+    account: int | Account = MAIN_ACCOUNT_ID,
+    use_sis_id=False,
+    instance="prod",
+    verbose=False,
 ) -> Account:
-    account = get_canvas(instance).get_account(account, use_sis_id=use_sis_id)
+    if isinstance(account, Account):
+        return account
+    account_object = get_canvas(instance).get_account(account, use_sis_id=use_sis_id)
     if verbose:
         pprint(account)
-    return account
+    return account_object
 
 
 def get_sub_accounts(canvas, account_id):
@@ -518,9 +531,3 @@ def get_external_tool_names(verbose=False):
     if verbose:
         print(*external_tool_names, sep="\n")
     return external_tool_names
-
-
-def create_directory(new_directory: Path) -> Path:
-    if not new_directory.exists():
-        Path.mkdir(new_directory)
-    return new_directory
