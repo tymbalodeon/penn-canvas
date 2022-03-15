@@ -6,6 +6,8 @@ from requests import get
 from typer import echo
 
 from penn_canvas.helpers import (
+    CURRENT_TERM_DISPLAY,
+    CURRENT_YEAR,
     CURRENT_YEAR_AND_TERM,
     MAIN_ACCOUNT_ID,
     REPORTS,
@@ -22,8 +24,8 @@ def create_report(
     account = get_account(account)
     report_types = [report.report for report in account.get_reports()]
     if report_type not in report_types:
-        echo(f'Unkown report type: "{report_type}"')
-        echo("Available report types are:")
+        echo(f'- ERROR: Unkown report type "{report_type}"')
+        echo("-Available report types are:")
         for report_type in report_types:
             echo(f"\t{report_type}")
     report = account.create_report(report_type, parameters=parameters)
@@ -55,7 +57,7 @@ def create_report(
 def create_provisioning_report(
     courses=True,
     users=True,
-    enrollment_term=CURRENT_YEAR_AND_TERM,
+    term_name=f"{CURRENT_YEAR_AND_TERM} (Banner {CURRENT_TERM_DISPLAY} {CURRENT_YEAR})",
     base_path=REPORTS,
     account: int | Account = MAIN_ACCOUNT_ID,
 ):
@@ -65,20 +67,20 @@ def create_provisioning_report(
         parameters["courses"] = courses
     if users:
         parameters["users"] = users
-    if enrollment_term:
+    if term_name:
         enrollment_terms = [
             {"name": enrollment_term.name, "id": enrollment_term.id}
             for enrollment_term in account.get_enrollment_terms()
         ]
         enrollment_term_ids = dict()
-        for enrollment_term in enrollment_terms:
-            enrollment_term_ids[enrollment_term["name"]] = enrollment_term["id"]
+        for term in enrollment_terms:
+            enrollment_term_ids[term["name"]] = term["id"]
         try:
-            enrollment_term_id = enrollment_term_ids.get(enrollment_term)
+            enrollment_term_id = enrollment_term_ids.get(term_name)
             parameters["enrollment_term_id"] = enrollment_term_id
+            create_report("provisioning_csv", parameters, base_path, account)
         except Exception:
-            echo("- ERROR: Enrollment term not found: {enrollment_term}")
-            echo("Available enrollment terms are:")
+            echo(f"- ERROR: Enrollment term not found: {term_name}")
+            echo("- Available enrollment terms are:")
             for enrollment_term in enrollment_terms:
                 echo(f"\t{enrollment_term['name']}")
-    create_report("provisioning_csv", parameters, base_path, account)
