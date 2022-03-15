@@ -3,7 +3,6 @@ from io import StringIO
 from json import loads
 from mimetypes import guess_extension
 from os import remove
-from pathlib import Path
 from re import search
 from time import sleep
 from zipfile import ZipFile
@@ -14,8 +13,14 @@ from requests import get
 from typer import echo, progressbar
 
 from .config import get_config_option
-from .helpers import collect, format_timestamp, get_canvas, get_command_paths
-from .style import color
+from .helpers import (
+    collect,
+    create_directory,
+    format_timestamp,
+    get_canvas,
+    get_command_paths,
+)
+from .style import color, print_item
 
 COMMAND = "Archive"
 RESULTS = get_command_paths(COMMAND, no_input=True)[0]
@@ -109,7 +114,7 @@ def process_submission(
         score = round(submission.score, 2)
     except Exception:
         score = submission.score
-    submissions_path = assignment_path / "Submission Files"
+    submissions_path = create_directory(assignment_path / "Submission Files")
     try:
         body = strip_tags(submission.body.replace("\n", " ")).strip()
         with open(
@@ -118,8 +123,6 @@ def process_submission(
             submissions_file.write(body)
     except Exception:
         body = ""
-    if not submissions_path.exists():
-        Path.mkdir(submissions_path)
     try:
         attachments = [
             (attachment["url"], attachment["filename"])
@@ -275,11 +278,10 @@ def archive_main(
             url = course.get_content_export(export).attachment["url"]
             response = get(url, stream=True)
             file_name = f"{export_type}_content.zip"
-            content_path = course_path / "Content"
-            export_path = content_path / export_type.replace("_", " ").title()
-            for path in [content_path, export_path]:
-                if not path.exists():
-                    Path.mkdir(path)
+            content_path = create_directory(course_path / "Content")
+            export_path = create_directory(
+                content_path / export_type.replace("_", " ").title()
+            )
             file_path = export_path / file_name
             with open(file_path, "wb") as stream:
                 for chunk in response.iter_content(chunk_size=128):
@@ -289,9 +291,7 @@ def archive_main(
             remove(file_path)
 
     def archive_announcements(course, course_path):
-        announcements_path = course_path / "Announcements"
-        if not announcements_path.exists():
-            Path.mkdir(announcements_path)
+        announcements_path = create_directory(course_path / "Announcements")
         announcements = [
             announcement
             for announcement in course.get_discussion_topics(only_announcements=True)
@@ -303,15 +303,11 @@ def archive_main(
                 announcement_file.write(strip_tags(announcement.message))
 
     def archive_modules(course, course_path):
-        modules_path = course_path / "Modules"
-        if not modules_path.exists():
-            Path.mkdir(modules_path)
+        modules_path = create_directory(course_path / "Modules")
         modules = [module for module in course.get_modules()]
         for module in modules:
             module_name = format_name(module.name)
-            module_path = modules_path / module_name
-            if not module_path.exists():
-                Path.mkdir(module_path)
+            module_path = create_directory(modules_path / module_name)
             items = [item for item in module.get_module_items()]
             for item in items:
                 content = None
@@ -382,9 +378,7 @@ def archive_main(
                     item_file.write(file_content)
 
     def archive_pages(course, course_path):
-        pages_path = course_path / "Pages"
-        if not pages_path.exists():
-            Path.mkdir(pages_path)
+        pages_path = create_directory(course_path / "Pages")
         pages = [page for page in course.get_pages()]
         for page in pages:
             title = format_name(page.title)
@@ -393,9 +387,7 @@ def archive_main(
                 page_file.write(strip_tags(page.show_latest_revision().body))
 
     def archive_syllabus(course, course_path):
-        syllabus_path = course_path / "Syllabus"
-        if not syllabus_path.exists():
-            Path.mkdir(syllabus_path)
+        syllabus_path = create_directory(course_path / "Syllabus")
         syllabus = course.syllabus_body
         if syllabus:
             with open(syllabus_path / "syllabus.txt", "w") as syllabus_file:
@@ -403,14 +395,10 @@ def archive_main(
 
     def archive_assignment(canvas, assignment, index=0, total=0, verbose=False):
         assignment_name = format_name(assignment.name)
-        assignment_path = ASSIGNMENT_DIRECTORY / assignment_name
-        if not assignment_path.exists():
-            Path.mkdir(assignment_path)
+        assignment_path = create_directory(ASSIGNMENT_DIRECTORY / assignment_name)
         description_path = assignment_path / f"{assignment_name}_DESCRIPTION.txt"
         submissions_path = assignment_path / f"{assignment_name}_GRADES.csv"
-        comments_path = assignment_path / "Submission Comments"
-        if not comments_path.exists():
-            Path.mkdir(comments_path)
+        comments_path = create_directory(assignment_path / "Submission Comments")
         submissions = [
             submission
             for submission in assignment.get_submissions(include="submission_comments")
@@ -446,9 +434,7 @@ def archive_main(
         canvas, discussion, csv_style=False, index=0, total=0, verbose=False
     ):
         discussion_name = format_name(discussion.title)
-        discussion_path = DISCUSSION_DIRECTORY / discussion_name
-        if not discussion_path.exists():
-            Path.mkdir(discussion_path)
+        discussion_path = create_directory(DISCUSSION_DIRECTORY / discussion_name)
         description_path = discussion_path / f"{discussion_name}_DESCRIPTION.txt"
         entries = [entry for entry in discussion.get_topic_entries()]
         if verbose and not entries:
@@ -524,11 +510,15 @@ def archive_main(
         ]
         return student_data + submission_scores + total_scores
 
-    def archive_quizzes(quiz):
+    def archive_quiz(quiz, index=0, total=0):
         title = format_name(quiz.title)
+        if verbose:
+            print_item(index, total, f"{title}")
         description = (
             strip_tags(quiz.description) if quiz.description else quiz.description
         )
+        if verbose:
+            echo("\t> Getting questions...")
         questions = [
             [
                 strip_tags(question.question_text),
@@ -538,24 +528,30 @@ def archive_main(
         ]
         course = CANVAS.get_course(quiz.course_id)
         assignment = course.get_assignment(quiz.assignment_id)
+        if verbose:
+            echo("\t> Getting submissions...")
         submissions = collect(
             assignment.get_submissions(include=["submission_history", "user"])
         )
-        quiz_path = QUIZ_DIRECTORY / title
+        quiz_path = create_directory(QUIZ_DIRECTORY / title)
         description_path = quiz_path / f"{title}_DESCRIPTION.txt"
         questions_path = quiz_path / f"{title}_QUESTIONS.csv"
         scores_path = quiz_path / f"{title}_SCORES.csv"
-        if not quiz_path.exists():
-            Path.mkdir(quiz_path)
+        submissions_path = create_directory(quiz_path / "Submissions")
         submission_histories = [
             (submission.user["name"], submission.submission_history)
             for submission in submissions
         ]
-        for submission_history in submission_histories:
+        submissions_total = len(submission_histories)
+        for index, submission_history in enumerate(submission_histories):
             name, histories = submission_history
-            student_path = quiz_path / name
-            if not student_path.exists():
-                Path.mkdir(student_path)
+            if verbose:
+                print_item(
+                    index,
+                    submissions_total,
+                    f"Getting submission data for {color(name)}...",
+                    prefix="\t*",
+                )
             for history in histories:
                 submission_data = (
                     [
@@ -576,9 +572,11 @@ def archive_main(
                     columns=["Student", "Correct", "Points", "Question ID", "Text"],
                 )
                 submission_data_path = (
-                    student_path / f"{name}_submissions_{history['id']}.csv"
+                    submissions_path / f"{name}_submissions_{history['id']}.csv"
                 )
                 submission_data.to_csv(submission_data_path, index=False)
+        if verbose:
+            echo("\t> Collecting user scores...")
         user_scores = [
             [
                 submission.user["name"],
@@ -591,6 +589,8 @@ def archive_main(
         user_scores.to_csv(scores_path, index=False)
         questions.to_csv(questions_path, index=False)
         if description:
+            if verbose:
+                echo("\t> Getting description...")
             with open(description_path, "w") as description_file:
                 description_file.write(description)
 
@@ -626,25 +626,13 @@ def archive_main(
     course_name = f"{format_name(course.name)} ({course.id})"
     discussion_total = 0
     quiz_total = 0
-    COURSE = RESULTS / course_name
-    ASSIGNMENT_DIRECTORY = COURSE / "Assignments"
-    DISCUSSION_DIRECTORY = COURSE / "Discussions"
-    GRADE_DIRECTORY = COURSE / "Grades"
-    GROUP_DIRECTORY = COURSE / "Groups"
-    QUIZ_DIRECTORY = COURSE / "Quizzes"
-    RUBRIC_DIRECTORY = COURSE / "Rubrics"
-    PATHS = [
-        COURSE,
-        ASSIGNMENT_DIRECTORY,
-        DISCUSSION_DIRECTORY,
-        GRADE_DIRECTORY,
-        GROUP_DIRECTORY,
-        QUIZ_DIRECTORY,
-        RUBRIC_DIRECTORY,
-    ]
-    for path in PATHS:
-        if not path.exists():
-            Path.mkdir(path)
+    COURSE = create_directory(RESULTS / course_name)
+    ASSIGNMENT_DIRECTORY = create_directory(COURSE / "Assignments")
+    DISCUSSION_DIRECTORY = create_directory(COURSE / "Discussions")
+    GRADE_DIRECTORY = create_directory(COURSE / "Grades")
+    GROUP_DIRECTORY = create_directory(COURSE / "Groups")
+    QUIZ_DIRECTORY = create_directory(COURSE / "Quizzes")
+    RUBRIC_DIRECTORY = create_directory(COURSE / "Rubrics")
     if content:
         echo(") Exporting content...")
         archive_content(course, COURSE, CANVAS, verbose)
@@ -676,13 +664,9 @@ def archive_main(
         categories = [category for category in course.get_group_categories()]
         for category in categories:
             groups = [group for group in category.get_groups()]
-            groups_directory = GROUP_DIRECTORY / category.name
-            if not groups_directory.exists():
-                Path.mkdir(groups_directory)
+            groups_directory = create_directory(GROUP_DIRECTORY / category.name)
             for group in groups:
-                group_directory = groups_directory / group.name
-                if not group_directory.exists():
-                    Path.mkdir(group_directory)
+                group_directory = create_directory(groups_directory / group.name)
                 memberships = [
                     CANVAS.get_user(membership.user_id)
                     for membership in group.get_memberships()
@@ -790,12 +774,13 @@ def archive_main(
         echo(") Exporting quizzes...")
         quizzes, quiz_total = get_quizzes(course)
         if verbose:
+            total = len(quizzes)
             for index, quiz in enumerate(quizzes):
-                archive_quizzes(quiz)
+                archive_quiz(quiz, index, total)
         else:
             with progressbar(quizzes, length=quiz_total) as progress:
                 for quiz in progress:
-                    archive_quizzes(quiz)
+                    archive_quiz(quiz)
     if rubrics:
         echo(") Exporting rubrics...")
         rubrics, rubric_total = get_rubrics(course)

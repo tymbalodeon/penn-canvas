@@ -518,3 +518,9 @@ def get_external_tool_names(verbose=False):
     if verbose:
         print(*external_tool_names, sep="\n")
     return external_tool_names
+
+
+def create_directory(new_directory: Path) -> Path:
+    if not new_directory.exists():
+        Path.mkdir(new_directory)
+    return new_directory
