@@ -1,5 +1,7 @@
+from os import remove
 from pathlib import Path
 from time import sleep
+from zipfile import ZipFile
 
 from canvasapi.account import Account
 from requests import get
@@ -11,6 +13,8 @@ from penn_canvas.helpers import (
     CURRENT_YEAR_AND_TERM,
     MAIN_ACCOUNT_ID,
     REPORTS,
+    TODAY_AS_Y_M_D,
+    create_directory,
     get_account,
 )
 
@@ -48,6 +52,11 @@ def create_report(
                 response = get(url, stream=True)
                 for chunk in response.iter_content(chunk_size=128):
                     stream.write(chunk)
+            if report.attachment["mime_class"] == "zip":
+                export_path = base_path / filename.replace(".zip", "")
+                with ZipFile(report_path) as unzipper:
+                    unzipper.extractall(export_path)
+                remove(report_path)
             return report_path
         except Exception as error:
             echo(f"- ERROR: {error}")
@@ -78,6 +87,7 @@ def create_provisioning_report(
         try:
             enrollment_term_id = enrollment_term_ids.get(term_name)
             parameters["enrollment_term_id"] = enrollment_term_id
+            base_path = create_directory(base_path / TODAY_AS_Y_M_D)
             create_report("provisioning_csv", parameters, base_path, account)
         except Exception:
             echo(f"- ERROR: Enrollment term not found: {term_name}")
