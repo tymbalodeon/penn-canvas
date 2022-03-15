@@ -550,7 +550,7 @@ def archive_main(
                     index,
                     submissions_total,
                     f"Getting submission data for {color(name)}...",
-                    prefix="\t*",
+                    prefix="\t\t*",
                 )
             for history in histories:
                 submission_data = (
