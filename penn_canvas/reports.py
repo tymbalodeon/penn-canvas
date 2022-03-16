@@ -5,7 +5,7 @@ from zipfile import ZipFile
 
 from canvasapi.account import Account
 from requests import get
-from typer import echo
+from typer import Exit, echo
 
 from penn_canvas.helpers import (
     CURRENT_TERM_DISPLAY,
@@ -23,6 +23,7 @@ def create_report(
     report_type: str,
     parameters: dict,
     base_path=REPORTS,
+    filename_replacement="",
     account: int | Account = MAIN_ACCOUNT_ID,
 ) -> Path | None:
     account = get_account(account)
@@ -46,7 +47,7 @@ def create_report(
         return None
     else:
         try:
-            filename = report.attachment["filename"]
+            filename: str = report.attachment["filename"]
             url = report.attachment["url"]
             report_path = base_path / filename
             with open(report_path, "wb") as stream:
@@ -58,6 +59,8 @@ def create_report(
                 with ZipFile(report_path) as unzipper:
                     unzipper.extractall(export_path)
                 remove(report_path)
+            elif filename_replacement:
+                report_path = report_path.replace(base_path / f"{filename_replacement}")
             return report_path
         except Exception as error:
             echo(f"- ERROR: {error}")
@@ -73,11 +76,8 @@ def create_provisioning_report(
     account: int | Account = MAIN_ACCOUNT_ID,
 ):
     account = get_account(account)
+    filename_replacement = ""
     parameters = dict()
-    if courses:
-        parameters["courses"] = courses
-    if users:
-        parameters["users"] = users
     if term_name:
         enrollment_terms = [
             {"name": enrollment_term.name, "id": enrollment_term.id}
@@ -89,10 +89,25 @@ def create_provisioning_report(
         try:
             enrollment_term_id = enrollment_term_ids.get(term_name)
             parameters["enrollment_term_id"] = enrollment_term_id
-            base_path = create_directory(base_path / TODAY_AS_Y_M_D)
-            create_report("provisioning_csv", parameters, base_path, account)
         except Exception:
             echo(f"- ERROR: Enrollment term not found: {term_name}")
             echo("- Available enrollment terms are:")
             for enrollment_term in enrollment_terms:
                 echo(f"\t{enrollment_term['name']}")
+            raise Exit()
+    if courses:
+        parameters["courses"] = courses
+    if users:
+        parameters["users"] = users
+    if courses != users:
+        filename_replacement = "courses" if courses else "users"
+    elif courses is False and users is False:
+        filename_term: str = str(parameters["enrollment_term_id"])
+        filename_term = (
+            f"_{filename_term}" if "enrollment_term_id" in parameters else ""
+        )
+        filename_replacement = f"provisioning{filename_term}"
+    base_path = create_directory(base_path / TODAY_AS_Y_M_D)
+    create_report(
+        "provisioning_csv", parameters, base_path, filename_replacement, account
+    )
