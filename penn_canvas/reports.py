@@ -18,20 +18,34 @@ from penn_canvas.helpers import (
 )
 
 
-def create_report(
-    report_type: str,
-    parameters: dict,
-    base_path=REPORTS,
-    filename_replacement="",
-    account: int | Account = MAIN_ACCOUNT_ID,
-) -> Path | None:
-    account = get_account(account)
-    report_types = [report.report for report in account.get_reports()]
+def validate_report_type(
+    report_type, by_filename=False, account: int | Account = MAIN_ACCOUNT_ID
+):
+    if by_filename:
+        report_types = {"courses", "users"}
+    else:
+        account = get_account(account)
+        report_types = {report.report for report in account.get_reports()}
     if report_type not in report_types:
         echo(f'- ERROR: Unkown report type "{report_type}"')
         echo("-Available report types are:")
         for report_type in report_types:
             echo(f"\t{report_type}")
+        raise Exit()
+
+
+def create_report(
+    report_type: str,
+    parameters=dict(),
+    base_path=REPORTS,
+    filename_replacement="",
+    account: int | Account = MAIN_ACCOUNT_ID,
+) -> Path | None:
+    account = get_account(account)
+    validate_report_type(report_type, account=account)
+    if not parameters:
+        echo("- ERROR: Must include parameters.")
+        raise Exit()
     report = account.create_report(report_type, parameters=parameters)
     while report.status in {"created", "running"}:
         echo(f"{report_type} {report.status}...")
@@ -74,8 +88,8 @@ def create_report(
 
 
 def create_provisioning_report(
-    courses=True,
-    users=True,
+    courses=False,
+    users=False,
     term_name=f"{CURRENT_YEAR_AND_TERM} (Banner {CURRENT_TERM_DISPLAY} {CURRENT_YEAR})",
     base_path=REPORTS,
     account: int | Account = MAIN_ACCOUNT_ID,
@@ -117,6 +131,19 @@ def create_provisioning_report(
     create_report(
         "provisioning_csv", parameters, base_path, filename_replacement, account
     )
+
+
+def get_report(report_type: str, term_name="", force=False):
+    validate_report_type(report_type, by_filename=True)
+    term_display = f"_{term_name}" if term_name else term_name
+    report_path = REPORTS / f"{report_type}{term_display}.csv"
+    if force or not report_path.is_file():
+        if report_type == "courses":
+            return create_provisioning_report(courses=True, term_name=term_name)
+        if report_type == "users":
+            return create_provisioning_report(users=True, term_name=term_name)
+    else:
+        return report_path
 
 
 def reports_main():
