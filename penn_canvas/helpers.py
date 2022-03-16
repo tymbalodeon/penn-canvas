@@ -40,8 +40,11 @@ def create_directory(new_directory: Path, parents=True) -> Path:
 
 def get_reports_directory():
     def is_old_path(path):
-        date = datetime.strptime(str(path).split("/")[-1], "%Y_%m_%d")
-        return (CURRENT_DATE - date).days > 30
+        try:
+            date = datetime.strptime(str(path).split("/")[-1], "%Y-%m-%d")
+            return (CURRENT_DATE - date).days > 30
+        except Exception:
+            return True
 
     base_path = BOX_CLI_PATH if BOX_PATH.exists() else COMMAND_DIRECTORY_BASE
     reports_path = create_directory(base_path / "REPORTS")
@@ -99,7 +102,11 @@ def get_previous_term():
 
 NEXT_TERM = get_next_term()
 PREVIOUS_TERM = get_previous_term()
-CURRENT_YEAR_AND_TERM = f"{CURRENT_YEAR}{CURRENT_TERM}"
+CURRENT_YEAR_AND_TERM = (
+    "2022A"
+    if CURRENT_YEAR == 2022 and CURRENT_TERM == "10"
+    else f"{CURRENT_YEAR}{CURRENT_TERM}"
+)
 CURRENT_TERM_NAME = (
     f"{CURRENT_YEAR_AND_TERM} (Banner {CURRENT_TERM_DISPLAY} {CURRENT_YEAR})"
 )

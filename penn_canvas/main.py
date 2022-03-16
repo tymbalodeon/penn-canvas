@@ -718,6 +718,11 @@ def storage(
             " pre-existing incomplete result file and overwrite that file."
         ),
     ),
+    force_report: bool = Option(
+        False,
+        "--force-report",
+        help="Force a new report to be generated rather than use a cahced one.",
+    ),
     increase: int = Option(
         1000, "--increase", help="The amount in MB to increase a course's storage."
     ),
@@ -740,7 +745,7 @@ def storage(
 
     NOTE: Input filename must include the current date in order to be accepted.
     """
-    storage_main(test, verbose, force, increase)
+    storage_main(test, verbose, force, force_report, increase)
 
 
 @app.command()

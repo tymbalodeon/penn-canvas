@@ -15,9 +15,10 @@ from .helpers import (
     toggle_progress_bar,
 )
 
-COMMAND = "Count Quizzes"
+COMMAND_NAME = "Count Quizzes"
 INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
-REPORTS, RESULTS = get_command_paths(COMMAND)
+REPORTS = ""
+RESULTS = get_command_paths(COMMAND_NAME)["results"]
 NEW_QUIZ_HEADERS = [
     "canvas_course_id",
     "course_id",

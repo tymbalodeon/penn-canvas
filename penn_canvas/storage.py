@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pandas import isna, read_csv
+from pandas import read_csv
 from typer import echo
 
 from penn_canvas.report import get_report
@@ -60,10 +60,11 @@ def process_report(report_path, start):
     report = report[report["storage used in MB"] > 0].copy()
     report = report.sort_values(by=["storage used in MB"])
     report = report.astype("string", errors="ignore")
+    report = report[report["account id"].isin(SUB_ACCOUNTS)]
     report = report.reset_index(drop=True)
     total = len(report.index)
     report = report.loc[start:total, :]
-    return report[report["account id"].isin(SUB_ACCOUNTS)], total
+    return report, total
 
 
 def check_percent_storage(course, canvas):
@@ -72,16 +73,16 @@ def check_percent_storage(course, canvas):
     canvas_course = None
     needs_increase = False
     message = ""
-    try:
-        canvas_course = canvas.get_course(canvas_id)
-        percentage_used = float(storage_used) / canvas_course.storage_quota_mb
-        if percentage_used >= 0.79:
-            is_na = isna(sis_id)
-            needs_increase = False if is_na else True
-            if is_na:
-                message = "missing sis id"
-    except Exception:
-        message = "course not found"
+    if not sis_id:
+        message = "missing sis id"
+    else:
+        try:
+            canvas_course = canvas.get_course(canvas_id)
+            percentage_used = float(storage_used) / canvas_course.storage_quota_mb
+            if percentage_used >= 0.79:
+                needs_increase = True
+        except Exception:
+            message = "course not found"
     return canvas_course.name if canvas_course else "", needs_increase, message
 
 
@@ -112,12 +113,13 @@ def increase_quota(sis_id, canvas, increment_value, sis_prefix="SRS_"):
 def process_result():
     result = read_csv(RESULT_PATH, dtype=str)
     increased_count = len(result[result["error"] == ""].index)
-    result.drop(result[result["error"] == "increase not required"].index, inplace=True)
+    result = result.drop(result[result["error"] == "increase not required"].index)
+    result = result.drop(result[result["error"] == "missing sis id"].index)
     error_count = len(result[result["error"] != ""].index)
     if error_count == 0:
         result.drop(columns=["error"], inplace=True)
-    result.drop(columns=["index", "account id", "storage used in MB"], inplace=True)
-    result.rename(columns={"id": "subaccount id", "sis id": "course id"}, inplace=True)
+    result = result.drop(columns=["index", "account id", "storage used in MB"])
+    result = result.rename(columns={"id": "subaccount id", "sis id": "course code"})
     result.to_csv(RESULT_PATH, index=False)
     if BOX_PATH.exists():
         storage_shared_directory = BOX_PATH / "Storage_Quota_Monitoring"
@@ -161,7 +163,7 @@ def print_messages(total, increased, errors):
     color("FINISHED", "yellow", True)
 
 
-def storage_main(test, verbose, force, increment_value=1000):
+def storage_main(test, verbose, force, force_report=False, increment_value=1000):
     def check_and_increase_storage(course, canvas, verbose, args):
         index, canvas_id, sis_id = course[:3]
         total, increase = args
@@ -195,12 +197,12 @@ def storage_main(test, verbose, force, increment_value=1000):
                 f"increased {color(old_quota, 'yellow')} -->"
                 f" {color(new_quota, 'green')}"
                 if increased
-                else status
+                else color(status, "yellow")
             )
             display_message = f"{color(course_name)}: {increase_message}"
             print_item(index, total, display_message)
 
-    report_path = get_report("storage", CURRENT_YEAR_AND_TERM)
+    report_path = get_report("storage", CURRENT_YEAR_AND_TERM, force_report, verbose)
     start = get_start_index(force, RESULT_PATH)
     report, total = process_report(report_path, start)
     make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))

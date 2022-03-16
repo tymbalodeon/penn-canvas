@@ -15,6 +15,7 @@ from penn_canvas.helpers import (
     collect,
     get_account,
 )
+from penn_canvas.style import color
 
 
 def validate_report_type(
@@ -72,25 +73,35 @@ def create_report(
     base_path=REPORTS,
     filename_replacement="",
     account: int | Account = MAIN_ACCOUNT_ID,
+    verbose=False,
 ) -> Path | None:
     account = get_account(account)
     validate_report_type(report_type, account=account)
-    if not parameters:
-        echo("- ERROR: Must include parameters.")
-        raise Exit()
-    report = account.create_report(report_type, parameters=parameters)
-    while report.status in {"created", "running"}:
-        echo(f"{report_type} {report.status}...")
+    if parameters:
+        report = account.create_report(report_type, parameters=parameters)
+    else:
+        report = account.create_report(report_type)
+    status = report.status
+    while status in {"created", "running"}:
+        if verbose:
+            if status == "created":
+                echo(f') Generating "{report_type}"...')
+            else:
+                echo(f"\t* {report.status}...")
         sleep(5)
         report = account.get_report(report_type, report.id)
+        status = report.status
     if report.status == "error":
-        try:
-            echo(f"- ERROR: {report.last_run['paramters']['extra_text']}")
-        except Exception:
-            echo("- ERROR: The report failed to generate a file. Please try again.")
+        if verbose:
+            try:
+                echo(f"ERROR: {report.last_run['paramters']['extra_text']}")
+            except Exception:
+                echo("ERROR: The report failed to generate a file. Please try again.")
         report.delete_report()
         return None
     else:
+        if verbose:
+            echo("COMPLETE")
         try:
             filename: str = report.attachment["filename"]
             url = report.attachment["url"]
@@ -116,7 +127,8 @@ def create_report(
                 )
             return report_path
         except Exception as error:
-            echo(f"- ERROR: {error}")
+            if verbose:
+                echo(f"- ERROR: {error}")
             report.delete_report()
             return None
 
@@ -127,6 +139,7 @@ def create_provisioning_report(
     term_name=CURRENT_TERM_NAME,
     base_path=REPORTS,
     account: int | Account = MAIN_ACCOUNT_ID,
+    verbose=False,
 ):
     account = get_account(account)
     filename_term = filename_replacement = ""
@@ -143,12 +156,16 @@ def create_provisioning_report(
         filename_replacement = (
             "courses{filename_term}" if courses else "users{filename_term}"
         )
-    elif courses is False and users is False:
-        filename_replacement = f"provisioning{filename_term}"
     else:
+        courses = users = True
         filename_replacement = filename_term
     create_report(
-        "provisioning_csv", parameters, base_path, filename_replacement, account
+        "provisioning_csv",
+        parameters,
+        base_path,
+        filename_replacement,
+        account,
+        verbose,
     )
 
 
@@ -156,6 +173,7 @@ def create_course_storage_report(
     term_name=CURRENT_TERM_NAME,
     base_path=REPORTS,
     account: int | Account = MAIN_ACCOUNT_ID,
+    verbose=False,
 ):
     account = get_account(account)
     filename_term = filename_replacement = ""
@@ -166,30 +184,41 @@ def create_course_storage_report(
     filename_term = f"_{filename_term}" if filename_term else ""
     filename_replacement = f"course_storage{filename_term}"
     create_report(
-        "course_storage_csv", parameters, base_path, filename_replacement, account
+        "course_storage_csv",
+        parameters,
+        base_path,
+        filename_replacement,
+        account,
+        verbose,
     )
 
 
 def get_report(report_type: str, term_name="", force=False, verbose=False):
     validate_report_type(report_type, by_filename=True)
     term_display = f"_{term_name}" if term_name else term_name
+    if report_type == "storage":
+        report_type = "course_storage"
     report_path = REPORTS / f"{report_type}{term_display}.csv"
     report = None
     if force or not report_path.is_file():
         if report_type == "provisioning":
             report = create_provisioning_report(
-                courses=True, users=True, term_name=term_name
+                courses=True, users=True, term_name=term_name, verbose=verbose
             )
         elif report_type == "courses":
-            report = create_provisioning_report(courses=True, term_name=term_name)
+            report = create_provisioning_report(
+                courses=True, term_name=term_name, verbose=verbose
+            )
         elif report_type == "users":
-            report = create_provisioning_report(users=True, term_name=term_name)
+            report = create_provisioning_report(
+                users=True, term_name=term_name, verbose=verbose
+            )
         elif "storage" in report_type:
-            report = create_course_storage_report(term_name=term_name)
+            report = create_course_storage_report(term_name=term_name, verbose=verbose)
     else:
         report = report_path
     if verbose:
-        echo(report)
+        color(report, "blue", echo=True)
     return report
 
 

@@ -15,9 +15,10 @@ from .helpers import (
     toggle_progress_bar,
 )
 
-COMMAND = "Count Poll Everywhere"
+COMMAND_NAME = "Count Poll Everywhere"
 INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
-REPORTS, RESULTS = get_command_paths(COMMAND)
+REPORTS = ""
+RESULTS = get_command_paths(COMMAND_NAME)["results"]
 HEADERS = [
     "canvas_course_id",
     "course_id",
