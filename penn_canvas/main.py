@@ -699,13 +699,12 @@ def report(
 
 @app.command()
 def storage(
-    test: bool = Option(
-        False,
-        "--test",
-        help=(
-            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)."
-        ),
+    increment_value: int = Option(
+        1000, "--increase", help="The amount in MB to increase a course's storage."
+    ),
+    instance: str = Argument(
+        "prod",
+        help="The Canvas instance to use.",
     ),
     verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
@@ -722,9 +721,6 @@ def storage(
         False,
         "--force-report",
         help="Force a new report to be generated rather than use a cahced one.",
-    ),
-    increase: int = Option(
-        1000, "--increase", help="The amount in MB to increase a course's storage."
     ),
 ):
     """
@@ -745,7 +741,7 @@ def storage(
 
     NOTE: Input filename must include the current date in order to be accepted.
     """
-    storage_main(test, verbose, force, force_report, increase)
+    storage_main(increment_value, instance, verbose, force, force_report)
 
 
 @app.command()

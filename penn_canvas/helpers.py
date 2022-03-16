@@ -402,6 +402,16 @@ def get_processed(processed_path, columns="pennkey"):
         return list()
 
 
+def print_instance(instance):
+    INSTANCE_NAMES = {
+        "prod": "PRODUCTION",
+        "test": "TEST",
+        "open": "OPEN",
+        "open_test": "TEST OPEN",
+    }
+    echo(f"INSTANCE: {style(INSTANCE_NAMES.get(instance, ''), bold=True)} Canvas")
+
+
 def get_canvas(instance="prod", verbose=True, override_key=False):
     canvas_urls = get_penn_canvas_config("canvas_urls")
     canvas_keys = get_penn_canvas_config("canvas_keys")
@@ -421,25 +431,20 @@ def get_canvas(instance="prod", verbose=True, override_key=False):
     ) = canvas_urls
     url = canvas_prod_url
     key = override_key or canvas_prod_key
-    instance_name = "PRODUCTION"
     if instance == "test":
         url = canvas_test_url
         key = override_key or canvas_test_key
-        instance_name = "TEST"
     elif instance == "beta":
         url = canvas_beta_url
         key = override_key or canvas_beta_key
-        instance_name = "BETA"
     elif instance == "open":
         url = open_canvas_url
         key = override_key or open_canvas_key
-        instance_name = "OPEN"
     elif instance == "open_test":
         url = open_canvas_test_url
         key = override_key or open_canvas_test_key
-        instance_name = "TEST OPEN"
     if verbose:
-        echo(f") Accessing {style(instance_name, bold=True)} Canvas...")
+        print_instance(instance)
     return Canvas(url, key)
 
 

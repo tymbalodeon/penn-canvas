@@ -1,8 +1,5 @@
-from pathlib import Path
-
-from pandas import read_csv
-from pandas.core.dtypes.missing import isna
-from typer import echo
+from pandas import isna, read_csv
+from typer import echo, progressbar
 
 from penn_canvas.report import get_report
 
@@ -15,12 +12,12 @@ from .helpers import (
     YEAR,
     color,
     create_directory,
-    get_canvas,
+    get_course,
     get_start_index,
     make_csv_paths,
     make_index_headers,
     make_skip_message,
-    toggle_progress_bar,
+    print_instance,
 )
 from .style import print_item
 
@@ -68,7 +65,7 @@ def process_report(report_path, start):
     return report, total
 
 
-def check_percent_storage(course, canvas):
+def check_percent_storage(course, instance):
     canvas_id, sis_id = course[1:3]
     storage_used = course[-1]
     canvas_course = None
@@ -78,7 +75,7 @@ def check_percent_storage(course, canvas):
         message = "missing sis id"
     else:
         try:
-            canvas_course = canvas.get_course(canvas_id)
+            canvas_course = get_course(canvas_id, instance=instance)
             percentage_used = float(storage_used) / canvas_course.storage_quota_mb
             if percentage_used >= 0.79:
                 needs_increase = True
@@ -87,12 +84,14 @@ def check_percent_storage(course, canvas):
     return canvas_course.name if canvas_course else "", needs_increase, message
 
 
-def increase_quota(sis_id, canvas, increment_value, sis_prefix="SRS_"):
+def increase_quota(sis_id, increment_value, instance, sis_prefix="BAN_"):
+    if CURRENT_YEAR_AND_TERM == "2022A":
+        sis_prefix = "SRS_"
     if sis_id[:4] != sis_prefix:
         middle = sis_id[:-5][-6:]
         sis_id = f"{sis_prefix}{sis_id[:11]}-{middle[:3]}-{middle[3:]} {sis_id[-5:]}"
     try:
-        canvas_course = canvas.get_course(sis_id, use_sis_id=True)
+        canvas_course = get_course(sis_id, use_sis_id=True, instance=instance)
         canvas_account_id = canvas_course.account_id
         status = ""
     except Exception:
@@ -123,35 +122,10 @@ def process_result():
     result = result.rename(columns={"id": "subaccount id", "sis id": "course code"})
     result.to_csv(RESULT_PATH, index=False)
     if BOX_PATH.exists():
-        storage_shared_directory = BOX_PATH / "Storage_Quota_Monitoring"
-        this_month_directory = next(
-            (
-                directory
-                for directory in storage_shared_directory.iterdir()
-                if YEAR in directory.name and MONTH in directory.name
-            ),
-            None,
+        current_month_directory = create_directory(
+            BOX_PATH / f"Storage_Quota_Monitoring/{MONTH} {YEAR}"
         )
-        try:
-            if not this_month_directory:
-                Path.mkdir(storage_shared_directory / f"{MONTH} {YEAR}")
-                this_month_directory = next(
-                    (
-                        directory
-                        for directory in storage_shared_directory.iterdir()
-                        if YEAR in directory.name and MONTH in directory.name
-                    ),
-                    None,
-                )
-            box_result_path = (
-                this_month_directory / RESULT_PATH.name
-                if this_month_directory
-                else None
-            )
-            if box_result_path:
-                result.to_csv(box_result_path, index=False)
-        except Exception as error:
-            echo(f"- ERROR: {error}")
+        result.to_csv(current_month_directory / RESULT_PATH.name, index=False)
     return increased_count, error_count
 
 
@@ -164,15 +138,16 @@ def print_messages(total, increased, errors):
     color("FINISHED", "yellow", True)
 
 
-def check_and_increase_storage(course, canvas, verbose, args):
+def check_and_increase_storage(
+    report, course, total, increment_value, instance, verbose
+):
     index, canvas_id, sis_id = course[:3]
-    report, total, increase = args
-    course_name, needs_increase, message = check_percent_storage(course, canvas)
+    course_name, needs_increase, message = check_percent_storage(course, instance)
     new_quota = old_quota = None
     status = ""
     if needs_increase:
         canvas_id, sis_id, old_quota, new_quota, status = increase_quota(
-            message, canvas, increase
+            message, increment_value, instance
         )
     elif not message:
         status = "increase not required"
@@ -180,16 +155,8 @@ def check_and_increase_storage(course, canvas, verbose, args):
         canvas_id = "ERROR"
         status = message
     row = [canvas_id, sis_id, old_quota, new_quota, status]
-    report.loc[
-        index,
-        [
-            "id",
-            "sis id",
-            "old quota",
-            "new quota",
-            "error",
-        ],
-    ] = row
+    columns = ["id", "sis id", "old quota", "new quota", "error"]
+    report.loc[index, columns] = row
     report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
     if verbose:
         increased = old_quota and new_quota
@@ -202,21 +169,24 @@ def check_and_increase_storage(course, canvas, verbose, args):
         print_item(index, total, display_message)
 
 
-def storage_main(test, verbose, force, force_report=False, increment_value=1000):
+def storage_main(increment_value, instance, verbose, force, force_report):
+    print_instance(instance)
     report_path = get_report("storage", CURRENT_YEAR_AND_TERM, force_report, verbose)
     start = get_start_index(force, RESULT_PATH)
     report, total = process_report(report_path, start)
     make_csv_paths(RESULT_PATH, make_index_headers(HEADERS))
     make_skip_message(start, "course")
-    instance = "test" if test else "prod"
-    canvas = get_canvas(instance)
     echo(") Processing courses...")
-    toggle_progress_bar(
-        report,
-        check_and_increase_storage,
-        canvas,
-        verbose,
-        args=(report, total, increment_value),
-    )
+    if verbose:
+        for course in report.itertuples():
+            check_and_increase_storage(
+                report, course, total, increment_value, instance, verbose
+            )
+    else:
+        with progressbar(report.itertuples(), length=total) as progress:
+            for course in progress:
+                check_and_increase_storage(
+                    report, course, total, increment_value, instance, verbose
+                )
     increased_count, error_count = process_result()
     print_messages(total, increased_count, error_count)

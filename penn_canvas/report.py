@@ -220,7 +220,7 @@ def get_report(
     else:
         report = report_path
     if verbose:
-        color(report, "blue", echo=True)
+        echo(f'REPORT: {color(report, "blue")}')
     return report
 
 
