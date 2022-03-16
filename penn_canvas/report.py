@@ -8,14 +8,7 @@ from canvasapi.account import Account
 from requests import get
 from typer import Exit, echo
 
-from penn_canvas.helpers import (
-    CURRENT_TERM_DISPLAY,
-    CURRENT_YEAR,
-    CURRENT_YEAR_AND_TERM,
-    MAIN_ACCOUNT_ID,
-    REPORTS,
-    get_account,
-)
+from penn_canvas.helpers import CURRENT_TERM_NAME, MAIN_ACCOUNT_ID, REPORTS, get_account
 
 
 def validate_report_type(
@@ -27,10 +20,10 @@ def validate_report_type(
         account = get_account(account)
         report_types = {report.report for report in account.get_reports()}
     if report_type not in report_types:
-        echo(f'- ERROR: Unkown report type "{report_type}"')
-        echo("-Available report types are:")
+        echo(f'ERROR: Unkown report type "{report_type}"')
+        echo("\nAvailable report types are:")
         for report_type in report_types:
-            echo(f"\t{report_type}")
+            echo(f'\t"{report_type}"')
         raise Exit()
 
 
@@ -90,7 +83,7 @@ def create_report(
 def create_provisioning_report(
     courses=False,
     users=False,
-    term_name=f"{CURRENT_YEAR_AND_TERM} (Banner {CURRENT_TERM_DISPLAY} {CURRENT_YEAR})",
+    term_name=CURRENT_TERM_NAME,
     base_path=REPORTS,
     account: int | Account = MAIN_ACCOUNT_ID,
 ):
@@ -133,18 +126,18 @@ def create_provisioning_report(
     )
 
 
-def get_report(report_type: str, term_name="", force=False):
+def report_main(report_type: str, term_name="", force=False, verbose=False):
     validate_report_type(report_type, by_filename=True)
     term_display = f"_{term_name}" if term_name else term_name
     report_path = REPORTS / f"{report_type}{term_display}.csv"
+    report = None
     if force or not report_path.is_file():
         if report_type == "courses":
-            return create_provisioning_report(courses=True, term_name=term_name)
+            report = create_provisioning_report(courses=True, term_name=term_name)
         if report_type == "users":
-            return create_provisioning_report(users=True, term_name=term_name)
+            report = create_provisioning_report(users=True, term_name=term_name)
     else:
-        return report_path
-
-
-def reports_main():
-    create_provisioning_report()
+        report = report_path
+    if verbose:
+        print(report)
+    return report
