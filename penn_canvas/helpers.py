@@ -457,7 +457,9 @@ def get_account(
 ) -> Account:
     if isinstance(account, Account):
         return account
-    account_object = get_canvas(instance).get_account(account, use_sis_id=use_sis_id)
+    account_object = get_canvas(instance, verbose=verbose).get_account(
+        account, use_sis_id=use_sis_id
+    )
     if verbose:
         pprint(account)
     return account_object

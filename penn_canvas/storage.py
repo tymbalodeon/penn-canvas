@@ -3,8 +3,11 @@ from pathlib import Path
 from pandas import isna, read_csv
 from typer import echo
 
+from penn_canvas.report import get_report
+
 from .helpers import (
     BOX_PATH,
+    CURRENT_YEAR_AND_TERM,
     MONTH,
     TODAY_AS_Y_M_D,
     YEAR,
@@ -217,6 +220,7 @@ def storage_main(test, verbose, force, increase=1000):
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
 
     reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
+    reports = get_report("storage", CURRENT_YEAR_AND_TERM)
     START = get_start_index(force, RESULT_PATH)
     report, TOTAL = process_input(
         reports,
