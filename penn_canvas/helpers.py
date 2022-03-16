@@ -475,7 +475,7 @@ def get_account(
 
 
 def get_course(canvas_id, use_sis_id=False, instance="prod", verbose=False):
-    return get_canvas(instance, use_sis_id, verbose).get_course(canvas_id)
+    return get_canvas(instance, verbose).get_course(canvas_id, use_sis_id)
 
 
 def get_sub_accounts(canvas, account_id):
