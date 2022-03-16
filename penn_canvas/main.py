@@ -3,6 +3,7 @@ from typer import Argument, Option, Typer
 from penn_canvas.course_shopping import course_shopping_main
 from penn_canvas.find_users_by_email import find_users_by_email_main
 from penn_canvas.helpers import MAIN_ACCOUNT_ID
+from penn_canvas.reports import reports_main
 
 from .archive import archive_main
 from .browser import browser_main
@@ -666,6 +667,12 @@ def open_canvas_bulk_action(
 ):
     """Run any Open Canvas Bulk Action input files currently in the Input folder"""
     open_canvas_bulk_action_main(verbose, force, test)
+
+
+@app.command()
+def report():
+    """Generate reports"""
+    reports_main()
 
 
 @app.command()

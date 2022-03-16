@@ -111,3 +111,7 @@ def create_provisioning_report(
     create_report(
         "provisioning_csv", parameters, base_path, filename_replacement, account
     )
+
+
+def reports_main():
+    create_provisioning_report()
