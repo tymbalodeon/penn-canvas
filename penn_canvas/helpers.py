@@ -81,7 +81,12 @@ def get_current_term():
     )
 
 
+def get_term_display(term):
+    return {"10": "Spring", "20": "Summer", "30": "Fall"}.get(term, "10")
+
+
 CURRENT_TERM = get_current_term()
+CURRENT_TERM_DISPLAY = get_term_display(get_current_term())
 
 
 def get_next_term():
