@@ -5,30 +5,30 @@ from pathlib import Path
 from pandas import DataFrame, concat, isna, read_csv
 from typer import Exit, confirm, echo
 
-from .constants import TOOLS
+from penn_canvas.report import get_report
+from penn_canvas.style import print_item
+
 from .helpers import (
+    BASE_PATH,
     YEAR,
     add_headers_to_empty_files,
     color,
+    create_directory,
     drop_duplicate_errors,
     dynamic_to_csv,
-    find_input,
+    get_account,
     get_canvas,
-    get_command_paths,
     get_processed,
     get_start_index,
     handle_clear_processed,
     make_csv_paths,
     make_index_headers,
     make_skip_message,
-    process_input,
     toggle_progress_bar,
 )
 
-PATHS = get_command_paths("Tool", include_processed_directory=True)
-REPORTS = ""
-RESULTS = PATHS["results"]
-PROCESSED = PATHS["processed"]
+COMMAND_PATH = create_directory(BASE_PATH / "Tool")
+PROCESSED = COMMAND_PATH / ".processed"
 INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
 HEADERS = [
     "canvas course id",
@@ -52,58 +52,52 @@ RESERVE_ACCOUNTS = [
 ]
 
 
-def get_account_names(accounts, canvas):
-    return [
-        account.name
-        for account in [canvas.get_account(account) for account in accounts]
-    ]
+def get_account_names(accounts):
+    return [get_account(account).name for account in accounts]
 
 
-def check_tool(tool):
+def get_tool(tool):
     tool = tool.lower()
-    if tool not in TOOLS:
-        raise Exit()
-
-    if tool.lower() in {"reserve", "reserves"}:
+    if tool in {"reserve", "reserves"}:
         return "Course Materials @ Penn Libraries"
-    elif tool.lower() == "panopto":
+    elif tool == "panopto":
         return "Class Recordings"
     else:
         return tool
 
 
-def cleanup_data(incoming_data, args):
-    enable, processed_courses, processed_errors, new, account_id = args
-
-    def cleanup_report(report, account_id=None):
-        data = report[
-            [
-                "canvas_course_id",
-                "course_id",
-                "short_name",
-                "long_name",
-                "canvas_account_id",
-                "term_id",
-                "status",
-            ]
+def process_report(
+    report_path,
+    start,
+    enable,
+    processed_courses,
+    processed_errors,
+    new,
+    account_id,
+):
+    report = read_csv(report_path)
+    report = report[
+        [
+            "canvas_course_id",
+            "course_id",
+            "short_name",
+            "long_name",
+            "canvas_account_id",
+            "term_id",
+            "status",
         ]
-        data.drop_duplicates(inplace=True)
-        data.sort_values("course_id", inplace=True, ignore_index=True)
-        data = data.astype("string", copy=False, errors="ignore")
-        if account_id:
-            data = data[data["canvas_account_id"] == account_id]
-        if enable:
-            data = data[~data["canvas_course_id"].isin(processed_courses)]
-        return data
-
+    ]
+    report.drop_duplicates(inplace=True)
+    report.sort_values("course_id", inplace=True, ignore_index=True)
+    report = report.astype("string", copy=False, errors="ignore")
+    if account_id:
+        report = report[report["canvas_account_id"] == account_id]
     if enable:
-        data_frame = cleanup_report(incoming_data, account_id=account_id)
-        data_frame.reset_index(drop=True, inplace=True)
+        report = report[~report["canvas_course_id"].isin(processed_courses)]
+        report.reset_index(drop=True, inplace=True)
         already_processed_count = len(processed_courses)
         if new:
-            data_frame = data_frame[
-                ~data_frame["canvas_course_id"].isin(processed_errors)
-            ]
+            report = report[~report["canvas_course_id"].isin(processed_errors)]
             already_processed_count = already_processed_count + len(processed_errors)
         if already_processed_count:
             message = color(
@@ -112,9 +106,12 @@ def cleanup_data(incoming_data, args):
                 "yellow",
             )
             echo(f") {message}")
+        total = len(report.index)
+        report = report.loc[start:total, :]
     else:
-        data_frame = cleanup_report(incoming_data, account_id=account_id)
-    return data_frame
+        total = len(report.index)
+    report["term_id"].fillna("N/A", inplace=True)
+    return report, total
 
 
 def process_result(terms, enable, result_path, new):
@@ -132,7 +129,7 @@ def process_result(terms, enable, result_path, new):
         & (result["tool status"] != "unsupported")
     ]
     if enable:
-        BASE = RESULTS / "Enabled" / YEAR
+        BASE = COMMAND_PATH / "Enabled" / YEAR
         if not BASE.exists():
             Path.mkdir(BASE, parents=True)
         enabled_path = BASE / f"{result_path.stem}_ENABLED.csv"
@@ -149,14 +146,17 @@ def process_result(terms, enable, result_path, new):
         error_path = BASE / f"{result_path.stem}_ERROR.csv"
         dynamic_to_csv(error_path, error_result, new)
         if new:
-            drop_duplicate_errors([error_path])
+            try:
+                drop_duplicate_errors([error_path])
+            except Exception:
+                pass
         else:
             add_headers_to_empty_files(
                 [enabled_path],
                 ["canvas course id", "course id", "error"],
             )
     else:
-        BASE = RESULTS / "Reports"
+        BASE = COMMAND_PATH / "Reports"
         if not BASE.exists():
             Path.mkdir(BASE)
         ENABLED_STEM = (
@@ -252,7 +252,17 @@ def print_messages(
 
 
 def tool_main(
-    tool, use_id, enable, test, verbose, new, force, clear_processed, account_id
+    tool,
+    term,
+    use_id,
+    enable,
+    test,
+    verbose,
+    new,
+    force,
+    force_report,
+    clear_processed,
+    account_id,
 ):
     def check_tool_usage(course, canvas, verbose, args):
         tool, use_id, enable = args
@@ -295,7 +305,7 @@ def tool_main(
                     message = color(
                         f"ERROR: Failed to process {course_id} ({error_message})", "red"
                     )
-                    echo(f"- ({(index + 1):,}/{TOTAL}) {message}")
+                    print_item(index, TOTAL, message)
         if verbose and not error:
             if isna(course_id):
                 course_display = f"{long_name} ({canvas_course_id})"
@@ -303,10 +313,8 @@ def tool_main(
                 course_display = f"{course_id}"
             status_color = PRINT_COLOR_MAPS.get(tool_status, "")
             found_display = color(tool_status.upper(), status_color)
-            echo(
-                f'- ({(index + 1):,}/{TOTAL}) "{tool_display}" {found_display} for'
-                f" {course_display}."
-            )
+            message = f'"{tool_display}" {found_display} for {course_display}.'
+            print_item(index, TOTAL, message)
         if isna(course_id):
             report.at[index, "course_id"] = f"{short_name} ({canvas_account_id})"
         report.at[index, "tool status"] = tool_status
@@ -324,49 +332,38 @@ def tool_main(
             with open(PROCESSED_ERRORS_PATH, "a+", newline="") as processed_file:
                 writer(processed_file).writerow([canvas_course_id])
 
-    tool = check_tool(tool)
-    reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
-    RESULT_FILE_NAME = (
-        f"{f'{YEAR}_' if enable else ''}{tool.replace(' ', '_')}"
-        f"{'_test' if test else ''}.csv"
-    )
-    RESULT_PATH = RESULTS / RESULT_FILE_NAME
-    START = get_start_index(force, RESULT_PATH)
+    if not use_id:
+        tool = get_tool(tool)
+    report_path = get_report("courses", term, force_report, verbose)
+    year_display = f"{YEAR}_" if enable else ""
+    tool_display = tool.replace(" ", "_") if use_id else tool
+    test_display = "_test" if test else ""
+    RESULT_PATH = COMMAND_PATH / f"{year_display}{tool_display}{test_display}.csv"
+    start = get_start_index(force, RESULT_PATH)
     PROCESSED_COURSES = PROCESSED_ERRORS = None
     if enable:
         PROCESSED_STEM = (
-            f"{tool.replace(' ', '_')}_tool_enable_processed_courses"
-            f"{'_test' if test else ''}.csv"
+            f"{tool_display}_tool_enable_processed_courses{test_display}.csv"
         )
         PROCESSED_PATH = PROCESSED / PROCESSED_STEM
         PROCESSED_ERRORS_STEM = (
-            f"{tool.replace(' ', '_')}_tool_enable_processed_errors"
-            f"{'_test' if test else ''}.csv"
+            f"{tool_display}_tool_enable_processed_errors{test_display}.csv"
         )
         PROCESSED_ERRORS_PATH = PROCESSED / PROCESSED_ERRORS_STEM
         handle_clear_processed(
             clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH], "courses"
         )
-        PROCESSED_COURSES = get_processed(PROCESSED, PROCESSED_PATH, "canvas course id")
-        PROCESSED_ERRORS = get_processed(
-            PROCESSED, PROCESSED_ERRORS_PATH, "canvas course id"
-        )
-    CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:7]]
-    cleanup_data_args = (enable, PROCESSED_COURSES, PROCESSED_ERRORS, new, account_id)
-    report, TOTAL = process_input(
-        reports,
-        INPUT_FILE_NAME,
-        REPORTS,
-        CLEANUP_HEADERS,
-        cleanup_data,
-        missing_file_message,
-        cleanup_data_args,
-        start=START,
+        PROCESSED_COURSES = get_processed(PROCESSED_PATH, "canvas course id")
+        PROCESSED_ERRORS = get_processed(PROCESSED_ERRORS_PATH, "canvas course id")
+    report, TOTAL = process_report(
+        report_path, start, enable, PROCESSED_COURSES, PROCESSED_ERRORS, new, account_id
     )
-    if enable:
-        report = report.loc[START:TOTAL, :]
-    report["term_id"].fillna("N/A", inplace=True)
     terms = report["term_id"].drop_duplicates().tolist()
+    RESULTS = (
+        create_directory(COMMAND_PATH / "Enabled")
+        if enable
+        else create_directory(COMMAND_PATH / "Reports")
+    )
     if not force and not enable and not RESULT_PATH.exists():
         PREVIOUS_RESULTS = [result_file for result_file in Path(RESULTS).glob("*.csv")]
         PREVIOUS_RESULTS_FOR_TERM = dict()
@@ -399,8 +396,8 @@ def tool_main(
                 echo("NO NEW TERMS TO PROCESS")
                 color("FINISHED", "yellow", True)
                 raise Exit()
-    make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))
-    make_skip_message(START, "course")
+    make_csv_paths(RESULT_PATH, make_index_headers(HEADERS))
+    make_skip_message(start, "course")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
     tool_display = color(tool, "blue")
@@ -409,7 +406,7 @@ def tool_main(
         if tool == "Course Materials @ Penn Libraries":
             separator = "\n\t"
             ACCOUNTS = color(
-                f"{f'{separator}'.join(get_account_names(RESERVE_ACCOUNTS, CANVAS))}",
+                f"{f'{separator}'.join(get_account_names(RESERVE_ACCOUNTS))}",
                 "magenta",
             )
             echo(

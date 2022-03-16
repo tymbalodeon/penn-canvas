@@ -757,6 +757,11 @@ def tool(
             " Canvas tab's label, or id if using --id."
         ),
     ),
+    term: str = Option(
+        CURRENT_YEAR_AND_TERM,
+        "--term-name",
+        help="The display name of the term for the report",
+    ),
     use_id: bool = Option(
         False,
         "--id",
@@ -794,6 +799,11 @@ def tool(
             " pre-existing incomplete result file and overwrite that file."
         ),
     ),
+    force_report: bool = Option(
+        False,
+        "--force-report",
+        help="Force a new report to be generated rather than use a cahced one.",
+    ),
     clear_processed: bool = Option(
         False,
         "--clear-processed",
@@ -829,7 +839,17 @@ def tool(
     output file.
     """
     tool_main(
-        tool, use_id, enable, test, verbose, new, force, clear_processed, account_id
+        tool,
+        term,
+        use_id,
+        enable,
+        test,
+        verbose,
+        new,
+        force,
+        force_report,
+        clear_processed,
+        account_id,
     )
 
 

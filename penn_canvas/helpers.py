@@ -391,14 +391,14 @@ def process_input(
         return data
 
 
-def get_processed(processed_directory, processed_path, columns="pennkey"):
+def get_processed(processed_path, columns="pennkey"):
     if type(columns) != list:
         columns = [columns]
     if processed_path.is_file():
         result = read_csv(processed_path, dtype=str)
         return result[columns[0]].tolist()
     else:
-        make_csv_paths(processed_directory, processed_path, columns)
+        make_csv_paths(processed_path, columns)
         return list()
 
 
@@ -472,6 +472,10 @@ def get_account(
     if verbose:
         pprint(account)
     return account_object
+
+
+def get_course(canvas_id, use_sis_id=False, instance="prod", verbose=False):
+    return get_canvas(instance, use_sis_id, verbose).get_course(canvas_id)
 
 
 def get_sub_accounts(canvas, account_id):
