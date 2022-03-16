@@ -1,5 +1,6 @@
 from os import remove
 from pathlib import Path
+from shutil import rmtree
 from time import sleep
 from zipfile import ZipFile
 
@@ -56,7 +57,13 @@ def create_report(
                 export_path = base_path / filename.replace(".zip", "")
                 with ZipFile(report_path) as unzipper:
                     unzipper.extractall(export_path)
+                paths = export_path.glob("*.csv")
+                for path in paths:
+                    path.replace(
+                        base_path / f"{path.stem}{filename_replacement}{path.suffix}"
+                    )
                 remove(report_path)
+                rmtree(export_path)
             elif filename_replacement:
                 report_path = report_path.replace(base_path / f"{filename_replacement}")
             return report_path
@@ -87,7 +94,7 @@ def create_provisioning_report(
         try:
             enrollment_term_id = enrollment_term_ids.get(term_name)
             parameters["enrollment_term_id"] = enrollment_term_id
-            filename_term = str(enrollment_term_id)
+            filename_term = term_name
         except Exception:
             echo(f"- ERROR: Enrollment term not found: {term_name}")
             echo("- Available enrollment terms are:")
@@ -105,6 +112,8 @@ def create_provisioning_report(
         )
     elif courses is False and users is False:
         filename_replacement = f"provisioning{filename_term}"
+    else:
+        filename_replacement = filename_term
     create_report(
         "provisioning_csv", parameters, base_path, filename_replacement, account
     )
