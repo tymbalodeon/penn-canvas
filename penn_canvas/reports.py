@@ -13,8 +13,6 @@ from penn_canvas.helpers import (
     CURRENT_YEAR_AND_TERM,
     MAIN_ACCOUNT_ID,
     REPORTS,
-    TODAY_AS_Y_M_D,
-    create_directory,
     get_account,
 )
 
@@ -107,7 +105,6 @@ def create_provisioning_report(
         )
     elif courses is False and users is False:
         filename_replacement = f"provisioning{filename_term}"
-    base_path = create_directory(base_path / TODAY_AS_Y_M_D)
     create_report(
         "provisioning_csv", parameters, base_path, filename_replacement, account
     )
