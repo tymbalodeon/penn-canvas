@@ -76,7 +76,7 @@ def create_provisioning_report(
     account: int | Account = MAIN_ACCOUNT_ID,
 ):
     account = get_account(account)
-    filename_replacement = ""
+    filename_term = filename_replacement = ""
     parameters = dict()
     if term_name:
         enrollment_terms = [
@@ -89,6 +89,7 @@ def create_provisioning_report(
         try:
             enrollment_term_id = enrollment_term_ids.get(term_name)
             parameters["enrollment_term_id"] = enrollment_term_id
+            filename_term = str(enrollment_term_id)
         except Exception:
             echo(f"- ERROR: Enrollment term not found: {term_name}")
             echo("- Available enrollment terms are:")
@@ -99,13 +100,12 @@ def create_provisioning_report(
         parameters["courses"] = courses
     if users:
         parameters["users"] = users
+    filename_term = f"_{filename_term}" if filename_term else ""
     if courses != users:
-        filename_replacement = "courses" if courses else "users"
-    elif courses is False and users is False:
-        filename_term: str = str(parameters["enrollment_term_id"])
-        filename_term = (
-            f"_{filename_term}" if "enrollment_term_id" in parameters else ""
+        filename_replacement = (
+            "courses{filename_term}" if courses else "users{filename_term}"
         )
+    elif courses is False and users is False:
         filename_replacement = f"provisioning{filename_term}"
     base_path = create_directory(base_path / TODAY_AS_Y_M_D)
     create_report(
