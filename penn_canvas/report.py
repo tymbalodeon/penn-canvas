@@ -9,7 +9,7 @@ from requests import get
 from typer import Exit, echo
 
 from penn_canvas.helpers import (
-    CURRENT_TERM_NAME,
+    CURRENT_YEAR_AND_TERM,
     MAIN_ACCOUNT_ID,
     REPORTS,
     collect,
@@ -136,7 +136,7 @@ def create_report(
 def create_provisioning_report(
     courses=False,
     users=False,
-    term_name=CURRENT_TERM_NAME,
+    term_name=CURRENT_YEAR_AND_TERM,
     base_path=REPORTS,
     account: int | Account = MAIN_ACCOUNT_ID,
     verbose=False,
@@ -147,18 +147,18 @@ def create_provisioning_report(
     if term_name:
         parameters["enrollment_term_id"] = get_enrollment_term_id(term_name)
         filename_term = term_name
-    if courses:
-        parameters["courses"] = courses
-    if users:
-        parameters["users"] = users
     filename_term = f"_{filename_term}" if filename_term else ""
     if courses != users:
         filename_replacement = (
-            "courses{filename_term}" if courses else "users{filename_term}"
+            f"courses{filename_term}" if courses else f"users{filename_term}"
         )
     else:
         courses = users = True
         filename_replacement = filename_term
+    if courses:
+        parameters["courses"] = courses
+    if users:
+        parameters["users"] = users
     return create_report(
         "provisioning_csv",
         parameters,
@@ -170,7 +170,7 @@ def create_provisioning_report(
 
 
 def create_course_storage_report(
-    term_name=CURRENT_TERM_NAME,
+    term_name=CURRENT_YEAR_AND_TERM,
     base_path=REPORTS,
     account: int | Account = MAIN_ACCOUNT_ID,
     verbose=False,
@@ -193,7 +193,9 @@ def create_course_storage_report(
     )
 
 
-def get_report(report_type: str, term_name="", force=False, verbose=False):
+def get_report(
+    report_type: str, term_name=CURRENT_YEAR_AND_TERM, force=False, verbose=False
+):
     validate_report_type(report_type, by_filename=True)
     term_display = f"_{term_name}" if term_name else term_name
     if report_type == "storage":

@@ -2,7 +2,7 @@ from typer import Argument, Option, Typer
 
 from penn_canvas.course_shopping import course_shopping_main
 from penn_canvas.find_users_by_email import find_users_by_email_main
-from penn_canvas.helpers import CURRENT_TERM_NAME, MAIN_ACCOUNT_ID
+from penn_canvas.helpers import CURRENT_YEAR_AND_TERM, MAIN_ACCOUNT_ID
 from penn_canvas.report import report_main
 
 from .archive import archive_main
@@ -672,12 +672,12 @@ def open_canvas_bulk_action(
 @app.command()
 def report(
     report_type: str = Option(
-        "courses",
+        "provisioning",
         "--report-type",
         help="The report type to get or create",
     ),
     term: str = Option(
-        CURRENT_TERM_NAME,
+        CURRENT_YEAR_AND_TERM,
         "--term-name",
         help="The display name of the term for the report",
     ),
