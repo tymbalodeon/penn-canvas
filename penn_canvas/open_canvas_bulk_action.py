@@ -427,7 +427,8 @@ def print_messages(total, counts, penn_id):
         if invalid_enrollment_type:
             color(
                 "- ERROR: Found"
-                f" {invalid_enrollment_type} {'user' if missing_value == 1 else 'users'} with"
+                f" {invalid_enrollment_type} "
+                f"{'user' if missing_value == 1 else 'users'} with"
                 " invalid enrollment types",
                 "red",
                 True,

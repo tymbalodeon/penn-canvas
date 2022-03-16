@@ -37,6 +37,7 @@ def create_report(
         except Exception:
             echo("- ERROR: The report failed to generate a file. Please try again.")
         report.delete_report()
+        return None
     else:
         try:
             filename = report.attachment["filename"]
@@ -50,6 +51,7 @@ def create_report(
         except Exception as error:
             echo(f"- ERROR: {error}")
             report.delete_report()
+            return None
 
 
 def create_provisioning_report(

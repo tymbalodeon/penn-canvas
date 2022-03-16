@@ -3,7 +3,7 @@ from datetime import datetime
 from os import remove
 from pathlib import Path
 from pprint import PrettyPrinter
-from shutil import copy
+from shutil import copy, rmtree
 from zipfile import ZipFile
 
 from canvasapi import Canvas
@@ -17,6 +17,20 @@ from typer import Exit, confirm, echo, progressbar, style
 from .config import get_penn_canvas_config
 from .style import color
 
+COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
+BOX_PATH = Path.home() / "Library/CloudStorage/Box-Box"
+BOX_CLI_PATH = BOX_PATH / "Penn Canvas CLI"
+CURRENT_DATE = datetime.now()
+YEAR = CURRENT_DATE.strftime("%Y")
+MONTH = CURRENT_DATE.strftime("%B")
+TODAY = CURRENT_DATE.strftime("%d_%b_%Y")
+TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
+CURRENT_YEAR = CURRENT_DATE.year
+CURRENT_MONTH = CURRENT_DATE.month
+NEXT_YEAR = CURRENT_YEAR + 1
+PREVIOUS_YEAR = CURRENT_YEAR - 1
+MAIN_ACCOUNT_ID = 96678
+
 
 def create_directory(new_directory: Path) -> Path:
     if not new_directory.exists():
@@ -24,20 +38,22 @@ def create_directory(new_directory: Path) -> Path:
     return new_directory
 
 
-COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
-BOX_PATH = Path.home() / "Library/CloudStorage/Box-Box"
-BOX_CLI_PATH = BOX_PATH / "Penn Canvas CLI"
-REPORTS = create_directory(BOX_CLI_PATH / "REPORTS")
-YEAR = datetime.now().strftime("%Y")
-MONTH = datetime.now().strftime("%B")
-TODAY = datetime.now().strftime("%d_%b_%Y")
-TODAY_AS_Y_M_D = datetime.strptime(TODAY, "%d_%b_%Y").strftime("%Y_%m_%d")
-CURRENT_DATE = datetime.now()
-CURRENT_YEAR = CURRENT_DATE.year
-CURRENT_MONTH = CURRENT_DATE.month
-NEXT_YEAR = CURRENT_YEAR + 1
-PREVIOUS_YEAR = CURRENT_YEAR - 1
-MAIN_ACCOUNT_ID = 96678
+def get_reports_directory():
+    def is_old_path(path):
+        date = datetime.strptime(str(path).split("/")[-1], "%Y_%m_%d")
+        return (CURRENT_DATE - date).days > 30
+
+    base_path = BOX_CLI_PATH if BOX_PATH.exists() else COMMAND_DIRECTORY_BASE
+    reports_path = create_directory(base_path / "REPORTS")
+    previous_paths = [
+        path for path in reports_path.iterdir() if path.is_dir() and is_old_path(path)
+    ]
+    for path in previous_paths:
+        rmtree(path)
+    return create_directory(reports_path / TODAY_AS_Y_M_D)
+
+
+REPORTS = get_reports_directory()
 
 lib_dir = Path.home() / "Downloads/instantclient_19_8"
 config_dir = lib_dir / "network/admin"
