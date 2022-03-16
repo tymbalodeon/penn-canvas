@@ -24,7 +24,10 @@ from .style import print_item
 
 COMMAND = "Course Shopping"
 INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
-REPORTS, RESULTS, PROCESSED = get_command_paths(COMMAND, processed=True)
+PATHS = get_command_paths(COMMAND, include_processed_directory=True)
+REPORTS = ""
+RESULTS = PATHS["results"]
+PROCESSED = PATHS["processed"]
 HEADERS = ["canvas_course_id", "course_id", "canvas_account_id", "status"]
 CLEANUP_HEADERS = HEADERS[:4]
 PROCESSED_HEADERS = [header.replace("_", " ") for header in [HEADERS[0], HEADERS[-1]]]

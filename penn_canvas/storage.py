@@ -12,21 +12,18 @@ from .helpers import (
     TODAY_AS_Y_M_D,
     YEAR,
     color,
-    find_input,
     get_canvas,
     get_command_paths,
     get_start_index,
     make_csv_paths,
     make_index_headers,
     make_skip_message,
-    process_input,
     toggle_progress_bar,
 )
 from .style import print_item
 
-COMMAND = "Storage"
-INPUT_FILE_NAME = "Canvas Course Storage report"
-REPORTS, RESULTS = get_command_paths(COMMAND)
+COMMAND_NAME = "Storage"
+RESULTS = get_command_paths(COMMAND_NAME)["results"]
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result.csv"
 HEADERS = [
     "id",
@@ -57,98 +54,68 @@ SUB_ACCOUNTS = [
 ]
 
 
-def cleanup_data(data):
-    data = data[data["storage used in MB"] > 0].copy()
-    data.sort_values(by=["storage used in MB"], inplace=True)
-    data = data.astype("string", errors="ignore")
-    return data[data["account id"].isin(SUB_ACCOUNTS)]
+def process_report(report_path, start):
+    report = read_csv(report_path)
+    report = report.loc[:, HEADERS[:4]]
+    report = report[report["storage used in MB"] > 0].copy()
+    report = report.sort_values(by=["storage used in MB"])
+    report = report.astype("string", errors="ignore")
+    report = report.reset_index(drop=True)
+    total = len(report.index)
+    report = report.loc[start:total, :]
+    return report[report["account id"].isin(SUB_ACCOUNTS)], total
 
 
-def check_percent_storage(course, canvas, verbose, total):
-    index, canvas_id, sis_id = course[:3]
+def check_percent_storage(course, canvas):
+    canvas_id, sis_id = course[1:3]
     storage_used = course[-1]
+    canvas_course = None
+    needs_increase = False
+    message = ""
     try:
         canvas_course = canvas.get_course(canvas_id)
         percentage_used = float(storage_used) / canvas_course.storage_quota_mb
-        if verbose:
-            percentage_color = "yellow" if percentage_used >= 0.79 else "green"
-            message = (
-                f"{color(sis_id, 'yellow')} ({canvas_id}):"
-                f" {color(f'{int(percentage_used * 100)}%', percentage_color)}"
-            )
-            print_item(index, total, message)
         if percentage_used >= 0.79:
-            if verbose:
-                color("\t* INCREASE REQUIRED", "yellow", True)
-            if isna(sis_id):
-                if verbose:
-                    message = color(
-                        "- ACTION REQUIRED: A SIS ID must be added for course:"
-                        f" {canvas_id}",
-                        "yellow",
-                    )
-                    print_item(index, total, message)
-                return False, "missing sis id"
-            else:
-                return True, sis_id
-        else:
-            return False, None
+            is_na = isna(sis_id)
+            needs_increase = False if is_na else True
+            if is_na:
+                message = "missing sis id"
     except Exception:
-        if verbose:
-            message = color(f"ERROR: {sis_id} ({canvas_id}) NOT FOUND", "red")
-            print_item(index, total, message)
-        return False, "course not found"
+        message = "course not found"
+    return canvas_course.name if canvas_course else "", needs_increase, message
 
 
-def increase_quota(sis_id, canvas, verbose, increase):
-    if sis_id[:4] != "SRS_":
+def increase_quota(sis_id, canvas, increment_value, sis_prefix="SRS_"):
+    if sis_id[:4] != sis_prefix:
         middle = sis_id[:-5][-6:]
-        sis_id = f"SRS_{sis_id[:11]}-{middle[:3]}-{middle[3:]} {sis_id[-5:]}"
-
+        sis_id = f"{sis_prefix}{sis_id[:11]}-{middle[:3]}-{middle[3:]} {sis_id[-5:]}"
     try:
-        canvas_course = canvas.get_course(
-            sis_id,
-            use_sis_id=True,
-        )
-        subaccount_id = str(canvas_course.account_id)
-        error = "none"
+        canvas_course = canvas.get_course(sis_id, use_sis_id=True)
+        canvas_account_id = canvas_course.account_id
+        status = ""
     except Exception:
         canvas_course = None
-        subaccount_id = "ERROR"
-        error = "course not found"
-
+        canvas_account_id = "ERROR"
+        status = "course not found"
     if canvas_course:
         old_quota = canvas_course.storage_quota_mb
-        new_quota = old_quota + increase
-        old_quota = str(int(old_quota))
-        new_quota = str(int(new_quota))
-
+        new_quota = old_quota + increment_value
         try:
             canvas_course.update(course={"storage_quota_mb": new_quota})
-            if verbose:
-                echo(f"\t* Increased storage from {old_quota} MB to {new_quota} MB")
         except Exception:
             new_quota = "ERROR"
-            if verbose:
-                color(
-                    f"\t* Failed to increase quota for Canvas course ID: {sis_id}",
-                    "yellow",
-                    True,
-                )
     else:
-        old_quota = "N/A"
-        new_quota = "N/A"
-    return [subaccount_id, sis_id, old_quota, new_quota, error]
+        new_quota = old_quota = None
+    return canvas_account_id, sis_id, old_quota, new_quota, status
 
 
 def process_result():
     result = read_csv(RESULT_PATH, dtype=str)
-    increased_count = len(result[result["error"] == "none"].index)
+    increased_count = len(result[result["error"] == ""].index)
     result.drop(result[result["error"] == "increase not required"].index, inplace=True)
-    error_count = len(result[result["error"] != "none"].index)
+    error_count = len(result[result["error"] != ""].index)
     if error_count == 0:
         result.drop(columns=["error"], inplace=True)
-    result.fillna("N/A", inplace=True)
     result.drop(columns=["index", "account id", "storage used in MB"], inplace=True)
     result.rename(columns={"id": "subaccount id", "sis id": "course id"}, inplace=True)
     result.to_csv(RESULT_PATH, index=False)
@@ -194,19 +161,23 @@ def print_messages(total, increased, errors):
     color("FINISHED", "yellow", True)
 
 
-def storage_main(test, verbose, force, increase=1000):
+def storage_main(test, verbose, force, increment_value=1000):
     def check_and_increase_storage(course, canvas, verbose, args):
-        index = course[0]
-        canvas_id = course[1]
-        sis_id = course[2]
+        index, canvas_id, sis_id = course[:3]
         total, increase = args
-        needs_increase, message = check_percent_storage(course, canvas, verbose, total)
+        course_name, needs_increase, message = check_percent_storage(course, canvas)
+        new_quota = old_quota = None
+        status = ""
         if needs_increase:
-            row = increase_quota(message, canvas, verbose, increase)
-        elif message is None:
-            row = [canvas_id, sis_id, "N/A", "N/A", "increase not required"]
+            canvas_id, sis_id, old_quota, new_quota, status = increase_quota(
+                message, canvas, increase
+            )
+        elif not message:
+            status = "increase not required"
         else:
-            row = ["ERROR", sis_id, "N/A", "N/A", message]
+            canvas_id = "ERROR"
+            status = message
+        row = [canvas_id, sis_id, old_quota, new_quota, status]
         report.loc[
             index,
             [
@@ -218,26 +189,31 @@ def storage_main(test, verbose, force, increase=1000):
             ],
         ] = row
         report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
+        if verbose:
+            increased = old_quota and new_quota
+            increase_message = (
+                f"increased {color(old_quota, 'yellow')} -->"
+                f" {color(new_quota, 'green')}"
+                if increased
+                else status
+            )
+            display_message = f"{color(course_name)}: {increase_message}"
+            print_item(index, total, display_message)
 
-    reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
-    reports = get_report("storage", CURRENT_YEAR_AND_TERM)
-    START = get_start_index(force, RESULT_PATH)
-    report, TOTAL = process_input(
-        reports,
-        INPUT_FILE_NAME,
-        REPORTS,
-        HEADERS[:4],
-        cleanup_data,
-        missing_file_message,
-        start=START,
-    )
+    report_path = get_report("storage", CURRENT_YEAR_AND_TERM)
+    start = get_start_index(force, RESULT_PATH)
+    report, total = process_report(report_path, start)
     make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))
-    make_skip_message(START, "course")
-    INSTANCE = "test" if test else "prod"
-    CANVAS = get_canvas(INSTANCE)
+    make_skip_message(start, "course")
+    instance = "test" if test else "prod"
+    canvas = get_canvas(instance)
     echo(") Processing courses...")
     toggle_progress_bar(
-        report, check_and_increase_storage, CANVAS, verbose, args=(TOTAL, increase)
+        report,
+        check_and_increase_storage,
+        canvas,
+        verbose,
+        args=(total, increment_value),
     )
-    INCREASED_COUNT, ERROR_COUNT = process_result()
-    print_messages(TOTAL, INCREASED_COUNT, ERROR_COUNT)
+    increased_count, error_count = process_result()
+    print_messages(total, increased_count, error_count)

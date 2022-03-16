@@ -8,8 +8,8 @@ from penn_canvas.helpers import (
     get_command_paths,
 )
 
-COMMAND = "Update Terms"
-RESULTS = get_command_paths(COMMAND, no_input=True)[0]
+COMMAND_NAME = "Update Terms"
+RESULTS = get_command_paths(COMMAND_NAME)["results"]
 HEADERS = [
     "canvas course id",
     "course id",

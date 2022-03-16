@@ -32,9 +32,9 @@ PREVIOUS_YEAR = CURRENT_YEAR - 1
 MAIN_ACCOUNT_ID = 96678
 
 
-def create_directory(new_directory: Path) -> Path:
+def create_directory(new_directory: Path, parents=True) -> Path:
     if not new_directory.exists():
-        Path.mkdir(new_directory)
+        Path.mkdir(new_directory, parents=parents)
     return new_directory
 
 
@@ -50,7 +50,7 @@ def get_reports_directory():
     ]
     for path in previous_paths:
         rmtree(path)
-    return create_directory(reports_path / TODAY_AS_Y_M_D)
+    return create_directory(reports_path / TODAY_AS_Y_M_D.replace("_", "-"))
 
 
 REPORTS = get_reports_directory()
@@ -131,25 +131,26 @@ def make_csv_paths(csv_dir, csv_file, headers):
 
 
 def get_command_paths(
-    command, logs=False, processed=False, no_input=False, completed=False
+    command_name,
+    include_logs_directory=False,
+    include_processed_directory=False,
+    include_input_directory=False,
+    include_completed_directory=False,
 ):
-    box_exists = BOX_PATH.exists()
-    base_path = BOX_CLI_PATH if box_exists else COMMAND_DIRECTORY_BASE
-    command_directory = base_path / f"{command}"
-    input_directory = command_directory / "Input"
-    paths = [input_directory, (command_directory / "RESULTS")]
-    if logs:
-        paths.append(command_directory / "logs")
-    if processed:
-        paths.append(command_directory / ".processed")
-    if no_input:
-        paths.remove(input_directory)
-    if completed:
-        paths.append(command_directory / "Completed")
-    for path in paths:
-        if not path.exists():
-            Path.mkdir(path, parents=True)
-    return tuple(paths)
+    base_path = BOX_CLI_PATH if BOX_PATH.exists() else COMMAND_DIRECTORY_BASE
+    command_directory = base_path / f"{command_name}"
+    paths = {"results": command_directory / "RESULTS"}
+    if include_logs_directory:
+        paths["logs"] = command_directory / "logs"
+    if include_processed_directory:
+        paths["processed"] = command_directory / ".processed"
+    if include_input_directory:
+        paths["input"] = command_directory / "Input"
+    if include_completed_directory:
+        paths["completed"] = command_directory / "Completed"
+    for path in paths.values():
+        create_directory(path)
+    return paths
 
 
 def get_completed_result(result_directory):

@@ -20,8 +20,8 @@ def is_voicethread_assignment(assignment):
         return False
 
 
-COMMAND = "Count Tool Usage"
-RESULTS = get_command_paths(COMMAND, no_input=True)[0]
+COMMAND_NAME = "Count Tool Usage"
+RESULTS = get_command_paths(COMMAND_NAME)["results"]
 HEADERS = [
     "canvas course id",
     "course id",

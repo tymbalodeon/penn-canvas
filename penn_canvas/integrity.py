@@ -7,8 +7,8 @@ from typer import echo
 from .helpers import format_timedelta, format_timestamp, get_canvas, get_command_paths
 from .style import color, print_item
 
-COMMAND = "Integrity"
-RESULTS = get_command_paths(COMMAND, no_input=True)[0]
+COMMAND_NAME = "Integrity"
+RESULTS = get_command_paths(COMMAND_NAME)["results"]
 
 
 def parse_args(course, users, quizzes, test):

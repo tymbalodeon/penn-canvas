@@ -25,7 +25,10 @@ from .helpers import (
     toggle_progress_bar,
 )
 
-REPORTS, RESULTS, PROCESSED = get_command_paths("Tool", processed=True)
+PATHS = get_command_paths("Tool", include_processed_directory=True)
+REPORTS = ""
+RESULTS = PATHS["results"]
+PROCESSED = PATHS["processed"]
 INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
 HEADERS = [
     "canvas course id",

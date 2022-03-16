@@ -7,8 +7,8 @@ from typer import echo, prompt
 from .helpers import get_canvas, get_command_paths, make_csv_paths
 from .style import color
 
-COMMAND = "Check Enrollment"
-RESULTS = get_command_paths(COMMAND, no_input=True)[0]
+COMMAND_NAME = "Check Enrollment"
+RESULTS = get_command_paths(COMMAND_NAME)["results"]
 HEADERS = ["Name", "Email", "Date Enrolled"]
 
 

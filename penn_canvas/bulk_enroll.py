@@ -17,9 +17,15 @@ from .helpers import (
     process_input,
 )
 
-COMMAND = "Bulk Enroll"
+COMMAND_NAME = "Bulk Enroll"
 INPUT_FILE_NAME = "Terms input file"
-INPUT, RESULTS, LOGS, PROCESSED = get_command_paths(COMMAND, logs=True, processed=True)
+PATHS = get_command_paths(
+    COMMAND_NAME, include_logs_directory=True, include_processed_directory=True
+)
+INPUT = ""
+RESULTS = PATHS["results"]
+LOGS = PATHS["logs"]
+PROCESSED = PATHS["processed"]
 ONGOING_TERM_ID = 4373
 HEADERS = ["canvas course id", "canvas sis course id", "error"]
 PROCESSED_HEADERS = HEADERS[:2]

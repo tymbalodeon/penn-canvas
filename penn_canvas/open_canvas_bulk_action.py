@@ -21,9 +21,12 @@ from .helpers import (
     toggle_progress_bar,
 )
 
-COMMAND = "Open Canvas Bulk Action"
+COMMAND_NAME = "Open Canvas Bulk Action"
 INPUT_FILE_NAME = "Open Canvas Bulk Action csv file"
-REPORTS, RESULTS, COMPLETED = get_command_paths(COMMAND, completed=True)
+PATHS = get_command_paths(COMMAND_NAME, include_completed_directory=True)
+REPORTS = ""
+RESULTS = PATHS["results"]
+COMPLETED = PATHS["completed"]
 HEADERS = ["Name", "Email", "Course ID", "Section ID", "Notify"]
 ACCOUNT = 1
 UNENROLL_TASKS = {"conclude", "delete", "deactivate", "inactivate"}

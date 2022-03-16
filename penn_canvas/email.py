@@ -28,11 +28,15 @@ from .helpers import (
     toggle_progress_bar,
 )
 
-COMMAND = "Email"
+COMMAND_NAME = "Email"
 INPUT_FILE_NAME = "Canvas Provisioning (Users) report"
-REPORTS, RESULTS, LOGS, PROCESSED = get_command_paths(
-    COMMAND, logs=True, processed=True
+PATHS = get_command_paths(
+    COMMAND_NAME, include_logs_directory=True, include_processed_directory=True
 )
+REPORTS = ""
+RESULTS = PATHS["results"]
+LOGS = PATHS["logs"]
+PROCESSED = PATHS["processed"]
 HEADERS = [
     "canvas user id",
     "login id",

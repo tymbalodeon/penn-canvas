@@ -22,8 +22,8 @@ from .helpers import (
 )
 from .style import color, print_item
 
-COMMAND = "Archive"
-RESULTS = get_command_paths(COMMAND, no_input=True)[0]
+COMMAND_NAME = "Archive"
+RESULTS = get_command_paths(COMMAND_NAME)["results"]
 
 
 class HTMLStripper(HTMLParser):
