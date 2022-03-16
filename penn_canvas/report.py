@@ -74,7 +74,7 @@ def create_report(
     filename_replacement="",
     account: int | Account = MAIN_ACCOUNT_ID,
     verbose=False,
-) -> Path | None:
+) -> Path:
     account = get_account(account)
     validate_report_type(report_type, account=account)
     if parameters:
@@ -98,7 +98,7 @@ def create_report(
             except Exception:
                 echo("ERROR: The report failed to generate a file. Please try again.")
         report.delete_report()
-        return None
+        raise Exit()
     else:
         if verbose:
             echo("COMPLETE")
@@ -128,9 +128,9 @@ def create_report(
             return report_path
         except Exception as error:
             if verbose:
-                echo(f"- ERROR: {error}")
+                echo(f"ERROR: {error}")
             report.delete_report()
-            return None
+            raise Exit()
 
 
 def create_provisioning_report(
@@ -159,7 +159,7 @@ def create_provisioning_report(
     else:
         courses = users = True
         filename_replacement = filename_term
-    create_report(
+    return create_report(
         "provisioning_csv",
         parameters,
         base_path,
@@ -183,7 +183,7 @@ def create_course_storage_report(
         filename_term = term_name
     filename_term = f"_{filename_term}" if filename_term else ""
     filename_replacement = f"course_storage{filename_term}"
-    create_report(
+    return create_report(
         "course_storage_csv",
         parameters,
         base_path,

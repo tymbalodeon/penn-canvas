@@ -20,6 +20,7 @@ from .style import color
 COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
 BOX_PATH = Path.home() / "Library/CloudStorage/Box-Box"
 BOX_CLI_PATH = BOX_PATH / "Penn Canvas CLI"
+BASE_PATH = BOX_CLI_PATH if BOX_PATH.exists() else COMMAND_DIRECTORY_BASE
 CURRENT_DATE = datetime.now()
 YEAR = CURRENT_DATE.strftime("%Y")
 MONTH = CURRENT_DATE.strftime("%B")
@@ -129,10 +130,10 @@ def make_index_headers(headers):
     return ["index"] + headers[:]
 
 
-def make_csv_paths(csv_dir, csv_file, headers):
-    if not csv_dir.exists():
-        Path.mkdir(csv_dir)
+def make_csv_paths(csv_file, headers):
     if not csv_file.is_file():
+        parent_directory = next(parent for parent in csv_file.parents)
+        create_directory(parent_directory)
         with open(csv_file, "w", newline="") as result:
             writer(result).writerow(headers)
 

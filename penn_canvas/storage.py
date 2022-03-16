@@ -1,19 +1,21 @@
 from pathlib import Path
 
 from pandas import read_csv
+from pandas.core.dtypes.missing import isna
 from typer import echo
 
 from penn_canvas.report import get_report
 
 from .helpers import (
+    BASE_PATH,
     BOX_PATH,
     CURRENT_YEAR_AND_TERM,
     MONTH,
     TODAY_AS_Y_M_D,
     YEAR,
     color,
+    create_directory,
     get_canvas,
-    get_command_paths,
     get_start_index,
     make_csv_paths,
     make_index_headers,
@@ -22,9 +24,8 @@ from .helpers import (
 )
 from .style import print_item
 
-COMMAND_NAME = "Storage"
-RESULTS = get_command_paths(COMMAND_NAME)["results"]
-RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result.csv"
+COMMAND_PATH = create_directory(BASE_PATH / "Storage")
+RESULT_PATH = COMMAND_PATH / f"{TODAY_AS_Y_M_D}_storage_result.csv"
 HEADERS = [
     "id",
     "sis id",
@@ -73,7 +74,7 @@ def check_percent_storage(course, canvas):
     canvas_course = None
     needs_increase = False
     message = ""
-    if not sis_id:
+    if isna(sis_id) or not sis_id:
         message = "missing sis id"
     else:
         try:
@@ -205,7 +206,7 @@ def storage_main(test, verbose, force, force_report=False, increment_value=1000)
     report_path = get_report("storage", CURRENT_YEAR_AND_TERM, force_report, verbose)
     start = get_start_index(force, RESULT_PATH)
     report, total = process_report(report_path, start)
-    make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))
+    make_csv_paths(RESULT_PATH, make_index_headers(HEADERS))
     make_skip_message(start, "course")
     instance = "test" if test else "prod"
     canvas = get_canvas(instance)
