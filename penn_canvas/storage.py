@@ -164,45 +164,45 @@ def print_messages(total, increased, errors):
     color("FINISHED", "yellow", True)
 
 
-def storage_main(test, verbose, force, force_report=False, increment_value=1000):
-    def check_and_increase_storage(course, canvas, verbose, args):
-        index, canvas_id, sis_id = course[:3]
-        total, increase = args
-        course_name, needs_increase, message = check_percent_storage(course, canvas)
-        new_quota = old_quota = None
-        status = ""
-        if needs_increase:
-            canvas_id, sis_id, old_quota, new_quota, status = increase_quota(
-                message, canvas, increase
-            )
-        elif not message:
-            status = "increase not required"
-        else:
-            canvas_id = "ERROR"
-            status = message
-        row = [canvas_id, sis_id, old_quota, new_quota, status]
-        report.loc[
-            index,
-            [
-                "id",
-                "sis id",
-                "old quota",
-                "new quota",
-                "error",
-            ],
-        ] = row
-        report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
-        if verbose:
-            increased = old_quota and new_quota
-            increase_message = (
-                f"increased {color(old_quota, 'yellow')} -->"
-                f" {color(new_quota, 'green')}"
-                if increased
-                else color(status, "yellow")
-            )
-            display_message = f"{color(course_name)}: {increase_message}"
-            print_item(index, total, display_message)
+def check_and_increase_storage(course, canvas, verbose, args):
+    index, canvas_id, sis_id = course[:3]
+    report, total, increase = args
+    course_name, needs_increase, message = check_percent_storage(course, canvas)
+    new_quota = old_quota = None
+    status = ""
+    if needs_increase:
+        canvas_id, sis_id, old_quota, new_quota, status = increase_quota(
+            message, canvas, increase
+        )
+    elif not message:
+        status = "increase not required"
+    else:
+        canvas_id = "ERROR"
+        status = message
+    row = [canvas_id, sis_id, old_quota, new_quota, status]
+    report.loc[
+        index,
+        [
+            "id",
+            "sis id",
+            "old quota",
+            "new quota",
+            "error",
+        ],
+    ] = row
+    report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
+    if verbose:
+        increased = old_quota and new_quota
+        increase_message = (
+            f"increased {color(old_quota, 'yellow')} --> {color(new_quota, 'green')}"
+            if increased
+            else color(status, "yellow")
+        )
+        display_message = f"{color(course_name)}: {increase_message}"
+        print_item(index, total, display_message)
 
+
+def storage_main(test, verbose, force, force_report=False, increment_value=1000):
     report_path = get_report("storage", CURRENT_YEAR_AND_TERM, force_report, verbose)
     start = get_start_index(force, RESULT_PATH)
     report, total = process_report(report_path, start)
@@ -216,7 +216,7 @@ def storage_main(test, verbose, force, force_report=False, increment_value=1000)
         check_and_increase_storage,
         canvas,
         verbose,
-        args=(total, increment_value),
+        args=(report, total, increment_value),
     )
     increased_count, error_count = process_result()
     print_messages(total, increased_count, error_count)
