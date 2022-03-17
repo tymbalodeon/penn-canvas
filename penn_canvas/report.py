@@ -207,9 +207,10 @@ def get_report(
 ):
     validate_report_type(report_type, by_filename=True)
     term_display = f"_{term_name}" if term_name else term_name
+    instance_display = f"_{instance}"
     if report_type == "storage":
         report_type = "course_storage"
-    report_path = REPORTS / f"{report_type}{term_display}.csv"
+    report_path = REPORTS / f"{report_type}{term_display}{instance_display}.csv"
     report = None
     if force or not report_path.is_file():
         if report_type == "provisioning":
