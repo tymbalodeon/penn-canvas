@@ -2,7 +2,6 @@ from csv import writer
 from datetime import datetime
 from os import remove
 from pathlib import Path
-from typing import NamedTuple
 
 from canvasapi.communication_channel import CommunicationChannel
 from canvasapi.user import User
@@ -115,7 +114,7 @@ def get_email_status(email: CommunicationChannel) -> bool:
 
 
 def is_already_active(
-    user: NamedTuple, instance: str | Instance
+    user: tuple, instance: str | Instance
 ) -> tuple[str, User | None, list[CommunicationChannel] | None]:
     user_id = user[1]
     canvas_user = None
@@ -372,7 +371,7 @@ def query_data_warehouse(
 def check_and_activate_emails(
     report: DataFrame,
     total: int,
-    user: NamedTuple,
+    user: tuple,
     sub_accounts: list[int],
     log_path: Path,
     use_data_warehouse: bool,
