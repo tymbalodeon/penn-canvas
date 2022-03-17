@@ -726,20 +726,6 @@ def storage(
     """
     Increases the storage quota for each course that currently uses 79% or more
     of its current storage allotment.
-
-    INPUT: Canvas Course Storage report
-
-    OUTPUT: A csv file listing courses whose storage was increased
-
-    To download a Canvas Course Storage report, login to
-    `https://canvas.upenn.edu/` (admin priveledges are required) and click
-    'Admin > Upenn > Settings > Reports', then click 'Configure...' to the right
-    of 'Course storage.' Select the desired term and click 'Run Report.' When
-    notified that the report has finished generating, download the file (click
-    the down arrow icon) and place it in: $HOME/penn-canvas/storage/reports/.
-    Once the file has been added to the directory, run this command.
-
-    NOTE: Input filename must include the current date in order to be accepted.
     """
     storage_main(increment_value, instance, verbose, force, force_report)
 
