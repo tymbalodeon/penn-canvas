@@ -2,6 +2,7 @@ from csv import writer
 from datetime import datetime
 from os import remove
 from pathlib import Path
+from shutil import rmtree
 
 from canvasapi.communication_channel import CommunicationChannel
 from canvasapi.user import User
@@ -189,8 +190,8 @@ def activate_user_email(
 
 def remove_empty_log(log_path):
     if log_path.is_file() and read_csv(log_path).empty:
-        echo(") Removing empty log file...")
-        remove(log_path)
+        echo(") Removing empty logs file...")
+        rmtree(LOGS)
 
 
 def process_result(result_path, new):
