@@ -80,7 +80,7 @@ def process_report(
     processed_users: list[str],
     processed_errors: list[str],
     new: bool,
-) -> DataFrame:
+) -> tuple[DataFrame, int]:
     report = read_csv(report_path)
     report.drop_duplicates(subset=["canvas_user_id"], inplace=True)
     report.sort_values(
@@ -99,7 +99,7 @@ def process_report(
             "yellow",
         )
         echo(f") {message}")
-    return report
+    return report, len(report.index)
 
 
 def get_user_emails(user: User) -> list[CommunicationChannel]:

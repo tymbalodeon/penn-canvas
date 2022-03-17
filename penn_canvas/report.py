@@ -87,12 +87,9 @@ def create_report(
     else:
         report = account.create_report(report_type)
     status = report.status
+    echo(f') Generating "{report_type}"...')
     while status in {"created", "running"}:
-        if verbose:
-            if status == "created":
-                echo(f') Generating "{report_type}"...')
-            else:
-                echo(f"\t* {report.status}...")
+        echo(f"\t* {report.status}...")
         sleep(5)
         report = account.get_report(report_type, report.id)
         status = report.status
