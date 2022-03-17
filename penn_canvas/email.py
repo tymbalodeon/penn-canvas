@@ -7,11 +7,13 @@ from pandas import concat, read_csv
 from typer import Exit, echo
 
 from .helpers import (
+    BASE_PATH,
     TODAY_AS_Y_M_D,
     YEAR,
     add_headers_to_empty_files,
     color,
     confirm_global_protect_enabled,
+    create_directory,
     drop_duplicate_errors,
     dynamic_to_csv,
     find_input,
@@ -29,6 +31,7 @@ from .helpers import (
 )
 
 COMMAND_NAME = "Email"
+COMMAND_PATH = create_directory(BASE_PATH / "Email")
 INPUT_FILE_NAME = "Canvas Provisioning (Users) report"
 PATHS = get_command_paths(
     COMMAND_NAME, include_logs_directory=True, include_processed_directory=True
@@ -461,8 +464,8 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
     )
     handle_clear_processed(clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH])
     reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
-    PROCESSED_USERS = get_processed(PROCESSED, PROCESSED_PATH, HEADERS)
-    PROCESSED_ERRORS = get_processed(PROCESSED, PROCESSED_ERRORS_PATH, HEADERS)
+    PROCESSED_USERS = get_processed(PROCESSED_PATH, HEADERS)
+    PROCESSED_ERRORS = get_processed(PROCESSED_ERRORS_PATH, HEADERS)
     START = get_start_index(force, RESULT_PATH, RESULTS)
     cleanup_data_args = (PROCESSED_USERS, PROCESSED_ERRORS, new)
     CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:3]]
@@ -476,9 +479,9 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
         cleanup_data_args,
         START,
     )
-    make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(HEADERS))
+    make_csv_paths(RESULT_PATH, make_index_headers(HEADERS))
     LOG_PATH = LOGS / LOG_STEM
-    make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
+    make_csv_paths(LOG_PATH, LOG_HEADERS)
     make_skip_message(START, "user")
     INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)

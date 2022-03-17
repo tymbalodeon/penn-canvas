@@ -391,8 +391,8 @@ def process_input(
         return data
 
 
-def get_processed(processed_path, columns="pennkey"):
-    if type(columns) != list:
+def get_processed(processed_path, columns: str | list[str] = "pennkey"):
+    if isinstance(columns, str):
         columns = [columns]
     if processed_path.is_file():
         result = read_csv(processed_path, dtype=str)
