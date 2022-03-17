@@ -462,8 +462,9 @@ def course_shopping(
 
 @app.command()
 def email(
-    instance: str = Argument(
+    instance: str = Option(
         "prod",
+        "--instance",
         help="The Canvas instance to use.",
     ),
     new: bool = Option(
@@ -700,8 +701,9 @@ def storage(
     increment_value: int = Option(
         1000, "--increase", help="The amount in MB to increase a course's storage."
     ),
-    instance: str = Argument(
+    instance: str = Option(
         "prod",
+        "--instance",
         help="The Canvas instance to use.",
     ),
     verbose: bool = Option(
