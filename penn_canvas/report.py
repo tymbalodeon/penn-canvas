@@ -182,7 +182,7 @@ def create_course_storage_report(
     verbose=False,
 ) -> Path:
     instance = validate_instance_name(instance)
-    instance_display = f"_{instance}"
+    instance_display = format_instance_name(instance)
     filename_term = ""
     parameters = dict()
     if term_name:
