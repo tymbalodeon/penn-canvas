@@ -204,11 +204,14 @@ def get_start_index(force: bool, result_path: Path) -> int:
             return index
         INCOMPLETE = read_csv(result_path)
         if "index" in INCOMPLETE.columns:
-            index = INCOMPLETE.at[INCOMPLETE.index[-1], "index"]
-            INCOMPLETE.drop(
-                INCOMPLETE[INCOMPLETE["index"] == index].index, inplace=True
-            )
-            INCOMPLETE.to_csv(result_path, index=False)
+            try:
+                index = INCOMPLETE.at[INCOMPLETE.index[-1], "index"]
+                INCOMPLETE.drop(
+                    INCOMPLETE[INCOMPLETE["index"] == index].index, inplace=True
+                )
+                INCOMPLETE.to_csv(result_path, index=False)
+            except Exception:
+                return index
         else:
             print_task_complete_message(result_path)
             raise Exit()
@@ -222,7 +225,7 @@ def make_skip_message(start: int, item: str):
         item = f"{item.upper()}"
     else:
         item = f"{item.upper()}S"
-    message = color(f"SKIPPING {start:,} PREVIOUSLY PROCESSED {item}...", "yellow")
+    message = color(f"SKIPPING {start:,} previously processed {item}...", "yellow")
     echo(f") {message}")
 
 
@@ -510,7 +513,7 @@ def get_account(
 
 
 def get_course(
-    course_id,
+    course_id: str | int,
     use_sis_id=False,
     instance=Instance.PRODUCTION,
     verbose=False,
@@ -523,7 +526,7 @@ def get_course(
 
 
 def get_section(
-    section_id,
+    section_id: str | int,
     use_sis_id=False,
     instance=Instance.PRODUCTION,
     verbose=False,
@@ -536,7 +539,7 @@ def get_section(
 
 
 def get_user(
-    user_id,
+    user_id: str | int,
     id_type=None,
     instance=Instance.PRODUCTION,
     verbose=False,

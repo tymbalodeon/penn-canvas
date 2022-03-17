@@ -81,6 +81,7 @@ def process_report(
     new: bool,
 ) -> tuple[DataFrame, int]:
     report = read_csv(report_path)
+    report = report.loc[:, [header.replace(" ", "_") for header in HEADERS[:3]]]
     report.drop_duplicates(subset=["canvas_user_id"], inplace=True)
     report.sort_values(
         "canvas_user_id", ascending=False, inplace=True, ignore_index=True
@@ -93,8 +94,9 @@ def process_report(
         already_processed_count = already_processed_count + len(processed_errors)
     if already_processed_count:
         message = color(
-            f"SKIPPING {already_processed_count:,} PREVIOUSLY PROCESSED"
-            f" {'USER' if already_processed_count == 1 else 'USERS'}...",
+            f"SKIPPING {already_processed_count:,} previously processed"
+            f" {'USER' if already_processed_count == 1 else 'USERS'} from the current"
+            " report...",
             "yellow",
         )
         echo(f") {message}")
@@ -114,13 +116,13 @@ def get_email_status(email: CommunicationChannel) -> bool:
 
 
 def is_already_active(
-    user: tuple, instance: str | Instance
+    user: tuple, instance: Instance
 ) -> tuple[str, User | None, list[CommunicationChannel] | None]:
     user_id = user[1]
     canvas_user = None
     emails = None
     try:
-        canvas_user = get_user(user_id, instance)
+        canvas_user = get_user(user_id, instance=instance)
     except Exception:
         return "user not found", canvas_user, emails
     try:
@@ -379,7 +381,7 @@ def check_and_activate_emails(
     processed_path: Path,
     processed_errors: list[str],
     processed_errors_path: Path,
-    instance: str | Instance,
+    instance: Instance,
     verbose: bool,
 ):
     index, canvas_user_id, login_id, full_name = user
@@ -424,7 +426,7 @@ def check_and_activate_emails(
         supported,
         str(account),
     ]
-    report.loc[index].to_frame().t.to_csv(result_path, mode="a", header=False)
+    report.loc[index].to_frame().T.to_csv(result_path, mode="a", header=False)
     if verbose:
         status_color = PRINT_COLOR_MAPS.get(status, "magenta")
         status_display = color(
