@@ -694,9 +694,6 @@ def storage(
         "--instance",
         help="The Canvas instance to use.",
     ),
-    verbose: bool = Option(
-        False, "--verbose", help="Print out detailed information as the task runs."
-    ),
     force: bool = Option(
         False,
         "--force",
@@ -710,12 +707,15 @@ def storage(
         "--force-report",
         help="Force a new report to be generated rather than use a cahced one.",
     ),
+    verbose: bool = Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
 ):
     """
     Increases the storage quota for each course that currently uses 79% or more
     of its current storage allotment.
     """
-    storage_main(increment_value, instance, verbose, force, force_report)
+    storage_main(increment_value, instance, force, force_report, verbose)
 
 
 @app.command()

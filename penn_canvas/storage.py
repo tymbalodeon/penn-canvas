@@ -169,9 +169,11 @@ def check_and_increase_storage(
         print_item(index, total, display_message)
 
 
-def storage_main(increment_value, instance, verbose, force, force_report):
+def storage_main(increment_value, instance, force, force_report, verbose):
     print_instance(instance)
-    report_path = get_report("storage", CURRENT_YEAR_AND_TERM, force_report, verbose)
+    report_path = get_report(
+        "storage", CURRENT_YEAR_AND_TERM, force_report, instance, verbose
+    )
     start = get_start_index(force, RESULT_PATH)
     report, total = process_report(report_path, start)
     make_csv_paths(RESULT_PATH, make_index_headers(HEADERS))

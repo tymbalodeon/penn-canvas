@@ -445,7 +445,9 @@ def email_main(
         PROCESSED / f"{YEAR}_email_processed_errors{instance_display}.csv"
     )
     handle_clear_processed(clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH])
-    report_path = get_report("storage", CURRENT_YEAR_AND_TERM, force_report, verbose)
+    report_path = get_report(
+        "storage", CURRENT_YEAR_AND_TERM, force_report, instance, verbose
+    )
     PROCESSED_USERS = get_processed(PROCESSED_PATH, HEADERS)
     PROCESSED_ERRORS = get_processed(PROCESSED_ERRORS_PATH, HEADERS)
     start = get_start_index(force, RESULT_PATH)

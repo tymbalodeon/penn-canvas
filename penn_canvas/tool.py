@@ -334,7 +334,8 @@ def tool_main(
 
     if not use_id:
         tool = get_tool(tool)
-    report_path = get_report("courses", term, force_report, verbose)
+    INSTANCE = "test" if test else "prod"
+    report_path = get_report("courses", term, force_report, INSTANCE, verbose)
     year_display = f"{YEAR}_" if enable else ""
     tool_display = tool.replace(" ", "_") if use_id else tool
     test_display = "_test" if test else ""
@@ -398,7 +399,6 @@ def tool_main(
                 raise Exit()
     make_csv_paths(RESULT_PATH, make_index_headers(HEADERS))
     make_skip_message(start, "course")
-    INSTANCE = "test" if test else "prod"
     CANVAS = get_canvas(INSTANCE)
     tool_display = color(tool, "blue")
     STYLED_TERMS = color(f"{', '.join(terms)}", "yellow")
