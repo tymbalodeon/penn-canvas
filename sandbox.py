@@ -2,28 +2,30 @@ from canvasapi.course import Course
 from canvasapi.section import Section
 from canvasapi.user import User
 
-from penn_canvas.helpers import Instance, get_account, get_canvas, pprint
+from penn_canvas.helpers import (
+    Instance,
+    get_account,
+    get_canvas,
+    get_course,
+    get_section,
+    get_user,
+    pprint,
+)
 
 CANVAS = get_canvas(verbose=False)
 ACCOUNT = get_account(verbose=False)
 
 
-def get_user(user, id_type=None, instance=Instance.PRODUCTION):
-    user = get_canvas(instance).get_user(user, id_type=id_type)
-    pprint(user)
-    return user
+def user(canvas_id, id_type=None, instance=Instance.PRODUCTION):
+    return get_user(canvas_id, id_type, instance, verbose=True, pretty_print=True)
 
 
-def get_course(course, use_sis_id=False, instance=Instance.PRODUCTION):
-    course = get_canvas(instance).get_course(course, use_sis_id=use_sis_id)
-    pprint(course)
-    return course
+def course(course_id, use_sis_id=False, instance=Instance.PRODUCTION):
+    get_course(course_id, use_sis_id, instance, verbose=True, pretty_print=True)
 
 
-def get_section(section, use_sis_id=False, instance=Instance.PRODUCTION):
-    section = get_canvas(instance).get_section(section, use_sis_id=use_sis_id)
-    pprint(section)
-    return section
+def section(section_id, use_sis_id=False, instance=Instance.PRODUCTION):
+    get_section(section_id, use_sis_id, instance, verbose=True, pretty_print=True)
 
 
 def get_enrollments(enrollment_container: Course | Section | User, first_only=False):

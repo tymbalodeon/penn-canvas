@@ -472,7 +472,7 @@ def get_canvas(instance=Instance.PRODUCTION, verbose=True, override_key=None) ->
         raise SystemExit("ERROR: Invalid access token")
 
 
-def pprint(thing):
+def pprint(thing: object):
     if isinstance(thing, list):
         for item in thing[:5]:
             PrettyPrinter().pprint(vars(item))
@@ -505,13 +505,42 @@ def get_account(
 
 
 def get_course(
-    canvas_id, use_sis_id=False, instance=Instance.PRODUCTION, verbose=False
+    course_id,
+    use_sis_id=False,
+    instance=Instance.PRODUCTION,
+    verbose=False,
+    pretty_print=False,
 ):
-    return get_canvas(instance, verbose).get_course(canvas_id, use_sis_id)
+    course = get_canvas(instance, verbose).get_course(course_id, use_sis_id)
+    if pretty_print:
+        pprint(course)
+    return course
 
 
-def get_user(user_id, instance=Instance.PRODUCTION, verbose=False):
-    return get_canvas(instance, verbose).get_user(user_id)
+def get_section(
+    section_id,
+    use_sis_id=False,
+    instance=Instance.PRODUCTION,
+    verbose=False,
+    pretty_print=False,
+):
+    section = get_canvas(instance, verbose).get_section(section_id, use_sis_id)
+    if pretty_print:
+        pprint(section)
+    return section
+
+
+def get_user(
+    user_id,
+    id_type=None,
+    instance=Instance.PRODUCTION,
+    verbose=False,
+    pretty_print=False,
+):
+    user = get_canvas(instance, verbose).get_user(user_id, id_type=id_type)
+    if pretty_print:
+        pprint(user)
+    return user
 
 
 def get_sub_accounts(canvas, account_id):
