@@ -462,16 +462,9 @@ def course_shopping(
 
 @app.command()
 def email(
-    test: bool = Option(
-        False,
-        "--test",
-        help=(
-            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)."
-        ),
-    ),
-    verbose: bool = Option(
-        False, "--verbose", help="Print out detailed information as the task runs."
+    instance: str = Argument(
+        "prod",
+        help="The Canvas instance to use.",
     ),
     new: bool = Option(
         False,
@@ -489,18 +482,21 @@ def email(
             " pre-existing incomplete result file and overwrite that file."
         ),
     ),
+    force_report: bool = Option(
+        False,
+        "--force-report",
+        help="Force a new report to be generated rather than use a cahced one.",
+    ),
     clear_processed: bool = Option(
         False,
         "--clear-processed",
         help="Clear the list of users already processed for the current year.",
     ),
-    no_data_warehouse: bool = Option(
-        False,
-        "--no-data-warehouse",
-        help=(
-            "Don't check the Data Warehouse (use when access to the Data Warehouse is"
-            " unavailable.)"
-        ),
+    use_data_warehouse: bool = Option(
+        False, "--data-warehouse", help="Whether or not to check the Data Warehouse"
+    ),
+    verbose: bool = Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
     ),
 ):
     """
@@ -528,7 +524,9 @@ def email(
 
     NOTE: Input filename must include the current date in order to be accepted.
     """
-    email_main(test, verbose, new, force, clear_processed, no_data_warehouse)
+    email_main(
+        instance, new, force, force_report, clear_processed, use_data_warehouse, verbose
+    )
 
 
 @app.command()

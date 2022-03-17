@@ -4,10 +4,14 @@ from os import remove
 from pathlib import Path
 
 from pandas import concat, read_csv
-from typer import Exit, echo
+from typer import Exit, echo, progressbar
+
+from penn_canvas.report import get_report
+from penn_canvas.style import print_item
 
 from .helpers import (
     BASE_PATH,
+    CURRENT_YEAR_AND_TERM,
     TODAY_AS_Y_M_D,
     YEAR,
     add_headers_to_empty_files,
@@ -16,30 +20,20 @@ from .helpers import (
     create_directory,
     drop_duplicate_errors,
     dynamic_to_csv,
-    find_input,
-    get_canvas,
-    get_command_paths,
+    get_account,
     get_data_warehouse_cursor,
     get_processed,
     get_start_index,
+    get_user,
     handle_clear_processed,
     make_csv_paths,
     make_index_headers,
     make_skip_message,
-    process_input,
-    toggle_progress_bar,
 )
 
-COMMAND_NAME = "Email"
 COMMAND_PATH = create_directory(BASE_PATH / "Email")
-INPUT_FILE_NAME = "Canvas Provisioning (Users) report"
-PATHS = get_command_paths(
-    COMMAND_NAME, include_logs_directory=True, include_processed_directory=True
-)
-REPORTS = ""
-RESULTS = PATHS["results"]
-LOGS = PATHS["logs"]
-PROCESSED = PATHS["processed"]
+LOGS = COMMAND_PATH / "logs"
+PROCESSED = COMMAND_PATH / ".processed"
 HEADERS = [
     "canvas user id",
     "login id",
@@ -63,10 +57,18 @@ ACCOUNTS = [
     132153,
     82192,
 ]
+PRINT_COLOR_MAPS = {
+    "already active": "cyan",
+    "activated": "green",
+    "failed to activate": "red",
+    "unconfirmed": "yellow",
+    "user not found": "red",
+    "not found": "red",
+    "error": "red",
+}
 
 
-def cleanup_data(data, args):
-    processed_users, processed_errors, new = args
+def process_report(data, processed_users, processed_errors, new):
     data.drop_duplicates(subset=["canvas_user_id"], inplace=True)
     data.sort_values("canvas_user_id", ascending=False, inplace=True, ignore_index=True)
     data = data.astype("string", copy=False, errors="ignore")
@@ -85,37 +87,24 @@ def cleanup_data(data, args):
     return data
 
 
-def find_sub_accounts(canvas, account_id):
-    ACCOUNT = canvas.get_account(account_id)
-    sub_accounts = ACCOUNT.get_subaccounts(recursive=True)
-    ACCOUNTS = [account_id]
-    ACCOUNTS.extend([account.id for account in sub_accounts])
-    return ACCOUNTS
-
-
-def get_sub_accounts(canvas):
-    return [
-        account
-        for accounts in (find_sub_accounts(canvas, account) for account in ACCOUNTS)
-        for account in accounts
-    ]
-
-
 def get_user_emails(user):
-    communication_channels = user.get_communication_channels()
-    return [channel for channel in communication_channels if channel.type == "email"]
+    return [
+        channel
+        for channel in user.get_communication_channels()
+        if channel.type == "email"
+    ]
 
 
 def get_email_status(email):
     return email.workflow_state == "active"
 
 
-def is_already_active(user, canvas):
+def is_already_active(user, instance):
     user_id = user[1]
     canvas_user = None
     emails = None
     try:
-        canvas_user = canvas.get_user(user_id)
+        canvas_user = get_user(user_id, instance)
     except Exception:
         return "user not found", canvas_user, emails
     try:
@@ -231,7 +220,7 @@ def process_result(result_path, new):
         if data_frame is not unsupported_errors:
             columns.append("subaccount")
         data_frame.drop(["index", "supported", "subaccount"], axis=1, inplace=True)
-    BASE = RESULTS / f"{YEAR}"
+    BASE = COMMAND_PATH / f"{YEAR}"
     if not BASE.exists():
         Path.mkdir(BASE)
     activated_path = BASE / f"{result_path.stem}_ACTIVATED.csv"
@@ -339,165 +328,175 @@ def print_messages(
     color("FINISHED", "yellow", True)
 
 
-def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
-    def check_and_activate_emails(user, canvas, verbose):
-        index, canvas_user_id, login_id, full_name = user
-        supported = None
-        account = None
-        status, canvas_user, emails = is_already_active(user, canvas)
-        if status == "error" or status == "unconfirmed" or status == "not found":
-            is_supported, account = check_schools(canvas_user, SUB_ACCOUNTS)
-            if is_supported:
-                supported = "Y"
-                canvas_user_id = user[1]
-                if status == "unconfirmed":
-                    status = activate_user_email(
-                        canvas_user_id,
+def query_data_warehouse(
+    login_id, canvas_user_id, full_name, canvas_user, log_path, table
+):
+    cursor = get_data_warehouse_cursor()
+    cursor.execute(
+        f"SELECT penn_id, email_address FROM {table} WHERE pennkey = :pennkey",
+        pennkey=login_id,
+    )
+    for _, email in cursor:
+        if email:
+            return activate_user_email(
+                canvas_user_id,
+                login_id,
+                full_name,
+                canvas_user,
+                [email.strip()],
+                log_path,
+            )
+
+
+def check_and_activate_emails(
+    report,
+    total,
+    user,
+    sub_accounts,
+    log_path,
+    use_data_warehouse,
+    result_path,
+    processed_path,
+    processed_errors,
+    processed_errors_path,
+    instance,
+    verbose,
+):
+    index, canvas_user_id, login_id, full_name = user
+    supported = None
+    account = None
+    status, canvas_user, emails = is_already_active(user, instance)
+    if status == "error" or status == "unconfirmed" or status == "not found":
+        is_supported, account = check_schools(canvas_user, sub_accounts)
+        if is_supported:
+            supported = "Y"
+            canvas_user_id = user[1]
+            if status == "unconfirmed":
+                status = activate_user_email(
+                    canvas_user_id, login_id, full_name, canvas_user, emails, log_path
+                )
+            elif status == "not found" and use_data_warehouse:
+                status = query_data_warehouse(
+                    login_id,
+                    canvas_user_id,
+                    full_name,
+                    canvas_user,
+                    log_path,
+                    "employee_general",
+                )
+                if not status == "activated":
+                    status = query_data_warehouse(
                         login_id,
+                        canvas_user_id,
                         full_name,
                         canvas_user,
-                        emails,
-                        LOG_PATH,
+                        log_path,
+                        "person_all_v",
                     )
-                elif status == "not found" and not no_data_warehouse:
-                    cursor = get_data_warehouse_cursor()
-                    cursor.execute(
-                        """
-                        SELECT
-                            penn_id, email_address
-                        FROM
-                            employee_general
-                        WHERE
-                            pennkey = :pennkey
-                        """,
-                        pennkey=login_id,
-                    )
-                    for penn_id, email in cursor:
-                        if email:
-                            status = activate_user_email(
-                                canvas_user_id,
-                                login_id,
-                                full_name,
-                                canvas_user,
-                                [email.strip()],
-                                LOG_PATH,
-                            )
-                    if not status == "activated":
-                        cursor = get_data_warehouse_cursor()
-                        cursor.execute(
-                            """
-                            SELECT
-                                penn_id, email_address
-                            FROM
-                                person_all_v
-                            WHERE
-                                pennkey = :pennkey
-                            """,
-                            pennkey=login_id,
-                        )
-                        for penn_id, email in cursor:
-                            if email:
-                                status = activate_user_email(
-                                    canvas_user_id,
-                                    login_id,
-                                    full_name,
-                                    canvas_user,
-                                    [email.strip()],
-                                    LOG_PATH,
-                                )
-            else:
-                supported = "N"
-        elif status == "user not found":
-            supported = status = "user not found"
-        report.at[index, ["email status", "supported", "subaccount"]] = [
-            status,
-            supported,
-            str(account),
-        ]
-        report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
-        if verbose:
-            status_color = PRINT_COLOR_MAPS.get(status, "magenta")
-            status_display = color(
-                f"{'email not found' if status == 'not found' else status}".upper(),
-                status_color,
+        else:
+            supported = "N"
+    elif status == "user not found":
+        supported = status = "user not found"
+    report.at[index, ["email status", "supported", "subaccount"]] = [
+        status,
+        supported,
+        str(account),
+    ]
+    report.loc[index].to_frame().t.to_csv(result_path, mode="a", header=False)
+    if verbose:
+        status_color = PRINT_COLOR_MAPS.get(status, "magenta")
+        status_display = color(
+            f"{'email not found' if status == 'not found' else status}".upper(),
+            status_color,
+        )
+        unsupported_display = ""
+        user_display = color(f"{' '.join(full_name.split())} ({login_id})", "magenta")
+        if supported == "N":
+            unsupported_display = color(" (UNSUPPORTED)", "yellow")
+        message = f"{user_display}: {status_display}{unsupported_display}"
+        print_item(index, total, message)
+    if status in {"activated", "already active"} or supported == "N":
+        if canvas_user_id in processed_errors:
+            processed_errors_csv = read_csv(processed_errors_path)
+            processed_errors_csv = processed_errors_csv[
+                processed_errors_csv["canvas user id"] != canvas_user_id
+            ]
+            processed_errors_csv.to_csv(processed_errors_path, index=False)
+        with open(processed_path, "a+", newline="") as processed_file:
+            writer(processed_file).writerow(
+                [canvas_user_id, login_id, full_name, status, supported]
             )
-            unsupported_display = ""
-            user_display = color(
-                f"{' '.join(full_name.split())} ({login_id})", "magenta"
+    elif canvas_user_id not in processed_errors:
+        with open(processed_errors_path, "a+", newline="") as processed_file:
+            writer(processed_file).writerow(
+                [canvas_user_id, login_id, full_name, status, supported]
             )
-            if supported == "N":
-                unsupported_display = color(" (UNSUPPORTED)", "yellow")
-            echo(
-                f"- ({(index + 1):,}/{TOTAL}) {user_display}:"
-                f" {status_display}{unsupported_display}"
-            )
-        if status in {"activated", "already active"} or supported == "N":
-            if canvas_user_id in PROCESSED_ERRORS:
-                processed_errors_csv = read_csv(PROCESSED_ERRORS_PATH)
-                processed_errors_csv = processed_errors_csv[
-                    processed_errors_csv["canvas user id"] != canvas_user_id
-                ]
-                processed_errors_csv.to_csv(PROCESSED_ERRORS_PATH, index=False)
-            with open(PROCESSED_PATH, "a+", newline="") as processed_file:
-                writer(processed_file).writerow(
-                    [canvas_user_id, login_id, full_name, status, supported]
-                )
-        elif canvas_user_id not in PROCESSED_ERRORS:
-            with open(PROCESSED_ERRORS_PATH, "a+", newline="") as processed_file:
-                writer(processed_file).writerow(
-                    [canvas_user_id, login_id, full_name, status, supported]
-                )
 
-    if not no_data_warehouse:
-        if not confirm_global_protect_enabled():
-            raise Exit()
-    RESULT_PATH = RESULTS / f"{YEAR}_email_result{'_test' if test else ''}.csv"
-    PROCESSED_PATH = (
-        PROCESSED / f"{YEAR}_email_processed_users{'_test' if test else ''}.csv"
-    )
+
+def email_main(
+    instance, new, force, force_report, clear_processed, use_data_warehouse, verbose
+):
+    if use_data_warehouse and not confirm_global_protect_enabled():
+        raise Exit()
+    instance_display = f"_{instance}"
+    RESULT_PATH = COMMAND_PATH / f"{YEAR}_email_result{instance_display}.csv"
+    PROCESSED_PATH = PROCESSED / f"{YEAR}_email_processed_users{instance_display}.csv"
     PROCESSED_ERRORS_PATH = (
-        PROCESSED / f"{YEAR}_email_processed_errors{'_test' if test else ''}.csv"
-    )
-    LOG_STEM = (
-        f"{YEAR}_email_log_{TODAY_AS_Y_M_D}{'_test' if test else ''}"
-        f"_{datetime.now().strftime('%H_%M_%S')}.csv"
+        PROCESSED / f"{YEAR}_email_processed_errors{instance_display}.csv"
     )
     handle_clear_processed(clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH])
-    reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
+    report_path = get_report("storage", CURRENT_YEAR_AND_TERM, force_report, verbose)
     PROCESSED_USERS = get_processed(PROCESSED_PATH, HEADERS)
     PROCESSED_ERRORS = get_processed(PROCESSED_ERRORS_PATH, HEADERS)
-    START = get_start_index(force, RESULT_PATH, RESULTS)
-    cleanup_data_args = (PROCESSED_USERS, PROCESSED_ERRORS, new)
-    CLEANUP_HEADERS = [header.replace(" ", "_") for header in HEADERS[:3]]
-    report, TOTAL = process_input(
-        reports,
-        INPUT_FILE_NAME,
-        REPORTS,
-        CLEANUP_HEADERS,
-        cleanup_data,
-        missing_file_message,
-        cleanup_data_args,
-        START,
-    )
+    start = get_start_index(force, RESULT_PATH)
+    report, total = process_report(report_path, PROCESSED_USERS, PROCESSED_ERRORS, new)
     make_csv_paths(RESULT_PATH, make_index_headers(HEADERS))
+    LOG_STEM = (
+        f"{YEAR}_email_log_{TODAY_AS_Y_M_D}{instance_display}"
+        f"_{datetime.now().strftime('%H_%M_%S')}.csv"
+    )
     LOG_PATH = LOGS / LOG_STEM
     make_csv_paths(LOG_PATH, LOG_HEADERS)
-    make_skip_message(START, "user")
-    INSTANCE = "test" if test else "prod"
-    CANVAS = get_canvas(INSTANCE)
-    SUB_ACCOUNTS = get_sub_accounts(CANVAS)
-    if verbose:
-        PRINT_COLOR_MAPS = {
-            "already active": "cyan",
-            "activated": "green",
-            "failed to activate": "red",
-            "unconfirmed": "yellow",
-            "user not found": "red",
-            "not found": "red",
-            "error": "red",
-        }
+    make_skip_message(start, "user")
+    main_account = get_account(instance=instance)
+    sub_accounts = [
+        account.id for account in main_account.get_subaccounts(recursive=True)
+    ]
+    sub_accounts = [main_account.id] + [sub_accounts]
     echo(") Processing users...")
-    toggle_progress_bar(report, check_and_activate_emails, CANVAS, verbose)
+    if verbose:
+        for user in report.itertuples():
+            check_and_activate_emails(
+                report,
+                total,
+                user,
+                sub_accounts,
+                LOG_PATH,
+                use_data_warehouse,
+                RESULT_PATH,
+                PROCESSED_PATH,
+                PROCESSED_ERRORS,
+                PROCESSED_ERRORS_PATH,
+                instance,
+                verbose,
+            )
+    else:
+        with progressbar(report.itertuples(), length=total) as progress:
+            for user in progress:
+                check_and_activate_emails(
+                    report,
+                    total,
+                    user,
+                    sub_accounts,
+                    LOG_PATH,
+                    use_data_warehouse,
+                    RESULT_PATH,
+                    PROCESSED_PATH,
+                    PROCESSED_ERRORS,
+                    PROCESSED_ERRORS_PATH,
+                    instance,
+                    verbose,
+                )
     remove_empty_log(LOG_PATH)
     (
         activated,
@@ -510,7 +509,7 @@ def email_main(test, verbose, new, force, clear_processed, no_data_warehouse):
         user_not_found,
     ) = process_result(RESULT_PATH, new)
     print_messages(
-        TOTAL,
+        total,
         activated,
         already_active,
         error_supported,
