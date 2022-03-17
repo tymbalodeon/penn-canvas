@@ -251,8 +251,6 @@ def process_result(result_path, new):
         unsupported_errors_path.exists(),
     )
     dynamic_to_csv(users_not_found_path, users_not_found, new)
-    if new:
-        drop_duplicate_errors([supported_errors_path, users_not_found_path])
     add_headers_to_empty_files(
         [
             activated_path,
@@ -262,6 +260,8 @@ def process_result(result_path, new):
         ],
         HEADERS,
     )
+    if new:
+        drop_duplicate_errors([supported_errors_path, users_not_found_path])
     remove(result_path)
     return (
         len(activated.index),

@@ -570,7 +570,9 @@ def drop_duplicate_errors(paths):
 
 def add_headers_to_empty_files(paths, headers):
     for path in paths:
-        if read_csv(path).empty:
+        try:
+            read_csv(path)
+        except Exception:
             with open(path, "w", newline="") as output_file:
                 writer(output_file).writerow(headers)
 
