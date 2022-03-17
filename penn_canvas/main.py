@@ -2,7 +2,7 @@ from typer import Argument, Option, Typer
 
 from penn_canvas.course_shopping import course_shopping_main
 from penn_canvas.find_users_by_email import find_users_by_email_main
-from penn_canvas.helpers import CURRENT_YEAR_AND_TERM, MAIN_ACCOUNT_ID
+from penn_canvas.helpers import CURRENT_YEAR_AND_TERM, MAIN_ACCOUNT_ID, Instance
 from penn_canvas.report import report_main
 
 from .archive import archive_main
@@ -687,28 +687,27 @@ def report(
 @app.command()
 def storage(
     increment_value: int = Option(
-        1000, "--increase", help="The amount in MB to increase a course's storage."
+        1000, "--increment", help="The amount in MB to increase a course's storage."
     ),
     instance: str = Option(
-        "prod",
+        Instance.PRODUCTION.value,
         "--instance",
         help="The Canvas instance to use.",
     ),
     force: bool = Option(
         False,
         "--force",
-        help=(
-            "Force the task to start from the beginning despite the presence of a"
-            " pre-existing incomplete result file and overwrite that file."
-        ),
+        help="Start the task from the beginning, ignoring already processed courses",
     ),
     force_report: bool = Option(
         False,
         "--force-report",
-        help="Force a new report to be generated rather than use a cahced one.",
+        help="Generate a new report instead of using a cached one.",
     ),
     verbose: bool = Option(
-        False, "--verbose", help="Print out detailed information as the task runs."
+        False,
+        "--verbose",
+        help="Print detailed information to the console as the task runs.",
     ),
 ):
     """
