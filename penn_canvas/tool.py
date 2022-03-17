@@ -112,8 +112,9 @@ def process_report(
             already_processed_count = already_processed_count + len(processed_errors)
         if already_processed_count:
             message = color(
-                f"SKIPPING {already_processed_count:,} PREVIOUSLY PROCESSED"
-                f" {'COURSE' if already_processed_count == 1 else 'COURSES'}...",
+                f"SKIPPING {already_processed_count:,} previously processed"
+                f" {'COURSE' if already_processed_count == 1 else 'COURSES'} from the"
+                " current report...",
                 "yellow",
             )
             echo(f") {message}")
