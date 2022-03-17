@@ -409,7 +409,7 @@ def print_instance(instance):
         "open": "OPEN",
         "open_test": "TEST OPEN",
     }
-    echo(f"INSTANCE: {style(INSTANCE_NAMES.get(instance, ''), bold=True)} Canvas")
+    echo(f"INSTANCE: {style(INSTANCE_NAMES.get(instance), bold=True)} Canvas")
 
 
 def get_canvas(instance="prod", verbose=True, override_key=None):
@@ -443,15 +443,14 @@ def get_canvas(instance="prod", verbose=True, override_key=None):
     elif instance == "open_test":
         url = open_canvas_test_url
         key = override_key or open_canvas_test_key
-    if verbose:
-        print_instance(instance)
     canvas = Canvas(url, key)
     try:
         canvas.get_account(MAIN_ACCOUNT_ID)
+        if verbose:
+            print_instance(instance)
         return canvas
     except Exception:
-        echo("ERROR: Invalid access token")
-        raise Exit()
+        raise SystemExit("ERROR: Invalid access token")
 
 
 def pprint(thing):
