@@ -671,12 +671,17 @@ def report(
             " pre-existing incomplete result file and overwrite that file."
         ),
     ),
+    instance: str = Option(
+        "prod",
+        "--instance",
+        help="The Canvas instance to use.",
+    ),
     verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
     ),
 ):
     """Generate reports"""
-    report_main(report_type, term, force, verbose)
+    report_main(report_type, term, force, instance, verbose)
 
 
 @app.command()

@@ -73,9 +73,10 @@ def create_report(
     base_path=REPORTS,
     filename_replacement="",
     account: int | Account = MAIN_ACCOUNT_ID,
+    instance="prod",
     verbose=False,
 ) -> Path:
-    account = get_account(account)
+    account = get_account(account, instance=instance)
     validate_report_type(report_type, account=account)
     if parameters:
         report = account.create_report(report_type, parameters=parameters)
@@ -139,9 +140,9 @@ def create_provisioning_report(
     term_name=CURRENT_YEAR_AND_TERM,
     base_path=REPORTS,
     account: int | Account = MAIN_ACCOUNT_ID,
+    instance="prod",
     verbose=False,
 ):
-    account = get_account(account)
     filename_term = filename_replacement = ""
     parameters = dict()
     if term_name:
@@ -165,6 +166,7 @@ def create_provisioning_report(
         base_path,
         filename_replacement,
         account,
+        instance,
         verbose,
     )
 
@@ -173,9 +175,9 @@ def create_course_storage_report(
     term_name=CURRENT_YEAR_AND_TERM,
     base_path=REPORTS,
     account: int | Account = MAIN_ACCOUNT_ID,
+    instance="prod",
     verbose=False,
 ):
-    account = get_account(account)
     filename_term = filename_replacement = ""
     parameters = dict()
     if term_name:
@@ -189,12 +191,17 @@ def create_course_storage_report(
         base_path,
         filename_replacement,
         account,
+        instance,
         verbose,
     )
 
 
 def get_report(
-    report_type: str, term_name=CURRENT_YEAR_AND_TERM, force=False, verbose=False
+    report_type: str,
+    term_name=CURRENT_YEAR_AND_TERM,
+    force=False,
+    instance="prod",
+    verbose=False,
 ):
     validate_report_type(report_type, by_filename=True)
     term_display = f"_{term_name}" if term_name else term_name
@@ -205,18 +212,24 @@ def get_report(
     if force or not report_path.is_file():
         if report_type == "provisioning":
             report = create_provisioning_report(
-                courses=True, users=True, term_name=term_name, verbose=verbose
+                courses=True,
+                users=True,
+                term_name=term_name,
+                instance=instance,
+                verbose=verbose,
             )
         elif report_type == "courses":
             report = create_provisioning_report(
-                courses=True, term_name=term_name, verbose=verbose
+                courses=True, term_name=term_name, instance=instance, verbose=verbose
             )
         elif report_type == "users":
             report = create_provisioning_report(
-                users=True, term_name=term_name, verbose=verbose
+                users=True, term_name=term_name, instance=instance, verbose=verbose
             )
         elif "storage" in report_type:
-            report = create_course_storage_report(term_name=term_name, verbose=verbose)
+            report = create_course_storage_report(
+                term_name=term_name, instance=instance, verbose=verbose
+            )
     else:
         report = report_path
     if verbose:
@@ -224,5 +237,5 @@ def get_report(
     return report
 
 
-def report_main(report_type, term_name, force, verbose):
-    get_report(report_type, term_name, force, verbose)
+def report_main(report_type, term_name, force, instance, verbose):
+    get_report(report_type, term_name, force, instance, verbose)
