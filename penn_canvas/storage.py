@@ -116,7 +116,7 @@ def increase_quota(
     return canvas_account_id, sis_id, old_quota, new_quota, status
 
 
-def process_result() -> tuple[int, int]:
+def process_result(instance: Instance) -> tuple[int, int]:
     result = read_csv(RESULT_PATH, dtype=str)
     increased_count = len(result[result["error"] == ""].index)
     result = result.drop(result[result["error"] == "increase not required"].index)
@@ -127,7 +127,7 @@ def process_result() -> tuple[int, int]:
     result = result.drop(columns=["index", "account id", "storage used in MB"])
     result = result.rename(columns={"id": "subaccount id", "sis id": "course code"})
     result.to_csv(RESULT_PATH, index=False)
-    if BOX_PATH.exists():
+    if instance == Instance.PRODUCTION and BOX_PATH.exists():
         current_month_directory = create_directory(
             BOX_PATH / f"Storage_Quota_Monitoring/{MONTH} {YEAR}"
         )
@@ -207,5 +207,5 @@ def storage_main(
                 check_and_increase_storage(
                     report, course, total, increment_value, instance, verbose
                 )
-    increased_count, error_count = process_result()
+    increased_count, error_count = process_result(instance)
     print_messages(total, increased_count, error_count)
