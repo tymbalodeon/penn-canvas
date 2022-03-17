@@ -28,7 +28,7 @@ def section(section_id, use_sis_id=False, instance=Instance.PRODUCTION):
     get_section(section_id, use_sis_id, instance, verbose=True, pretty_print=True)
 
 
-def get_enrollments(enrollment_container: Course | Section | User, first_only=False):
+def enrollments(enrollment_container: Course | Section | User, first_only=False):
     if first_only:
         enrollments = next(
             (enrollment for enrollment in enrollment_container.get_enrollments()), None
