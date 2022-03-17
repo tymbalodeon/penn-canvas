@@ -412,7 +412,7 @@ def print_instance(instance):
     echo(f"INSTANCE: {style(INSTANCE_NAMES.get(instance, ''), bold=True)} Canvas")
 
 
-def get_canvas(instance="prod", verbose=True, override_key=False):
+def get_canvas(instance="prod", verbose=True, override_key=None):
     canvas_urls = get_penn_canvas_config("canvas_urls")
     canvas_keys = get_penn_canvas_config("canvas_keys")
     (
@@ -445,7 +445,13 @@ def get_canvas(instance="prod", verbose=True, override_key=False):
         key = override_key or open_canvas_test_key
     if verbose:
         print_instance(instance)
-    return Canvas(url, key)
+    canvas = Canvas(url, key)
+    try:
+        canvas.get_account(MAIN_ACCOUNT_ID)
+        return canvas
+    except Exception:
+        echo("ERROR: Invalid access token")
+        raise Exit()
 
 
 def pprint(thing):
