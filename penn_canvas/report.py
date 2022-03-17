@@ -92,7 +92,7 @@ def create_report(
         sleep(5)
         report = account.get_report(report_type, report.id)
         status = report.status
-    if report.status == "error":
+    if status == "error":
         if verbose:
             try:
                 echo(f"ERROR: {report.last_run['paramters']['extra_text']}")
