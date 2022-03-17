@@ -170,7 +170,7 @@ def check_and_increase_storage(
 
 
 def storage_main(increment_value, instance, force, force_report, verbose):
-    instance = validate_instance_name(instance)
+    instance = validate_instance_name(instance, verbose=True)
     report_path = get_report(
         "storage", CURRENT_YEAR_AND_TERM, force_report, instance, verbose
     )

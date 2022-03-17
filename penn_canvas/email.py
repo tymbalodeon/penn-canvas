@@ -29,6 +29,7 @@ from .helpers import (
     make_csv_paths,
     make_index_headers,
     make_skip_message,
+    validate_instance_name,
 )
 
 COMMAND_PATH = create_directory(BASE_PATH / "Email")
@@ -438,6 +439,7 @@ def email_main(
 ):
     if use_data_warehouse and not confirm_global_protect_enabled():
         raise Exit()
+    instance = validate_instance_name(instance, verbose=True)
     instance_display = f"_{instance}"
     RESULT_PATH = COMMAND_PATH / f"{YEAR}_email_result{instance_display}.csv"
     PROCESSED_PATH = PROCESSED / f"{YEAR}_email_processed_users{instance_display}.csv"

@@ -463,7 +463,7 @@ def course_shopping(
 @app.command()
 def email(
     instance: str = Option(
-        "prod",
+        Instance.PRODUCTION.value,
         "--instance",
         help="The Canvas instance to use.",
     ),

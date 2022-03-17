@@ -410,7 +410,7 @@ class Instance(Enum):
     OPEN_TEST = "open_test"
 
 
-def validate_instance_name(instance_name):
+def validate_instance_name(instance_name, verbose=False):
     if isinstance(instance_name, Instance):
         instance = instance_name
     else:
@@ -422,7 +422,8 @@ def validate_instance_name(instance_name):
                 echo(f'\t"{instance}"')
             raise Exit()
         instance = Instance(instance_name)
-    print_instance(instance)
+    if verbose:
+        print_instance(instance)
     return instance
 
 
