@@ -1,5 +1,6 @@
 from csv import writer
 from datetime import datetime
+from enum import Enum
 from os import remove
 from pathlib import Path
 from pprint import PrettyPrinter
@@ -9,10 +10,11 @@ from zipfile import ZipFile
 from canvasapi import Canvas
 from canvasapi.account import Account
 from canvasapi.paginated_list import PaginatedList
+from click.termui import style
 from cx_Oracle import connect, init_oracle_client
 from pandas import read_csv
 from pytz import timezone, utc
-from typer import Exit, confirm, echo, progressbar, style
+from typer import Exit, confirm, echo, progressbar
 
 from .config import get_penn_canvas_config
 from .style import color
@@ -39,21 +41,27 @@ def create_directory(new_directory: Path, parents=True) -> Path:
     return new_directory
 
 
-def get_reports_directory():
-    def is_old_path(path):
+def remove_old_reports_directories(reports_path: Path):
+    def is_old_reports_directory(path):
+        if not path.is_dir():
+            return False
         try:
             date = datetime.strptime(str(path).split("/")[-1], "%Y-%m-%d")
             return (CURRENT_DATE - date).days > 30
         except Exception:
             return True
 
-    base_path = BOX_CLI_PATH if BOX_PATH.exists() else COMMAND_DIRECTORY_BASE
-    reports_path = create_directory(base_path / "REPORTS")
     previous_paths = [
-        path for path in reports_path.iterdir() if path.is_dir() and is_old_path(path)
+        path for path in reports_path.iterdir() if is_old_reports_directory(path)
     ]
     for path in previous_paths:
         rmtree(path)
+
+
+def get_reports_directory() -> Path:
+    base_path = BOX_CLI_PATH if BOX_PATH.exists() else COMMAND_DIRECTORY_BASE
+    reports_path = create_directory(base_path / "REPORTS")
+    remove_old_reports_directories(reports_path)
     return create_directory(reports_path / TODAY_AS_Y_M_D.replace("_", "-"))
 
 
@@ -67,53 +75,65 @@ init_oracle_client(
 )
 
 
-SPRING, SUMMER, FALL = "10", "20", "30"
+class Term(Enum):
+    SPRING = "10"
+    SUMMER = "20"
+    FALL = "30"
 
 
-def get_term_by_month(month):
+def get_term_by_month(month: int) -> Term:
     if month >= 9:
-        return FALL
+        return Term.FALL
     elif month >= 5:
-        return SUMMER
+        return Term.SUMMER
     else:
-        return SPRING
+        return Term.SPRING
 
 
-def get_current_term():
+def get_current_term() -> Term:
     return {month: get_term_by_month(month) for month in range(1, 13)}.get(
-        CURRENT_MONTH, "10"
+        CURRENT_MONTH, Term.SPRING
     )
 
 
-def get_term_display(term):
-    return {"10": "Spring", "20": "Summer", "30": "Fall"}.get(term, "10")
+def get_term_display(term: Term) -> str:
+    term_displays = {term: term.name.title() for term in Term}
+    return term_displays.get(term, Term.SPRING.value)
+
+
+def get_next_term() -> Term:
+    return {
+        Term.SPRING: Term.SUMMER,
+        Term.SUMMER: Term.FALL,
+        Term.FALL: Term.SPRING,
+    }.get(get_current_term(), Term.SPRING)
+
+
+def get_previous_term() -> Term:
+    return {
+        Term.SPRING: Term.FALL,
+        Term.SUMMER: Term.SPRING,
+        Term.FALL: Term.SUMMER,
+    }.get(get_current_term(), Term.SPRING)
 
 
 CURRENT_TERM = get_current_term()
 CURRENT_TERM_DISPLAY = get_term_display(get_current_term())
-
-
-def get_next_term():
-    return {SPRING: SUMMER, SUMMER: FALL, FALL: SPRING}.get(get_current_term())
-
-
-def get_previous_term():
-    return {SPRING: FALL, SUMMER: SPRING, FALL: SUMMER}.get(get_current_term())
-
-
 NEXT_TERM = get_next_term()
 PREVIOUS_TERM = get_previous_term()
 CURRENT_YEAR_AND_TERM = (
     "2022A"
-    if CURRENT_YEAR == 2022 and CURRENT_TERM == "10"
+    if CURRENT_YEAR == 2022 and CURRENT_TERM == Term.SPRING
     else f"{CURRENT_YEAR}{CURRENT_TERM}"
 )
 CURRENT_TERM_NAME = (
     f"{CURRENT_YEAR_AND_TERM} (Banner {CURRENT_TERM_DISPLAY} {CURRENT_YEAR})"
 )
-NEXT_YEAR_AND_TERM = f"{NEXT_YEAR if CURRENT_TERM == FALL else CURRENT_YEAR}{NEXT_TERM}"
+NEXT_YEAR_AND_TERM = (
+    f"{NEXT_YEAR if CURRENT_TERM == Term.FALL else CURRENT_YEAR}{NEXT_TERM}"
+)
 PREVIOUS_YEAR_AND_TERM = (
-    f"{PREVIOUS_YEAR if CURRENT_TERM == SPRING else CURRENT_YEAR}{PREVIOUS_TERM}"
+    f"{PREVIOUS_YEAR if CURRENT_TERM == Term.SPRING else CURRENT_YEAR}{PREVIOUS_TERM}"
 )
 
 
@@ -126,11 +146,11 @@ def confirm_global_protect_enabled():
     return confirm("HAVE YOU ENABLED THE GLOBAL PROTECT VPN?")
 
 
-def make_index_headers(headers):
+def make_index_headers(headers: list[str]) -> list[str]:
     return ["index"] + headers[:]
 
 
-def make_csv_paths(csv_file, headers):
+def make_csv_paths(csv_file: Path, headers: list[str]):
     if not csv_file.is_file():
         parent_directory = next(parent for parent in csv_file.parents)
         create_directory(parent_directory)
@@ -139,7 +159,7 @@ def make_csv_paths(csv_file, headers):
 
 
 def get_command_paths(
-    command_name,
+    command_name: str,
     include_logs_directory=False,
     include_processed_directory=False,
     include_input_directory=False,
@@ -161,19 +181,7 @@ def get_command_paths(
     return paths
 
 
-def get_completed_result(result_directory):
-    csv_files = [result for result in Path(result_directory).glob("*.csv")]
-    return next(
-        (
-            result
-            for result in csv_files
-            if TODAY_AS_Y_M_D in result.name and "ACTIVATED" in result.name
-        ),
-        None,
-    )
-
-
-def print_task_complete_message(result_path):
+def print_task_complete_message(result_path: Path):
     color("TASK ALREADY COMPLETE", "yellow", True)
     result_path_display = color(result_path, "green")
     echo(f"- Output available at: {result_path_display}")
@@ -184,41 +192,30 @@ def print_task_complete_message(result_path):
     color("FINISHED", "yellow", True)
 
 
-def check_previous_output(result_path, result_directory):
-    echo(") Checking for previous results...")
+def get_start_index(force: bool, result_path: Path) -> int:
     index = 0
-    if result_path.is_file():
-        INCOMPLETE = read_csv(result_path)
-        if "index" in INCOMPLETE.columns:
-            try:
-                index = INCOMPLETE.at[INCOMPLETE.index[-1], "index"]
-                INCOMPLETE.drop(
-                    INCOMPLETE[INCOMPLETE["index"] == index].index, inplace=True
-                )
-                INCOMPLETE.to_csv(result_path, index=False)
-            except Exception:
-                index = 0
-        else:
-            print_task_complete_message(result_path)
-            raise Exit()
-    elif result_directory:
-        completed_result = get_completed_result(result_directory)
-        if completed_result:
-            print_task_complete_message(completed_result)
-            raise Exit()
-    return index
-
-
-def get_start_index(force, result_path, result_directory=None):
     if force:
         if result_path.exists():
             remove(result_path)
-        return 0
+        return index
     else:
-        return check_previous_output(result_path, result_directory)
+        echo(") Checking for previous results...")
+        if not result_path.is_file():
+            return index
+        INCOMPLETE = read_csv(result_path)
+        if "index" in INCOMPLETE.columns:
+            index = INCOMPLETE.at[INCOMPLETE.index[-1], "index"]
+            INCOMPLETE.drop(
+                INCOMPLETE[INCOMPLETE["index"] == index].index, inplace=True
+            )
+            INCOMPLETE.to_csv(result_path, index=False)
+        else:
+            print_task_complete_message(result_path)
+            raise Exit()
+        return index
 
 
-def make_skip_message(start, item):
+def make_skip_message(start: int, item: str):
     if start == 0:
         return
     elif start == 1:
@@ -229,8 +226,10 @@ def make_skip_message(start, item):
     echo(f") {message}")
 
 
-def handle_clear_processed(clear_processed, processed_path, item_plural="users"):
-    if type(processed_path) != list:
+def handle_clear_processed(
+    clear_processed: bool, processed_path: Path | list[Path], item_plural="users"
+):
+    if not isinstance(processed_path, list):
         processed_path = [processed_path]
     if clear_processed:
         message = color(
@@ -242,7 +241,6 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
         proceed = confirm(f"- {message}")
     else:
         proceed = False
-
     if proceed:
         echo(f") Clearing list of {item_plural} already processed...")
         for path in processed_path:
@@ -252,7 +250,9 @@ def handle_clear_processed(clear_processed, processed_path, item_plural="users")
         echo(f") Finding {item_plural} already processed...")
 
 
-def print_missing_input_and_exit(input_file_name, please_add_message, date=True):
+def print_missing_input_and_exit(
+    input_file_name: str, please_add_message: str, date=True
+) -> str:
     date_message = " matching today's date " if date else " "
     error = color(
         f"- ERROR: A {input_file_name}{date_message}was not found.",
@@ -402,17 +402,36 @@ def get_processed(processed_path, columns: str | list[str] = "pennkey"):
         return list()
 
 
+class Instance(Enum):
+    PRODUCTION = "prod"
+    TEST = "test"
+    BETA = "beta"
+    OPEN = "open"
+    OPEN_TEST = "open_test"
+
+
+def validate_instance_name(instance_name):
+    if isinstance(instance_name, Instance):
+        instance = instance_name
+    else:
+        instances = [instance.value for instance in Instance]
+        if instance_name not in instances:
+            echo(f'ERROR: Invalid instance name "{instance_name}"')
+            echo("\nAvailable instances are:")
+            for instance in instances:
+                echo(f'\t"{instance}"')
+            raise Exit()
+        instance = Instance(instance_name)
+    print_instance(instance)
+    return instance
+
+
 def print_instance(instance):
-    INSTANCE_NAMES = {
-        "prod": "PRODUCTION",
-        "test": "TEST",
-        "open": "OPEN",
-        "open_test": "TEST OPEN",
-    }
-    echo(f"INSTANCE: {style(INSTANCE_NAMES.get(instance), bold=True)} Canvas")
+    instance_name = instance.name.replace("_", " ")
+    echo(f"INSTANCE: {style(instance_name, bold=True)} Canvas")
 
 
-def get_canvas(instance="prod", verbose=True, override_key=None):
+def get_canvas(instance=Instance.PRODUCTION, verbose=True, override_key=None) -> Canvas:
     canvas_urls = get_penn_canvas_config("canvas_urls")
     canvas_keys = get_penn_canvas_config("canvas_keys")
     (
@@ -431,16 +450,16 @@ def get_canvas(instance="prod", verbose=True, override_key=None):
     ) = canvas_urls
     url = canvas_prod_url
     key = override_key or canvas_prod_key
-    if instance == "test":
+    if instance == Instance.TEST:
         url = canvas_test_url
         key = override_key or canvas_test_key
-    elif instance == "beta":
+    elif instance == Instance.BETA:
         url = canvas_beta_url
         key = override_key or canvas_beta_key
-    elif instance == "open":
+    elif instance == Instance.OPEN:
         url = open_canvas_url
         key = override_key or open_canvas_key
-    elif instance == "open_test":
+    elif instance == Instance.OPEN_TEST:
         url = open_canvas_test_url
         key = override_key or open_canvas_test_key
     canvas = Canvas(url, key)
@@ -471,11 +490,12 @@ def collect(paginator: PaginatedList | list, function=None) -> list:
 def get_account(
     account: int | Account = MAIN_ACCOUNT_ID,
     use_sis_id=False,
-    instance="prod",
+    instance=Instance.PRODUCTION,
     verbose=False,
 ) -> Account:
     if isinstance(account, Account):
         return account
+    instance = validate_instance_name(instance)
     account_object = get_canvas(instance, verbose=verbose).get_account(
         account, use_sis_id=use_sis_id
     )
@@ -484,12 +504,14 @@ def get_account(
     return account_object
 
 
-def get_course(canvas_id, use_sis_id=False, instance="prod", verbose=False):
+def get_course(
+    canvas_id, use_sis_id=False, instance=Instance.PRODUCTION, verbose=False
+):
     return get_canvas(instance, verbose).get_course(canvas_id, use_sis_id)
 
 
-def get_user(canvas_id, instance="prod", verbose=False):
-    return get_canvas(instance, verbose).get_user(canvas_id)
+def get_user(user_id, instance=Instance.PRODUCTION, verbose=False):
+    return get_canvas(instance, verbose).get_user(user_id)
 
 
 def get_sub_accounts(canvas, account_id):

@@ -2,25 +2,25 @@ from canvasapi.course import Course
 from canvasapi.section import Section
 from canvasapi.user import User
 
-from penn_canvas.helpers import get_account, get_canvas, pprint
+from penn_canvas.helpers import Instance, get_account, get_canvas, pprint
 
 CANVAS = get_canvas(verbose=False)
 ACCOUNT = get_account(verbose=False)
 
 
-def get_user(user, id_type=None, instance="prod"):
+def get_user(user, id_type=None, instance=Instance.PRODUCTION):
     user = get_canvas(instance).get_user(user, id_type=id_type)
     pprint(user)
     return user
 
 
-def get_course(course, use_sis_id=False, instance="prod"):
+def get_course(course, use_sis_id=False, instance=Instance.PRODUCTION):
     course = get_canvas(instance).get_course(course, use_sis_id=use_sis_id)
     pprint(course)
     return course
 
 
-def get_section(section, use_sis_id=False, instance="prod"):
+def get_section(section, use_sis_id=False, instance=Instance.PRODUCTION):
     section = get_canvas(instance).get_section(section, use_sis_id=use_sis_id)
     pprint(section)
     return section
@@ -39,6 +39,3 @@ def get_enrollments(enrollment_container: Course | Section | User, first_only=Fa
         for enrollment in enrollments:
             pprint(enrollment)
     return enrollments
-
-
-parameters = {"courses": True, "terms": "2022A"}

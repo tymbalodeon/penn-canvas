@@ -12,8 +12,10 @@ from penn_canvas.helpers import (
     CURRENT_YEAR_AND_TERM,
     MAIN_ACCOUNT_ID,
     REPORTS,
+    Instance,
     collect,
     get_account,
+    validate_instance_name,
 )
 from penn_canvas.style import color
 
@@ -73,11 +75,12 @@ def create_report(
     base_path=REPORTS,
     filename_replacement="",
     account: int | Account = MAIN_ACCOUNT_ID,
-    instance="prod",
+    instance=Instance.PRODUCTION,
     verbose=False,
 ) -> Path:
-    account = get_account(account, instance=instance)
+    instance = validate_instance_name(instance)
     validate_report_type(report_type, account=account)
+    account = get_account(account, instance=instance)
     if parameters:
         report = account.create_report(report_type, parameters=parameters)
     else:
@@ -140,9 +143,10 @@ def create_provisioning_report(
     term_name=CURRENT_YEAR_AND_TERM,
     base_path=REPORTS,
     account: int | Account = MAIN_ACCOUNT_ID,
-    instance="prod",
+    instance=Instance.PRODUCTION,
     verbose=False,
 ):
+    instance = validate_instance_name(instance)
     instance_display = f"_{instance}"
     filename_term = ""
     parameters = dict()
@@ -176,9 +180,10 @@ def create_course_storage_report(
     term_name=CURRENT_YEAR_AND_TERM,
     base_path=REPORTS,
     account: int | Account = MAIN_ACCOUNT_ID,
-    instance="prod",
+    instance=Instance.PRODUCTION,
     verbose=False,
 ):
+    instance = validate_instance_name(instance)
     instance_display = f"_{instance}"
     filename_term = ""
     parameters = dict()
@@ -202,9 +207,10 @@ def get_report(
     report_type: str,
     term_name=CURRENT_YEAR_AND_TERM,
     force=False,
-    instance="prod",
+    instance=Instance.PRODUCTION,
     verbose=False,
 ):
+    instance = validate_instance_name(instance)
     validate_report_type(report_type, by_filename=True)
     term_display = f"_{term_name}" if term_name else term_name
     instance_display = f"_{instance}"

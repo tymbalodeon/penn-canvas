@@ -17,7 +17,7 @@ from .helpers import (
     make_csv_paths,
     make_index_headers,
     make_skip_message,
-    print_instance,
+    validate_instance_name,
 )
 from .style import print_item
 
@@ -170,7 +170,7 @@ def check_and_increase_storage(
 
 
 def storage_main(increment_value, instance, force, force_report, verbose):
-    print_instance(instance)
+    instance = validate_instance_name(instance)
     report_path = get_report(
         "storage", CURRENT_YEAR_AND_TERM, force_report, instance, verbose
     )
