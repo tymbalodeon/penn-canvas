@@ -456,7 +456,7 @@ def check_and_activate_emails(
 
 
 def email_main(
-    instance: str | Instance,
+    instance_name: str | Instance,
     new: bool,
     force: bool,
     force_report: bool,
@@ -466,7 +466,7 @@ def email_main(
 ):
     if use_data_warehouse and not confirm_global_protect_enabled():
         raise Exit()
-    instance = validate_instance_name(instance, verbose=True)
+    instance = validate_instance_name(instance_name, verbose=True)
     instance_display = f"_{instance}"
     RESULT_PATH = COMMAND_PATH / f"{YEAR}_email_result{instance_display}.csv"
     PROCESSED_PATH = PROCESSED / f"{YEAR}_email_processed_users{instance_display}.csv"

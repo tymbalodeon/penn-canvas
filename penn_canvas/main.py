@@ -462,7 +462,7 @@ def course_shopping(
 
 @app.command()
 def email(
-    instance: str = Option(
+    instance_name: str = Option(
         Instance.PRODUCTION.value,
         "--instance",
         help="The Canvas instance to use.",
@@ -509,7 +509,13 @@ def email(
         Wharton, Perelman School of Medicine
     """
     email_main(
-        instance, new, force, force_report, clear_processed, use_data_warehouse, verbose
+        instance_name,
+        new,
+        force,
+        force_report,
+        clear_processed,
+        use_data_warehouse,
+        verbose,
     )
 
 
@@ -689,7 +695,7 @@ def storage(
     increment_value: int = Option(
         1000, "--increment", help="The amount in MB to increase a course's storage."
     ),
-    instance: str = Option(
+    instance_name: str = Option(
         Instance.PRODUCTION.value,
         "--instance",
         help="The Canvas instance to use.",
@@ -714,7 +720,7 @@ def storage(
     Increases the storage quota for each course that currently uses 79% or more
     of its current storage allotment.
     """
-    storage_main(increment_value, instance, force, force_report, verbose)
+    storage_main(increment_value, instance_name, force, force_report, verbose)
 
 
 @app.command()
@@ -741,13 +747,10 @@ def tool(
         "--enable",
         help="Enable the specified tool rather than generate a usage report.",
     ),
-    test: bool = Option(
-        False,
-        "--test",
-        help=(
-            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)."
-        ),
+    instance_name: str = Option(
+        Instance.PRODUCTION.value,
+        "--instance",
+        help="The Canvas instance to use.",
     ),
     verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
@@ -794,7 +797,7 @@ def tool(
         term,
         use_id,
         enable,
-        test,
+        instance_name,
         verbose,
         new,
         force,

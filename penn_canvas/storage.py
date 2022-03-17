@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from pandas import isna, read_csv
+from pandas.core.frame import DataFrame
 from typer import echo, progressbar
 
 from penn_canvas.report import get_report
@@ -10,6 +13,7 @@ from .helpers import (
     MONTH,
     TODAY_AS_Y_M_D,
     YEAR,
+    Instance,
     color,
     create_directory,
     get_course,
@@ -52,7 +56,7 @@ SUB_ACCOUNTS = [
 ]
 
 
-def process_report(report_path, start):
+def process_report(report_path: Path, start: int) -> tuple[DataFrame, int]:
     report = read_csv(report_path)
     report = report.loc[:, HEADERS[:4]]
     report = report[report["storage used in MB"] > 0].copy()
@@ -65,7 +69,7 @@ def process_report(report_path, start):
     return report, total
 
 
-def check_percent_storage(course, instance):
+def check_percent_storage(course: tuple, instance: Instance) -> tuple[str, bool, str]:
     canvas_id, sis_id = course[1:3]
     storage_used = course[-1]
     canvas_course = None
@@ -84,7 +88,9 @@ def check_percent_storage(course, instance):
     return canvas_course.name if canvas_course else "", needs_increase, message
 
 
-def increase_quota(sis_id, increment_value, instance, sis_prefix="BAN_"):
+def increase_quota(
+    sis_id: str, increment_value: int, instance: Instance, sis_prefix="BAN_"
+) -> tuple[int, str, int, int, str]:
     if CURRENT_YEAR_AND_TERM == "2022A":
         sis_prefix = "SRS_"
     if sis_id[:4] != sis_prefix:
@@ -110,7 +116,7 @@ def increase_quota(sis_id, increment_value, instance, sis_prefix="BAN_"):
     return canvas_account_id, sis_id, old_quota, new_quota, status
 
 
-def process_result():
+def process_result() -> tuple[int, int]:
     result = read_csv(RESULT_PATH, dtype=str)
     increased_count = len(result[result["error"] == ""].index)
     result = result.drop(result[result["error"] == "increase not required"].index)
@@ -129,7 +135,7 @@ def process_result():
     return increased_count, error_count
 
 
-def print_messages(total, increased, errors):
+def print_messages(total: int, increased: int, errors: int):
     color("SUMMARY:", "yellow", True)
     echo(f"- Processed {color(total, 'magenta')} courses.")
     echo(f"- Increased storage quota for {color(increased, 'yellow')} courses.")
@@ -139,7 +145,12 @@ def print_messages(total, increased, errors):
 
 
 def check_and_increase_storage(
-    report, course, total, increment_value, instance, verbose
+    report: DataFrame,
+    course: tuple,
+    total: int,
+    increment_value: int,
+    instance: Instance,
+    verbose: bool,
 ):
     index, canvas_id, sis_id = course[:3]
     course_name, needs_increase, message = check_percent_storage(course, instance)
@@ -169,8 +180,14 @@ def check_and_increase_storage(
         print_item(index, total, display_message)
 
 
-def storage_main(increment_value, instance, force, force_report, verbose):
-    instance = validate_instance_name(instance, verbose=True)
+def storage_main(
+    increment_value: int,
+    instance_name: str | Instance,
+    force: bool,
+    force_report: bool,
+    verbose: bool,
+):
+    instance = validate_instance_name(instance_name, verbose=True)
     report_path = get_report(
         "storage", CURRENT_YEAR_AND_TERM, force_report, instance, verbose
     )
