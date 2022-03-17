@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from loguru import logger
 from pandas import isna, read_csv
 from pandas.core.frame import DataFrame
 from typer import echo, progressbar
@@ -26,7 +27,10 @@ from .helpers import (
 from .style import print_item
 
 COMMAND_PATH = create_directory(BASE_PATH / "Storage")
-RESULT_PATH = COMMAND_PATH / f"{TODAY_AS_Y_M_D}_storage_result.csv"
+RESULTS = create_directory(COMMAND_PATH / "Results")
+LOGS = create_directory(COMMAND_PATH / "Logs")
+logger.add(LOGS / "course_storage_{time}.log", retention=10)
+RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result.csv"
 HEADERS = [
     "id",
     "sis id",
@@ -83,8 +87,9 @@ def check_percent_storage(course: tuple, instance: Instance) -> tuple[str, bool,
             percentage_used = float(storage_used) / canvas_course.storage_quota_mb
             if percentage_used >= 0.79:
                 needs_increase = True
-        except Exception:
+        except Exception as error_message:
             message = "course not found"
+            logger.error(f"course {sis_id} ({canvas_id}) not found: {error_message}")
     return canvas_course.name if canvas_course else "", needs_increase, message
 
 
@@ -100,17 +105,21 @@ def increase_quota(
         canvas_course = get_course(sis_id, use_sis_id=True, instance=instance)
         canvas_account_id = canvas_course.account_id
         status = ""
-    except Exception:
+    except Exception as error_message:
         canvas_course = None
         canvas_account_id = "ERROR"
         status = "course not found"
+        logger.error(f"course {sis_id} not found: {error_message}")
     if canvas_course:
         old_quota = canvas_course.storage_quota_mb
         new_quota = old_quota + increment_value
         try:
             canvas_course.update(course={"storage_quota_mb": new_quota})
-        except Exception:
+        except Exception as error_message:
             new_quota = "ERROR"
+            logger.error(
+                f"course {sis_id} failed to update storage quota: {error_message}"
+            )
     else:
         new_quota = old_quota = None
     return canvas_account_id, sis_id, old_quota, new_quota, status
