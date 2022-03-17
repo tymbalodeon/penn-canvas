@@ -17,6 +17,7 @@ from .helpers import (
     create_directory,
     drop_duplicate_errors,
     dynamic_to_csv,
+    format_instance_name,
     get_account,
     get_course,
     get_processed,
@@ -367,7 +368,7 @@ def tool_main(
     report_path = get_report("courses", term, force_report, instance, verbose)
     year_display = f"{YEAR}_" if enable else ""
     tool_display = tool.replace(" ", "_") if use_id else tool
-    instance_display = f"_{instance}"
+    instance_display = format_instance_name(instance)
     result_path = COMMAND_PATH / f"{year_display}{tool_display}{instance_display}.csv"
     start = get_start_index(force, result_path)
     processed_stem = (

@@ -427,9 +427,13 @@ def validate_instance_name(instance_name, verbose=False):
     return instance
 
 
-def print_instance(instance):
+def print_instance(instance: Instance):
     instance_name = instance.name.replace("_", " ")
     echo(f"INSTANCE: {style(instance_name, bold=True)} Canvas")
+
+
+def format_instance_name(instance: Instance) -> str:
+    return f"_{instance.name}"
 
 
 def get_canvas(instance=Instance.PRODUCTION, verbose=True, override_key=None) -> Canvas:

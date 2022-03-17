@@ -25,6 +25,7 @@ from .helpers import (
     create_directory,
     drop_duplicate_errors,
     dynamic_to_csv,
+    format_instance_name,
     get_account,
     get_data_warehouse_cursor,
     get_processed,
@@ -467,16 +468,16 @@ def email_main(
     if use_data_warehouse and not confirm_global_protect_enabled():
         raise Exit()
     instance = validate_instance_name(instance_name, verbose=True)
-    instance_display = f"_{instance}"
+    instance_display = format_instance_name(instance)
     RESULT_PATH = COMMAND_PATH / f"{YEAR}_email_result{instance_display}.csv"
     PROCESSED_PATH = PROCESSED / f"{YEAR}_email_processed_users{instance_display}.csv"
     PROCESSED_ERRORS_PATH = (
         PROCESSED / f"{YEAR}_email_processed_errors{instance_display}.csv"
     )
-    handle_clear_processed(clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH])
     report_path = get_report(
-        "storage", CURRENT_YEAR_AND_TERM, force_report, instance, verbose
+        "users", CURRENT_YEAR_AND_TERM, force_report, instance, verbose
     )
+    handle_clear_processed(clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH])
     PROCESSED_USERS = get_processed(PROCESSED_PATH, HEADERS)
     PROCESSED_ERRORS = get_processed(PROCESSED_ERRORS_PATH, HEADERS)
     start = get_start_index(force, RESULT_PATH)

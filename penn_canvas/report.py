@@ -14,6 +14,7 @@ from penn_canvas.helpers import (
     REPORTS,
     Instance,
     collect,
+    format_instance_name,
     get_account,
     validate_instance_name,
 )
@@ -147,7 +148,7 @@ def create_provisioning_report(
     verbose=False,
 ) -> Path:
     instance = validate_instance_name(instance)
-    instance_display = f"_{instance}"
+    instance_display = format_instance_name(instance)
     filename_term = ""
     parameters = dict()
     if term_name:
@@ -213,7 +214,7 @@ def get_report(
     instance = validate_instance_name(instance)
     validate_report_type(report_type, by_filename=True)
     term_display = f"_{term_name}" if term_name else term_name
-    instance_display = f"_{instance}"
+    instance_display = format_instance_name(instance)
     if report_type == "storage":
         report_type = "course_storage"
     report_path = REPORTS / f"{report_type}{term_display}{instance_display}.csv"
