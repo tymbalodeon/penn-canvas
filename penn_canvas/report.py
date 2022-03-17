@@ -89,7 +89,7 @@ def create_report(
     status = report.status
     echo(f') Generating "{report_type}"...')
     while status in {"created", "running"}:
-        echo(f"\t* {report.status}...")
+        echo("\t* Running...")
         sleep(5)
         report = account.get_report(report_type, report.id)
         status = report.status

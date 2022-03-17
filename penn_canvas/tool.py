@@ -333,7 +333,7 @@ def check_tool_usage(
     if isna(course_id):
         report.at[index, "course_id"] = f"{short_name} ({canvas_account_id})"
     report.at[index, "tool status"] = tool_status
-    report.loc[index].to_frame().t.to_csv(result_path, mode="a", header=False)
+    report.loc[index].to_frame().T.to_csv(result_path, mode="a", header=False)
     if enable and tool_status in {"already enabled", "enabled", "unsupported"}:
         with open(processed_path, "a+", newline="") as processed_file:
             writer(processed_file).writerow([canvas_course_id])
