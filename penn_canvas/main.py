@@ -504,26 +504,9 @@ def email(
     Checks the email status of users and activates any unconfirmed email
     addresses for users with at least one enrollment in a "supported" school.
 
-    INPUT: Canvas Provisioning (Users) report
-
-    OUTPUT: A csv file listing users who either have no email accounts, or who
-    have unconfirmed accounts but have no enrollments in a "supported" school
-    (and optionally listing users whose accounts were successfully activated)
-
     "Supported" schools are all schools EXCEPT:
 
         Wharton, Perelman School of Medicine
-
-    To download a Canvas Provisioning report for Users, login to
-    `https://canvas.upenn.edu/` (admin priveledges are required) and click
-    'Admin > Upenn > Settings > Reports', then click 'Configure...' to the right
-    of 'Provisioning.' Select the desired term, check "Users CSV" and click 'Run
-    Report.' When notified that the report has finished generating, download the
-    file (click the down arrow icon) and place it in:
-    $HOME/penn-canvas/email/reports/. Once the file has been added to the
-    directory, run this command.
-
-    NOTE: Input filename must include the current date in order to be accepted.
     """
     email_main(
         instance, new, force, force_report, clear_processed, use_data_warehouse, verbose
@@ -801,24 +784,6 @@ def tool(
     """
     Returns a list of courses with TOOL enabled or enables TOOL for a list of
     courses if using '--enable'.
-
-    INPUT: Canvas Provisioning (Courses) report(s)
-
-    OUTPUT: A csv file listing courses with TOOL enabled
-
-    To download a Canvas Provisioning report for Courses, login to
-    `https://canvas.upenn.edu/` (admin priveledges are required) and click
-    'Admin > Upenn > Settings > Reports', then click 'Configure...' to the right
-    of 'Provisioning.' Select the desired term, check "Courses CSV" and click 'Run
-    Report.' When notified that the report has finished generating, download the
-    file (click the down arrow icon) and place it in:
-    $HOME/penn-canvas/tool/reports/. Once the file has been added to the
-    directory, run this command.
-
-    NOTE: This command accepts multiple input files to allow for checking
-    multiple terms at once. Any file whose name contains the current date will
-    be included in the task. The results will always be combined into a single
-    output file.
     """
     tool_main(
         tool,
