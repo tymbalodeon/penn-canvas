@@ -1,4 +1,5 @@
 from csv import writer
+from pathlib import Path
 
 from pandas import concat, read_csv
 from pandas.core.frame import DataFrame
@@ -7,6 +8,7 @@ from typer import Exit, echo
 from .helpers import (
     TODAY,
     YEAR,
+    Instance,
     color,
     find_input,
     get_canvas,
@@ -16,7 +18,7 @@ from .helpers import (
     get_sub_accounts,
     make_csv_paths,
     make_index_headers,
-    make_skip_message,
+    print_skip_message,
     process_input,
     toggle_progress_bar,
 )
@@ -25,7 +27,7 @@ from .style import print_item
 COMMAND = "Course Shopping"
 INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
 PATHS = get_command_paths(COMMAND, include_processed_directory=True)
-REPORTS = ""
+REPORTS = Path.home()
 RESULTS = PATHS["results"]
 PROCESSED = PATHS["processed"]
 HEADERS = ["canvas_course_id", "course_id", "canvas_account_id", "status"]
@@ -319,10 +321,8 @@ def course_shopping_main(test, disable, force, verbose, new):
         PROCESSED
         / f"{YEAR}_course_shopping_processed_errors{'_test' if test else ''}.csv"
     )
-    PROCESSED_COURSES = get_processed(PROCESSED, PROCESSED_PATH, PROCESSED_HEADERS)
-    PROCESSED_ERRORS = get_processed(
-        PROCESSED, PROCESSED_ERRORS_PATH, PROCESSED_HEADERS
-    )
+    PROCESSED_COURSES = get_processed(PROCESSED_PATH, PROCESSED_HEADERS)
+    PROCESSED_ERRORS = get_processed(PROCESSED_ERRORS_PATH, PROCESSED_HEADERS)
     TOTAL = ""
     report = DataFrame()
     result_path_string = (
@@ -332,7 +332,7 @@ def course_shopping_main(test, disable, force, verbose, new):
     RESULT_PATH = RESULTS / result_path_string
     if not disable:
         reports, missing_file_message = find_input(INPUT_FILE_NAME, REPORTS)
-        START = get_start_index(force, RESULT_PATH, RESULTS)
+        START = get_start_index(force, RESULT_PATH)
         cleanup_data_args = (PROCESSED_COURSES, PROCESSED_ERRORS, new)
         report, TOTAL = process_input(
             reports,
@@ -345,12 +345,11 @@ def course_shopping_main(test, disable, force, verbose, new):
             START,
         )
         make_csv_paths(
-            RESULTS,
             RESULT_PATH,
             make_index_headers(HEADERS),
         )
-        make_skip_message(START, "course")
-    INSTANCE = "test" if test else "prod"
+        print_skip_message(START, "course")
+    INSTANCE = Instance.TEST if test else Instance.PRODUCTION
     CANVAS = get_canvas(INSTANCE)
     IGNORED_PATH = REPORTS / "ignored_courses.csv"
     WHARTON_IGNORED_COURSES_PATH = REPORTS / "wharton_ignored_courses.csv"

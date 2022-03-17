@@ -2,11 +2,13 @@ from datetime import datetime
 from pathlib import Path
 
 from pandas import concat, read_csv
+from pandas.core.frame import DataFrame
 from typer import echo
 
 from penn_canvas.browser import browser_main
 
 from .helpers import (
+    Instance,
     color,
     confirm_global_protect_enabled,
     find_input,
@@ -16,7 +18,7 @@ from .helpers import (
     get_start_index,
     make_csv_paths,
     make_index_headers,
-    make_skip_message,
+    print_skip_message,
     process_input,
     toggle_progress_bar,
 )
@@ -241,9 +243,11 @@ def process_result(result_path):
     result = read_csv(result_path)
     penn_id = "penn_id" in str(result_path)
     if penn_id:
-        penn_ids = result[result["Penn ID"].astype(str).str.isnumeric()]
+        penn_ids = DataFrame(result[result["Penn ID"].astype(str).str.isnumeric()])
         not_found = result[result["Penn ID"] == "not found"]
-        error = result[result["Penn ID"].astype(str).str.contains("ERROR", regex=False)]
+        error = DataFrame(
+            result[result["Penn ID"].astype(str).str.contains("ERROR", regex=False)]
+        )
         result = concat([error, not_found, penn_ids])
         counts = (
             len(penn_ids.index),
@@ -537,7 +541,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 else:
                     display_color = "green" if status != "not found" else "yellow"
             else:
-                display_color = COLOR_MAP.get(status)
+                display_color = COLOR_MAP.get(status, "")
             echo(
                 f"- ({index + 1}/{TOTAL})"
                 f" {color(full_name, 'yellow')}{':' if canvas_user else ''}"
@@ -579,7 +583,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
         RESULT_STRING = f"{input_file.stem}_RESULT.csv"
         RESULT_PATH = RESULTS / RESULT_STRING
         START = get_start_index(force, RESULT_PATH)
-        INSTANCE = "open_test" if open_test else "open"
+        INSTANCE = Instance.OPEN_TEST if open_test else Instance.OPEN
         if action == "enroll":
             action_headers = HEADERS[:]
             action_headers.insert(2, "Type")
@@ -625,8 +629,8 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 if action == "enroll":
                     users["Error"] = ""
                     RESULT_HEADERS = RESULT_HEADERS + ["Error"]
-            make_csv_paths(RESULTS, RESULT_PATH, make_index_headers(RESULT_HEADERS))
-            make_skip_message(START, "user")
+            make_csv_paths(RESULT_PATH, make_index_headers(RESULT_HEADERS))
+            print_skip_message(START, "user")
             CANVAS = get_canvas(INSTANCE) if action != "penn_id" else None
             echo(
                 f") {display_action} {len(users)} "

@@ -218,14 +218,18 @@ def get_start_index(force: bool, result_path: Path) -> int:
         return index
 
 
-def make_skip_message(start: int, item: str):
+def print_skip_message(start: int, item: str, current_report=False):
     if start == 0:
         return
     elif start == 1:
         item = f"{item.upper()}"
     else:
         item = f"{item.upper()}S"
-    message = color(f"SKIPPING {start:,} previously processed {item}...", "yellow")
+    current_report_message = " from the current report" if current_report else ""
+    message = color(
+        f"SKIPPING {start:,} previously processed {item}{current_report_message}...",
+        "yellow",
+    )
     echo(f") {message}")
 
 

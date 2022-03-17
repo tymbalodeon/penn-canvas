@@ -33,7 +33,7 @@ from .helpers import (
     handle_clear_processed,
     make_csv_paths,
     make_index_headers,
-    make_skip_message,
+    print_skip_message,
     validate_instance_name,
 )
 
@@ -93,13 +93,7 @@ def process_report(
         report = report[~report["canvas_user_id"].isin(processed_errors)]
         already_processed_count = already_processed_count + len(processed_errors)
     if already_processed_count:
-        message = color(
-            f"SKIPPING {already_processed_count:,} previously processed"
-            f" {'USER' if already_processed_count == 1 else 'USERS'} from the current"
-            " report...",
-            "yellow",
-        )
-        echo(f") {message}")
+        print_skip_message(already_processed_count, "user", current_report=True)
     return report, len(report.index)
 
 
@@ -490,7 +484,7 @@ def email_main(
     )
     LOG_PATH = LOGS / LOG_STEM
     make_csv_paths(LOG_PATH, LOG_HEADERS)
-    make_skip_message(start, "user")
+    print_skip_message(start, "user")
     main_account = get_account(instance=instance)
     sub_accounts = [
         account.id for account in main_account.get_subaccounts(recursive=True)

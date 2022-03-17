@@ -3,6 +3,7 @@ from typer import echo
 
 from .helpers import (
     YEAR,
+    Instance,
     color,
     find_input,
     get_canvas,
@@ -10,7 +11,7 @@ from .helpers import (
     get_start_index,
     make_csv_paths,
     make_index_headers,
-    make_skip_message,
+    print_skip_message,
     process_input,
     toggle_progress_bar,
 )
@@ -250,7 +251,7 @@ def count_quizzes_main(new_quizzes, test, force, verbose):
     RESULT_PATH = (
         RESULTS / f"{YEAR}_{'new_' if new_quizzes else ''}quiz_usage_report.csv"
     )
-    START = get_start_index(force, RESULT_PATH, RESULTS)
+    START = get_start_index(force, RESULT_PATH)
     report, TOTAL = process_input(
         reports,
         INPUT_FILE_NAME,
@@ -262,12 +263,11 @@ def count_quizzes_main(new_quizzes, test, force, verbose):
     )
     TERM_ID = report.at[START, "term_id"]
     make_csv_paths(
-        RESULTS,
         RESULT_PATH,
         make_index_headers(NEW_QUIZ_HEADERS if new_quizzes else HEADERS),
     )
-    make_skip_message(START, "course")
-    INSTANCE = "test" if test else "prod"
+    print_skip_message(START, "course")
+    INSTANCE = Instance.TEST if test else Instance.PRODUCTION
     CANVAS = get_canvas(INSTANCE)
     echo(") Processing courses...")
     if new_quizzes:

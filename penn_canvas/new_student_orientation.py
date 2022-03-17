@@ -9,6 +9,7 @@ from typer import Abort, Exit, echo
 from .helpers import (
     TODAY_AS_Y_M_D,
     YEAR,
+    Instance,
     color,
     get_canvas,
     get_command_paths,
@@ -17,13 +18,13 @@ from .helpers import (
     get_start_index,
     handle_clear_processed,
     make_csv_paths,
-    make_skip_message,
+    print_skip_message,
     toggle_progress_bar,
 )
 
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
 PATHS = get_command_paths("New Student Orientation", include_processed_directory=True)
-INPUT = ""
+INPUT = PATHS["input"]
 RESULTS = PATHS["results"]
 PROCESSED = PATHS["processed"]
 FINAL_LIST_PATH = RESULTS / f"{YEAR}_new_student_orientation_final_list.csv"
@@ -39,7 +40,6 @@ HEADERS = [
 
 def find_new_student_orientation_file():
     echo(") Finding New Student Orientation file...")
-
     if not INPUT.exists():
         Path.mkdir(INPUT, parents=True)
         error = color(
@@ -142,7 +142,7 @@ def cleanup_data(input_file, start=0):
     data.columns = data.columns.str.lower()
     data["user (pennkey)"] = data["user (pennkey)"].str.lower()
     data = data.astype("string", copy=False, errors="ignore")
-    columns = list(data)
+    columns = data.tolist()
     data[columns] = data[columns].apply(lambda column: column.str.strip())
     TOTAL = len(data.index)
     data = data.loc[start:TOTAL, :]
@@ -428,10 +428,10 @@ def new_student_orientation_main(test, verbose, force, clear_processed):
     START = get_start_index(force, RESULT_PATH)
     DATA, TOTAL = cleanup_data(DATA, START)
     handle_clear_processed(clear_processed, PROCESSED_PATH)
-    PROCESSED_USERS = get_processed(PROCESSED, PROCESSED_PATH)
-    make_csv_paths(RESULTS, RESULT_PATH, HEADERS)
-    make_skip_message(START, "user")
-    INSTANCE = "test" if test else "prod"
+    PROCESSED_USERS = get_processed(PROCESSED_PATH)
+    make_csv_paths(RESULT_PATH, HEADERS)
+    print_skip_message(START, "user")
+    INSTANCE = Instance.TEST if test else Instance.PRODUCTION
     CANVAS = get_canvas(INSTANCE)
 
     echo(") Processing users...")

@@ -7,6 +7,7 @@ from typer import Exit, echo
 from .helpers import (
     MAIN_ACCOUNT_ID,
     YEAR,
+    Instance,
     color,
     find_input,
     get_canvas,
@@ -46,7 +47,7 @@ def cleanup_data(data):
 def bulk_enroll_main(
     user, sub_account, terms, input_file, dry_run, test, check_errors, clear_processed
 ):
-    INSTANCE = "test" if test else "prod"
+    INSTANCE = Instance.TEST if test else Instance.PRODUCTION
     CANVAS = get_canvas(INSTANCE)
     try:
         USER_NAME = CANVAS.get_user(user).name
@@ -73,10 +74,8 @@ def bulk_enroll_main(
     handle_clear_processed(
         clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH], item_plural="courses"
     )
-    PROCESSED_COURSES = get_processed(PROCESSED, PROCESSED_PATH, PROCESSED_HEADERS)
-    PROCESSED_ERRORS = get_processed(
-        PROCESSED, PROCESSED_ERRORS_PATH, PROCESSED_HEADERS
-    )
+    PROCESSED_COURSES = get_processed(PROCESSED_PATH, PROCESSED_HEADERS)
+    PROCESSED_ERRORS = get_processed(PROCESSED_ERRORS_PATH, PROCESSED_HEADERS)
     if input_file:
         INPUT_FILES, MISSING_FILE_MESSAGE = find_input(
             INPUT_FILE_NAME, INPUT, date=False, bulk_enroll=True
@@ -138,8 +137,8 @@ def bulk_enroll_main(
         ERROR_FILE = (
             RESULTS / f"{SUB_ACCOUNT}_bulk_enrollment_{USER_NAME}_{YEAR}_ERRORS.csv"
         )
-        make_csv_paths(RESULTS, ERROR_FILE, HEADERS)
-        make_csv_paths(LOGS, LOG_PATH, LOG_HEADERS)
+        make_csv_paths(ERROR_FILE, HEADERS)
+        make_csv_paths(LOG_PATH, LOG_HEADERS)
         echo(f") Enrolling {USER_NAME} in {SUB_ACCOUNT} courses...")
         TOTAL_COURSES = len(COURSES)
         for index, course in enumerate(COURSES):

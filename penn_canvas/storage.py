@@ -20,7 +20,7 @@ from .helpers import (
     get_start_index,
     make_csv_paths,
     make_index_headers,
-    make_skip_message,
+    print_skip_message,
     validate_instance_name,
 )
 from .style import print_item
@@ -194,7 +194,7 @@ def storage_main(
     start = get_start_index(force, RESULT_PATH)
     report, total = process_report(report_path, start)
     make_csv_paths(RESULT_PATH, make_index_headers(HEADERS))
-    make_skip_message(start, "course")
+    print_skip_message(start, "course")
     echo(") Processing courses...")
     if verbose:
         for course in report.itertuples():

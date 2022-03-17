@@ -25,7 +25,7 @@ from .helpers import (
     handle_clear_processed,
     make_csv_paths,
     make_index_headers,
-    make_skip_message,
+    print_skip_message,
     validate_instance_name,
 )
 
@@ -111,13 +111,7 @@ def process_report(
             report = report[~report["canvas_course_id"].isin(processed_errors)]
             already_processed_count = already_processed_count + len(processed_errors)
         if already_processed_count:
-            message = color(
-                f"SKIPPING {already_processed_count:,} previously processed"
-                f" {'COURSE' if already_processed_count == 1 else 'COURSES'} from the"
-                " current report...",
-                "yellow",
-            )
-            echo(f") {message}")
+            print_skip_message(already_processed_count, "course", current_report=True)
         total = len(report.index)
         report = report.loc[start:total, :]
     else:
@@ -426,7 +420,7 @@ def tool_main(
                 color("FINISHED", "yellow", True)
                 raise Exit()
     make_csv_paths(result_path, make_index_headers(HEADERS))
-    make_skip_message(start, "course")
+    print_skip_message(start, "course")
     tool_display = color(tool, "blue")
     STYLED_TERMS = color(f"{', '.join(terms)}", "yellow")
     if enable:
