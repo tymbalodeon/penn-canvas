@@ -2,8 +2,12 @@ from csv import writer
 from datetime import datetime
 from os import remove
 from pathlib import Path
+from typing import NamedTuple
 
+from canvasapi.communication_channel import CommunicationChannel
+from canvasapi.user import User
 from pandas import concat, read_csv
+from pandas.core.frame import DataFrame
 from typer import Exit, echo, progressbar
 
 from penn_canvas.report import get_report
@@ -14,6 +18,7 @@ from .helpers import (
     CURRENT_YEAR_AND_TERM,
     TODAY_AS_Y_M_D,
     YEAR,
+    Instance,
     add_headers_to_empty_files,
     color,
     confirm_global_protect_enabled,
@@ -69,14 +74,22 @@ PRINT_COLOR_MAPS = {
 }
 
 
-def process_report(data, processed_users, processed_errors, new):
-    data.drop_duplicates(subset=["canvas_user_id"], inplace=True)
-    data.sort_values("canvas_user_id", ascending=False, inplace=True, ignore_index=True)
-    data = data.astype("string", copy=False, errors="ignore")
-    data = data[~data["canvas_user_id"].isin(processed_users)]
+def process_report(
+    report_path: Path,
+    processed_users: list[str],
+    processed_errors: list[str],
+    new: bool,
+) -> DataFrame:
+    report = read_csv(report_path)
+    report.drop_duplicates(subset=["canvas_user_id"], inplace=True)
+    report.sort_values(
+        "canvas_user_id", ascending=False, inplace=True, ignore_index=True
+    )
+    report = report.astype("string", copy=False, errors="ignore")
+    report = report[~report["canvas_user_id"].isin(processed_users)]
     already_processed_count = len(processed_users)
     if new:
-        data = data[~data["canvas_user_id"].isin(processed_errors)]
+        report = report[~report["canvas_user_id"].isin(processed_errors)]
         already_processed_count = already_processed_count + len(processed_errors)
     if already_processed_count:
         message = color(
@@ -85,10 +98,10 @@ def process_report(data, processed_users, processed_errors, new):
             "yellow",
         )
         echo(f") {message}")
-    return data
+    return report
 
 
-def get_user_emails(user):
+def get_user_emails(user: User) -> list[CommunicationChannel]:
     return [
         channel
         for channel in user.get_communication_channels()
@@ -96,11 +109,13 @@ def get_user_emails(user):
     ]
 
 
-def get_email_status(email):
+def get_email_status(email: CommunicationChannel) -> bool:
     return email.workflow_state == "active"
 
 
-def is_already_active(user, instance):
+def is_already_active(
+    user: NamedTuple, instance: str | Instance
+) -> tuple[str, User | None, list[CommunicationChannel] | None]:
     user_id = user[1]
     canvas_user = None
     emails = None
@@ -126,25 +141,24 @@ def is_already_active(user, instance):
         return "not found", canvas_user, emails
 
 
-def check_schools(canvas_user, sub_accounts):
-    user_enrollments = canvas_user.get_courses()
-
-    def get_account_id(course):
-        try:
-            return course.account_id
-        except Exception:
-            return ""
-
-    account_ids = [get_account_id(course) for course in user_enrollments]
+def check_schools(
+    canvas_user: User, sub_accounts: list[int]
+) -> tuple[bool, int | None]:
+    account_ids = [course.account_id for course in canvas_user.get_courses()]
     fixable_id = next(
         (account for account in account_ids if account in sub_accounts), None
     )
-    return bool(fixable_id), account_ids[0] if len(account_ids) else None
+    return (bool(fixable_id), account_ids[0]) if len(account_ids) else (False, None)
 
 
 def activate_user_email(
-    canvas_user_id, login_id, full_name, canvas_user, emails, log_path
-):
+    canvas_user_id: str,
+    login_id: str,
+    full_name: str,
+    canvas_user: User,
+    emails: list[CommunicationChannel],
+    log_path: Path,
+) -> str:
     for email in emails:
         new_add = isinstance(email, str)
         user_info = [
@@ -164,14 +178,13 @@ def activate_user_email(
             },
             skip_confirmation=True,
         )
-    emails = iter(get_user_emails(canvas_user))
-    email = next(emails, None)
-    is_active = get_email_status(email)
-    while not is_active:
-        next_email = next(emails, None)
+    email_iterator = iter(get_user_emails(canvas_user))
+    inactive = True
+    while inactive:
+        next_email = next(email_iterator, None)
         if not next_email:
             return "failed to activate"
-        is_active = get_email_status(next_email)
+        inactive = get_email_status(next_email)
     log = read_csv(log_path)
     log.drop(index=log.index[-1:], inplace=True)
     log.to_csv(log_path, index=False)
@@ -330,8 +343,13 @@ def print_messages(
 
 
 def query_data_warehouse(
-    login_id, canvas_user_id, full_name, canvas_user, log_path, table
-):
+    login_id: str,
+    canvas_user_id: str,
+    full_name: str,
+    canvas_user: User,
+    log_path: Path,
+    table: str,
+) -> str | None:
     cursor = get_data_warehouse_cursor()
     cursor.execute(
         f"SELECT penn_id, email_address FROM {table} WHERE pennkey = :pennkey",
@@ -347,37 +365,40 @@ def query_data_warehouse(
                 [email.strip()],
                 log_path,
             )
+    return None
 
 
 def check_and_activate_emails(
-    report,
-    total,
-    user,
-    sub_accounts,
-    log_path,
-    use_data_warehouse,
-    result_path,
-    processed_path,
-    processed_errors,
-    processed_errors_path,
-    instance,
-    verbose,
+    report: DataFrame,
+    total: int,
+    user: NamedTuple,
+    sub_accounts: list[int],
+    log_path: Path,
+    use_data_warehouse: bool,
+    result_path: Path,
+    processed_path: Path,
+    processed_errors: list[str],
+    processed_errors_path: Path,
+    instance: str | Instance,
+    verbose: bool,
 ):
     index, canvas_user_id, login_id, full_name = user
     supported = None
     account = None
     status, canvas_user, emails = is_already_active(user, instance)
-    if status == "error" or status == "unconfirmed" or status == "not found":
+    if not canvas_user:
+        supported = status
+    elif status in {"error", "unconfirmed", "not found"}:
         is_supported, account = check_schools(canvas_user, sub_accounts)
         if is_supported:
             supported = "Y"
             canvas_user_id = user[1]
-            if status == "unconfirmed":
+            if emails and status == "unconfirmed":
                 status = activate_user_email(
                     canvas_user_id, login_id, full_name, canvas_user, emails, log_path
                 )
-            elif status == "not found" and use_data_warehouse:
-                status = query_data_warehouse(
+            elif use_data_warehouse:
+                query_status = query_data_warehouse(
                     login_id,
                     canvas_user_id,
                     full_name,
@@ -385,8 +406,9 @@ def check_and_activate_emails(
                     log_path,
                     "employee_general",
                 )
+                status = query_status if query_status else status
                 if not status == "activated":
-                    status = query_data_warehouse(
+                    query_status = query_data_warehouse(
                         login_id,
                         canvas_user_id,
                         full_name,
@@ -394,10 +416,9 @@ def check_and_activate_emails(
                         log_path,
                         "person_all_v",
                     )
+                    status = query_status if query_status else status
         else:
             supported = "N"
-    elif status == "user not found":
-        supported = status = "user not found"
     report.at[index, ["email status", "supported", "subaccount"]] = [
         status,
         supported,
@@ -435,7 +456,13 @@ def check_and_activate_emails(
 
 
 def email_main(
-    instance, new, force, force_report, clear_processed, use_data_warehouse, verbose
+    instance: str | Instance,
+    new: bool,
+    force: bool,
+    force_report: bool,
+    clear_processed: bool,
+    use_data_warehouse: bool,
+    verbose: bool,
 ):
     if use_data_warehouse and not confirm_global_protect_enabled():
         raise Exit()

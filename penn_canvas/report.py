@@ -145,7 +145,7 @@ def create_provisioning_report(
     account: int | Account = MAIN_ACCOUNT_ID,
     instance=Instance.PRODUCTION,
     verbose=False,
-):
+) -> Path:
     instance = validate_instance_name(instance)
     instance_display = f"_{instance}"
     filename_term = ""
@@ -182,7 +182,7 @@ def create_course_storage_report(
     account: int | Account = MAIN_ACCOUNT_ID,
     instance=Instance.PRODUCTION,
     verbose=False,
-):
+) -> Path:
     instance = validate_instance_name(instance)
     instance_display = f"_{instance}"
     filename_term = ""
@@ -209,7 +209,7 @@ def get_report(
     force=False,
     instance=Instance.PRODUCTION,
     verbose=False,
-):
+) -> Path:
     instance = validate_instance_name(instance)
     validate_report_type(report_type, by_filename=True)
     term_display = f"_{term_name}" if term_name else term_name
@@ -217,10 +217,9 @@ def get_report(
     if report_type == "storage":
         report_type = "course_storage"
     report_path = REPORTS / f"{report_type}{term_display}{instance_display}.csv"
-    report = None
     if force or not report_path.is_file():
         if report_type == "provisioning":
-            report = create_provisioning_report(
+            report_path = create_provisioning_report(
                 courses=True,
                 users=True,
                 term_name=term_name,
@@ -228,22 +227,20 @@ def get_report(
                 verbose=verbose,
             )
         elif report_type == "courses":
-            report = create_provisioning_report(
+            report_path = create_provisioning_report(
                 courses=True, term_name=term_name, instance=instance, verbose=verbose
             )
         elif report_type == "users":
-            report = create_provisioning_report(
+            report_path = create_provisioning_report(
                 users=True, term_name=term_name, instance=instance, verbose=verbose
             )
         elif "storage" in report_type:
-            report = create_course_storage_report(
+            report_path = create_course_storage_report(
                 term_name=term_name, instance=instance, verbose=verbose
             )
-    else:
-        report = report_path
     if verbose:
-        echo(f'REPORT: {color(report, "blue")}')
-    return report
+        echo(f'REPORT: {color(report_path, "blue")}')
+    return report_path
 
 
 def report_main(report_type, term_name, force, instance, verbose):

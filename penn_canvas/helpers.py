@@ -391,7 +391,7 @@ def process_input(
         return data
 
 
-def get_processed(processed_path, columns: str | list[str] = "pennkey"):
+def get_processed(processed_path, columns: str | list[str] = "pennkey") -> list[str]:
     if isinstance(columns, str):
         columns = [columns]
     if processed_path.is_file():
