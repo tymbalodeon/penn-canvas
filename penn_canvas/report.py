@@ -143,7 +143,8 @@ def create_provisioning_report(
     instance="prod",
     verbose=False,
 ):
-    filename_term = filename_replacement = ""
+    instance_display = f"_{instance}"
+    filename_term = ""
     parameters = dict()
     if term_name:
         parameters["enrollment_term_id"] = get_enrollment_term_id(term_name)
@@ -164,7 +165,7 @@ def create_provisioning_report(
         "provisioning_csv",
         parameters,
         base_path,
-        filename_replacement,
+        f"{filename_replacement}{instance_display}",
         account,
         instance,
         verbose,
@@ -178,13 +179,14 @@ def create_course_storage_report(
     instance="prod",
     verbose=False,
 ):
-    filename_term = filename_replacement = ""
+    instance_display = f"_{instance}"
+    filename_term = ""
     parameters = dict()
     if term_name:
         parameters["enrollment_term_id"] = get_enrollment_term_id(term_name)
         filename_term = term_name
     filename_term = f"_{filename_term}" if filename_term else ""
-    filename_replacement = f"course_storage{filename_term}"
+    filename_replacement = f"course_storage{filename_term}{instance_display}"
     return create_report(
         "course_storage_csv",
         parameters,
