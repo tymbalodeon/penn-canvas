@@ -139,9 +139,7 @@ def process_result(
         & (result["tool status"] != "unsupported")
     ]
     if enable:
-        BASE = COMMAND_PATH / "Enabled" / YEAR
-        if not BASE.exists():
-            Path.mkdir(BASE, parents=True)
+        BASE = create_directory(COMMAND_PATH / "Enabled" / YEAR)
         enabled_path = BASE / f"{result_path.stem}_ENABLED.csv"
         enabled = enabled[["canvas course id", "course id"]]
         dynamic_to_csv(enabled_path, enabled, enabled_path.exists())
@@ -166,9 +164,7 @@ def process_result(
                 ["canvas course id", "course id", "error"],
             )
     else:
-        BASE = COMMAND_PATH / "Reports"
-        if not BASE.exists():
-            Path.mkdir(BASE)
+        BASE = create_directory(COMMAND_PATH / "Reports")
         ENABLED_STEM = (
             f"{'_'.join(terms).replace('/', '')}_{result_path.stem}_REPORT_ENABLED.csv"
         )
@@ -364,7 +360,7 @@ def tool_main(
         tool = get_tool(tool)
     report_path = get_report("courses", term, force_report, instance, verbose)
     year_display = f"{YEAR}_" if enable else ""
-    tool_display = tool.replace(" ", "_") if use_id else tool
+    tool_display = tool if use_id else tool.replace(" ", "_")
     instance_display = format_instance_name(instance)
     result_path = COMMAND_PATH / f"{year_display}{tool_display}{instance_display}.csv"
     start = get_start_index(force, result_path)
