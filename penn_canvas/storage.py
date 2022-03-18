@@ -74,12 +74,12 @@ def process_report(report_path: Path, start: int) -> tuple[DataFrame, int]:
 
 
 def check_percent_storage(course: tuple, instance: Instance) -> tuple[str, bool, str]:
-    canvas_id, sis_id = course[1:3]
-    storage_used = course[-1]
+    canvas_id, sis_id, _, storage_used = course[1:]
     canvas_course = None
     needs_increase = False
     message = ""
     if isna(sis_id) or not sis_id:
+        logger.warning(f"course {canvas_id} missing sis id")
         message = "missing sis id"
     else:
         try:

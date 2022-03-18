@@ -478,8 +478,11 @@ def get_canvas(instance=Instance.PRODUCTION, verbose=True, override_key=None) ->
         if verbose:
             print_instance(instance)
         return canvas
-    except Exception:
-        raise SystemExit("ERROR: Invalid access token")
+    except Exception as error:
+        logger.error(error)
+        logger.error(f"URL: {url}")
+        logger.error(f"KEY: {key}")
+        raise SystemExit(error)
 
 
 def pprint(thing: object):
