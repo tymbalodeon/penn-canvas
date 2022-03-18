@@ -95,7 +95,7 @@ def check_percent_storage(course: tuple, instance: Instance) -> tuple[str, bool,
 
 def increase_quota(
     sis_id: str, increment_value: int, instance: Instance, sis_prefix="BAN_"
-) -> tuple[int, str, int, int, str]:
+) -> tuple[str, str, str | None, str | None, str]:
     if CURRENT_YEAR_AND_TERM == "2022A":
         sis_prefix = "SRS_"
     if sis_id[:4] != sis_prefix:
@@ -104,7 +104,7 @@ def increase_quota(
         sis_id = f"{sis_prefix}{sis_id[:11]}-{middle[:3]}-{middle[3:]} {sis_id[-5:]}"
     try:
         canvas_course = get_course(sis_id, use_sis_id=True, instance=instance)
-        canvas_account_id = canvas_course.account_id
+        canvas_account_id = str(canvas_course.account_id)
         status = ""
     except Exception as error_message:
         canvas_course = None
@@ -114,6 +114,8 @@ def increase_quota(
     if canvas_course:
         old_quota = canvas_course.storage_quota_mb
         new_quota = old_quota + increment_value
+        old_quota = str(old_quota)
+        new_quota = str(new_quota)
         try:
             canvas_course.update(course={"storage_quota_mb": new_quota})
         except Exception as error_message:
@@ -162,29 +164,30 @@ def check_and_increase_storage(
     instance: Instance,
     verbose: bool,
 ):
-    index, canvas_id, sis_id = course[:3]
+    index, canvas_account_id, sis_id = course[:3]
     course_name, needs_increase, message = check_percent_storage(course, instance)
     new_quota = old_quota = None
     status = ""
     if needs_increase:
-        canvas_id, sis_id, old_quota, new_quota, status = increase_quota(
-            message, increment_value, instance
+        canvas_account_id, sis_id, old_quota, new_quota, status = increase_quota(
+            sis_id, increment_value, instance
         )
     elif not message:
         status = "increase not required"
     else:
-        canvas_id = "ERROR"
+        canvas_account_id = "ERROR"
         status = message
-    row = [canvas_id, sis_id, old_quota, new_quota, status]
+    row = [canvas_account_id, sis_id, old_quota, new_quota, status]
     columns = ["id", "sis id", "old quota", "new quota", "error"]
     report.loc[index, columns] = row
     report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
     if verbose:
         increased = old_quota and new_quota
+        display_color = "red" if status == "course not found" else "yellow"
         increase_message = (
-            f"increased {color(old_quota, 'yellow')} --> {color(new_quota, 'green')}"
+            f"increased {color(old_quota, 'cyan')} --> {color(new_quota, 'green')}"
             if increased
-            else color(status, "yellow")
+            else color(status, display_color)
         )
         display_message = f"{color(course_name)}: {increase_message}"
         print_item(index, total, display_message)
