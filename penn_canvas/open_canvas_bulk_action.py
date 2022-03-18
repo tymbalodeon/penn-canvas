@@ -9,24 +9,26 @@ from penn_canvas.browser import browser_main
 
 from .api import Instance, get_canvas, get_data_warehouse_cursor
 from .helpers import (
+    BASE_PATH,
     color,
     confirm_global_protect_enabled,
+    create_directory,
     find_input,
-    get_command_paths,
     get_start_index,
     make_csv_paths,
     make_index_headers,
     print_skip_message,
     process_input,
+    switch_logger_file,
     toggle_progress_bar,
 )
 
-COMMAND_NAME = "Open Canvas Bulk Action"
 INPUT_FILE_NAME = "Open Canvas Bulk Action csv file"
-PATHS = get_command_paths(COMMAND_NAME, include_completed_directory=True)
-REPORTS = ""
-RESULTS = PATHS["results"]
-COMPLETED = PATHS["completed"]
+COMMAND_PATH = create_directory(BASE_PATH / "Open Canvas Bulk Action")
+INPUT = create_directory(COMMAND_PATH / "Input")
+RESULTS = create_directory(COMMAND_PATH / "RESULTS")
+COMPLETED = create_directory(COMMAND_PATH / "Completed")
+LOGS = create_directory(COMMAND_PATH / "Logs")
 HEADERS = ["Name", "Email", "Course ID", "Section ID", "Notify"]
 ACCOUNT = 1
 UNENROLL_TASKS = {"conclude", "delete", "deactivate", "inactivate"}
@@ -547,9 +549,10 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 f"{color(' ' + str(canvas_user), 'magenta') if canvas_user else ''}."
             )
 
+    switch_logger_file(LOGS / "open_canvas_bulk_action_{time}.log")
     user_agent_courses = ""
     input_files, missing_file_message = find_input(
-        INPUT_FILE_NAME, REPORTS, date=False, open_canvas=True
+        "Open Canvas Bulk Action csv file", INPUT, date=False, open_canvas=True
     )
     RESULT_PATHS = list()
     input_files.sort(reverse=True)
@@ -607,7 +610,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
             users, TOTAL, dated_input_file = process_input(
                 input_files,
                 INPUT_FILE_NAME,
-                REPORTS,
+                INPUT,
                 action_headers,
                 cleanup_data,
                 missing_file_message,

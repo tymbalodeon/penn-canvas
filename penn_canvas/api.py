@@ -60,6 +60,7 @@ def format_instance_name(instance: Instance) -> str:
 
 
 def get_canvas(instance=Instance.PRODUCTION, verbose=True, override_key=None) -> Canvas:
+    instance = validate_instance_name(instance)
     canvas_urls = get_penn_canvas_config("canvas_urls")
     canvas_keys = get_penn_canvas_config("canvas_keys")
     (
@@ -92,7 +93,7 @@ def get_canvas(instance=Instance.PRODUCTION, verbose=True, override_key=None) ->
         key = override_key or open_canvas_test_key
     canvas = Canvas(url, key)
     try:
-        canvas.get_account(MAIN_ACCOUNT_ID)
+        canvas.get_accounts()
         if verbose:
             print_instance(instance)
         return canvas
@@ -100,7 +101,7 @@ def get_canvas(instance=Instance.PRODUCTION, verbose=True, override_key=None) ->
         logger.error(error)
         logger.error(f"URL: {url}")
         logger.error(f"KEY: {key}")
-        raise SystemExit(error)
+        raise SystemExit(f'Failed to connect to Canvas: "{error}"')
 
 
 def get_account(

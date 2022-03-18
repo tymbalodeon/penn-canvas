@@ -495,7 +495,9 @@ def email(
         help="Clear the list of users already processed for the current year.",
     ),
     use_data_warehouse: bool = Option(
-        False, "--data-warehouse", help="Whether or not to check the Data Warehouse"
+        True,
+        " /--disable-data-warehouse",
+        help="Whether or not to check the Data Warehouse",
     ),
     verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."

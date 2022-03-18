@@ -2,7 +2,7 @@ from canvasapi.course import Course
 from canvasapi.section import Section
 from canvasapi.user import User
 
-from .api import (
+from penn_canvas.api import (
     Instance,
     get_account,
     get_canvas,
@@ -10,10 +10,16 @@ from .api import (
     get_section,
     get_user,
     pprint,
+    validate_instance_name,
 )
 
 CANVAS = get_canvas(verbose=False)
 ACCOUNT = get_account(verbose=False)
+
+
+def canvas(instance_name: str | Instance = Instance.PRODUCTION):
+    instance = validate_instance_name(instance_name)
+    return get_canvas(instance, verbose=True)
 
 
 def user(canvas_id, id_type=None, instance=Instance.PRODUCTION):

@@ -35,7 +35,7 @@ sandbox: ## Open an interactive Python shell with connections to Canvas
 	tmux new-session -d; \
 	tmux send-keys '$(POETRY) bpython' C-m; \
 	tmux send-keys 'from sandbox import *' C-m; \
-	tmux send-keys 'from penn_canvas.helpers import collect' C-m; \
+	tmux send-keys 'from penn_canvas.api import collect' C-m; \
 	tmux attach
 
 try: ## Try a command using the current state of the files without building

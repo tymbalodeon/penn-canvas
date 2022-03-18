@@ -77,7 +77,7 @@ def check_percent_storage(course: tuple, instance: Instance) -> tuple[str, bool,
     needs_increase = False
     message = ""
     if isna(sis_id) or not sis_id:
-        logger.warning(f"course {canvas_id} missing sis id")
+        logger.warning(f"course '{canvas_id}' missing sis id")
         message = "missing sis id"
     else:
         try:
