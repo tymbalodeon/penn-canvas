@@ -33,11 +33,11 @@ PROCESSED = PATHS["processed"]
 HEADERS = ["canvas_course_id", "course_id", "canvas_account_id", "status"]
 CLEANUP_HEADERS = HEADERS[:4]
 PROCESSED_HEADERS = [header.replace("_", " ") for header in [HEADERS[0], HEADERS[-1]]]
-WHARTON_ACCOUNT_ID = "81471"
-SAS_ACCOUNT_ID = "99237"
-SEAS_ACCOUNT_ID = "99238"
-NURS_ACCOUNT_ID = "99239"
-AN_ACCOUNT_ID = "99243"
+WHARTON_ACCOUNT_ID = 81471
+SAS_ACCOUNT_ID = 99237
+SEAS_ACCOUNT_ID = 99238
+NURS_ACCOUNT_ID = 99239
+AN_ACCOUNT_ID = 99243
 
 
 def get_csv_as_list(csv_file, column):
@@ -365,23 +365,23 @@ def course_shopping_main(test, disable, force, verbose, new):
     WHARTON_IGNORED_SUB_ACCOUNTS = list()
     for account in WHARTON_IGNORED_ACCOUNTS:
         WHARTON_IGNORED_SUB_ACCOUNTS += [
-            sub_account for sub_account in get_sub_accounts(CANVAS, account)
+            sub_account for sub_account in get_sub_accounts(account, INSTANCE)
         ]
     WHARTON_ACCOUNTS = [
         account
-        for account in get_sub_accounts(CANVAS, WHARTON_ACCOUNT_ID)
+        for account in get_sub_accounts(WHARTON_ACCOUNT_ID, INSTANCE)
         if account not in WHARTON_IGNORED_SUB_ACCOUNTS
     ]
     SAS_IGNORED_ACCOUNTS = get_csv_as_list(SAS_IGNORED_PATH, "Account ID")
     SAS_IGNORED_SUBJECTS = get_csv_as_list(SAS_IGNORED_PATH, "Abbreviation")
     SAS_ACCOUNTS = [
         account
-        for account in get_sub_accounts(CANVAS, SAS_ACCOUNT_ID)
+        for account in get_sub_accounts(SAS_ACCOUNT_ID, INSTANCE)
         if account not in SAS_IGNORED_ACCOUNTS
     ]
-    SEAS_ACCOUNTS = get_sub_accounts(CANVAS, SEAS_ACCOUNT_ID)
-    NURS_ACCOUNTS = get_sub_accounts(CANVAS, NURS_ACCOUNT_ID)
-    AN_ACCOUNTS = get_sub_accounts(CANVAS, AN_ACCOUNT_ID)
+    SEAS_ACCOUNTS = get_sub_accounts(SEAS_ACCOUNT_ID, INSTANCE)
+    NURS_ACCOUNTS = get_sub_accounts(NURS_ACCOUNT_ID, INSTANCE)
+    AN_ACCOUNTS = get_sub_accounts(AN_ACCOUNT_ID, INSTANCE)
     SUB_ACCOUNTS = (
         SAS_ACCOUNTS + SEAS_ACCOUNTS + NURS_ACCOUNTS + AN_ACCOUNTS + WHARTON_ACCOUNTS
     )
