@@ -1,5 +1,5 @@
 from csv import writer
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from os import remove
 from pathlib import Path
@@ -12,13 +12,22 @@ from canvasapi.account import Account
 from canvasapi.paginated_list import PaginatedList
 from click.termui import style
 from cx_Oracle import connect, init_oracle_client
+from inflect import engine
+from loguru import logger
 from pandas import read_csv
+from pandas.core.frame import DataFrame
 from pytz import timezone, utc
 from typer import Exit, confirm, echo, progressbar
 
 from .config import get_penn_canvas_config
 from .style import color
 
+lib_dir = Path.home() / "Downloads/instantclient_19_8"
+config_dir = lib_dir / "network/admin"
+init_oracle_client(
+    lib_dir=str(lib_dir),
+    config_dir=str(config_dir),
+)
 COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
 BOX_PATH = Path.home() / "Library/CloudStorage/Box-Box"
 BOX_CLI_PATH = BOX_PATH / "Penn Canvas CLI"
@@ -66,13 +75,6 @@ def get_reports_directory() -> Path:
 
 
 REPORTS = get_reports_directory()
-
-lib_dir = Path.home() / "Downloads/instantclient_19_8"
-config_dir = lib_dir / "network/admin"
-init_oracle_client(
-    lib_dir=str(lib_dir),
-    config_dir=str(config_dir),
-)
 
 
 class Term(Enum):
@@ -555,24 +557,24 @@ def get_user(
     return user
 
 
-def get_sub_accounts(canvas, account_id):
-    account = canvas.get_account(account_id)
+def get_sub_accounts(account_id: int, instance: Instance, verbose=False) -> list[str]:
+    account = get_canvas(instance, verbose).get_account(account_id)
     return [str(account_id)] + [
         str(account.id) for account in account.get_subaccounts(recursive=True)
     ]
 
 
-def dynamic_to_csv(path, data_frame, condition):
+def dynamic_to_csv(path: Path, data_frame: DataFrame, condition):
     mode = "a" if condition else "w"
     data_frame.to_csv(path, mode=mode, header=not condition, index=False)
 
 
-def drop_duplicate_errors(paths):
+def drop_duplicate_errors(paths: list[Path]):
     for path in paths:
         read_csv(path).drop_duplicates().to_csv(path, index=False)
 
 
-def add_headers_to_empty_files(paths, headers):
+def add_headers_to_empty_files(paths: list[Path], headers: list[str]):
     for path in paths:
         try:
             read_csv(path)
@@ -581,11 +583,11 @@ def add_headers_to_empty_files(paths, headers):
                 writer(output_file).writerow(headers)
 
 
-def convert_to_est(timestamp):
+def convert_to_est(timestamp: datetime) -> datetime:
     return utc.localize(timestamp).astimezone(timezone("US/Eastern"))
 
 
-def format_timestamp(timestamp, localize=True):
+def format_timestamp(timestamp: str, localize=True) -> str | None:
     if timestamp:
         date = datetime.fromisoformat(timestamp.replace("Z", ""))
         if localize:
@@ -595,14 +597,19 @@ def format_timestamp(timestamp, localize=True):
         return None
 
 
-def format_timedelta(timedelta):
-    days = timedelta.days
-    hours, remainder = divmod(timedelta.seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    days = f"{days} {'days' if days > 1 else 'day'}" if days else ""
-    hours = f"{hours} {'hours' if hours > 1 else 'hour'}" if hours else ""
-    minutes = f"{minutes} {'minutes' if minutes > 1 else 'minute'}" if minutes else ""
-    seconds = f"{seconds} {'seconds' if seconds > 1 else 'second'}" if seconds else ""
+def format_timedelta(timedelta: timedelta) -> str:
+    pluralizer = engine()
+    timedelta_days = timedelta.days
+    timedelta_hours, remainder = divmod(timedelta.seconds, 3600)
+    timedelta_minutes, timedelta_seconds = divmod(remainder, 60)
+    days_display = pluralizer.plural("day", timedelta_days)
+    days = f"{timedelta_days} {days_display}" if timedelta_days else ""
+    hours_display = pluralizer.plural("hour", timedelta_hours)
+    hours = f"{timedelta_hours} {hours_display}" if timedelta_hours else ""
+    minutes_display = pluralizer.plural("minute", timedelta_minutes)
+    minutes = f"{timedelta_minutes} {minutes_display}" if timedelta_minutes else ""
+    seconds_display = pluralizer.plural("seconds", timedelta_seconds)
+    seconds = f"{timedelta_seconds} {seconds_display}" if timedelta_seconds else ""
     return ", ".join([time for time in [days, hours, minutes, seconds] if time])
 
 
@@ -649,3 +656,8 @@ def get_external_tool_names(verbose=False):
     if verbose:
         print(*external_tool_names, sep="\n")
     return external_tool_names
+
+
+def switch_logger_file(log_path: Path):
+    logger.remove()
+    logger.add(log_path, retention=10)

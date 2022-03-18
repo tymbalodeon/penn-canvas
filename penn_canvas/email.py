@@ -35,6 +35,7 @@ from .helpers import (
     make_csv_paths,
     make_index_headers,
     print_skip_message,
+    switch_logger_file,
     validate_instance_name,
 )
 
@@ -461,6 +462,7 @@ def email_main(
     use_data_warehouse: bool,
     verbose: bool,
 ):
+    switch_logger_file(LOGS / "email_{time}.log")
     if use_data_warehouse and not confirm_global_protect_enabled():
         raise Exit()
     instance = validate_instance_name(instance_name, verbose=True)

@@ -22,6 +22,7 @@ from .helpers import (
     make_csv_paths,
     make_index_headers,
     print_skip_message,
+    switch_logger_file,
     validate_instance_name,
 )
 from .style import print_item
@@ -29,7 +30,6 @@ from .style import print_item
 COMMAND_PATH = create_directory(BASE_PATH / "Storage")
 RESULTS = create_directory(COMMAND_PATH / "Results")
 LOGS = create_directory(COMMAND_PATH / "Logs")
-logger.add(LOGS / "course_storage_{time}.log", retention=10)
 RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result.csv"
 HEADERS = [
     "id",
@@ -196,6 +196,7 @@ def storage_main(
     force_report: bool,
     verbose: bool,
 ):
+    switch_logger_file(LOGS / "course_storage_{time}.log")
     instance = validate_instance_name(instance_name, verbose=True)
     report_path = get_report(
         "storage", CURRENT_YEAR_AND_TERM, force_report, instance, verbose

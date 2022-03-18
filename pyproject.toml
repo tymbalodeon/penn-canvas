@@ -21,6 +21,7 @@ python-magic-bin = "^0.4.14"
 ua-parser = "^0.10.0"
 tqdm = "^4.62.3"
 loguru = "^0.6.0"
+inflect = "^5.4.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
