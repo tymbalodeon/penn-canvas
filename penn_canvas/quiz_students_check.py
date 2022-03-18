@@ -5,7 +5,7 @@ from requests import get
 
 from penn_canvas.config import get_penn_canvas_config
 
-from .helpers import get_canvas
+from .api import get_canvas
 
 TESTING = False
 course_id = 1569010

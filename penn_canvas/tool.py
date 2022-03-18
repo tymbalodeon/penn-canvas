@@ -8,25 +8,27 @@ from typer import Exit, confirm, echo, progressbar
 from penn_canvas.report import get_report
 from penn_canvas.style import print_item
 
+from .api import (
+    Instance,
+    format_instance_name,
+    get_account,
+    get_course,
+    validate_instance_name,
+)
 from .helpers import (
     BASE_PATH,
     YEAR,
-    Instance,
     add_headers_to_empty_files,
     color,
     create_directory,
     drop_duplicate_errors,
     dynamic_to_csv,
-    format_instance_name,
-    get_account,
-    get_course,
     get_processed,
     get_start_index,
     handle_clear_processed,
     make_csv_paths,
     make_index_headers,
     print_skip_message,
-    validate_instance_name,
 )
 
 COMMAND_PATH = create_directory(BASE_PATH / "Tool")

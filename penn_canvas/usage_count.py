@@ -1,6 +1,7 @@
 from typer import echo
 
-from .helpers import MAIN_ACCOUNT_ID, color, get_canvas, get_command_paths
+from .api import MAIN_ACCOUNT_ID, get_canvas
+from .helpers import color, get_command_paths
 
 
 def is_turnitin_assignment(assignment):

@@ -4,7 +4,8 @@ from pathlib import Path
 from pandas import DataFrame, read_csv
 from typer import Exit, echo
 
-from .helpers import BOX_PATH, TODAY_AS_Y_M_D, color, format_timestamp, get_canvas
+from .api import get_canvas
+from .helpers import BOX_PATH, TODAY_AS_Y_M_D, color, format_timestamp
 
 COMMAND = "Investigate"
 RESULTS = BOX_PATH / "OGC Request"

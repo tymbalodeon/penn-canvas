@@ -5,7 +5,7 @@ from tqdm import tqdm
 from typer import Exit, echo
 from ua_parser import user_agent_parser
 
-from .helpers import get_canvas
+from .api import get_canvas
 from .style import color, print_item
 
 

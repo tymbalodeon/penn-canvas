@@ -7,6 +7,7 @@ from typer import echo, progressbar
 
 from penn_canvas.report import get_report
 
+from .api import Instance, get_course, validate_instance_name
 from .helpers import (
     BASE_PATH,
     BOX_PATH,
@@ -14,16 +15,13 @@ from .helpers import (
     MONTH,
     TODAY_AS_Y_M_D,
     YEAR,
-    Instance,
     color,
     create_directory,
-    get_course,
     get_start_index,
     make_csv_paths,
     make_index_headers,
     print_skip_message,
     switch_logger_file,
-    validate_instance_name,
 )
 from .style import print_item
 

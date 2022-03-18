@@ -1,6 +1,6 @@
 from typer import echo
 
-from .helpers import MAIN_ACCOUNT_ID, get_canvas
+from .api import MAIN_ACCOUNT_ID, get_canvas
 from .style import color
 
 

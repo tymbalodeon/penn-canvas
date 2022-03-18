@@ -4,7 +4,8 @@ from pandas import DataFrame
 from tqdm import tqdm
 from typer import echo
 
-from .helpers import format_timedelta, format_timestamp, get_canvas, get_command_paths
+from .api import get_canvas
+from .helpers import format_timedelta, format_timestamp, get_command_paths
 from .style import color, print_item
 
 COMMAND_NAME = "Integrity"

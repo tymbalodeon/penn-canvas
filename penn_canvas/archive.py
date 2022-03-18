@@ -12,14 +12,9 @@ from pandas import DataFrame
 from requests import get
 from typer import echo, progressbar
 
+from .api import collect, get_canvas
 from .config import get_config_option
-from .helpers import (
-    collect,
-    create_directory,
-    format_timestamp,
-    get_canvas,
-    get_command_paths,
-)
+from .helpers import create_directory, format_timestamp, get_command_paths
 from .style import color, print_item
 
 COMMAND_NAME = "Archive"

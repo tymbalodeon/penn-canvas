@@ -1,3 +1,4 @@
+MAIN_ACCOUNT_ID = 96678
 TOOLS = [
     "agora test build",
     "atomic search",

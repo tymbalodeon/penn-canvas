@@ -8,17 +8,16 @@ from canvasapi.account import Account
 from requests import get
 from typer import Exit, echo
 
-from penn_canvas.helpers import (
-    CURRENT_YEAR_AND_TERM,
+from .api import (
     MAIN_ACCOUNT_ID,
-    REPORTS,
     Instance,
     collect,
     format_instance_name,
     get_account,
     validate_instance_name,
 )
-from penn_canvas.style import color
+from .helpers import CURRENT_YEAR_AND_TERM, REPORTS
+from .style import color
 
 
 def validate_report_type(

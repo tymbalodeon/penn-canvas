@@ -3,9 +3,8 @@ from pathlib import Path
 from pandas import concat, read_csv
 from pandas.core.frame import DataFrame
 
-from penn_canvas.style import print_item
-
-from .helpers import color, get_data_warehouse_cursor
+from .api import get_data_warehouse_cursor
+from .style import color, print_item
 
 POSITIONS = {
     "AP": "Administrative/Professional",

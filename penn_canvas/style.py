@@ -1,3 +1,5 @@
+from pprint import PrettyPrinter
+
 from inflect import engine
 from typer import colors, echo, secho, style
 
@@ -24,6 +26,14 @@ def color(text, color="magenta", echo=False, bold=False, use_comma=True):
 
 def print_item(index, total, message, prefix="- "):
     echo(f"{prefix} ({(index + 1):,}/{total:,}) {message}")
+
+
+def pprint(thing: object):
+    if isinstance(thing, list):
+        for item in thing[:5]:
+            PrettyPrinter().pprint(vars(item))
+    else:
+        PrettyPrinter().pprint(vars(thing))
 
 
 def pluralize(string: str, condition=None):

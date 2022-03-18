@@ -1,6 +1,6 @@
 from typer import echo
 
-from .helpers import get_canvas
+from .api import get_canvas
 from .style import color
 
 

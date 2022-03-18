@@ -1,12 +1,11 @@
 from pandas import read_csv
 from typer import echo
 
+from .api import Instance, get_canvas
 from .helpers import (
     YEAR,
-    Instance,
     color,
     find_input,
-    get_canvas,
     get_command_paths,
     get_start_index,
     make_csv_paths,

@@ -4,7 +4,8 @@ from datetime import datetime
 from pytz import UTC
 from typer import echo, prompt
 
-from .helpers import get_canvas, get_command_paths, make_csv_paths
+from .api import get_canvas
+from .helpers import get_command_paths, make_csv_paths
 from .style import color
 
 COMMAND_NAME = "Check Enrollment"
@@ -49,11 +50,7 @@ def check_enrollment_main(course_id, year, month, day, instance):
         "_{start_date.strftime('%Y_%m_%d')}.csv"
     )
     RESULT_PATH = RESULTS / RESULT_PATH_STRING
-    make_csv_paths(
-        RESULTS,
-        RESULT_PATH,
-        HEADERS,
-    )
+    make_csv_paths(RESULT_PATH, HEADERS)
     enrollments = [
         [enrollment.user["name"], enrollment.user_id, enrollment.created_at_date]
         for enrollment in course.get_enrollments()

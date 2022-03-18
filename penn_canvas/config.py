@@ -2,11 +2,15 @@ from configparser import ConfigParser
 from itertools import chain
 from pathlib import Path
 
+from loguru import logger
 from typer import Exit, confirm, echo, prompt
+
+from penn_canvas.helpers import BASE_PATH, create_directory, switch_logger_file
 
 from .style import color
 
-CONFIG_DIRECTORY = Path.home() / ".config" / "penn-canvas"
+CONFIG_DIRECTORY = create_directory(Path.home() / ".config" / "penn-canvas")
+LOGS = create_directory(BASE_PATH / "Logs")
 CONFIG_FILE = CONFIG_DIRECTORY / "penn-canvas.ini"
 CONFIG_OPTIONS = {
     "canvas_urls": [
@@ -28,6 +32,7 @@ CONFIG_OPTIONS = {
         "data_warehouse_password",
         "data_warehouse_dsn",
     ],
+    "email": ["address", "password"],
 }
 SECRET_OPTIONS = CONFIG_OPTIONS["canvas_keys"][:]
 SECRET_OPTIONS.append(CONFIG_OPTIONS["data_warehouse"][1])
@@ -162,7 +167,9 @@ def get_penn_canvas_config(section=None, as_tuple=False):
     return config
 
 
+@logger.catch
 def print_config(show_secrets):
+    switch_logger_file(LOGS / "config_{time}.log")
     for option, value in get_penn_canvas_config(as_tuple=True):
         if not value:
             value = color("[ empty ]", "yellow")

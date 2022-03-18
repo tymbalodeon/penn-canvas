@@ -1,24 +1,25 @@
 from typer import Argument, Option, Typer
 
-from penn_canvas.course_shopping import course_shopping_main
-from penn_canvas.find_users_by_email import find_users_by_email_main
-from penn_canvas.helpers import CURRENT_YEAR_AND_TERM, MAIN_ACCOUNT_ID, Instance
-from penn_canvas.report import report_main
-
+from .api import Instance
 from .archive import archive_main
 from .browser import browser_main
 from .bulk_enroll import bulk_enroll_main
 from .check_enrollment import check_enrollment_main
 from .config import print_config, write_config_options
+from .constants import MAIN_ACCOUNT_ID
 from .count_poll_everywhere import count_poll_everywhere_main
 from .count_quizzes import count_quizzes_main
 from .count_sites import count_sites_main
+from .course_shopping import course_shopping_main
 from .email import email_main
+from .find_users_by_email import find_users_by_email_main
+from .helpers import CURRENT_YEAR_AND_TERM
 from .integrity import integrity_main
 from .investigate import investigate_main
 from .module import module_main
 from .new_student_orientation import new_student_orientation_main
 from .open_canvas_bulk_action import open_canvas_bulk_action_main
+from .report import report_main
 from .storage import storage_main
 from .tool import tool_main
 from .update_term import update_term_main

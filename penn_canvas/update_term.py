@@ -1,12 +1,7 @@
 from typer import echo
 
-from penn_canvas.helpers import (
-    MAIN_ACCOUNT_ID,
-    PREVIOUS_YEAR_AND_TERM,
-    color,
-    get_canvas,
-    get_command_paths,
-)
+from .api import MAIN_ACCOUNT_ID, get_canvas
+from .helpers import PREVIOUS_YEAR_AND_TERM, color, get_command_paths
 
 COMMAND_NAME = "Update Terms"
 RESULTS = get_command_paths(COMMAND_NAME)["results"]

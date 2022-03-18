@@ -7,14 +7,12 @@ from typer import echo
 
 from penn_canvas.browser import browser_main
 
+from .api import Instance, get_canvas, get_data_warehouse_cursor
 from .helpers import (
-    Instance,
     color,
     confirm_global_protect_enabled,
     find_input,
-    get_canvas,
     get_command_paths,
-    get_data_warehouse_cursor,
     get_start_index,
     make_csv_paths,
     make_index_headers,

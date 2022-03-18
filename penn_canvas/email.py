@@ -6,6 +6,7 @@ from shutil import rmtree
 
 from canvasapi.communication_channel import CommunicationChannel
 from canvasapi.user import User
+from loguru import logger
 from pandas import concat, read_csv
 from pandas.core.frame import DataFrame
 from typer import Exit, echo, progressbar
@@ -13,30 +14,32 @@ from typer import Exit, echo, progressbar
 from penn_canvas.report import get_report
 from penn_canvas.style import print_item
 
+from .api import (
+    Instance,
+    format_instance_name,
+    get_account,
+    get_data_warehouse_cursor,
+    get_user,
+    validate_instance_name,
+)
 from .helpers import (
     BASE_PATH,
     CURRENT_YEAR_AND_TERM,
     TODAY_AS_Y_M_D,
     YEAR,
-    Instance,
     add_headers_to_empty_files,
     color,
     confirm_global_protect_enabled,
     create_directory,
     drop_duplicate_errors,
     dynamic_to_csv,
-    format_instance_name,
-    get_account,
-    get_data_warehouse_cursor,
     get_processed,
     get_start_index,
-    get_user,
     handle_clear_processed,
     make_csv_paths,
     make_index_headers,
     print_skip_message,
     switch_logger_file,
-    validate_instance_name,
 )
 
 COMMAND_PATH = create_directory(BASE_PATH / "Email")
@@ -119,7 +122,8 @@ def is_already_active(
     emails = None
     try:
         canvas_user = get_user(user_id, instance=instance)
-    except Exception:
+    except Exception as error:
+        logger.error(f"user {user_id} not found: {error}")
         return "user not found", canvas_user, emails
     try:
         emails = get_user_emails(canvas_user)

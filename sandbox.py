@@ -2,7 +2,7 @@ from canvasapi.course import Course
 from canvasapi.section import Section
 from canvasapi.user import User
 
-from penn_canvas.helpers import (
+from .api import (
     Instance,
     get_account,
     get_canvas,
