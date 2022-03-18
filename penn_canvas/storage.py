@@ -5,8 +5,6 @@ from pandas import isna, read_csv
 from pandas.core.frame import DataFrame
 from typer import echo, progressbar
 
-from penn_canvas.report import get_report
-
 from .api import Instance, get_course, validate_instance_name
 from .helpers import (
     BASE_PATH,
@@ -23,6 +21,8 @@ from .helpers import (
     print_skip_message,
     switch_logger_file,
 )
+from .notifier import send_email
+from .report import get_report
 from .style import print_item
 
 COMMAND_PATH = create_directory(BASE_PATH / "Storage")
@@ -87,7 +87,9 @@ def check_percent_storage(course: tuple, instance: Instance) -> tuple[str, bool,
                 needs_increase = True
         except Exception as error_message:
             message = "course not found"
-            logger.error(f"course {sis_id} ({canvas_id}) not found: {error_message}")
+            logger_message = f"course {sis_id} ({canvas_id}) not found: {error_message}"
+            logger.error(logger_message)
+            send_email("Course Storage", logger_message)
     return canvas_course.name if canvas_course else "", needs_increase, message
 
 

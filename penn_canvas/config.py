@@ -5,8 +5,7 @@ from pathlib import Path
 from loguru import logger
 from typer import Exit, confirm, echo, prompt
 
-from penn_canvas.helpers import BASE_PATH, create_directory, switch_logger_file
-
+from .helpers import BASE_PATH, create_directory, switch_logger_file
 from .style import color
 
 CONFIG_DIRECTORY = create_directory(Path.home() / ".config" / "penn-canvas")
@@ -36,16 +35,7 @@ CONFIG_OPTIONS = {
 }
 SECRET_OPTIONS = CONFIG_OPTIONS["canvas_keys"][:]
 SECRET_OPTIONS.append(CONFIG_OPTIONS["data_warehouse"][1])
-
-
-def create_config_directory():
-    if not CONFIG_DIRECTORY.exists():
-        Path.mkdir(CONFIG_DIRECTORY, parents=True)
-
-
-def get_config_directory():
-    create_config_directory()
-    return CONFIG_DIRECTORY
+SECRET_OPTIONS.append(CONFIG_OPTIONS["email"][1])
 
 
 def get_config_option(section, option):
@@ -54,35 +44,26 @@ def get_config_option(section, option):
     return config.get(section, option)
 
 
-def get_section_options(section):
+def get_section_options(section, as_tuple=False):
     config = ConfigParser()
     config.read(CONFIG_FILE)
-    return [config.get(section, option) for option in config.options(section)]
+    try:
+        options = config.options(section)
+        if as_tuple:
+            return [(option, config.get(section, option)) for option in options]
+        else:
+            return [config.get(section, option) for option in options]
+    except Exception as error:
+        echo(error)
+        logger.warning(error)
+        write_config_options(new_section=section)
+        return get_section_options(section, as_tuple)
 
 
-def get_section_options_as_tuple(section):
-    config = ConfigParser()
-    config.read(CONFIG_FILE)
-    return [(option, config.get(section, option)) for option in config.options(section)]
-
-
-def get_all_config_options():
-    return list(
-        chain.from_iterable(
-            [get_section_options(section) for section in CONFIG_OPTIONS.keys()]
-        )
-    )
-
-
-def get_all_config_options_as_tuple():
-    return list(
-        chain.from_iterable(
-            [
-                (get_section_options_as_tuple(section))
-                for section in CONFIG_OPTIONS.keys()
-            ]
-        )
-    )
+def get_all_config_options(as_tuple=False):
+    keys = CONFIG_OPTIONS.keys()
+    options = [get_section_options(section, as_tuple) for section in keys]
+    return list(chain.from_iterable(options))
 
 
 def get_new_config_value(section, option, first_time):
@@ -113,18 +94,25 @@ def get_new_section_values(section, first_time):
     return get_new_config_values(section, first_time) if get_new_values else []
 
 
-def write_config_options(first_time=False):
-    create_config_directory()
+def write_config_section(config, section, first_time):
+    new_values = get_new_section_values(section, first_time)
+    if first_time:
+        config[section] = dict()
+    for option, value in new_values:
+        if value is not None:
+            config[section][option] = value
+    return config
+
+
+def write_config_options(first_time=False, new_section=None):
     config = ConfigParser()
     if not first_time:
         config.read(CONFIG_FILE)
-    for section in CONFIG_OPTIONS.keys():
-        new_values = get_new_section_values(section, first_time)
-        if first_time:
-            config[section] = dict()
-        for option, value in new_values:
-            if value is not None:
-                config[section][option] = value
+    if new_section:
+        config = write_config_section(config, new_section, first_time=True)
+    else:
+        for section in CONFIG_OPTIONS.keys():
+            config = write_config_section(config, section, first_time)
     with open(CONFIG_FILE, "w") as config_file:
         config.write(config_file)
     return get_all_config_options()
@@ -145,15 +133,10 @@ def confirm_create_config():
 
 
 def get_config(section, as_tuple):
-    return (
-        (
-            get_section_options_as_tuple(section)
-            if section
-            else get_all_config_options_as_tuple()
-        )
-        if as_tuple
-        else (get_section_options(section) if section else get_all_config_options())
-    )
+    if section:
+        return get_section_options(section, as_tuple)
+    else:
+        return get_all_config_options(as_tuple)
 
 
 def get_penn_canvas_config(section=None, as_tuple=False):
@@ -167,7 +150,6 @@ def get_penn_canvas_config(section=None, as_tuple=False):
     return config
 
 
-@logger.catch
 def print_config(show_secrets):
     switch_logger_file(LOGS / "config_{time}.log")
     for option, value in get_penn_canvas_config(as_tuple=True):
@@ -178,3 +160,7 @@ def print_config(show_secrets):
         else:
             value = color(value, "green")
         echo(f"{color(option.replace('_', ' ').upper())}: {value}")
+
+
+def get_email_credentials():
+    return get_section_options("email")

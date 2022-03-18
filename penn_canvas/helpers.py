@@ -1,11 +1,9 @@
 from csv import writer
 from datetime import datetime, timedelta
-from email.message import EmailMessage
 from enum import Enum
 from os import remove
 from pathlib import Path
 from shutil import copy, rmtree
-from smtplib import SMTP_SSL
 from zipfile import ZipFile
 
 from loguru import logger
@@ -471,15 +469,5 @@ def toggle_progress_bar(data, callback, canvas, verbose, args=None):
 
 @logger.catch
 def switch_logger_file(log_path: Path):
-
-    with SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login("benjamin.j.rosen@gmail.com", "zcvyvrnautwejyke")
-        message = EmailMessage()
-        message["Subject"] = "testing python"
-        message["From"] = "benjamin.j.rosen@gmail.com"
-        message["To"] = "benjamin.j.rosen@gmail.com"
-        smtp.send_message(message)
-        print("SENT")
-
     logger.remove()
     logger.add(log_path, retention=10)
