@@ -77,7 +77,7 @@ def check_percent_storage(course: tuple, instance: Instance) -> tuple[str, bool,
     needs_increase = False
     message = ""
     if isna(sis_id) or not sis_id:
-        logger.warning(f"course '{canvas_id}' missing sis id")
+        logger.warning(f'course "{canvas_id}" missing sis id')
         message = "missing sis id"
     else:
         try:
@@ -99,6 +99,7 @@ def increase_quota(
     if CURRENT_YEAR_AND_TERM == "2022A":
         sis_prefix = "SRS_"
     if sis_id[:4] != sis_prefix:
+        logger.warning(sis_id)
         middle = sis_id[:-5][-6:]
         sis_id = f"{sis_prefix}{sis_id[:11]}-{middle[:3]}-{middle[3:]} {sis_id[-5:]}"
     try:
