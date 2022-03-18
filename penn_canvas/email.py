@@ -127,7 +127,8 @@ def is_already_active(
         return "user not found", canvas_user, emails
     try:
         emails = get_user_emails(canvas_user)
-    except Exception:
+    except Exception as error:
+        logger.error(f"failed to get user {user_id} emails: {error}")
         return "error", canvas_user, emails
     emails_iterator = iter(emails)
     email = next(emails_iterator, None)
