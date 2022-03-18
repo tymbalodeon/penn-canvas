@@ -12,7 +12,6 @@ from canvasapi.account import Account
 from canvasapi.paginated_list import PaginatedList
 from click.termui import style
 from cx_Oracle import connect, init_oracle_client
-from inflect import engine
 from loguru import logger
 from pandas import read_csv
 from pandas.core.frame import DataFrame
@@ -20,7 +19,7 @@ from pytz import timezone, utc
 from typer import Exit, confirm, echo, progressbar
 
 from .config import get_penn_canvas_config
-from .style import color
+from .style import color, pluralize
 
 lib_dir = Path.home() / "Downloads/instantclient_19_8"
 config_dir = lib_dir / "network/admin"
@@ -221,15 +220,12 @@ def get_start_index(force: bool, result_path: Path) -> int:
 
 
 def print_skip_message(start: int, item: str, current_report=False):
-    if start == 0:
+    if not start:
         return
-    elif start == 1:
-        item = f"{item.upper()}"
-    else:
-        item = f"{item.upper()}S"
     current_report_message = " from the current report" if current_report else ""
     message = color(
-        f"SKIPPING {start:,} previously processed {item}{current_report_message}...",
+        f"SKIPPING {start:,} previously processed"
+        f" {pluralize(item)}{current_report_message}...",
         "yellow",
     )
     echo(f") {message}")
@@ -598,17 +594,16 @@ def format_timestamp(timestamp: str, localize=True) -> str | None:
 
 
 def format_timedelta(timedelta: timedelta) -> str:
-    pluralizer = engine()
     timedelta_days = timedelta.days
     timedelta_hours, remainder = divmod(timedelta.seconds, 3600)
     timedelta_minutes, timedelta_seconds = divmod(remainder, 60)
-    days_display = pluralizer.plural("day", timedelta_days)
+    days_display = pluralize("day", timedelta_days)
     days = f"{timedelta_days} {days_display}" if timedelta_days else ""
-    hours_display = pluralizer.plural("hour", timedelta_hours)
+    hours_display = pluralize("hour", timedelta_hours)
     hours = f"{timedelta_hours} {hours_display}" if timedelta_hours else ""
-    minutes_display = pluralizer.plural("minute", timedelta_minutes)
+    minutes_display = pluralize("minute", timedelta_minutes)
     minutes = f"{timedelta_minutes} {minutes_display}" if timedelta_minutes else ""
-    seconds_display = pluralizer.plural("seconds", timedelta_seconds)
+    seconds_display = pluralize("seconds", timedelta_seconds)
     seconds = f"{timedelta_seconds} {seconds_display}" if timedelta_seconds else ""
     return ", ".join([time for time in [days, hours, minutes, seconds] if time])
 

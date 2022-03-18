@@ -1,3 +1,4 @@
+from inflect import engine
 from typer import colors, echo, secho, style
 
 COLORS = {
@@ -23,3 +24,7 @@ def color(text, color="magenta", echo=False, bold=False, use_comma=True):
 
 def print_item(index, total, message, prefix="- "):
     echo(f"{prefix} ({(index + 1):,}/{total:,}) {message}")
+
+
+def pluralize(string: str, condition=None):
+    return engine().plural(string, condition)
