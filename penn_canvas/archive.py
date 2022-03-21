@@ -3,22 +3,39 @@ from io import StringIO
 from json import loads
 from mimetypes import guess_extension
 from os import remove
+from pathlib import Path
 from re import search
 from time import sleep
 from zipfile import ZipFile
 
+from canvasapi.assignment import Assignment
+from canvasapi.course import Course
+from canvasapi.discussion_topic import DiscussionEntry, DiscussionTopic
+from canvasapi.enrollment import Enrollment
+from canvasapi.quiz import Quiz
+from canvasapi.rubric import Rubric
+from canvasapi.submission import Submission
+from canvasapi.user import User
 from magic import from_file
 from pandas import DataFrame
 from requests import get
 from typer import echo, progressbar
 
-from .api import collect, get_canvas
+from .api import (
+    Instance,
+    collect,
+    get_canvas,
+    get_course,
+    get_section,
+    get_user,
+    validate_instance_name,
+)
 from .config import get_config_option
-from .helpers import create_directory, format_timestamp, get_command_paths
+from .helpers import BASE_PATH, create_directory, format_timestamp
 from .style import color, print_item
 
-COMMAND_NAME = "Archive"
-RESULTS = get_command_paths(COMMAND_NAME)["results"]
+COMMAND_PATH = create_directory(BASE_PATH / "Archive")
+RESULTS = create_directory(COMMAND_PATH / "Results")
 
 
 class HTMLStripper(HTMLParser):
@@ -42,63 +59,64 @@ def strip_tags(html):
     return stripper.get_data()
 
 
-def get_assignments(course):
+def get_assignments(course: Course) -> tuple[list[Assignment], int]:
     echo(") Finding assignments...")
-    assignments = [assignment for assignment in course.get_assignments()]
+    assignments = collect(course.get_assignments())
     return assignments, len(assignments)
 
 
-def get_discussions(course):
+def get_discussions(course: Course) -> tuple[list[DiscussionTopic], int]:
     echo(") Finding discussions...")
-    discussions = [discussion for discussion in course.get_discussion_topics()]
+    discussions = collect(course.get_discussion_topics())
     return discussions, len(discussions)
 
 
-def get_enrollments(course):
+def get_enrollments(course: Course) -> list[Enrollment]:
+    def is_student_enrollment(enrollment: Enrollment) -> bool:
+        return enrollment.type == "StudentEnrollment"
+
     echo(") Finding students...")
-    enrollments = [
-        enrollment
-        for enrollment in course.get_enrollments()
-        if enrollment.type == "StudentEnrollment"
-    ]
+    enrollments = collect(
+        course.get_enrollments(), conditional_function=is_student_enrollment
+    )
     return enrollments
 
 
-def get_quizzes(course):
+def get_quizzes(course: Course) -> tuple[list[Quiz], int]:
     echo(") Finding quizzes...")
-    quizzes = [quiz for quiz in course.get_quizzes()]
+    quizzes = collect(course.get_quizzes())
     return quizzes, len(quizzes)
 
 
-def get_rubrics(course):
+def get_rubrics(course: Course) -> tuple[list[Rubric], int]:
     echo(") Finding rubrics...")
-    rubrics = [rubric for rubric in course.get_rubrics()]
+    rubrics = collect(course.get_rubrics())
     return rubrics, len(rubrics)
 
 
-def format_name(name):
+def format_name(name: str) -> str:
     return name.strip().replace("/", "-").replace(":", "-")
 
 
-def get_submission_score(submission):
+def get_submission_score(submission: Submission):
     return round(float(submission.score), 2) if submission.score else submission.score
 
 
 def process_submission(
-    submission,
-    verbose,
-    assignment_index,
-    total_assignments,
-    submission_index,
-    total_submissions,
-    assignment,
-    assignment_path,
-    comments_path,
-    canvas,
-):
-    user = canvas.get_user(submission.user_id).name
+    submission: Submission,
+    instance: Instance,
+    verbose: bool,
+    assignment_index: int,
+    total_assignments: int,
+    submission_index: int,
+    total_submissions: int,
+    assignment: str,
+    assignment_path: Path,
+    comments_path: Path,
+) -> list[User | str | int]:
+    user = get_user(submission.user_id, instance=instance).name
     try:
-        grader = canvas.get_user(submission.grader_id).name
+        grader = get_user(submission.grader_id, instance=instance).name
     except Exception:
         grader = None
     try:
@@ -134,7 +152,7 @@ def process_submission(
     except Exception:
         attachments = []
 
-    def process_comments(submission):
+    def process_comments(submission: dict) -> str:
         author = submission["author_name"]
         created_at = format_timestamp(submission["created_at"])
         edited_at = (
@@ -149,9 +167,7 @@ def process_submission(
             f" {edited_at}\n\n{comment}{media_comment}"
         )
 
-    comments = [
-        process_comments(submission) for submission in submission.submission_comments
-    ]
+    comments = collect(submission.submission_comments, function=process_comments)
     comments_body = "\n\n".join(comments)
     submission_comments_path = comments_path / f"{assignment}_COMMENTS ({user}).txt"
     with open(submission_comments_path, "w") as submission_comments_file:
@@ -181,19 +197,19 @@ def process_submission(
 
 
 def process_entry(
-    entry,
-    verbose,
-    discussion_index,
-    total_discussions,
-    entry_index,
-    total_entries,
-    discussion,
-    canvas,
-    csv_style,
-):
+    entry: DiscussionEntry,
+    instance: Instance,
+    verbose: bool,
+    discussion_index: int,
+    total_discussions: int,
+    entry_index: int,
+    total_entries: int,
+    discussion: DiscussionTopic,
+    csv_style: bool,
+) -> list | tuple:
     user = " ".join(entry.user["display_name"].split())
     user_id = entry.user["id"]
-    canvas_user = canvas.get_user(user_id)
+    canvas_user = get_user(user_id, instance=instance)
     email = canvas_user.email if csv_style else ""
     message = " ".join(strip_tags(entry.message.replace("\n", " ")).strip().split())
     timestamp = "" if csv_style else format_timestamp(entry.created_at)
@@ -214,9 +230,393 @@ def process_entry(
     return [user, email, message] if csv_style else (user, timestamp, message)
 
 
+def archive_content(
+    course: Course, course_directory: Path, instance: Instance, verbose: bool
+):
+    export_types = ["zip", "common_cartridge"]
+    for export_type in export_types:
+        echo(f') Starting "{export_type}" export...')
+        export = course.export_content(export_type=export_type, skip_notifications=True)
+        regex_search = search(r"\d*$", export.progress_url)
+        progress_id = regex_search.group() if regex_search else None
+        canvas = get_canvas(instance)
+        progress = canvas.get_progress(progress_id)
+        while progress.workflow_state != "completed":
+            if verbose:
+                echo(f"- {course.name} export {progress.workflow_state}...")
+            sleep(8)
+            progress = canvas.get_progress(progress_id)
+        url = course.get_content_export(export).attachment["url"]
+        response = get(url, stream=True)
+        file_name = f"{export_type}_content.zip"
+        content_path = create_directory(course_directory / "Content")
+        export_path = create_directory(
+            content_path / export_type.replace("_", " ").title()
+        )
+        file_path = export_path / file_name
+        with open(file_path, "wb") as stream:
+            for chunk in response.iter_content(chunk_size=128):
+                stream.write(chunk)
+        with ZipFile(file_path) as unzipper:
+            unzipper.extractall(export_path)
+        remove(file_path)
+
+
+def archive_announcements(course: Course, course_path: Path):
+    announcements_path = create_directory(course_path / "Announcements")
+    announcements = [
+        announcement
+        for announcement in course.get_discussion_topics(only_announcements=True)
+    ]
+    for announcement in announcements:
+        title = format_name(announcement.title)
+        title_path = announcements_path / f"{title}.txt"
+        with open(title_path, "w") as announcement_file:
+            announcement_file.write(strip_tags(announcement.message))
+
+
+def archive_modules(course: Course, course_path: Path):
+    modules_path = create_directory(course_path / "Modules")
+    modules = [module for module in course.get_modules()]
+    for module in modules:
+        module_name = format_name(module.name)
+        module_path = create_directory(modules_path / module_name)
+        items = [item for item in module.get_module_items()]
+        for item in items:
+            content = None
+            extension = ".txt"
+            body = ""
+            try:
+                url = item.url
+            except Exception:
+                try:
+                    url = item.html_url
+                except Exception:
+                    url = ""
+            if url:
+                headers = {
+                    "Authorization": (
+                        f"Bearer {get_config_option('canvas_keys', 'canvas_prod_key')}"
+                    )
+                }
+                response = get(url, headers=headers)
+                try:
+                    content = loads(response.content.decode("utf-8"))
+                    if item.type == "File":
+                        file_url = content["url"] if "url" in content else ""
+                        if file_url:
+                            try:
+                                name, extension = item.filename.split(".")
+                            except Exception:
+                                try:
+                                    name, extension = item.title.split(".")
+                                except Exception:
+                                    name = item.title
+                                    extension = ""
+                            name = format_name(name)
+                            filename = (
+                                f"{name}.{extension.lower()}"
+                                if extension
+                                else f"{name}"
+                            )
+                            file_path = module_path / filename
+                            with open(file_path, "wb") as stream:
+                                response = get(file_url, headers=headers, stream=True)
+                                for chunk in response.iter_content(chunk_size=128):
+                                    stream.write(chunk)
+                            if not extension:
+                                mime_type = from_file(str(file_path), mime=True)
+                                file_path.rename(
+                                    f"{file_path}{guess_extension(mime_type)}"
+                                )
+                        continue
+                    body = content["body"] if "body" in content else ""
+                except Exception:
+                    body = (
+                        f"[ExternalUrl]: {item.external_url}"
+                        if item.type == "ExternalUrl"
+                        else ""
+                    )
+            item_title = format_name(item.title)
+            with open(module_path / f"{item_title}{extension}", "w") as item_file:
+                if body:
+                    file_content = strip_tags(body)
+                elif url:
+                    file_content = f"[{item.type}]"
+                else:
+                    file_content = "[missing url]"
+                item_file.write(file_content)
+
+
+def archive_pages(course: Course, course_path: Path):
+    pages_path = create_directory(course_path / "Pages")
+    pages = [page for page in course.get_pages()]
+    for page in pages:
+        title = format_name(page.title)
+        page_path = pages_path / f"{title}.txt"
+        with open(page_path, "w") as page_file:
+            page_file.write(strip_tags(page.show_latest_revision().body))
+
+
+def archive_syllabus(course: Course, course_path: Path):
+    syllabus_path = create_directory(course_path / "Syllabus")
+    syllabus = course.syllabus_body
+    if syllabus:
+        with open(syllabus_path / "syllabus.txt", "w") as syllabus_file:
+            syllabus_file.write(strip_tags(syllabus))
+
+
+def archive_assignment(
+    assignment: Assignment,
+    course_directory: Path,
+    instance: Instance,
+    index=0,
+    total=0,
+    verbose=False,
+):
+    assignment_name = format_name(assignment.name)
+    ASSIGNMENT_DIRECTORY = create_directory(course_directory / "Assignments")
+    assignment_path = create_directory(ASSIGNMENT_DIRECTORY / assignment_name)
+    description_path = assignment_path / f"{assignment_name}_DESCRIPTION.txt"
+    submissions_path = assignment_path / f"{assignment_name}_GRADES.csv"
+    comments_path = create_directory(assignment_path / "Submission Comments")
+    submissions = collect(assignment.get_submissions(include="submission_comments"))
+    submissions = [
+        process_submission(
+            submission,
+            instance,
+            verbose,
+            index,
+            total,
+            submission_index,
+            len(submissions),
+            assignment_name,
+            assignment_path,
+            comments_path,
+        )
+        for submission_index, submission in enumerate(submissions)
+    ]
+    try:
+        description = " ".join(
+            strip_tags(assignment.description.replace("\n", " ")).strip().split()
+        )
+    except Exception:
+        description = ""
+    columns = ["User", "Submission type", "Grade", "Score", "Grader"]
+    submissions_data_frame = DataFrame(submissions, columns=columns)
+    submissions_data_frame.to_csv(submissions_path, index=False)
+    with open(description_path, "w") as assignment_file:
+        assignment_file.write(description)
+
+
+def archive_discussion(
+    discussion: DiscussionTopic,
+    course_directory: Path,
+    use_timestamp: bool,
+    instance,
+    csv_style=False,
+    index=0,
+    total=0,
+    verbose=False,
+):
+    discussion_name = format_name(discussion.title)
+    DISCUSSION_DIRECTORY = create_directory(course_directory / "Discussions")
+    discussion_path = create_directory(DISCUSSION_DIRECTORY / discussion_name)
+    description_path = discussion_path / f"{discussion_name}_DESCRIPTION.txt"
+    entries = collect(discussion.get_topic_entries())
+    if verbose and not entries:
+        echo(f"==== DISCUSSION {index + 1} ====")
+        echo("- NO ENTRIES")
+    entries = [
+        process_entry(
+            entry,
+            instance,
+            verbose,
+            index,
+            total,
+            entry_index,
+            len(entries),
+            discussion,
+            csv_style,
+        )
+        for entry_index, entry in enumerate(entries)
+    ]
+    try:
+        description = " ".join(
+            strip_tags(discussion.message.replace("\n", " ")).strip().split()
+        )
+    except Exception:
+        description = ""
+    columns = ["User", "Email", "Timestamp", "Post"]
+    if not use_timestamp:
+        columns.remove("Timestamp")
+    if csv_style:
+        entries_data_frame = DataFrame(entries, columns=columns)
+        posts_path = discussion_path / f"{discussion_name}_POSTS.csv"
+        entries_data_frame.to_csv(posts_path, index=False)
+    else:
+        posts_path = discussion_path / f"{discussion_name}_POSTS.txt"
+        with open(posts_path, "w") as posts_file:
+            for user, timestamp, message in entries:
+                posts_file.write(f"\n{user}\n{timestamp}\n\n{message}\n")
+    with open(description_path, "w") as description_file:
+        description_file.write(description)
+
+
+def archive_grade(
+    enrollment: Enrollment,
+    submissions: list[tuple[str, list[tuple[int, int]]]],
+    instance: Instance,
+) -> list:
+    def get_score_from_submissions(submissions: list[tuple[int, int]], user_id: str):
+        return next(item[1] for item in submissions if item[0] == user_id)
+
+    user_id = enrollment.user_id
+    user = enrollment.user
+    name = user["sortable_name"]
+    sis_user_id = user["sis_user_id"]
+    login_id = user["login_id"]
+    section_id = get_section(enrollment.course_section_id, instance=instance).name
+    student_data = [name, user_id, sis_user_id, login_id, section_id]
+    submission_scores = [
+        get_score_from_submissions(submission[1], user_id) for submission in submissions
+    ]
+    current_score = enrollment.grades["current_score"]
+    unposted_current_score = enrollment.grades["unposted_current_score"]
+    final_score = enrollment.grades["final_score"]
+    unposted_final_score = enrollment.grades["unposted_final_score"]
+    current_grade = enrollment.grades["current_grade"]
+    unposted_current_grade = enrollment.grades["unposted_current_grade"]
+    final_grade = enrollment.grades["final_grade"]
+    unposted_final_grade = enrollment.grades["unposted_final_grade"]
+    total_scores = [
+        current_score,
+        unposted_current_score,
+        final_score,
+        unposted_final_score,
+        current_grade,
+        unposted_current_grade,
+        final_grade,
+        unposted_final_grade,
+    ]
+    return student_data + submission_scores + total_scores
+
+
+def archive_quiz(course, quiz, verbose, course_directory, index=0, total=0):
+    title = format_name(quiz.title)
+    if verbose:
+        print_item(index, total, f"{title}")
+    description = strip_tags(quiz.description) if quiz.description else quiz.description
+    if verbose:
+        echo("\t> Getting questions...")
+    questions = [
+        [
+            strip_tags(question.question_text),
+            ", ".join([answer["text"] for answer in question.answers]),
+        ]
+        for question in quiz.get_questions()
+    ]
+    assignment = course.get_assignment(quiz.assignment_id)
+    if verbose:
+        echo("\t> Getting submissions...")
+    submissions = collect(
+        assignment.get_submissions(include=["submission_history", "user"])
+    )
+    QUIZ_DIRECTORY = create_directory(course_directory / "Quizzes")
+    quiz_path = create_directory(QUIZ_DIRECTORY / title)
+    description_path = quiz_path / f"{title}_DESCRIPTION.txt"
+    questions_path = quiz_path / f"{title}_QUESTIONS.csv"
+    scores_path = quiz_path / f"{title}_SCORES.csv"
+    submissions_path = create_directory(quiz_path / "Submissions")
+    submission_histories = [
+        (submission.user["name"], submission.submission_history)
+        for submission in submissions
+    ]
+    submissions_total = len(submission_histories)
+    for index, submission_history in enumerate(submission_histories):
+        name, histories = submission_history
+        if verbose:
+            print_item(
+                index,
+                submissions_total,
+                f"Getting submission data for {color(name)}...",
+                prefix="\t\t*",
+            )
+        for history in histories:
+            submission_data = (
+                [
+                    [
+                        name,
+                        submission_data["correct"],
+                        submission_data["points"],
+                        submission_data["question_id"],
+                        strip_tags(submission_data["text"]),
+                    ]
+                    for submission_data in history["submission_data"]
+                ]
+                if "submission_data" in history
+                else []
+            )
+            submission_data = DataFrame(
+                submission_data,
+                columns=["Student", "Correct", "Points", "Question ID", "Text"],
+            )
+            submission_data_path = (
+                submissions_path / f"{name}_submissions_{history['id']}.csv"
+            )
+            submission_data.to_csv(submission_data_path, index=False)
+    if verbose:
+        echo("\t> Collecting user scores...")
+    user_scores = [
+        [
+            submission.user["name"],
+            round(submission.score, 2) if submission.score else submission.score,
+        ]
+        for submission in submissions
+    ]
+    user_scores = DataFrame(user_scores, columns=["Student", "Score"])
+    questions = DataFrame(questions, columns=["Question", "Answers"])
+    user_scores.to_csv(scores_path, index=False)
+    questions.to_csv(questions_path, index=False)
+    if description:
+        if verbose:
+            echo("\t> Getting description...")
+        with open(description_path, "w") as description_file:
+            description_file.write(description)
+
+
+def archive_rubrics(rubric, course_directory):
+    title = rubric.title.strip()
+    RUBRIC_DIRECTORY = create_directory(course_directory / "Rubrics")
+    rubric_path = RUBRIC_DIRECTORY / f"{title}.csv"
+    criteria = [
+        [
+            criteria["description"],
+            " / ".join(
+                [
+                    " ".join(
+                        [
+                            str(rating["points"]),
+                            rating["description"],
+                            f"({rating['long_description']})"
+                            if rating["long_description"]
+                            else "",
+                        ]
+                    )
+                    for rating in criteria["ratings"]
+                ]
+            ),
+            criteria["points"],
+        ]
+        for criteria in rubric.data
+    ]
+    criteria = DataFrame(criteria, columns=["Criteria", "Ratings", "Pts"])
+    criteria.to_csv(rubric_path, index=False)
+
+
 def archive_main(
     course_id,
-    instance,
+    instance_name,
     verbose,
     use_timestamp,
     content,
@@ -231,439 +631,65 @@ def archive_main(
     quizzes,
     rubrics,
 ):
-    if (
-        content
-        == announcements
-        == modules
-        == pages
-        == syllabus
-        == assignments
-        == groups
-        == discussions
-        == grades
-        == quizzes
-        == rubrics
-        is False
-    ):
-        content = (
-            announcements
-        ) = (
-            modules
-        ) = (
-            pages
-        ) = (
-            syllabus
-        ) = assignments = groups = discussions = grades = quizzes = rubrics = True
-
-    def archive_content(course, course_path, canvas, verbose):
-        export_types = ["zip", "common_cartridge"]
-        for export_type in export_types:
-            echo(f') Starting "{export_type}" export...')
-            export = course.export_content(
-                export_type=export_type, skip_notifications=True
-            )
-            regex_search = search(r"\d*$", export.progress_url)
-            progress_id = regex_search.group() if regex_search else None
-            progress = canvas.get_progress(progress_id)
-            while progress.workflow_state != "completed":
-                if verbose:
-                    echo(f"- {course.name} export {progress.workflow_state}...")
-                sleep(8)
-                progress = canvas.get_progress(progress_id)
-            url = course.get_content_export(export).attachment["url"]
-            response = get(url, stream=True)
-            file_name = f"{export_type}_content.zip"
-            content_path = create_directory(course_path / "Content")
-            export_path = create_directory(
-                content_path / export_type.replace("_", " ").title()
-            )
-            file_path = export_path / file_name
-            with open(file_path, "wb") as stream:
-                for chunk in response.iter_content(chunk_size=128):
-                    stream.write(chunk)
-            with ZipFile(file_path) as unzipper:
-                unzipper.extractall(export_path)
-            remove(file_path)
-
-    def archive_announcements(course, course_path):
-        announcements_path = create_directory(course_path / "Announcements")
-        announcements = [
-            announcement
-            for announcement in course.get_discussion_topics(only_announcements=True)
-        ]
-        for announcement in announcements:
-            title = format_name(announcement.title)
-            title_path = announcements_path / f"{title}.txt"
-            with open(title_path, "w") as announcement_file:
-                announcement_file.write(strip_tags(announcement.message))
-
-    def archive_modules(course, course_path):
-        modules_path = create_directory(course_path / "Modules")
-        modules = [module for module in course.get_modules()]
-        for module in modules:
-            module_name = format_name(module.name)
-            module_path = create_directory(modules_path / module_name)
-            items = [item for item in module.get_module_items()]
-            for item in items:
-                content = None
-                extension = ".txt"
-                body = ""
-                try:
-                    url = item.url
-                except Exception:
-                    try:
-                        url = item.html_url
-                    except Exception:
-                        url = ""
-                if url:
-                    headers = {
-                        "Authorization": (
-                            "Bearer"
-                            f" {get_config_option('canvas_keys', 'canvas_prod_key')}"
-                        )
-                    }
-                    response = get(url, headers=headers)
-                    try:
-                        content = loads(response.content.decode("utf-8"))
-                        if item.type == "File":
-                            file_url = content["url"] if "url" in content else ""
-                            if file_url:
-                                try:
-                                    name, extension = item.filename.split(".")
-                                except Exception:
-                                    try:
-                                        name, extension = item.title.split(".")
-                                    except Exception:
-                                        name = item.title
-                                        extension = ""
-                                name = format_name(name)
-                                filename = (
-                                    f"{name}.{extension.lower()}"
-                                    if extension
-                                    else f"{name}"
-                                )
-                                file_path = module_path / filename
-                                with open(file_path, "wb") as stream:
-                                    response = get(
-                                        file_url, headers=headers, stream=True
-                                    )
-                                    for chunk in response.iter_content(chunk_size=128):
-                                        stream.write(chunk)
-                                if not extension:
-                                    mime_type = from_file(str(file_path), mime=True)
-                                    file_path.rename(
-                                        f"{file_path}{guess_extension(mime_type)}"
-                                    )
-                            continue
-                        body = content["body"] if "body" in content else ""
-                    except Exception:
-                        body = (
-                            f"[ExternalUrl]: {item.external_url}"
-                            if item.type == "ExternalUrl"
-                            else ""
-                        )
-                item_title = format_name(item.title)
-                with open(module_path / f"{item_title}{extension}", "w") as item_file:
-                    if body:
-                        file_content = strip_tags(body)
-                    elif url:
-                        file_content = f"[{item.type}]"
-                    else:
-                        file_content = "[missing url]"
-                    item_file.write(file_content)
-
-    def archive_pages(course, course_path):
-        pages_path = create_directory(course_path / "Pages")
-        pages = [page for page in course.get_pages()]
-        for page in pages:
-            title = format_name(page.title)
-            page_path = pages_path / f"{title}.txt"
-            with open(page_path, "w") as page_file:
-                page_file.write(strip_tags(page.show_latest_revision().body))
-
-    def archive_syllabus(course, course_path):
-        syllabus_path = create_directory(course_path / "Syllabus")
-        syllabus = course.syllabus_body
-        if syllabus:
-            with open(syllabus_path / "syllabus.txt", "w") as syllabus_file:
-                syllabus_file.write(strip_tags(syllabus))
-
-    def archive_assignment(canvas, assignment, index=0, total=0, verbose=False):
-        assignment_name = format_name(assignment.name)
-        assignment_path = create_directory(ASSIGNMENT_DIRECTORY / assignment_name)
-        description_path = assignment_path / f"{assignment_name}_DESCRIPTION.txt"
-        submissions_path = assignment_path / f"{assignment_name}_GRADES.csv"
-        comments_path = create_directory(assignment_path / "Submission Comments")
-        submissions = [
-            submission
-            for submission in assignment.get_submissions(include="submission_comments")
-        ]
-        submissions = [
-            process_submission(
-                submission,
-                verbose,
-                index,
-                total,
-                submission_index,
-                len(submissions),
-                assignment_name,
-                assignment_path,
-                comments_path,
-                canvas,
-            )
-            for submission_index, submission in enumerate(submissions)
-        ]
-        try:
-            description = " ".join(
-                strip_tags(assignment.description.replace("\n", " ")).strip().split()
-            )
-        except Exception:
-            description = ""
-        columns = ["User", "Submission type", "Grade", "Score", "Grader"]
-        submissions = DataFrame(submissions, columns=columns)
-        submissions.to_csv(submissions_path, index=False)
-        with open(description_path, "w") as assignment_file:
-            assignment_file.write(description)
-
-    def archive_discussion(
-        canvas, discussion, csv_style=False, index=0, total=0, verbose=False
-    ):
-        discussion_name = format_name(discussion.title)
-        discussion_path = create_directory(DISCUSSION_DIRECTORY / discussion_name)
-        description_path = discussion_path / f"{discussion_name}_DESCRIPTION.txt"
-        entries = [entry for entry in discussion.get_topic_entries()]
-        if verbose and not entries:
-            echo(f"==== DISCUSSION {index + 1} ====")
-            echo("- NO ENTRIES")
-        entries = [
-            process_entry(
-                entry,
-                verbose,
-                index,
-                total,
-                entry_index,
-                len(entries),
-                discussion,
-                canvas,
-                csv_style,
-            )
-            for entry_index, entry in enumerate(entries)
-        ]
-        try:
-            description = " ".join(
-                strip_tags(discussion.message.replace("\n", " ")).strip().split()
-            )
-        except Exception:
-            description = ""
-        columns = ["User", "Email", "Timestamp", "Post"]
-        if not use_timestamp:
-            columns.remove("Timestamp")
-        if csv_style:
-            entries = DataFrame(entries, columns=columns)
-            posts_path = discussion_path / f"{discussion_name}_POSTS.csv"
-            entries.to_csv(posts_path, index=False)
-        else:
-            posts_path = discussion_path / f"{discussion_name}_POSTS.txt"
-            with open(posts_path, "w") as posts_file:
-                for user, timestamp, message in entries:
-                    posts_file.write(f"\n{user}\n{timestamp}\n\n{message}\n")
-        with open(description_path, "w") as description_file:
-            description_file.write(description)
-
-    def archive_grade(canvas, enrollment, submissions):
-        def get_score_from_submissions(submissions, user_id):
-            return next(item[1] for item in submissions if item[0] == user_id)
-
-        user_id = enrollment.user_id
-        user = enrollment.user
-        name = user["sortable_name"]
-        sis_user_id = user["sis_user_id"]
-        login_id = user["login_id"]
-        section_id = canvas.get_section(enrollment.course_section_id).name
-        student_data = [name, user_id, sis_user_id, login_id, section_id]
-        submission_scores = [
-            get_score_from_submissions(submission[1], user_id)
-            for submission in submissions
-        ]
-        current_score = enrollment.grades["current_score"]
-        unposted_current_score = enrollment.grades["unposted_current_score"]
-        final_score = enrollment.grades["final_score"]
-        unposted_final_score = enrollment.grades["unposted_final_score"]
-        current_grade = enrollment.grades["current_grade"]
-        unposted_current_grade = enrollment.grades["unposted_current_grade"]
-        final_grade = enrollment.grades["final_grade"]
-        unposted_final_grade = enrollment.grades["unposted_final_grade"]
-        total_scores = [
-            current_score,
-            unposted_current_score,
-            final_score,
-            unposted_final_score,
-            current_grade,
-            unposted_current_grade,
-            final_grade,
-            unposted_final_grade,
-        ]
-        return student_data + submission_scores + total_scores
-
-    def archive_quiz(quiz, index=0, total=0):
-        title = format_name(quiz.title)
-        if verbose:
-            print_item(index, total, f"{title}")
-        description = (
-            strip_tags(quiz.description) if quiz.description else quiz.description
+    archive_all = not any(
+        (
+            content,
+            announcements,
+            modules,
+            pages,
+            syllabus,
+            assignments,
+            groups,
+            discussions,
+            grades,
+            quizzes,
+            rubrics,
         )
-        if verbose:
-            echo("\t> Getting questions...")
-        questions = [
-            [
-                strip_tags(question.question_text),
-                ", ".join([answer["text"] for answer in question.answers]),
-            ]
-            for question in quiz.get_questions()
-        ]
-        course = CANVAS.get_course(quiz.course_id)
-        assignment = course.get_assignment(quiz.assignment_id)
-        if verbose:
-            echo("\t> Getting submissions...")
-        submissions = collect(
-            assignment.get_submissions(include=["submission_history", "user"])
-        )
-        quiz_path = create_directory(QUIZ_DIRECTORY / title)
-        description_path = quiz_path / f"{title}_DESCRIPTION.txt"
-        questions_path = quiz_path / f"{title}_QUESTIONS.csv"
-        scores_path = quiz_path / f"{title}_SCORES.csv"
-        submissions_path = create_directory(quiz_path / "Submissions")
-        submission_histories = [
-            (submission.user["name"], submission.submission_history)
-            for submission in submissions
-        ]
-        submissions_total = len(submission_histories)
-        for index, submission_history in enumerate(submission_histories):
-            name, histories = submission_history
-            if verbose:
-                print_item(
-                    index,
-                    submissions_total,
-                    f"Getting submission data for {color(name)}...",
-                    prefix="\t\t*",
-                )
-            for history in histories:
-                submission_data = (
-                    [
-                        [
-                            name,
-                            submission_data["correct"],
-                            submission_data["points"],
-                            submission_data["question_id"],
-                            strip_tags(submission_data["text"]),
-                        ]
-                        for submission_data in history["submission_data"]
-                    ]
-                    if "submission_data" in history
-                    else []
-                )
-                submission_data = DataFrame(
-                    submission_data,
-                    columns=["Student", "Correct", "Points", "Question ID", "Text"],
-                )
-                submission_data_path = (
-                    submissions_path / f"{name}_submissions_{history['id']}.csv"
-                )
-                submission_data.to_csv(submission_data_path, index=False)
-        if verbose:
-            echo("\t> Collecting user scores...")
-        user_scores = [
-            [
-                submission.user["name"],
-                round(submission.score, 2) if submission.score else submission.score,
-            ]
-            for submission in submissions
-        ]
-        user_scores = DataFrame(user_scores, columns=["Student", "Score"])
-        questions = DataFrame(questions, columns=["Question", "Answers"])
-        user_scores.to_csv(scores_path, index=False)
-        questions.to_csv(questions_path, index=False)
-        if description:
-            if verbose:
-                echo("\t> Getting description...")
-            with open(description_path, "w") as description_file:
-                description_file.write(description)
-
-    def archive_rubrics(rubric):
-        title = rubric.title.strip()
-        rubric_path = RUBRIC_DIRECTORY / f"{title}.csv"
-        criteria = [
-            [
-                criteria["description"],
-                " / ".join(
-                    [
-                        " ".join(
-                            [
-                                str(rating["points"]),
-                                rating["description"],
-                                f"({rating['long_description']})"
-                                if rating["long_description"]
-                                else "",
-                            ]
-                        )
-                        for rating in criteria["ratings"]
-                    ]
-                ),
-                criteria["points"],
-            ]
-            for criteria in rubric.data
-        ]
-        criteria = DataFrame(criteria, columns=["Criteria", "Ratings", "Pts"])
-        criteria.to_csv(rubric_path, index=False)
-
-    CANVAS = get_canvas(instance)
-    course = CANVAS.get_course(course_id, include=["syllabus_body"])
+    )
+    instance = validate_instance_name(instance_name)
+    course = get_course(course_id, include=["syllabus_body"], instance=instance)
     course_name = f"{format_name(course.name)} ({course.id})"
-    discussion_total = 0
-    quiz_total = 0
+    discussion_total = quiz_total = 0
+    assignment_objects = list()
     COURSE = create_directory(RESULTS / course_name)
-    ASSIGNMENT_DIRECTORY = create_directory(COURSE / "Assignments")
-    DISCUSSION_DIRECTORY = create_directory(COURSE / "Discussions")
-    GRADE_DIRECTORY = create_directory(COURSE / "Grades")
-    GROUP_DIRECTORY = create_directory(COURSE / "Groups")
-    QUIZ_DIRECTORY = create_directory(COURSE / "Quizzes")
-    RUBRIC_DIRECTORY = create_directory(COURSE / "Rubrics")
-    if content:
+    if content or archive_all:
         echo(") Exporting content...")
-        archive_content(course, COURSE, CANVAS, verbose)
-    if announcements:
+        archive_content(course, COURSE, instance, verbose)
+    if announcements or archive_all:
         echo(") Exporting announcements...")
         archive_announcements(course, COURSE)
-    if modules:
+    if modules or archive_all:
         echo(") Exporting modules...")
         archive_modules(course, COURSE)
-    if pages:
+    if pages or archive_all:
         echo(") Exporting pages...")
         archive_pages(course, COURSE)
-    if syllabus:
+    if syllabus or archive_all:
         echo(") Exporting syllabus...")
         archive_syllabus(course, COURSE)
-    assignment_objects = []
-    if assignments:
+    if assignments or archive_all:
         echo(") Exporting assignments...")
         assignment_objects, assignment_total = get_assignments(course)
         if verbose:
             for index, assignment in enumerate(assignment_objects):
-                archive_assignment(CANVAS, assignment, index, assignment_total, verbose)
+                archive_assignment(
+                    assignment, COURSE, instance, index, assignment_total, verbose
+                )
         else:
             with progressbar(assignment_objects, length=assignment_total) as progress:
                 for assignment in progress:
-                    archive_assignment(CANVAS, assignment)
-    if groups:
+                    archive_assignment(assignment, COURSE, instance)
+    if groups or archive_all:
         echo(") Exporting groups...")
         categories = [category for category in course.get_group_categories()]
+        GROUP_DIRECTORY = create_directory(COURSE / "Groups")
         for category in categories:
             groups = [group for group in category.get_groups()]
             groups_directory = create_directory(GROUP_DIRECTORY / category.name)
             for group in groups:
                 group_directory = create_directory(groups_directory / group.name)
                 memberships = [
-                    CANVAS.get_user(membership.user_id)
+                    get_user(membership.user_id, instance=instance)
                     for membership in group.get_memberships()
                 ]
                 memberships = [[user.id, user.name] for user in memberships]
@@ -686,14 +712,16 @@ def archive_main(
                         response = get(group_file.url, stream=True)
                         for chunk in response.iter_content(chunk_size=128):
                             stream.write(chunk)
-    if discussions:
+    if discussions or archive_all:
         echo(") Exporting discussions...")
         discussions, discussion_total = get_discussions(course)
         if verbose:
             for index, discussion in enumerate(discussions):
                 archive_discussion(
-                    CANVAS,
                     discussion,
+                    COURSE,
+                    use_timestamp,
+                    instance,
                     index=index,
                     total=discussion_total,
                     verbose=verbose,
@@ -701,26 +729,34 @@ def archive_main(
         else:
             with progressbar(discussions, length=discussion_total) as progress:
                 for discussion in progress:
-                    archive_discussion(CANVAS, discussion)
-    if grades:
+                    archive_discussion(
+                        discussion, COURSE, use_timestamp, instance=instance
+                    )
+    if grades or archive_all:
 
         def get_manual_posting(assignment):
             return "Manual Posting" if assignment.post_manually else ""
+
+        def is_published(assignment: Assignment) -> bool:
+            return assignment.published
+
+        def get_points_possible(assignment: Assignment) -> int:
+            return assignment.points_possible
 
         echo(") Exporting grades...")
         enrollments = get_enrollments(course)
         if not assignments:
             assignment_objects, assignment_total = get_assignments(course)
-        assignment_objects = [
-            assignment for assignment in assignment_objects if assignment.published
-        ]
-        assignment_posted = [""] * 5 + [
-            get_manual_posting(assignment) for assignment in assignment_objects
-        ]
+        assignment_objects = collect(
+            assignment_objects, conditional_function=is_published
+        )
+        assignment_posted = [""] * 5 + collect(
+            assignment_objects, function=get_manual_posting
+        )
         assignment_points = (
             ["    Points Possible"]
             + [""] * 4
-            + [assignment.points_possible for assignment in assignment_objects]
+            + collect(assignment_objects, function=get_points_possible)
             + (["(read only)"] * 8)
         )
         submissions = [
@@ -754,44 +790,44 @@ def archive_main(
                 "Unposted Final Grade",
             ]
         )
-        grades_path = GRADE_DIRECTORY / "Grades.csv"
+        grades_path = create_directory(COURSE / "Grades") / "Grades.csv"
         rows = (
             [assignment_posted]
             + [assignment_points]
             + [
-                archive_grade(CANVAS, enrollment, submissions)
+                archive_grade(enrollment, submissions, instance)
                 for enrollment in enrollments
             ]
         )
         grade_book = DataFrame(rows, columns=columns)
         grade_book.to_csv(grades_path, index=False)
-    if quizzes:
+    if quizzes or archive_all:
         echo(") Exporting quizzes...")
         quizzes, quiz_total = get_quizzes(course)
         if verbose:
             total = len(quizzes)
             for index, quiz in enumerate(quizzes):
-                archive_quiz(quiz, index, total)
+                archive_quiz(course, quiz, verbose, COURSE, index, total)
         else:
             with progressbar(quizzes, length=quiz_total) as progress:
                 for quiz in progress:
-                    archive_quiz(quiz)
-    if rubrics:
+                    archive_quiz(quiz, verbose, COURSE, instance)
+    if rubrics or archive_all:
         echo(") Exporting rubrics...")
         rubrics, rubric_total = get_rubrics(course)
         if verbose:
             for index, rubric in enumerate(rubrics):
-                archive_rubrics(rubric)
+                archive_rubrics(rubric, COURSE)
         else:
             with progressbar(rubrics, length=rubric_total) as progress:
                 for rubric in progress:
-                    archive_rubrics(rubric)
+                    archive_rubrics(rubric, COURSE)
     color("SUMMARY", "yellow", True)
     echo(
         f"- Archived {color(discussion_total, 'magenta')} DISCUSSIONS for"
         f" {color(course.name, 'blue')}."
     )
-    if quizzes:
+    if quizzes or archive_all:
         echo(
             f"- Archived {color(quiz_total, 'magenta')} QUIZZES for"
             f" {color(course.name, 'blue')}."
