@@ -1,3 +1,5 @@
+from typing import Optional
+
 from typer import Argument, Option, Typer
 
 from .api import Instance
@@ -50,59 +52,59 @@ def archive(
         "--timestamp",
         help="Include the timestamp in the output.",
     ),
-    content: bool = Option(
-        False,
-        "--content",
+    content: Optional[bool] = Option(
+        None,
+        "--content/--no-content",
         help="Export course content in the archive output.",
     ),
-    announcements: bool = Option(
-        False,
-        "--announcements",
+    announcements: Optional[bool] = Option(
+        None,
+        "--announcements/--no-announcements",
         help="Export course announcements in the archive output.",
     ),
-    groups: bool = Option(
-        False,
-        "--groups",
+    groups: Optional[bool] = Option(
+        None,
+        "--groups/--no-groups",
         help="Export course groups in the archive output.",
     ),
-    modules: bool = Option(
-        False,
-        "--modules",
+    modules: Optional[bool] = Option(
+        None,
+        "--modules/--no-modeules",
         help="Export course modules in the archive output.",
     ),
-    pages: bool = Option(
-        False,
-        "--pages",
+    pages: Optional[bool] = Option(
+        None,
+        "--pages/--no-pages",
         help="Export course pages in the archive output.",
     ),
-    syllabus: bool = Option(
-        False,
-        "--syllabus",
+    syllabus: Optional[bool] = Option(
+        None,
+        "--syllabus/--no-syllabus",
         help="Export course syllabus in the archive output.",
     ),
-    assignments: bool = Option(
-        False,
-        "--assignments",
+    assignments: Optional[bool] = Option(
+        None,
+        "--assignments/--no-assignments",
         help="Inlcude assignments in the archive output.",
     ),
-    discussions: bool = Option(
-        False,
-        "--discussions",
+    discussions: Optional[bool] = Option(
+        None,
+        "--discussions/no-discussions",
         help="Inlcude discussions in the archive output.",
     ),
-    grades: bool = Option(
-        False,
-        "--grades",
+    grades: Optional[bool] = Option(
+        None,
+        "--grades/--no-grades",
         help="Inlcude grades in the archive output.",
     ),
-    quizzes: bool = Option(
-        False,
-        "--quizzes",
+    quizzes: Optional[bool] = Option(
+        None,
+        "--quizzes/--no-quizzes",
         help="Inlcude quizzes in the archive output.",
     ),
-    rubrics: bool = Option(
-        False,
-        "--rubrics",
+    rubrics: Optional[bool] = Option(
+        None,
+        "--rubrics/--no-rubrics",
         help="Inlcude rubrics in the archive output.",
     ),
 ):

@@ -540,6 +540,7 @@ def archive_grades(course, course_directory, assignment_objects, instance, verbo
     if verbose:
         total = len(rows)
         for index, row in enumerate(rows):
+            row = [str(item) for item in row]
             print_item(index, total, ", ".join(row))
 
 
@@ -760,8 +761,9 @@ def archive_main(
     quizzes,
     rubrics,
 ):
-    archive_all = not any(
-        (
+    archive_all = all(
+        item is None
+        for item in [
             content,
             announcements,
             modules,
@@ -773,7 +775,7 @@ def archive_main(
             grades,
             quizzes,
             rubrics,
-        )
+        ]
     )
     instance = validate_instance_name(instance_name)
     switch_logger_file(LOGS, "archive", instance.name)
