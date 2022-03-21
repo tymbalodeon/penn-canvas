@@ -28,7 +28,6 @@ from .style import print_item
 COMMAND_PATH = create_directory(BASE_PATH / "Storage")
 RESULTS = create_directory(COMMAND_PATH / "Results")
 LOGS = create_directory(COMMAND_PATH / "Logs")
-RESULT_PATH = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result.csv"
 HEADERS = [
     "id",
     "sis id",
@@ -128,22 +127,22 @@ def increase_quota(
     return canvas_account_id, sis_id, old_quota, new_quota, status
 
 
-def process_result(instance: Instance) -> tuple[int, int]:
-    result = read_csv(RESULT_PATH, dtype=str)
+def process_result(result_path: Path, instance: Instance) -> tuple[int, int]:
+    result = read_csv(result_path, dtype=str)
     increased_count = len(result[result["error"] == ""].index)
     result = result.drop(result[result["error"] == "increase not required"].index)
     result = result.drop(result[result["error"] == "missing sis id"].index)
     error_count = len(result[result["error"] != ""].index)
-    if error_count == 0:
+    if not error_count:
         result.drop(columns=["error"], inplace=True)
     result = result.drop(columns=["index", "account id", "storage used in MB"])
     result = result.rename(columns={"id": "subaccount id", "sis id": "course code"})
-    result.to_csv(RESULT_PATH, index=False)
+    result.to_csv(result_path, index=False)
     if instance == Instance.PRODUCTION and BOX_PATH.exists():
         current_month_directory = create_directory(
             BOX_PATH / f"Storage_Quota_Monitoring/{MONTH} {YEAR}"
         )
-        result.to_csv(current_month_directory / RESULT_PATH.name, index=False)
+        result.to_csv(current_month_directory / result_path.name, index=False)
     return increased_count, error_count
 
 
@@ -151,7 +150,7 @@ def print_messages(total: int, increased: int, errors: int):
     color("SUMMARY:", "yellow", True)
     echo(f"- Processed {color(total, 'magenta')} courses.")
     echo(f"- Increased storage quota for {color(increased, 'yellow')} courses.")
-    if errors > 0:
+    if errors:
         echo(f"- {color(f'Failed to find {str(errors)} courses.', 'red')}")
     color("FINISHED", "yellow", True)
 
@@ -161,6 +160,7 @@ def check_and_increase_storage(
     course: tuple,
     total: int,
     increment_value: int,
+    result_path: Path,
     instance: Instance,
     verbose: bool,
 ):
@@ -180,7 +180,7 @@ def check_and_increase_storage(
     row = [canvas_account_id, sis_id, old_quota, new_quota, status]
     columns = ["id", "sis id", "old quota", "new quota", "error"]
     report.loc[index, columns] = row
-    report.loc[index].to_frame().T.to_csv(RESULT_PATH, mode="a", header=False)
+    report.loc[index].to_frame().T.to_csv(result_path, mode="a", header=False)
     if verbose:
         increased = old_quota and new_quota
         display_color = "red" if status == "course not found" else "yellow"
@@ -200,26 +200,33 @@ def storage_main(
     force_report: bool,
     verbose: bool,
 ):
-    switch_logger_file(LOGS / "course_storage_{time}.log")
     instance = validate_instance_name(instance_name, verbose=True)
+    switch_logger_file(LOGS / "course_storage_{time}_{instance.name}.log")
+    result_path = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result_{instance.name}.csv"
     report_path = get_report(
         "storage", CURRENT_YEAR_AND_TERM, force_report, instance, verbose
     )
-    start = get_start_index(force, RESULT_PATH)
+    start = get_start_index(force, result_path)
+    make_csv_paths(result_path, make_index_headers(HEADERS))
     report, total = process_report(report_path, start)
-    make_csv_paths(RESULT_PATH, make_index_headers(HEADERS))
     print_skip_message(start, "course")
     echo(") Processing courses...")
     if verbose:
         for course in report.itertuples():
             check_and_increase_storage(
-                report, course, total, increment_value, instance, verbose
+                report, course, total, increment_value, result_path, instance, verbose
             )
     else:
         with progressbar(report.itertuples(), length=total) as progress:
             for course in progress:
                 check_and_increase_storage(
-                    report, course, total, increment_value, instance, verbose
+                    report,
+                    course,
+                    total,
+                    increment_value,
+                    result_path,
+                    instance,
+                    verbose,
                 )
-    increased_count, error_count = process_result(instance)
+    increased_count, error_count = process_result(result_path, instance)
     print_messages(total, increased_count, error_count)

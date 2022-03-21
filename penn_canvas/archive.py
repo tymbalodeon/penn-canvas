@@ -409,6 +409,107 @@ def archive_assignment(
         assignment_file.write(description)
 
 
+def archive_groups(course, course_directory, instance):
+    echo(") Exporting groups...")
+    categories = collect(course.get_group_categories())
+    GROUP_DIRECTORY = create_directory(course_directory / "Groups")
+    for category in categories:
+        groups = [group for group in category.get_groups()]
+        groups_directory = create_directory(GROUP_DIRECTORY / category.name)
+        for group in groups:
+            group_directory = create_directory(groups_directory / group.name)
+            memberships = [
+                get_user(membership.user_id, instance=instance)
+                for membership in group.get_memberships()
+            ]
+            memberships = [[user.id, user.name] for user in memberships]
+            memberships = DataFrame(memberships, columns=["Canvas User ID", "Name"])
+            memberships_path = group_directory / f"{format_name(group.name)}_users.csv"
+            memberships.to_csv(memberships_path, index=False)
+            files = [group_file for group_file in group.get_files()]
+            for group_file in files:
+                try:
+                    name, extension = group_file.display_name.split(".")
+                except Exception:
+                    name = group_file.filename
+                    extension = "txt"
+                with open(
+                    group_directory / f"{name}.{extension}",
+                    "wb",
+                ) as stream:
+                    response = get(group_file.url, stream=True)
+                    for chunk in response.iter_content(chunk_size=128):
+                        stream.write(chunk)
+
+
+def archive_grades(course, course_directory, assignment_objects, instance):
+    def get_manual_posting(assignment):
+        return "Manual Posting" if assignment.post_manually else ""
+
+    def is_published(assignment: Assignment) -> bool:
+        return assignment.published
+
+    def get_points_possible(assignment: Assignment) -> int:
+        return assignment.points_possible
+
+    echo(") Exporting grades...")
+    enrollments = get_enrollments(course)
+    if not assignment_objects:
+        assignment_objects, _ = get_assignments(course)
+    assignment_objects = collect(assignment_objects, conditional_function=is_published)
+    assignment_posted = [""] * 5 + collect(
+        assignment_objects, function=get_manual_posting
+    )
+    assignment_points = (
+        ["    Points Possible"]
+        + [""] * 4
+        + collect(assignment_objects, function=get_points_possible)
+        + (["(read only)"] * 8)
+    )
+    submissions = [
+        (
+            format_name(assignment.name),
+            [
+                (submission.user_id, get_submission_score(submission))
+                for submission in assignment.get_submissions()
+            ],
+        )
+        for assignment in assignment_objects
+    ]
+    assignment_names = [submission[0] for submission in submissions]
+    columns = (
+        [
+            "Student",
+            "ID",
+            "SIS User ID",
+            "SIS Login ID",
+            "Section",
+        ]
+        + assignment_names
+        + [
+            "Current Score",
+            "Unposted Current Score",
+            "Final Score",
+            "Unposted Final Score",
+            "Current Grade",
+            "Unposted Current Grade",
+            "Final Grade",
+            "Unposted Final Grade",
+        ]
+    )
+    grades_path = create_directory(course_directory / "Grades") / "Grades.csv"
+    rows = (
+        [assignment_posted]
+        + [assignment_points]
+        + [
+            archive_grade(enrollment, submissions, instance)
+            for enrollment in enrollments
+        ]
+    )
+    grade_book = DataFrame(rows, columns=columns)
+    grade_book.to_csv(grades_path, index=False)
+
+
 def archive_discussion(
     discussion: DiscussionTopic,
     course_directory: Path,
@@ -680,38 +781,7 @@ def archive_main(
                 for assignment in progress:
                     archive_assignment(assignment, COURSE, instance)
     if groups or archive_all:
-        echo(") Exporting groups...")
-        categories = [category for category in course.get_group_categories()]
-        GROUP_DIRECTORY = create_directory(COURSE / "Groups")
-        for category in categories:
-            groups = [group for group in category.get_groups()]
-            groups_directory = create_directory(GROUP_DIRECTORY / category.name)
-            for group in groups:
-                group_directory = create_directory(groups_directory / group.name)
-                memberships = [
-                    get_user(membership.user_id, instance=instance)
-                    for membership in group.get_memberships()
-                ]
-                memberships = [[user.id, user.name] for user in memberships]
-                memberships = DataFrame(memberships, columns=["Canvas User ID", "Name"])
-                memberships_path = (
-                    group_directory / f"{format_name(group.name)}_users.csv"
-                )
-                memberships.to_csv(memberships_path, index=False)
-                files = [group_file for group_file in group.get_files()]
-                for group_file in files:
-                    try:
-                        name, extension = group_file.display_name.split(".")
-                    except Exception:
-                        name = group_file.filename
-                        extension = "txt"
-                    with open(
-                        group_directory / f"{name}.{extension}",
-                        "wb",
-                    ) as stream:
-                        response = get(group_file.url, stream=True)
-                        for chunk in response.iter_content(chunk_size=128):
-                            stream.write(chunk)
+        archive_groups(course, COURSE, instance)
     if discussions or archive_all:
         echo(") Exporting discussions...")
         discussions, discussion_total = get_discussions(course)
@@ -733,74 +803,7 @@ def archive_main(
                         discussion, COURSE, use_timestamp, instance=instance
                     )
     if grades or archive_all:
-
-        def get_manual_posting(assignment):
-            return "Manual Posting" if assignment.post_manually else ""
-
-        def is_published(assignment: Assignment) -> bool:
-            return assignment.published
-
-        def get_points_possible(assignment: Assignment) -> int:
-            return assignment.points_possible
-
-        echo(") Exporting grades...")
-        enrollments = get_enrollments(course)
-        if not assignments:
-            assignment_objects, assignment_total = get_assignments(course)
-        assignment_objects = collect(
-            assignment_objects, conditional_function=is_published
-        )
-        assignment_posted = [""] * 5 + collect(
-            assignment_objects, function=get_manual_posting
-        )
-        assignment_points = (
-            ["    Points Possible"]
-            + [""] * 4
-            + collect(assignment_objects, function=get_points_possible)
-            + (["(read only)"] * 8)
-        )
-        submissions = [
-            (
-                format_name(assignment.name),
-                [
-                    (submission.user_id, get_submission_score(submission))
-                    for submission in assignment.get_submissions()
-                ],
-            )
-            for assignment in assignment_objects
-        ]
-        assignment_names = [submission[0] for submission in submissions]
-        columns = (
-            [
-                "Student",
-                "ID",
-                "SIS User ID",
-                "SIS Login ID",
-                "Section",
-            ]
-            + assignment_names
-            + [
-                "Current Score",
-                "Unposted Current Score",
-                "Final Score",
-                "Unposted Final Score",
-                "Current Grade",
-                "Unposted Current Grade",
-                "Final Grade",
-                "Unposted Final Grade",
-            ]
-        )
-        grades_path = create_directory(COURSE / "Grades") / "Grades.csv"
-        rows = (
-            [assignment_posted]
-            + [assignment_points]
-            + [
-                archive_grade(enrollment, submissions, instance)
-                for enrollment in enrollments
-            ]
-        )
-        grade_book = DataFrame(rows, columns=columns)
-        grade_book.to_csv(grades_path, index=False)
+        archive_grades(course, COURSE, assignment_objects, instance)
     if quizzes or archive_all:
         echo(") Exporting quizzes...")
         quizzes, quiz_total = get_quizzes(course)

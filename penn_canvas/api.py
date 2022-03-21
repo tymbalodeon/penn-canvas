@@ -114,9 +114,12 @@ def get_account(
     if isinstance(account, Account):
         return account
     instance = validate_instance_name(instance)
-    account_object = get_canvas(instance, verbose=verbose).get_account(
-        account, use_sis_id=use_sis_id
-    )
+    try:
+        account_object = get_canvas(instance, verbose=verbose).get_account(
+            account, use_sis_id=use_sis_id
+        )
+    except Exception as error:
+        logger.error(error)
     if verbose:
         pprint(account)
     return account_object

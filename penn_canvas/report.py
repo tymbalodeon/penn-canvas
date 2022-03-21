@@ -87,12 +87,14 @@ def create_report(
         report = account.create_report(report_type)
     status = report.status
     echo(f') Generating "{report_type}"...')
-    while status in {"created", "running"}:
+    attempts = 0
+    while status in {"created", "running"} and attempts <= 180:
         echo("\t* Running...")
         sleep(5)
         report = account.get_report(report_type, report.id)
         status = report.status
-    if status == "error":
+        attempts += 1
+    if status != "complete":
         if verbose:
             try:
                 echo(f"ERROR: {report.last_run['paramters']['extra_text']}")
