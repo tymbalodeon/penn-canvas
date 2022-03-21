@@ -230,4 +230,4 @@ def storage_main(
                     verbose,
                 )
     increased_count, error_count = process_result(result_path, instance)
-    # print_messages(total, increased_count, error_count)
+    print_messages(total, increased_count, error_count)
