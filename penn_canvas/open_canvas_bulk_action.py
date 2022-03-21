@@ -549,7 +549,6 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 f"{color(' ' + str(canvas_user), 'magenta') if canvas_user else ''}."
             )
 
-    switch_logger_file(LOGS / "open_canvas_bulk_action_{time}.log")
     user_agent_courses = ""
     input_files, missing_file_message = find_input(
         "Open Canvas Bulk Action csv file", INPUT, date=False, open_canvas=True
@@ -585,6 +584,7 @@ def open_canvas_bulk_action_main(verbose, force, test):
         RESULT_PATH = RESULTS / RESULT_STRING
         START = get_start_index(force, RESULT_PATH)
         INSTANCE = Instance.OPEN_TEST if open_test else Instance.OPEN
+        switch_logger_file(LOGS, "open_canvas_bulk_action", INSTANCE.name)
         if action == "enroll":
             action_headers = HEADERS[:]
             action_headers.insert(2, "Type")
