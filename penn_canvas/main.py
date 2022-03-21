@@ -496,8 +496,11 @@ def email(
     ),
     use_data_warehouse: bool = Option(
         True,
-        " /--disable-data-warehouse",
+        " /--no-data-warehouse",
         help="Whether or not to check the Data Warehouse",
+    ),
+    prompt: bool = Option(
+        True, " /--no-prompt", help="Print out detailed information as the task runs."
     ),
     verbose: bool = Option(
         False, "--verbose", help="Print out detailed information as the task runs."
@@ -518,6 +521,7 @@ def email(
         force_report,
         clear_processed,
         use_data_warehouse,
+        prompt,
         verbose,
     )
 

@@ -3,6 +3,7 @@ from datetime import datetime
 from os import remove
 from pathlib import Path
 from shutil import rmtree
+from signal import SIGALRM, alarm, signal
 
 from canvasapi.communication_channel import CommunicationChannel
 from canvasapi.user import User
@@ -43,8 +44,9 @@ from .helpers import (
 )
 
 COMMAND_PATH = create_directory(BASE_PATH / "Email")
-LOGS = COMMAND_PATH / "logs"
-PROCESSED = COMMAND_PATH / ".processed"
+LOGS = create_directory(COMMAND_PATH / "Logs")
+PROCESSED = create_directory(COMMAND_PATH / ".processed")
+RESULT_BASE = "email_result"
 HEADERS = [
     "canvas user id",
     "login id",
@@ -200,7 +202,19 @@ def remove_empty_log(log_path):
         rmtree(LOGS)
 
 
-def process_result(result_path, new):
+def get_result_paths(instance: Instance) -> tuple:
+    paths = (
+        "ACTIVATED",
+        "SUPPORTED_ERROR",
+        "UNSUPPORTED_ERROR",
+        "USERS_NOT_FOUND",
+    )
+    for path in paths:
+        path = f"{YEAR}_{RESULT_BASE}_{path}_{instance.name}"
+    return paths
+
+
+def process_result(result_path: Path, new: bool, instance: Instance):
     result = read_csv(result_path)
     supported = result[result["supported"] == "Y"]
     unsupported = result[result["supported"] == "N"]
@@ -240,10 +254,12 @@ def process_result(result_path, new):
     BASE = COMMAND_PATH / f"{YEAR}"
     if not BASE.exists():
         Path.mkdir(BASE)
-    activated_path = BASE / f"{result_path.stem}_ACTIVATED.csv"
-    supported_errors_path = BASE / f"{result_path.stem}_SUPPORTED_ERROR.csv"
-    unsupported_errors_path = BASE / f"{result_path.stem}_UNSUPPORTED_ERROR.csv"
-    users_not_found_path = BASE / f"{result_path.stem}_USERS_NOT_FOUND.csv"
+    (
+        activated_path,
+        supported_errors_path,
+        unsupported_errors_path,
+        users_not_found_path,
+    ) = get_result_paths(instance)
     dynamic_to_csv(activated_path, activated, activated_path.exists())
     dynamic_to_csv(supported_errors_path, supported_errors, new)
     dynamic_to_csv(
@@ -353,21 +369,30 @@ def query_data_warehouse(
     log_path: Path,
     table: str,
 ) -> str | None:
-    cursor = get_data_warehouse_cursor()
-    cursor.execute(
-        f"SELECT penn_id, email_address FROM {table} WHERE pennkey = :pennkey",
-        pennkey=login_id,
-    )
-    for _, email in cursor:
-        if email:
-            return activate_user_email(
-                canvas_user_id,
-                login_id,
-                full_name,
-                canvas_user,
-                [email.strip()],
-                log_path,
-            )
+    def signal_handler(signum, frame):
+        raise Exception(f'Signal "{signum}" at frame "{frame}"')
+
+    signal(SIGALRM, signal_handler)
+    alarm(10)
+    try:
+        cursor = get_data_warehouse_cursor()
+        cursor.execute(
+            f"SELECT penn_id, email_address FROM {table} WHERE pennkey = :pennkey",
+            pennkey=login_id,
+        )
+        for _, email in cursor:
+            if email:
+                return activate_user_email(
+                    canvas_user_id,
+                    login_id,
+                    full_name,
+                    canvas_user,
+                    [email.strip()],
+                    log_path,
+                )
+    except Exception as error:
+        logger.error(error)
+    alarm(0)
     return None
 
 
@@ -386,8 +411,7 @@ def check_and_activate_emails(
     verbose: bool,
 ):
     index, canvas_user_id, login_id, full_name = user
-    supported = None
-    account = None
+    account = supported = None
     status, canvas_user, emails = is_already_active(user, instance)
     if not canvas_user:
         supported = status
@@ -465,27 +489,28 @@ def email_main(
     force_report: bool,
     clear_processed: bool,
     use_data_warehouse: bool,
+    prompt: bool,
     verbose: bool,
 ):
-    switch_logger_file(LOGS / "email_{time}.log")
-    if use_data_warehouse and not confirm_global_protect_enabled():
+    switch_logger_file(LOGS / "email_{time}_{instance.name}.log")
+    if prompt and use_data_warehouse and not confirm_global_protect_enabled():
         raise Exit()
     instance = validate_instance_name(instance_name, verbose=True)
     instance_display = format_instance_name(instance)
-    RESULT_PATH = COMMAND_PATH / f"{YEAR}_email_result{instance_display}.csv"
-    PROCESSED_PATH = PROCESSED / f"{YEAR}_email_processed_users{instance_display}.csv"
-    PROCESSED_ERRORS_PATH = (
+    result_path = COMMAND_PATH / f"{YEAR}_{RESULT_BASE}{instance_display}.csv"
+    processed_path = PROCESSED / f"{YEAR}_email_processed_users{instance_display}.csv"
+    processed_errors_path = (
         PROCESSED / f"{YEAR}_email_processed_errors{instance_display}.csv"
     )
     report_path = get_report(
         "users", CURRENT_YEAR_AND_TERM, force_report, instance, verbose
     )
-    handle_clear_processed(clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH])
-    PROCESSED_USERS = get_processed(PROCESSED_PATH, HEADERS)
-    PROCESSED_ERRORS = get_processed(PROCESSED_ERRORS_PATH, HEADERS)
-    start = get_start_index(force, RESULT_PATH)
-    report, total = process_report(report_path, PROCESSED_USERS, PROCESSED_ERRORS, new)
-    make_csv_paths(RESULT_PATH, make_index_headers(HEADERS))
+    handle_clear_processed(clear_processed, [processed_path, processed_errors_path])
+    processed_users = get_processed(processed_path, HEADERS)
+    processed_errors = get_processed(processed_errors_path, HEADERS)
+    start = get_start_index(force, result_path)
+    report, total = process_report(report_path, processed_users, processed_errors, new)
+    make_csv_paths(result_path, make_index_headers(HEADERS))
     LOG_STEM = (
         f"{YEAR}_email_log_{TODAY_AS_Y_M_D}{instance_display}"
         f"_{datetime.now().strftime('%H_%M_%S')}.csv"
@@ -508,10 +533,10 @@ def email_main(
                 sub_accounts,
                 LOG_PATH,
                 use_data_warehouse,
-                RESULT_PATH,
-                PROCESSED_PATH,
-                PROCESSED_ERRORS,
-                PROCESSED_ERRORS_PATH,
+                result_path,
+                processed_path,
+                processed_errors,
+                processed_errors_path,
                 instance,
                 verbose,
             )
@@ -525,10 +550,10 @@ def email_main(
                     sub_accounts,
                     LOG_PATH,
                     use_data_warehouse,
-                    RESULT_PATH,
-                    PROCESSED_PATH,
-                    PROCESSED_ERRORS,
-                    PROCESSED_ERRORS_PATH,
+                    result_path,
+                    processed_path,
+                    processed_errors,
+                    processed_errors_path,
                     instance,
                     verbose,
                 )
@@ -542,7 +567,7 @@ def email_main(
         unsupported,
         supported_not_found,
         user_not_found,
-    ) = process_result(RESULT_PATH, new)
+    ) = process_result(result_path, new, instance)
     print_messages(
         total,
         activated,

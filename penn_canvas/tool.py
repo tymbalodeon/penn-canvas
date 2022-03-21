@@ -2,6 +2,7 @@ from csv import writer
 from os import remove
 from pathlib import Path
 
+from loguru import logger
 from pandas import DataFrame, concat, isna, read_csv
 from typer import Exit, confirm, echo, progressbar
 
@@ -29,10 +30,12 @@ from .helpers import (
     make_csv_paths,
     make_index_headers,
     print_skip_message,
+    switch_logger_file,
 )
 
 COMMAND_PATH = create_directory(BASE_PATH / "Tool")
 PROCESSED = COMMAND_PATH / ".processed"
+LOGS = create_directory(COMMAND_PATH / "Logs")
 INPUT_FILE_NAME = "Canvas Provisioning (Courses) report"
 HEADERS = [
     "canvas course id",
@@ -154,10 +157,7 @@ def process_result(
         error_path = BASE / f"{result_path.stem}_ERROR.csv"
         dynamic_to_csv(error_path, error_result, new)
         if new:
-            try:
-                drop_duplicate_errors([error_path])
-            except Exception:
-                pass
+            drop_duplicate_errors([error_path])
         else:
             add_headers_to_empty_files(
                 [enabled_path],
@@ -307,6 +307,7 @@ def check_tool_usage(
             else:
                 tool_status = "disabled"
         except Exception as error_message:
+            logger.error(error_message)
             tool_status = f"{str(error_message)}"
             error = True
             if verbose:
@@ -356,6 +357,7 @@ def tool_main(
 ):
 
     instance = validate_instance_name(instance_name, verbose=True)
+    switch_logger_file(LOGS / "email_{time}_{instance.name}.log")
     if not use_id:
         tool = get_tool(tool)
     report_path = get_report("courses", term, force_report, instance, verbose)
