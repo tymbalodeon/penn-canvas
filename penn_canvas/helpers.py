@@ -468,6 +468,7 @@ def toggle_progress_bar(data, callback, canvas, verbose, args=None):
 
 
 @logger.catch
-def switch_logger_file(log_path: Path):
+def switch_logger_file(log_path: Path, log_name: str, instance_name: str):
+    log = log_path / (log_name + "_{time}" + f"_{instance_name}.log")
     logger.remove()
-    logger.add(log_path, retention=10)
+    logger.add(log, retention=10)

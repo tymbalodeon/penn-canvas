@@ -1,8 +1,6 @@
 from csv import writer
-from datetime import datetime
 from os import remove
 from pathlib import Path
-from shutil import rmtree
 from signal import SIGALRM, alarm, signal
 
 from canvasapi.communication_channel import CommunicationChannel
@@ -17,6 +15,7 @@ from penn_canvas.style import print_item
 
 from .api import (
     Instance,
+    collect,
     format_instance_name,
     get_account,
     get_data_warehouse_cursor,
@@ -26,7 +25,6 @@ from .api import (
 from .helpers import (
     BASE_PATH,
     CURRENT_YEAR_AND_TERM,
-    TODAY_AS_Y_M_D,
     YEAR,
     add_headers_to_empty_files,
     color,
@@ -149,7 +147,7 @@ def is_already_active(
 def check_schools(
     canvas_user: User, sub_accounts: list[int]
 ) -> tuple[bool, int | None]:
-    account_ids = [course.account_id for course in canvas_user.get_courses()]
+    account_ids = collect(canvas_user.get_courses())
     fixable_id = next(
         (account for account in account_ids if account in sub_accounts), None
     )
@@ -162,18 +160,14 @@ def activate_user_email(
     full_name: str,
     canvas_user: User,
     emails: list[CommunicationChannel],
-    log_path: Path,
 ) -> str:
     for email in emails:
         new_add = isinstance(email, str)
-        user_info = [
-            canvas_user_id,
-            login_id,
-            full_name,
-            email if new_add else email.address,
-        ]
-        with open(log_path, "a", newline="") as result:
-            writer(result).writerow(user_info)
+        logger.info("Activating email for...")
+        logger.info(f"User ID: {canvas_user_id}")
+        logger.info(f"Login ID: {login_id}")
+        logger.info(f"Full Name: {full_name}")
+        logger.info(f"Email: {email if new_add else email.address}")
         if not new_add:
             email.delete()
         canvas_user.create_communication_channel(
@@ -190,27 +184,19 @@ def activate_user_email(
         if not next_email:
             return "failed to activate"
         inactive = get_email_status(next_email)
-    log = read_csv(log_path)
-    log.drop(index=log.index[-1:], inplace=True)
-    log.to_csv(log_path, index=False)
     return "activated"
 
 
-def remove_empty_log(log_path):
-    if log_path.is_file() and read_csv(log_path).empty:
-        echo(") Removing empty logs file...")
-        rmtree(LOGS)
-
-
-def get_result_paths(instance: Instance) -> tuple:
-    paths = (
+def get_result_paths(base: Path, instance: Instance) -> tuple:
+    reports = [
         "ACTIVATED",
         "SUPPORTED_ERROR",
         "UNSUPPORTED_ERROR",
         "USERS_NOT_FOUND",
+    ]
+    paths = tuple(
+        base / f"{YEAR}_{RESULT_BASE}_{report}_{instance.name}" for report in reports
     )
-    for path in paths:
-        path = f"{YEAR}_{RESULT_BASE}_{path}_{instance.name}"
     return paths
 
 
@@ -259,7 +245,7 @@ def process_result(result_path: Path, new: bool, instance: Instance):
         supported_errors_path,
         unsupported_errors_path,
         users_not_found_path,
-    ) = get_result_paths(instance)
+    ) = get_result_paths(BASE, instance)
     dynamic_to_csv(activated_path, activated, activated_path.exists())
     dynamic_to_csv(supported_errors_path, supported_errors, new)
     dynamic_to_csv(
@@ -302,7 +288,6 @@ def print_messages(
     unsupported,
     supported_not_found,
     user_not_found,
-    log_path,
 ):
     color("SUMMARY:", "yellow", True)
     echo(f"- Processed {color(total, 'magenta')} accounts.")
@@ -335,11 +320,7 @@ def print_messages(
             " email address(es).",
             "red",
         )
-        log_path_display = color(log_path, "green")
-        echo(
-            f"- {message}. Affected accounts are recorded in the log file:"
-            f" {log_path_display}"
-        )
+        echo(f"- {message}. Affected accounts are recorded in the log file.")
     if user_not_found:
         message = color(
             "Failed to find"
@@ -366,7 +347,6 @@ def query_data_warehouse(
     canvas_user_id: str,
     full_name: str,
     canvas_user: User,
-    log_path: Path,
     table: str,
 ) -> str | None:
     def signal_handler(signum, frame):
@@ -383,12 +363,7 @@ def query_data_warehouse(
         for _, email in cursor:
             if email:
                 return activate_user_email(
-                    canvas_user_id,
-                    login_id,
-                    full_name,
-                    canvas_user,
-                    [email.strip()],
-                    log_path,
+                    canvas_user_id, login_id, full_name, canvas_user, [email.strip()]
                 )
     except Exception as error:
         logger.error(error)
@@ -401,7 +376,6 @@ def check_and_activate_emails(
     total: int,
     user: tuple,
     sub_accounts: list[int],
-    log_path: Path,
     use_data_warehouse: bool,
     result_path: Path,
     processed_path: Path,
@@ -422,7 +396,7 @@ def check_and_activate_emails(
             canvas_user_id = user[1]
             if emails and status == "unconfirmed":
                 status = activate_user_email(
-                    canvas_user_id, login_id, full_name, canvas_user, emails, log_path
+                    canvas_user_id, login_id, full_name, canvas_user, emails
                 )
             elif use_data_warehouse:
                 query_status = query_data_warehouse(
@@ -430,7 +404,6 @@ def check_and_activate_emails(
                     canvas_user_id,
                     full_name,
                     canvas_user,
-                    log_path,
                     "employee_general",
                 )
                 status = query_status if query_status else status
@@ -440,7 +413,6 @@ def check_and_activate_emails(
                         canvas_user_id,
                         full_name,
                         canvas_user,
-                        log_path,
                         "person_all_v",
                     )
                     status = query_status if query_status else status
@@ -492,10 +464,10 @@ def email_main(
     prompt: bool,
     verbose: bool,
 ):
-    switch_logger_file(LOGS / "email_{time}_{instance.name}.log")
     if prompt and use_data_warehouse and not confirm_global_protect_enabled():
         raise Exit()
     instance = validate_instance_name(instance_name, verbose=True)
+    switch_logger_file(LOGS, "email", instance.name)
     instance_display = format_instance_name(instance)
     result_path = COMMAND_PATH / f"{YEAR}_{RESULT_BASE}{instance_display}.csv"
     processed_path = PROCESSED / f"{YEAR}_email_processed_users{instance_display}.csv"
@@ -511,12 +483,6 @@ def email_main(
     start = get_start_index(force, result_path)
     report, total = process_report(report_path, processed_users, processed_errors, new)
     make_csv_paths(result_path, make_index_headers(HEADERS))
-    LOG_STEM = (
-        f"{YEAR}_email_log_{TODAY_AS_Y_M_D}{instance_display}"
-        f"_{datetime.now().strftime('%H_%M_%S')}.csv"
-    )
-    LOG_PATH = LOGS / LOG_STEM
-    make_csv_paths(LOG_PATH, LOG_HEADERS)
     print_skip_message(start, "user")
     main_account = get_account(instance=instance)
     sub_accounts = [
@@ -531,7 +497,6 @@ def email_main(
                 total,
                 user,
                 sub_accounts,
-                LOG_PATH,
                 use_data_warehouse,
                 result_path,
                 processed_path,
@@ -548,7 +513,6 @@ def email_main(
                     total,
                     user,
                     sub_accounts,
-                    LOG_PATH,
                     use_data_warehouse,
                     result_path,
                     processed_path,
@@ -557,7 +521,6 @@ def email_main(
                     instance,
                     verbose,
                 )
-    remove_empty_log(LOG_PATH)
     (
         activated,
         already_active,
@@ -578,5 +541,4 @@ def email_main(
         unsupported,
         supported_not_found,
         user_not_found,
-        LOG_PATH,
     )

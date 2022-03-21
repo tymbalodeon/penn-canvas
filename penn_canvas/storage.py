@@ -202,7 +202,7 @@ def storage_main(
     verbose: bool,
 ):
     instance = validate_instance_name(instance_name, verbose=True)
-    switch_logger_file(LOGS / "course_storage_{time}_{instance.name}.log")
+    switch_logger_file(LOGS, "course_storage", instance.name)
     result_path = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result_{instance.name}.csv"
     report_path = get_report(
         "storage", CURRENT_YEAR_AND_TERM, force_report, instance, verbose
