@@ -21,17 +21,17 @@ init_oracle_client(
 )
 
 
-def get_data_warehouse_cursor():
-    user, password, dsn = get_penn_canvas_config("data_warehouse")
-    return connect(user, password, dsn).cursor()
-
-
 class Instance(Enum):
     PRODUCTION = "prod"
     TEST = "test"
     BETA = "beta"
     OPEN = "open"
     OPEN_TEST = "open_test"
+
+
+def get_data_warehouse_cursor():
+    user, password, dsn = get_penn_canvas_config("data_warehouse")
+    return connect(user, password, dsn).cursor()
 
 
 def validate_instance_name(instance_name, verbose=False):

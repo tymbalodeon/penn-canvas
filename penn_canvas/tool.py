@@ -72,6 +72,47 @@ def get_account_names(accounts: list[str]) -> list[str]:
     return [get_account(int(account)).name for account in accounts]
 
 
+def jove():
+    results = make_csv_paths(
+        Path.home() / "Desktop/test.csv", ["Canvas Course ID", "Course Name", "Account"]
+    )
+    report_path = get_report("courses", "2022A")
+    report = read_csv(report_path)
+    courses = report.loc[:, ["canvas_course_id"]]
+    total = len(courses.index)
+    for index, course in courses.itertuples():
+        try:
+            canvas_course = get_course(course)
+        except Exception:
+            canvas_course = None
+        if not canvas_course:
+            continue
+        jove = next(
+            (
+                module
+                for module in canvas_course.get_modules()
+                if "jove" in module.name.lower()
+            ),
+            None,
+        )
+        if jove:
+            print_item(
+                index,
+                total,
+                f"{canvas_course}: {color('JOVE FOUND', 'green', bold=True)}",
+            )
+            account = get_account(canvas_course.account_id)
+            account = f"{account.name} ({account.id})"
+            report.loc[index, ["Name", "Account"]] = [canvas_course.name, account]
+            report.loc[index].to_frame().T.to_csv(results, mode="a+", header=False)
+        else:
+            print_item(
+                index,
+                total,
+                f"{canvas_course}: {color('NOT FOUND :(', 'red', bold=True)}",
+            )
+
+
 def get_tool(tool: str) -> str:
     tool = tool.lower()
     if tool in {"reserve", "reserves"}:

@@ -31,11 +31,12 @@ from .api import (
     validate_instance_name,
 )
 from .config import get_config_option
-from .helpers import BASE_PATH, create_directory, format_timestamp
+from .helpers import BASE_PATH, create_directory, format_timestamp, switch_logger_file
 from .style import color, print_item
 
 COMMAND_PATH = create_directory(BASE_PATH / "Archive")
 RESULTS = create_directory(COMMAND_PATH / "Results")
+LOGS = create_directory(COMMAND_PATH / "Logs")
 
 
 class HTMLStripper(HTMLParser):
@@ -233,14 +234,13 @@ def process_entry(
 def archive_content(
     course: Course, course_directory: Path, instance: Instance, verbose: bool
 ):
-    export_types = ["zip", "common_cartridge"]
-    for export_type in export_types:
+    for export_type in ["zip", "common_cartridge"]:
         echo(f') Starting "{export_type}" export...')
         export = course.export_content(export_type=export_type, skip_notifications=True)
         regex_search = search(r"\d*$", export.progress_url)
         progress_id = regex_search.group() if regex_search else None
         canvas = get_canvas(instance)
-        progress = canvas.get_progress(progress_id)
+        progress = get_canvas(instance).get_progress(progress_id)
         while progress.workflow_state != "completed":
             if verbose:
                 echo(f"- {course.name} export {progress.workflow_state}...")
@@ -262,27 +262,31 @@ def archive_content(
         remove(file_path)
 
 
-def archive_announcements(course: Course, course_path: Path):
+def archive_announcements(course: Course, course_path: Path, verbose: bool):
     announcements_path = create_directory(course_path / "Announcements")
-    announcements = [
-        announcement
-        for announcement in course.get_discussion_topics(only_announcements=True)
-    ]
-    for announcement in announcements:
+    announcements = collect(course.get_discussion_topics(only_announcements=True))
+    total = len(announcements)
+    for index, announcement in enumerate(announcements):
         title = format_name(announcement.title)
         title_path = announcements_path / f"{title}.txt"
         with open(title_path, "w") as announcement_file:
             announcement_file.write(strip_tags(announcement.message))
+        if verbose:
+            print_item(index, total, announcement.message)
 
 
-def archive_modules(course: Course, course_path: Path):
+def archive_modules(course: Course, course_path: Path, verbose: bool):
     modules_path = create_directory(course_path / "Modules")
-    modules = [module for module in course.get_modules()]
-    for module in modules:
+    modules = collect(course.get_modules())
+    module_total = len(modules)
+    for module_index, module in enumerate(modules):
         module_name = format_name(module.name)
+        if verbose:
+            print_item(module_index, module_total, color(module_name, "blue"))
         module_path = create_directory(modules_path / module_name)
-        items = [item for item in module.get_module_items()]
-        for item in items:
+        items = collect(module.get_module_items())
+        item_total = len(items)
+        for item_index, item in enumerate(items):
             content = None
             extension = ".txt"
             body = ""
@@ -346,24 +350,36 @@ def archive_modules(course: Course, course_path: Path):
                 else:
                     file_content = "[missing url]"
                 item_file.write(file_content)
+            if verbose:
+                print_item(
+                    item_index,
+                    item_total,
+                    color(f"{item_title}: {file_content[:40]}", "yellow"),
+                )
 
 
-def archive_pages(course: Course, course_path: Path):
+def archive_pages(course: Course, course_path: Path, verbose: bool):
     pages_path = create_directory(course_path / "Pages")
-    pages = [page for page in course.get_pages()]
-    for page in pages:
+    pages = collect(course.get_pages())
+    total = len(pages)
+    for index, page in enumerate(pages):
         title = format_name(page.title)
         page_path = pages_path / f"{title}.txt"
+        body = strip_tags(page.show_latest_revision().body)
         with open(page_path, "w") as page_file:
-            page_file.write(strip_tags(page.show_latest_revision().body))
+            page_file.write(body)
+        if verbose:
+            print_item(index, total, f"{color(title)}: {color(body[:40], 'yellow')}")
 
 
-def archive_syllabus(course: Course, course_path: Path):
+def archive_syllabus(course: Course, course_path: Path, verbose: bool):
     syllabus_path = create_directory(course_path / "Syllabus")
-    syllabus = course.syllabus_body
+    syllabus = strip_tags(course.syllabus_body)
     if syllabus:
         with open(syllabus_path / "syllabus.txt", "w") as syllabus_file:
-            syllabus_file.write(strip_tags(syllabus))
+            syllabus_file.write(syllabus)
+        if verbose:
+            echo(f"SYLLABUS: {syllabus}")
 
 
 def archive_assignment(
@@ -375,8 +391,8 @@ def archive_assignment(
     verbose=False,
 ):
     assignment_name = format_name(assignment.name)
-    ASSIGNMENT_DIRECTORY = create_directory(course_directory / "Assignments")
-    assignment_path = create_directory(ASSIGNMENT_DIRECTORY / assignment_name)
+    assignment_directory = create_directory(course_directory / "Assignments")
+    assignment_path = create_directory(assignment_directory / assignment_name)
     description_path = assignment_path / f"{assignment_name}_DESCRIPTION.txt"
     submissions_path = assignment_path / f"{assignment_name}_GRADES.csv"
     comments_path = create_directory(assignment_path / "Submission Comments")
@@ -397,9 +413,9 @@ def archive_assignment(
         for submission_index, submission in enumerate(submissions)
     ]
     try:
-        description = " ".join(
-            strip_tags(assignment.description.replace("\n", " ")).strip().split()
-        )
+        description = assignment.description.replace("\n", " ")
+        description = strip_tags(description).strip().split()
+        description = " ".join(description)
     except Exception:
         description = ""
     columns = ["User", "Submission type", "Grade", "Score", "Grader"]
@@ -407,16 +423,22 @@ def archive_assignment(
     submissions_data_frame.to_csv(submissions_path, index=False)
     with open(description_path, "w") as assignment_file:
         assignment_file.write(description)
+    if verbose:
+        print_item(index, total, f"{color(assignment_name)}: {description}")
 
 
-def archive_groups(course, course_directory, instance):
+def archive_groups(course, course_directory, instance, verbose):
     echo(") Exporting groups...")
     categories = collect(course.get_group_categories())
     GROUP_DIRECTORY = create_directory(course_directory / "Groups")
-    for category in categories:
-        groups = [group for group in category.get_groups()]
+    category_total = len(categories)
+    for category_index, category in enumerate(categories):
+        groups = collect(category.get_groups())
         groups_directory = create_directory(GROUP_DIRECTORY / category.name)
-        for group in groups:
+        group_total = len(groups)
+        if verbose:
+            print_item(category_index, category_total, f"{color(category)}")
+        for group_index, group in enumerate(groups):
             group_directory = create_directory(groups_directory / group.name)
             memberships = [
                 get_user(membership.user_id, instance=instance)
@@ -426,10 +448,14 @@ def archive_groups(course, course_directory, instance):
             memberships = DataFrame(memberships, columns=["Canvas User ID", "Name"])
             memberships_path = group_directory / f"{format_name(group.name)}_users.csv"
             memberships.to_csv(memberships_path, index=False)
-            files = [group_file for group_file in group.get_files()]
-            for group_file in files:
+            files = collect(group.get_files())
+            if verbose:
+                print_item(group_index, group_total, f"{color(group)}")
+            file_total = len(files)
+            for file_index, group_file in enumerate(files):
+                display_name = group_file.display_name
                 try:
-                    name, extension = group_file.display_name.split(".")
+                    name, extension = display_name.split(".")
                 except Exception:
                     name = group_file.filename
                     extension = "txt"
@@ -440,30 +466,26 @@ def archive_groups(course, course_directory, instance):
                     response = get(group_file.url, stream=True)
                     for chunk in response.iter_content(chunk_size=128):
                         stream.write(chunk)
+                if verbose:
+                    print_item(file_index, file_total, f"{color(display_name)}")
 
 
-def archive_grades(course, course_directory, assignment_objects, instance):
+def archive_grades(course, course_directory, assignment_objects, instance, verbose):
     def get_manual_posting(assignment):
         return "Manual Posting" if assignment.post_manually else ""
-
-    def is_published(assignment: Assignment) -> bool:
-        return assignment.published
-
-    def get_points_possible(assignment: Assignment) -> int:
-        return assignment.points_possible
 
     echo(") Exporting grades...")
     enrollments = get_enrollments(course)
     if not assignment_objects:
         assignment_objects, _ = get_assignments(course)
-    assignment_objects = collect(assignment_objects, conditional_function=is_published)
-    assignment_posted = [""] * 5 + collect(
-        assignment_objects, function=get_manual_posting
-    )
+    assignment_objects = [assignment.published for assignment in assignment_objects]
+    assignment_posted = [""] * 5 + [
+        get_manual_posting(assignment) for assignment in assignment_objects
+    ]
     assignment_points = (
         ["    Points Possible"]
         + [""] * 4
-        + collect(assignment_objects, function=get_points_possible)
+        + [assignment.points_possible for assignment in assignment_objects]
         + (["(read only)"] * 8)
     )
     submissions = [
@@ -508,6 +530,10 @@ def archive_grades(course, course_directory, assignment_objects, instance):
     )
     grade_book = DataFrame(rows, columns=columns)
     grade_book.to_csv(grades_path, index=False)
+    if verbose:
+        total = len(rows)
+        for index, row in enumerate(rows):
+            print_item(index, total, ", ".join(row))
 
 
 def archive_discussion(
@@ -574,31 +600,26 @@ def archive_grade(
 
     user_id = enrollment.user_id
     user = enrollment.user
-    name = user["sortable_name"]
-    sis_user_id = user["sis_user_id"]
-    login_id = user["login_id"]
     section_id = get_section(enrollment.course_section_id, instance=instance).name
-    student_data = [name, user_id, sis_user_id, login_id, section_id]
+    student_data = [
+        user["sortable_name"],
+        user_id,
+        user["sis_user_id"],
+        user["login_id"],
+        section_id,
+    ]
     submission_scores = [
         get_score_from_submissions(submission[1], user_id) for submission in submissions
     ]
-    current_score = enrollment.grades["current_score"]
-    unposted_current_score = enrollment.grades["unposted_current_score"]
-    final_score = enrollment.grades["final_score"]
-    unposted_final_score = enrollment.grades["unposted_final_score"]
-    current_grade = enrollment.grades["current_grade"]
-    unposted_current_grade = enrollment.grades["unposted_current_grade"]
-    final_grade = enrollment.grades["final_grade"]
-    unposted_final_grade = enrollment.grades["unposted_final_grade"]
     total_scores = [
-        current_score,
-        unposted_current_score,
-        final_score,
-        unposted_final_score,
-        current_grade,
-        unposted_current_grade,
-        final_grade,
-        unposted_final_grade,
+        enrollment.grades["current_score"],
+        enrollment.grades["unposted_current_score"],
+        enrollment.grades["final_score"],
+        enrollment.grades["unposted_final_score"],
+        enrollment.grades["current_grade"],
+        enrollment.grades["unposted_current_grade"],
+        enrollment.grades["final_grade"],
+        enrollment.grades["unposted_final_grade"],
     ]
     return student_data + submission_scores + total_scores
 
@@ -748,40 +769,41 @@ def archive_main(
         )
     )
     instance = validate_instance_name(instance_name)
+    switch_logger_file(LOGS, "archive", instance.name)
     course = get_course(course_id, include=["syllabus_body"], instance=instance)
     course_name = f"{format_name(course.name)} ({course.id})"
     discussion_total = quiz_total = 0
     assignment_objects = list()
-    COURSE = create_directory(RESULTS / course_name)
+    course_path = create_directory(RESULTS / course_name)
     if content or archive_all:
         echo(") Exporting content...")
-        archive_content(course, COURSE, instance, verbose)
+        archive_content(course, course_path, instance, verbose)
     if announcements or archive_all:
         echo(") Exporting announcements...")
-        archive_announcements(course, COURSE)
+        archive_announcements(course, course_path, verbose)
     if modules or archive_all:
         echo(") Exporting modules...")
-        archive_modules(course, COURSE)
+        archive_modules(course, course_path, verbose)
     if pages or archive_all:
         echo(") Exporting pages...")
-        archive_pages(course, COURSE)
+        archive_pages(course, course_path, verbose)
     if syllabus or archive_all:
         echo(") Exporting syllabus...")
-        archive_syllabus(course, COURSE)
+        archive_syllabus(course, course_path, verbose)
     if assignments or archive_all:
         echo(") Exporting assignments...")
         assignment_objects, assignment_total = get_assignments(course)
         if verbose:
             for index, assignment in enumerate(assignment_objects):
                 archive_assignment(
-                    assignment, COURSE, instance, index, assignment_total, verbose
+                    assignment, course_path, instance, index, assignment_total, verbose
                 )
         else:
             with progressbar(assignment_objects, length=assignment_total) as progress:
                 for assignment in progress:
-                    archive_assignment(assignment, COURSE, instance)
+                    archive_assignment(assignment, course_path, instance)
     if groups or archive_all:
-        archive_groups(course, COURSE, instance)
+        archive_groups(course, course_path, instance, verbose)
     if discussions or archive_all:
         echo(") Exporting discussions...")
         discussions, discussion_total = get_discussions(course)
@@ -789,7 +811,7 @@ def archive_main(
             for index, discussion in enumerate(discussions):
                 archive_discussion(
                     discussion,
-                    COURSE,
+                    course_path,
                     use_timestamp,
                     instance,
                     index=index,
@@ -800,31 +822,31 @@ def archive_main(
             with progressbar(discussions, length=discussion_total) as progress:
                 for discussion in progress:
                     archive_discussion(
-                        discussion, COURSE, use_timestamp, instance=instance
+                        discussion, course_path, use_timestamp, instance=instance
                     )
     if grades or archive_all:
-        archive_grades(course, COURSE, assignment_objects, instance)
+        archive_grades(course, course_path, assignment_objects, instance, verbose)
     if quizzes or archive_all:
         echo(") Exporting quizzes...")
         quizzes, quiz_total = get_quizzes(course)
         if verbose:
             total = len(quizzes)
             for index, quiz in enumerate(quizzes):
-                archive_quiz(course, quiz, verbose, COURSE, index, total)
+                archive_quiz(course, quiz, verbose, course_path, index, total)
         else:
             with progressbar(quizzes, length=quiz_total) as progress:
                 for quiz in progress:
-                    archive_quiz(quiz, verbose, COURSE, instance)
+                    archive_quiz(quiz, verbose, course_path, instance)
     if rubrics or archive_all:
         echo(") Exporting rubrics...")
         rubrics, rubric_total = get_rubrics(course)
         if verbose:
             for index, rubric in enumerate(rubrics):
-                archive_rubrics(rubric, COURSE)
+                archive_rubrics(rubric, course_path)
         else:
             with progressbar(rubrics, length=rubric_total) as progress:
                 for rubric in progress:
-                    archive_rubrics(rubric, COURSE)
+                    archive_rubrics(rubric, course_path)
     color("SUMMARY", "yellow", True)
     echo(
         f"- Archived {color(discussion_total, 'magenta')} DISCUSSIONS for"

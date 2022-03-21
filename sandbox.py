@@ -22,16 +22,23 @@ def canvas(instance_name: str | Instance = Instance.PRODUCTION):
     return get_canvas(instance, verbose=True)
 
 
+def account(account: int, use_sis_id: bool, instance_name: str):
+    instance = validate_instance_name(instance_name)
+    return get_account(account, use_sis_id, instance, verbose=True)
+
+
 def user(canvas_id, id_type=None, instance=Instance.PRODUCTION):
     return get_user(canvas_id, id_type, instance, verbose=True, pretty_print=True)
 
 
 def course(course_id, use_sis_id=False, instance=Instance.PRODUCTION):
-    get_course(course_id, use_sis_id, instance, verbose=True, pretty_print=True)
+    return get_course(course_id, use_sis_id, instance, verbose=True, pretty_print=True)
 
 
 def section(section_id, use_sis_id=False, instance=Instance.PRODUCTION):
-    get_section(section_id, use_sis_id, instance, verbose=True, pretty_print=True)
+    return get_section(
+        section_id, use_sis_id, instance, verbose=True, pretty_print=True
+    )
 
 
 def enrollments(enrollment_container: Course | Section | User, first_only=False):
