@@ -357,7 +357,7 @@ def tool_main(
 ):
 
     instance = validate_instance_name(instance_name, verbose=True)
-    switch_logger_file(LOGS / "email_{time}_{instance.name}.log")
+    switch_logger_file(LOGS, "tool", instance.name)
     if not use_id:
         tool = get_tool(tool)
     report_path = get_report("courses", term, force_report, instance, verbose)
