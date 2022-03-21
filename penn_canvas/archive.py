@@ -240,11 +240,11 @@ def archive_content(
         regex_search = search(r"\d*$", export.progress_url)
         progress_id = regex_search.group() if regex_search else None
         canvas = get_canvas(instance)
-        progress = get_canvas(instance).get_progress(progress_id)
+        progress = canvas.get_progress(progress_id)
         while progress.workflow_state != "completed":
             if verbose:
                 echo(f"- {course.name} export {progress.workflow_state}...")
-            sleep(8)
+            sleep(5)
             progress = canvas.get_progress(progress_id)
         url = course.get_content_export(export).attachment["url"]
         response = get(url, stream=True)
