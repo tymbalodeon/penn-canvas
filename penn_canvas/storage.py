@@ -129,10 +129,11 @@ def increase_quota(
 
 def process_result(result_path: Path, instance: Instance) -> tuple[int, int]:
     result = read_csv(result_path, dtype=str)
-    increased_count = len(result[result["error"] == ""].index)
-    result = result.drop(result[result["error"] == "increase not required"].index)
-    result = result.drop(result[result["error"] == "missing sis id"].index)
-    error_count = len(result[result["error"] != ""].index)
+    increased_count = len(result[result["error"].isna()].index)
+    result = result.drop(result[result["error"] == "increase not required"])
+    result = result.drop(result[result["error"] == "missing sis id"])
+    result = result.drop(result[result["error"].isna()])
+    error_count = len(result.index)
     if not error_count:
         result.drop(columns=["error"], inplace=True)
     result = result.drop(columns=["index", "account id", "storage used in MB"])
@@ -229,4 +230,4 @@ def storage_main(
                     verbose,
                 )
     increased_count, error_count = process_result(result_path, instance)
-    print_messages(total, increased_count, error_count)
+    # print_messages(total, increased_count, error_count)
