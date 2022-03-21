@@ -232,7 +232,11 @@ def process_entry(
 
 
 def archive_content(
-    course: Course, course_directory: Path, instance: Instance, verbose: bool
+    course: Course,
+    course_directory: Path,
+    instance: Instance,
+    verbose: bool,
+    unzip=False,
 ):
     for export_type in ["zip", "common_cartridge"]:
         echo(f') Starting "{export_type}" export...')
@@ -257,9 +261,10 @@ def archive_content(
         with open(file_path, "wb") as stream:
             for chunk in response.iter_content(chunk_size=128):
                 stream.write(chunk)
-        with ZipFile(file_path) as unzipper:
-            unzipper.extractall(export_path)
-        remove(file_path)
+        if unzip:
+            with ZipFile(file_path) as unzipper:
+                unzipper.extractall(export_path)
+            remove(file_path)
 
 
 def archive_announcements(course: Course, course_path: Path, verbose: bool):
@@ -478,7 +483,9 @@ def archive_grades(course, course_directory, assignment_objects, instance, verbo
     enrollments = get_enrollments(course)
     if not assignment_objects:
         assignment_objects, _ = get_assignments(course)
-    assignment_objects = [assignment.published for assignment in assignment_objects]
+    assignment_objects = [
+        assignment for assignment in assignment_objects if assignment.published
+    ]
     assignment_posted = [""] * 5 + [
         get_manual_posting(assignment) for assignment in assignment_objects
     ]
