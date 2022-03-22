@@ -240,6 +240,7 @@ def archive_content(
     verbose: bool,
     unzip=False,
 ):
+    echo(") Exporting content...")
     for export_type in ["zip", "common_cartridge"]:
         echo(f') Starting "{export_type}" export...')
         export = course.export_content(export_type=export_type, skip_notifications=True)
@@ -270,6 +271,7 @@ def archive_content(
 
 
 def archive_announcements(course: Course, course_path: Path, verbose: bool):
+    echo(") Exporting announcements...")
     announcements_path = create_directory(course_path / "Announcements")
     announcements = collect(course.get_discussion_topics(only_announcements=True))
     total = len(announcements)
@@ -283,6 +285,7 @@ def archive_announcements(course: Course, course_path: Path, verbose: bool):
 
 
 def archive_modules(course: Course, course_path: Path, verbose: bool):
+    echo(") Exporting modules...")
     modules_path = create_directory(course_path / "Modules")
     modules = collect(course.get_modules())
     module_total = len(modules)
@@ -366,6 +369,7 @@ def archive_modules(course: Course, course_path: Path, verbose: bool):
 
 
 def archive_pages(course: Course, course_path: Path, verbose: bool):
+    echo(") Exporting pages...")
     pages_path = create_directory(course_path / "Pages")
     pages = collect(course.get_pages())
     total = len(pages)
@@ -380,6 +384,7 @@ def archive_pages(course: Course, course_path: Path, verbose: bool):
 
 
 def archive_syllabus(course: Course, course_path: Path, verbose: bool):
+    echo(") Exporting syllabus...")
     syllabus_path = create_directory(course_path / "Syllabus")
     syllabus = strip_tags(course.syllabus_body)
     if syllabus:
@@ -432,6 +437,22 @@ def archive_assignment(
         assignment_file.write(description)
     if verbose:
         print_item(index, total, f"{color(assignment_name)}: {description}")
+
+
+def archive_assignments(
+    course: Course, course_path: Path, instance: Instance, verbose: bool
+):
+    echo(") Exporting assignments...")
+    assignment_objects, assignment_total = get_assignments(course)
+    if verbose:
+        for index, assignment in enumerate(assignment_objects):
+            archive_assignment(
+                assignment, course_path, instance, index, assignment_total, verbose
+            )
+    else:
+        with progressbar(assignment_objects, length=assignment_total) as progress:
+            for assignment in progress:
+                archive_assignment(assignment, course_path, instance)
 
 
 def archive_groups(course, course_directory, instance, verbose):
@@ -600,6 +621,34 @@ def archive_discussion(
         description_file.write(description)
 
 
+def archive_discussions(
+    course: Course,
+    course_path: Path,
+    use_timestamp: bool,
+    instance: Instance,
+    verbose: bool,
+):
+    echo(") Exporting discussions...")
+    discussion_topics, discussion_total = get_discussions(course)
+    if verbose:
+        for index, discussion in enumerate(discussion_topics):
+            archive_discussion(
+                discussion,
+                course_path,
+                use_timestamp,
+                instance,
+                index=index,
+                total=discussion_total,
+                verbose=verbose,
+            )
+    else:
+        with progressbar(discussion_topics, length=discussion_total) as progress:
+            for discussion in progress:
+                archive_discussion(
+                    discussion, course_path, use_timestamp, instance=instance
+                )
+
+
 def archive_grade(
     enrollment: Enrollment,
     submissions: list[tuple[str, list[tuple[int, int]]]],
@@ -717,33 +766,61 @@ def archive_quiz(course, quiz, verbose, course_directory, index=0, total=0):
             description_file.write(description)
 
 
-def archive_rubrics(rubric, course_directory):
+def archive_quizzes(
+    course: Course, course_path: Path, instance: Instance, verbose: bool
+):
+    echo(") Exporting quizzes...")
+    quiz_objects, quiz_total = get_quizzes(course)
+    if verbose:
+        total = len(quiz_objects)
+        for index, quiz in enumerate(quiz_objects):
+            archive_quiz(course, quiz, verbose, course_path, index, total)
+    else:
+        with progressbar(quiz_objects, length=quiz_total) as progress:
+            for quiz in progress:
+                archive_quiz(quiz, verbose, course_path, instance)
+
+
+def process_criterion_rating(rating):
+    points = rating["points"]
+    description = rating["description"]
+    long_description = rating["long_description"] or ""
+    return f"{points} {description} {long_description}"
+
+
+def process_criterion(criterion):
+    description = criterion["description"]
+    ratings = criterion["ratings"]
+    ratings = [process_criterion_rating(rating) for rating in ratings]
+    ratings = " / ".join(ratings)
+    points = criterion["points"]
+    return [description, ratings, points]
+
+
+def archive_rubric(
+    rubric: Rubric, course_directory: Path, verbose: bool, index=0, total=0
+):
     title = rubric.title.strip()
-    RUBRIC_DIRECTORY = create_directory(course_directory / "Rubrics")
-    rubric_path = RUBRIC_DIRECTORY / f"{title}.csv"
-    criteria = [
-        [
-            criteria["description"],
-            " / ".join(
-                [
-                    " ".join(
-                        [
-                            str(rating["points"]),
-                            rating["description"],
-                            f"({rating['long_description']})"
-                            if rating["long_description"]
-                            else "",
-                        ]
-                    )
-                    for rating in criteria["ratings"]
-                ]
-            ),
-            criteria["points"],
-        ]
-        for criteria in rubric.data
-    ]
-    criteria = DataFrame(criteria, columns=["Criteria", "Ratings", "Pts"])
-    criteria.to_csv(rubric_path, index=False)
+    if verbose:
+        print_item(index, total, color(title))
+    rubric_directory = create_directory(course_directory / "Rubrics")
+    rubric_path = rubric_directory / f"{title}.csv"
+    criteria = [process_criterion(criterion) for criterion in rubric.data]
+    data_frame = DataFrame(criteria, columns=["Criteria", "Ratings", "Pts"])
+    data_frame.to_csv(rubric_path, index=False)
+
+
+def archive_rubrics(course: Course, course_path: Path, verbose: bool):
+    echo(") Exporting rubrics...")
+    rubric_objects, rubric_total = get_rubrics(course)
+    if verbose:
+        total = len(rubric_objects)
+        for index, rubric in enumerate(rubric_objects):
+            archive_rubric(rubric, course_path, verbose, index, total)
+    else:
+        with progressbar(rubric_objects, length=rubric_total) as progress:
+            for rubric in progress:
+                archive_rubric(rubric, course_path, verbose)
 
 
 def archive_main(
@@ -767,81 +844,31 @@ def archive_main(
     switch_logger_file(LOGS, "archive", instance.name)
     course = get_course(course_id, include=["syllabus_body"], instance=instance)
     course_name = f"{format_name(course.name)} ({course.id})"
+    course_path = create_directory(RESULTS / course_name)
     discussion_total = quiz_total = 0
     assignment_objects: list[Assignment] = list()
-    course_path = create_directory(RESULTS / course_name)
     if content is not False:
-        echo(") Exporting content...")
         archive_content(course, course_path, instance, verbose)
     if announcements is not False:
-        echo(") Exporting announcements...")
         archive_announcements(course, course_path, verbose)
     if modules is not False:
-        echo(") Exporting modules...")
         archive_modules(course, course_path, verbose)
     if pages is not False:
-        echo(") Exporting pages...")
         archive_pages(course, course_path, verbose)
     if syllabus is not False:
-        echo(") Exporting syllabus...")
         archive_syllabus(course, course_path, verbose)
     if assignments is not False:
-        echo(") Exporting assignments...")
-        assignment_objects, assignment_total = get_assignments(course)
-        if verbose:
-            for index, assignment in enumerate(assignment_objects):
-                archive_assignment(
-                    assignment, course_path, instance, index, assignment_total, verbose
-                )
-        else:
-            with progressbar(assignment_objects, length=assignment_total) as progress:
-                for assignment in progress:
-                    archive_assignment(assignment, course_path, instance)
+        archive_assignments(course, course_path, instance, verbose)
     if groups is not False:
         archive_groups(course, course_path, instance, verbose)
     if discussions is not False:
-        echo(") Exporting discussions...")
-        discussion_topics, discussion_total = get_discussions(course)
-        if verbose:
-            for index, discussion in enumerate(discussion_topics):
-                archive_discussion(
-                    discussion,
-                    course_path,
-                    use_timestamp,
-                    instance,
-                    index=index,
-                    total=discussion_total,
-                    verbose=verbose,
-                )
-        else:
-            with progressbar(discussion_topics, length=discussion_total) as progress:
-                for discussion in progress:
-                    archive_discussion(
-                        discussion, course_path, use_timestamp, instance=instance
-                    )
+        archive_discussions(course, course_path, use_timestamp, instance, verbose)
     if grades is not False:
         archive_grades(course, course_path, assignment_objects, instance, verbose)
     if quizzes is not False:
-        echo(") Exporting quizzes...")
-        quiz_objects, quiz_total = get_quizzes(course)
-        if verbose:
-            total = len(quiz_objects)
-            for index, quiz in enumerate(quiz_objects):
-                archive_quiz(course, quiz, verbose, course_path, index, total)
-        else:
-            with progressbar(quiz_objects, length=quiz_total) as progress:
-                for quiz in progress:
-                    archive_quiz(quiz, verbose, course_path, instance)
+        archive_quizzes(course, course_path, instance, verbose)
     if rubrics is not False:
-        echo(") Exporting rubrics...")
-        rubric_objects, rubric_total = get_rubrics(course)
-        if verbose:
-            for index, rubric in enumerate(rubric_objects):
-                archive_rubrics(rubric, course_path)
-        else:
-            with progressbar(rubric_objects, length=rubric_total) as progress:
-                for rubric in progress:
-                    archive_rubrics(rubric, course_path)
+        archive_rubrics(course, course_path, verbose)
     color("SUMMARY", "yellow", True)
     echo(
         f"- Archived {color(discussion_total, 'magenta')} DISCUSSIONS for"
