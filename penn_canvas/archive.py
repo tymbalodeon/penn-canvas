@@ -6,6 +6,7 @@ from os import remove
 from pathlib import Path
 from re import search
 from time import sleep
+from typing import Optional
 from zipfile import ZipFile
 
 from canvasapi.assignment import Assignment
@@ -73,13 +74,12 @@ def get_discussions(course: Course) -> tuple[list[DiscussionTopic], int]:
 
 
 def get_enrollments(course: Course) -> list[Enrollment]:
-    def is_student_enrollment(enrollment: Enrollment) -> bool:
-        return enrollment.type == "StudentEnrollment"
-
     echo(") Finding students...")
-    enrollments = collect(
-        course.get_enrollments(), conditional_function=is_student_enrollment
-    )
+    enrollments = [
+        enrollment
+        for enrollment in course.get_enrollments()
+        if enrollment.type == "StudentEnrollment"
+    ]
     return enrollments
 
 
@@ -168,7 +168,9 @@ def process_submission(
             f" {edited_at}\n\n{comment}{media_comment}"
         )
 
-    comments = collect(submission.submission_comments, function=process_comments)
+    comments = [
+        process_comments(submission) for submission in submission.submission_comments
+    ]
     comments_body = "\n\n".join(comments)
     submission_comments_path = comments_path / f"{assignment}_COMMENTS ({user}).txt"
     with open(submission_comments_path, "w") as submission_comments_file:
@@ -745,61 +747,45 @@ def archive_rubrics(rubric, course_directory):
 
 
 def archive_main(
-    course_id,
-    instance_name,
-    verbose,
-    use_timestamp,
-    content,
-    announcements,
-    modules,
-    pages,
-    syllabus,
-    assignments,
-    groups,
-    discussions,
-    grades,
-    quizzes,
-    rubrics,
+    course_id: int,
+    instance_name: str,
+    verbose: bool,
+    use_timestamp: bool,
+    content: Optional[bool],
+    announcements: Optional[bool],
+    modules: Optional[bool],
+    pages: Optional[bool],
+    syllabus: Optional[bool],
+    assignments: Optional[bool],
+    groups: Optional[bool],
+    discussions: Optional[bool],
+    grades: Optional[bool],
+    quizzes: Optional[bool],
+    rubrics: Optional[bool],
 ):
-    archive_all = all(
-        item is None
-        for item in [
-            content,
-            announcements,
-            modules,
-            pages,
-            syllabus,
-            assignments,
-            groups,
-            discussions,
-            grades,
-            quizzes,
-            rubrics,
-        ]
-    )
     instance = validate_instance_name(instance_name)
     switch_logger_file(LOGS, "archive", instance.name)
     course = get_course(course_id, include=["syllabus_body"], instance=instance)
     course_name = f"{format_name(course.name)} ({course.id})"
     discussion_total = quiz_total = 0
-    assignment_objects = list()
+    assignment_objects: list[Assignment] = list()
     course_path = create_directory(RESULTS / course_name)
-    if content or archive_all:
+    if content is not None:
         echo(") Exporting content...")
         archive_content(course, course_path, instance, verbose)
-    if announcements or archive_all:
+    if announcements is not None:
         echo(") Exporting announcements...")
         archive_announcements(course, course_path, verbose)
-    if modules or archive_all:
+    if modules is not None:
         echo(") Exporting modules...")
         archive_modules(course, course_path, verbose)
-    if pages or archive_all:
+    if pages is not None:
         echo(") Exporting pages...")
         archive_pages(course, course_path, verbose)
-    if syllabus or archive_all:
+    if syllabus is not None:
         echo(") Exporting syllabus...")
         archive_syllabus(course, course_path, verbose)
-    if assignments or archive_all:
+    if assignments is not None:
         echo(") Exporting assignments...")
         assignment_objects, assignment_total = get_assignments(course)
         if verbose:
@@ -811,13 +797,13 @@ def archive_main(
             with progressbar(assignment_objects, length=assignment_total) as progress:
                 for assignment in progress:
                     archive_assignment(assignment, course_path, instance)
-    if groups or archive_all:
+    if groups is not None:
         archive_groups(course, course_path, instance, verbose)
-    if discussions or archive_all:
+    if discussions is not None:
         echo(") Exporting discussions...")
-        discussions, discussion_total = get_discussions(course)
+        discussion_topics, discussion_total = get_discussions(course)
         if verbose:
-            for index, discussion in enumerate(discussions):
+            for index, discussion in enumerate(discussion_topics):
                 archive_discussion(
                     discussion,
                     course_path,
@@ -828,32 +814,32 @@ def archive_main(
                     verbose=verbose,
                 )
         else:
-            with progressbar(discussions, length=discussion_total) as progress:
+            with progressbar(discussion_topics, length=discussion_total) as progress:
                 for discussion in progress:
                     archive_discussion(
                         discussion, course_path, use_timestamp, instance=instance
                     )
-    if grades or archive_all:
+    if grades is not None:
         archive_grades(course, course_path, assignment_objects, instance, verbose)
-    if quizzes or archive_all:
+    if quizzes is not None:
         echo(") Exporting quizzes...")
-        quizzes, quiz_total = get_quizzes(course)
+        quiz_objects, quiz_total = get_quizzes(course)
         if verbose:
-            total = len(quizzes)
-            for index, quiz in enumerate(quizzes):
+            total = len(quiz_objects)
+            for index, quiz in enumerate(quiz_objects):
                 archive_quiz(course, quiz, verbose, course_path, index, total)
         else:
-            with progressbar(quizzes, length=quiz_total) as progress:
+            with progressbar(quiz_objects, length=quiz_total) as progress:
                 for quiz in progress:
                     archive_quiz(quiz, verbose, course_path, instance)
-    if rubrics or archive_all:
+    if rubrics is not None:
         echo(") Exporting rubrics...")
-        rubrics, rubric_total = get_rubrics(course)
+        rubric_objects, rubric_total = get_rubrics(course)
         if verbose:
-            for index, rubric in enumerate(rubrics):
+            for index, rubric in enumerate(rubric_objects):
                 archive_rubrics(rubric, course_path)
         else:
-            with progressbar(rubrics, length=rubric_total) as progress:
+            with progressbar(rubric_objects, length=rubric_total) as progress:
                 for rubric in progress:
                     archive_rubrics(rubric, course_path)
     color("SUMMARY", "yellow", True)
@@ -861,7 +847,7 @@ def archive_main(
         f"- Archived {color(discussion_total, 'magenta')} DISCUSSIONS for"
         f" {color(course.name, 'blue')}."
     )
-    if quizzes or archive_all:
+    if quizzes is not None:
         echo(
             f"- Archived {color(quiz_total, 'magenta')} QUIZZES for"
             f" {color(course.name, 'blue')}."

@@ -89,7 +89,7 @@ def archive(
     ),
     discussions: Optional[bool] = Option(
         None,
-        "--discussions/no-discussions",
+        "--discussions/--no-discussions",
         help="Inlcude discussions in the archive output.",
     ),
     grades: Optional[bool] = Option(
