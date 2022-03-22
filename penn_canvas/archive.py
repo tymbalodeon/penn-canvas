@@ -453,6 +453,7 @@ def archive_assignments(
         with progressbar(assignment_objects, length=assignment_total) as progress:
             for assignment in progress:
                 archive_assignment(assignment, course_path, instance)
+    return assignment_objects
 
 
 def archive_groups(course, course_directory, instance, verbose):
@@ -845,7 +846,6 @@ def archive_main(
     course = get_course(course_id, include=["syllabus_body"], instance=instance)
     course_name = f"{format_name(course.name)} ({course.id})"
     course_path = create_directory(RESULTS / course_name)
-    discussion_total = quiz_total = 0
     assignment_objects: list[Assignment] = list()
     if content is not False:
         archive_content(course, course_path, instance, verbose)
@@ -858,7 +858,7 @@ def archive_main(
     if syllabus is not False:
         archive_syllabus(course, course_path, verbose)
     if assignments is not False:
-        archive_assignments(course, course_path, instance, verbose)
+        assignment_objects = archive_assignments(course, course_path, instance, verbose)
     if groups is not False:
         archive_groups(course, course_path, instance, verbose)
     if discussions is not False:
@@ -869,14 +869,4 @@ def archive_main(
         archive_quizzes(course, course_path, instance, verbose)
     if rubrics is not False:
         archive_rubrics(course, course_path, verbose)
-    color("SUMMARY", "yellow", True)
-    echo(
-        f"- Archived {color(discussion_total, 'magenta')} DISCUSSIONS for"
-        f" {color(course.name, 'blue')}."
-    )
-    if quizzes is not False:
-        echo(
-            f"- Archived {color(quiz_total, 'magenta')} QUIZZES for"
-            f" {color(course.name, 'blue')}."
-        )
-    color("FINISHED", "yellow", True)
+    color("COMPELTE", "yellow", echo=True)
