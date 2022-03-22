@@ -38,7 +38,8 @@ from .style import color, print_item
 COMMAND_PATH = create_directory(BASE_PATH / "Archive")
 RESULTS = create_directory(COMMAND_PATH / "Results")
 LOGS = create_directory(COMMAND_PATH / "Logs")
-ANNOUNCEMENTS_PICKLE_FILE = "announcements.pkl"
+PICKLE_COMPRESSION_TYPE = "zip"
+ANNOUNCEMENTS_PICKLE_FILE = "announcements.pickle"
 
 
 class HTMLStripper(HTMLParser):
@@ -310,7 +311,7 @@ def archive_announcements(course: Course, course_path: Path, verbose: bool):
     ]
     data_frame = DataFrame(announcement_data, columns=["Title", "Message"])
     announcements_path = course_path / ANNOUNCEMENTS_PICKLE_FILE
-    data_frame.to_pickle(announcements_path)
+    data_frame.to_pickle(announcements_path, compression=PICKLE_COMPRESSION_TYPE)
     total = len(announcement_data)
     if verbose:
         for index, announcement in enumerate(announcement_data):
@@ -320,7 +321,9 @@ def archive_announcements(course: Course, course_path: Path, verbose: bool):
 
 
 def unpickle_announcements(course_path: Path, verbose: bool):
-    data_frame = read_pickle(course_path / ANNOUNCEMENTS_PICKLE_FILE)
+    data_frame = read_pickle(
+        course_path / ANNOUNCEMENTS_PICKLE_FILE, compression=PICKLE_COMPRESSION_TYPE
+    )
     announcements: list[list[str]] = data_frame.values.tolist()
     announcements_path = create_directory(course_path / "Announcements")
     total = len(announcements)
