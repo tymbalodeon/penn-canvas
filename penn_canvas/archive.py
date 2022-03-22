@@ -270,18 +270,34 @@ def archive_content(
             remove(file_path)
 
 
+def format_display_text(text, limit=50):
+    truncated = len(text) > limit
+    text = text.replace("\n", " ").replace("\t", " ")[:limit]
+    if truncated:
+        final_character = text[-1]
+        while final_character == " " or final_character == ".":
+            text = text[:-1]
+            final_character = text[-1]
+        text = f"{text}..."
+    return text
+
+
 def archive_announcements(course: Course, course_path: Path, verbose: bool):
     echo(") Exporting announcements...")
-    announcements_path = create_directory(course_path / "Announcements")
+    announcements_path = create_directory(course_path / "Announcements-Test")
     announcements = collect(course.get_discussion_topics(only_announcements=True))
     total = len(announcements)
     for index, announcement in enumerate(announcements):
         title = format_name(announcement.title)
         title_path = announcements_path / f"{title}.txt"
+        message = strip_tags(announcement.message)
         with open(title_path, "w") as announcement_file:
-            announcement_file.write(strip_tags(announcement.message))
+            announcement_file.write(message)
         if verbose:
-            print_item(index, total, announcement.message)
+            title = color(format_display_text(title, limit=15))
+            message = format_display_text(message)
+            announcement_display = f"{title}: {message}"
+            print_item(index, total, announcement_display)
 
 
 def archive_modules(course: Course, course_path: Path, verbose: bool):
@@ -864,6 +880,7 @@ def archive_main(
     switch_logger_file(LOGS, "archive", instance.name)
     course = get_course(course_id, include=["syllabus_body"], instance=instance)
     course_name = f"{format_name(course.name)} ({course.id})"
+    echo(f") Archiving course: {color(course_name, 'blue')}...")
     course_path = create_directory(RESULTS / course_name)
     assignment_objects: list[Assignment] = list()
     if should_run_option(content, archive_all):
