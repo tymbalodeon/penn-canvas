@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from pandas import DataFrame, read_csv
 from typer import Exit, echo
 
-from .api import MAIN_ACCOUNT_ID, Instance, get_canvas
+from .api import PENN_CANVAS_MAIN_ACCOUNT_ID, Instance, get_canvas
 from .helpers import (
     YEAR,
     color,
@@ -57,7 +57,7 @@ def bulk_enroll_main(
             True,
         )
         raise Exit()
-    ACCOUNT = CANVAS.get_account(MAIN_ACCOUNT_ID)
+    ACCOUNT = CANVAS.get_account(PENN_CANVAS_MAIN_ACCOUNT_ID)
     SUB_ACCOUNT = CANVAS.get_account(sub_account).name
     PROCESSED_STEM_STRING = (
         f"{YEAR}_bulk_enroll_{USER_NAME}_in_{SUB_ACCOUNT}_"

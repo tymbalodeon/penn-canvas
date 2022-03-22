@@ -1,6 +1,6 @@
 from typer import echo
 
-from .api import MAIN_ACCOUNT_ID, get_canvas
+from .api import PENN_CANVAS_MAIN_ACCOUNT_ID, get_canvas
 from .style import color
 
 
@@ -42,7 +42,7 @@ def print_summary(summary):
 
 def count_sites_main(year_and_term, separate, graduate_course_minimum_number, test):
     CANVAS = get_canvas(test)
-    ACCOUNT = CANVAS.get_account(MAIN_ACCOUNT_ID)
+    ACCOUNT = CANVAS.get_account(PENN_CANVAS_MAIN_ACCOUNT_ID)
     TERM = next(
         (
             term.id

@@ -9,7 +9,7 @@ from requests import get
 from typer import Exit, echo
 
 from .api import (
-    MAIN_ACCOUNT_ID,
+    PENN_CANVAS_MAIN_ACCOUNT_ID,
     Instance,
     collect,
     format_instance_name,
@@ -21,7 +21,9 @@ from .style import color
 
 
 def validate_report_type(
-    report_type, by_filename=False, account: int | Account = MAIN_ACCOUNT_ID
+    report_type,
+    by_filename=False,
+    account: int | Account = PENN_CANVAS_MAIN_ACCOUNT_ID,
 ):
     if by_filename:
         report_types = {"provisioning", "courses", "users", "storage", "course storage"}
@@ -37,7 +39,7 @@ def validate_report_type(
 
 
 def get_enrollment_term_id(
-    term_name, by_year=True, account: int | Account = MAIN_ACCOUNT_ID
+    term_name, by_year=True, account: int | Account = PENN_CANVAS_MAIN_ACCOUNT_ID
 ):
     def raise_exception(enrollment_terms):
         echo(f"- ERROR: Enrollment term not found: {term_name}")
@@ -74,7 +76,7 @@ def create_report(
     parameters=dict(),
     base_path=REPORTS,
     filename_replacement="",
-    account: int | Account = MAIN_ACCOUNT_ID,
+    account: int | Account = PENN_CANVAS_MAIN_ACCOUNT_ID,
     instance=Instance.PRODUCTION,
     verbose=False,
 ) -> Path:
@@ -141,7 +143,7 @@ def create_provisioning_report(
     users=False,
     term_name=CURRENT_YEAR_AND_TERM,
     base_path=REPORTS,
-    account: int | Account = MAIN_ACCOUNT_ID,
+    account: int | Account = PENN_CANVAS_MAIN_ACCOUNT_ID,
     instance=Instance.PRODUCTION,
     verbose=False,
 ) -> Path:
@@ -178,7 +180,7 @@ def create_provisioning_report(
 def create_course_storage_report(
     term_name=CURRENT_YEAR_AND_TERM,
     base_path=REPORTS,
-    account: int | Account = MAIN_ACCOUNT_ID,
+    account: int | Account = PENN_CANVAS_MAIN_ACCOUNT_ID,
     instance=Instance.PRODUCTION,
     verbose=False,
 ) -> Path:

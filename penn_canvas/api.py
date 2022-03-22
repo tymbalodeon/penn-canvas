@@ -1,5 +1,6 @@
 from enum import Enum
 from pathlib import Path
+from typing import Optional
 
 from canvasapi import Canvas
 from canvasapi.account import Account
@@ -9,7 +10,7 @@ from loguru import logger
 from typer import Exit, echo, style
 
 from .config import get_penn_canvas_config
-from .constants import MAIN_ACCOUNT_ID
+from .constants import OPEN_CANVAS_MAIN_ACCOUNT_ID, PENN_CANVAS_MAIN_ACCOUNT_ID
 from .style import pprint
 
 lib_dir = Path.home() / "Downloads/instantclient_19_8"
@@ -105,23 +106,26 @@ def get_canvas(instance=Instance.PRODUCTION, verbose=True, override_key=None) ->
 
 
 def get_account(
-    account: int | Account = MAIN_ACCOUNT_ID,
+    account: Optional[int] | Optional[Account] = None,
     use_sis_id=False,
     instance=Instance.PRODUCTION,
     verbose=False,
 ) -> Account:
-    if isinstance(account, Account):
+    if not account:
+        account = get_main_account_id(instance)
+    elif isinstance(account, Account):
         return account
     instance = validate_instance_name(instance)
     try:
         account_object = get_canvas(instance, verbose=verbose).get_account(
             account, use_sis_id=use_sis_id
         )
+        if verbose:
+            pprint(account)
+        return account_object
     except Exception as error:
         logger.error(error)
-    if verbose:
-        pprint(account)
-    return account_object
+        raise Exit()
 
 
 def get_course(
@@ -166,11 +170,28 @@ def get_user(
     return user
 
 
-def get_sub_accounts(account_id: int, instance: Instance, verbose=False) -> list[str]:
+def get_main_account_id(instance: Instance) -> Optional[int]:
+    return {
+        Instance.PRODUCTION: PENN_CANVAS_MAIN_ACCOUNT_ID,
+        Instance.TEST: PENN_CANVAS_MAIN_ACCOUNT_ID,
+        Instance.BETA: PENN_CANVAS_MAIN_ACCOUNT_ID,
+        Instance.OPEN: OPEN_CANVAS_MAIN_ACCOUNT_ID,
+        Instance.OPEN_TEST: OPEN_CANVAS_MAIN_ACCOUNT_ID,
+    }.get(instance)
+
+
+def get_sub_account_ids(
+    account_id: Optional[int] = None,
+    instance=Instance.PRODUCTION,
+    verbose=False,
+) -> list[str]:
+    if not account_id:
+        account_id = get_main_account_id(instance)
     account = get_canvas(instance, verbose).get_account(account_id)
-    return [str(account_id)] + [
-        str(account.id) for account in account.get_subaccounts(recursive=True)
+    account_ids = [account_id] + [
+        account.id for account in account.get_subaccounts(recursive=True)
     ]
+    return [str(account_id) for account_id in account_ids]
 
 
 def get_external_tool_names(verbose=False):

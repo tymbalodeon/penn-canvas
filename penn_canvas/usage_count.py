@@ -1,6 +1,6 @@
 from typer import echo
 
-from .api import MAIN_ACCOUNT_ID, get_canvas
+from .api import PENN_CANVAS_MAIN_ACCOUNT_ID, get_canvas
 from .helpers import color, get_command_paths
 
 
@@ -52,7 +52,7 @@ def get_courses(term, main_account, account):
 
 def usage_count_main(tool):
     canvas = get_canvas()
-    main_account = canvas.get_account(MAIN_ACCOUNT_ID)
+    main_account = canvas.get_account(PENN_CANVAS_MAIN_ACCOUNT_ID)
     account = canvas.get_account(account_id)
     for term in year_and_terms:
         results_path = RESULTS / f"{term}_{tool}_usage.csv"

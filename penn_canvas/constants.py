@@ -1,4 +1,5 @@
-MAIN_ACCOUNT_ID = 96678
+PENN_CANVAS_MAIN_ACCOUNT_ID = 96678
+OPEN_CANVAS_MAIN_ACCOUNT_ID = 1
 TOOLS = [
     "agora test build",
     "atomic search",

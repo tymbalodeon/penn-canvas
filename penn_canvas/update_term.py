@@ -1,6 +1,6 @@
 from typer import echo
 
-from .api import MAIN_ACCOUNT_ID, get_canvas
+from .api import PENN_CANVAS_MAIN_ACCOUNT_ID, Instance, get_canvas
 from .helpers import PREVIOUS_YEAR_AND_TERM, color, get_command_paths
 
 COMMAND_NAME = "Update Terms"
@@ -25,9 +25,8 @@ def update_term_main(account_id, current_term, new_term, test):
             [character for character in PREVIOUS_YEAR_AND_TERM if character.isnumeric()]
         )
         current_term = f"{PREVIOUS_YEAR_AND_TERM} ({term_string} {year})"
-    INSTANCE = "test" if test else "prod"
-    canvas = get_canvas(INSTANCE)
-    main_account = canvas.get_account(MAIN_ACCOUNT_ID)
+    canvas = get_canvas(Instance.TEST if test else Instance.PRODUCTION)
+    main_account = canvas.get_account(PENN_CANVAS_MAIN_ACCOUNT_ID)
     enrollment_terms = [
         enrollment_term for enrollment_term in main_account.get_enrollment_terms()
     ]

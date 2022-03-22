@@ -8,7 +8,7 @@ from .browser import browser_main
 from .bulk_enroll import bulk_enroll_main
 from .check_enrollment import check_enrollment_main
 from .config import print_config, write_config_options
-from .constants import MAIN_ACCOUNT_ID
+from .constants import PENN_CANVAS_MAIN_ACCOUNT_ID
 from .count_poll_everywhere import count_poll_everywhere_main
 from .count_quizzes import count_quizzes_main
 from .count_sites import count_sites_main
@@ -819,7 +819,7 @@ def tool(
 @app.command()
 def update_term(
     account: int = Option(
-        MAIN_ACCOUNT_ID,
+        PENN_CANVAS_MAIN_ACCOUNT_ID,
         help=(
             "The Canvas Sub-account ID whose course's enrollment terms need to be"
             " changed"
