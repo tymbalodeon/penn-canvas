@@ -824,6 +824,10 @@ def archive_rubrics(course: Course, course_path: Path, verbose: bool):
                 archive_rubric(rubric, course_path, verbose)
 
 
+def should_run_option(option: Optional[bool], archive_all: bool) -> bool:
+    return option if isinstance(option, bool) else archive_all
+
+
 def archive_main(
     course_id: int,
     instance_name: str,
@@ -841,32 +845,47 @@ def archive_main(
     quizzes: Optional[bool],
     rubrics: Optional[bool],
 ):
+    archive_all = not any(
+        [
+            content,
+            announcements,
+            modules,
+            pages,
+            syllabus,
+            assignments,
+            groups,
+            discussions,
+            grades,
+            quizzes,
+            rubrics,
+        ]
+    )
     instance = validate_instance_name(instance_name)
     switch_logger_file(LOGS, "archive", instance.name)
     course = get_course(course_id, include=["syllabus_body"], instance=instance)
     course_name = f"{format_name(course.name)} ({course.id})"
     course_path = create_directory(RESULTS / course_name)
     assignment_objects: list[Assignment] = list()
-    if content is not False:
+    if should_run_option(content, archive_all):
         archive_content(course, course_path, instance, verbose)
-    if announcements is not False:
+    if should_run_option(announcements, archive_all):
         archive_announcements(course, course_path, verbose)
-    if modules is not False:
+    if should_run_option(modules, archive_all):
         archive_modules(course, course_path, verbose)
-    if pages is not False:
+    if should_run_option(pages, archive_all):
         archive_pages(course, course_path, verbose)
-    if syllabus is not False:
+    if should_run_option(syllabus, archive_all):
         archive_syllabus(course, course_path, verbose)
-    if assignments is not False:
+    if should_run_option(assignments, archive_all):
         assignment_objects = archive_assignments(course, course_path, instance, verbose)
-    if groups is not False:
+    if should_run_option(groups, archive_all):
         archive_groups(course, course_path, instance, verbose)
-    if discussions is not False:
+    if should_run_option(discussions, archive_all):
         archive_discussions(course, course_path, use_timestamp, instance, verbose)
-    if grades is not False:
+    if should_run_option(grades, archive_all):
         archive_grades(course, course_path, assignment_objects, instance, verbose)
-    if quizzes is not False:
+    if should_run_option(quizzes, archive_all):
         archive_quizzes(course, course_path, instance, verbose)
-    if rubrics is not False:
+    if should_run_option(rubrics, archive_all):
         archive_rubrics(course, course_path, verbose)
-    color("COMPELTE", "yellow", echo=True)
+    echo("COMPELTE")
