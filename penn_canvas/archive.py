@@ -2,7 +2,6 @@ from html.parser import HTMLParser
 from io import StringIO
 from json import loads
 from mimetypes import guess_extension
-from os import remove
 from pathlib import Path
 from re import search
 from time import sleep
@@ -39,7 +38,9 @@ COMMAND_PATH = create_directory(BASE_PATH / "Archive")
 RESULTS = create_directory(COMMAND_PATH / "Results")
 LOGS = create_directory(COMMAND_PATH / "Logs")
 PICKLE_COMPRESSION_TYPE = "zip"
+CONTENT_EXPORT_TYPES = ["zip", "common_cartridge"]
 ANNOUNCEMENTS_PICKLE_FILE = "announcements.pickle"
+CONTENT_ZIP_FILE = "announcements.pickle"
 
 
 class HTMLStripper(HTMLParser):
@@ -251,26 +252,37 @@ def process_entry(
     return [user, email, message] if csv_style else (user, timestamp, message)
 
 
+def unzip_content(course_path: Path, verbose: bool):
+    paths = [course_path / content_type for content_type in CONTENT_EXPORT_TYPES]
+    content_path = create_directory(course_path / "Content")
+    for path in paths:
+        if verbose:
+            echo(f") Unzipping {color(path, 'blue')}")
+        with ZipFile(path) as unzipper:
+            unzipper.extractall(content_path)
+
+
 def archive_content(
     course: Course,
     course_directory: Path,
     instance: Instance,
     verbose: bool,
-    unzip=False,
 ):
     echo(") Exporting content...")
-    for export_type in ["zip", "common_cartridge"]:
+    for export_type in CONTENT_EXPORT_TYPES:
         echo(f') Starting "{export_type}" export...')
         export = course.export_content(export_type=export_type, skip_notifications=True)
         regex_search = search(r"\d*$", export.progress_url)
         progress_id = regex_search.group() if regex_search else None
         canvas = get_canvas(instance)
-        progress = canvas.get_progress(progress_id)
-        while progress.workflow_state != "completed":
+        workflow_state = canvas.get_progress(progress_id).workflow_state
+        while workflow_state in {"running", "created"}:
             if verbose:
-                echo(f"- {course.name} export {progress.workflow_state}...")
+                echo(f"- {workflow_state}...")
             sleep(5)
-            progress = canvas.get_progress(progress_id)
+            workflow_state = canvas.get_progress(progress_id).wofklow_state
+        if workflow_state == "failed":
+            echo("- EXPORT FAILED")
         url = course.get_content_export(export).attachment["url"]
         response = get(url, stream=True)
         file_name = f"{export_type}_content.zip"
@@ -282,10 +294,6 @@ def archive_content(
         with open(file_path, "wb") as stream:
             for chunk in response.iter_content(chunk_size=128):
                 stream.write(chunk)
-        if unzip:
-            with ZipFile(file_path) as unzipper:
-                unzipper.extractall(export_path)
-            remove(file_path)
 
 
 def process_announcement(announcement: DiscussionTopic) -> list[str]:
