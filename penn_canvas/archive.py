@@ -284,7 +284,7 @@ def format_display_text(text, limit=50):
 
 def archive_announcements(course: Course, course_path: Path, verbose: bool):
     echo(") Exporting announcements...")
-    announcements_path = create_directory(course_path / "Announcements-Test")
+    announcements_path = create_directory(course_path / "Announcements")
     announcements = collect(course.get_discussion_topics(only_announcements=True))
     total = len(announcements)
     for index, announcement in enumerate(announcements):
