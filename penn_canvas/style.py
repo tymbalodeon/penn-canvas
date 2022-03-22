@@ -1,7 +1,7 @@
 from pprint import PrettyPrinter
 
 from inflect import engine
-from typer import colors, echo, secho, style
+from typer import colors, echo, style
 
 COLORS = {
     "blue": colors.BLUE,
@@ -14,14 +14,10 @@ COLORS = {
 }
 
 
-def color(text, color="magenta", echo=False, bold=False, use_comma=True):
+def color(text, color="magenta", bold=False, use_comma=True) -> str:
     if use_comma:
         text = f"{text:,}" if isinstance(text, int) else str(text)
-    return (
-        secho(text, fg=COLORS[color], bold=bold)
-        if echo
-        else style(text, fg=COLORS[color], bold=bold)
-    )
+    return style(text, fg=COLORS[color], bold=bold)
 
 
 def print_item(index, total, message, prefix="-"):

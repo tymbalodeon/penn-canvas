@@ -18,7 +18,7 @@ from canvasapi.rubric import Rubric
 from canvasapi.submission import Submission
 from canvasapi.user import User
 from magic import from_file
-from pandas import DataFrame
+from pandas import DataFrame, read_pickle
 from requests import get
 from typer import echo, progressbar
 
@@ -38,6 +38,7 @@ from .style import color, print_item
 COMMAND_PATH = create_directory(BASE_PATH / "Archive")
 RESULTS = create_directory(COMMAND_PATH / "Results")
 LOGS = create_directory(COMMAND_PATH / "Logs")
+ANNOUNCEMENTS_PICKLE_FILE = "announcements.pkl"
 
 
 class HTMLStripper(HTMLParser):
@@ -59,6 +60,22 @@ def strip_tags(html):
     stripper = HTMLStripper()
     stripper.feed(html)
     return stripper.get_data()
+
+
+def should_run_option(option: Optional[bool], archive_all: bool) -> bool:
+    return option if isinstance(option, bool) else archive_all
+
+
+def format_display_text(text: str, limit=50) -> str:
+    truncated = len(text) > limit
+    text = text.replace("\n", " ").replace("\t", " ")[:limit]
+    if truncated:
+        final_character = text[-1]
+        while final_character == " " or final_character == ".":
+            text = text[:-1]
+            final_character = text[-1]
+        text = f"{text}..."
+    return text
 
 
 def get_assignments(course: Course) -> tuple[list[Assignment], int]:
@@ -270,34 +287,50 @@ def archive_content(
             remove(file_path)
 
 
-def format_display_text(text, limit=50):
-    truncated = len(text) > limit
-    text = text.replace("\n", " ").replace("\t", " ")[:limit]
-    if truncated:
-        final_character = text[-1]
-        while final_character == " " or final_character == ".":
-            text = text[:-1]
-            final_character = text[-1]
-        text = f"{text}..."
-    return text
+def process_announcement(announcement: DiscussionTopic) -> list[str]:
+    title = format_name(announcement.title)
+    message = strip_tags(announcement.message)
+    return [title, message]
+
+
+def display_announcement(index: int, total: int, title: str, message: str):
+    title = color(format_display_text(title, limit=15))
+    message = format_display_text(message)
+    announcement_display = f"{title}: {message}"
+    print_item(index, total, announcement_display)
 
 
 def archive_announcements(course: Course, course_path: Path, verbose: bool):
     echo(") Exporting announcements...")
+    announcements: list[DiscussionTopic] = collect(
+        course.get_discussion_topics(only_announcements=True)
+    )
+    announcement_data: list[list[str]] = [
+        process_announcement(announcement) for announcement in announcements
+    ]
+    data_frame = DataFrame(announcement_data, columns=["Title", "Message"])
+    announcements_path = course_path / ANNOUNCEMENTS_PICKLE_FILE
+    data_frame.to_pickle(announcements_path)
+    total = len(announcement_data)
+    if verbose:
+        for index, announcement in enumerate(announcement_data):
+            title, message = announcement
+            if verbose:
+                display_announcement(index, total, title, message)
+
+
+def unpickle_announcements(course_path: Path, verbose: bool):
+    data_frame = read_pickle(course_path / ANNOUNCEMENTS_PICKLE_FILE)
+    announcements: list[list[str]] = data_frame.values.tolist()
     announcements_path = create_directory(course_path / "Announcements")
-    announcements = collect(course.get_discussion_topics(only_announcements=True))
     total = len(announcements)
     for index, announcement in enumerate(announcements):
-        title = format_name(announcement.title)
+        title, message = announcement
         title_path = announcements_path / f"{title}.txt"
-        message = strip_tags(announcement.message)
         with open(title_path, "w") as announcement_file:
             announcement_file.write(message)
         if verbose:
-            title = color(format_display_text(title, limit=15))
-            message = format_display_text(message)
-            announcement_display = f"{title}: {message}"
-            print_item(index, total, announcement_display)
+            display_announcement(index, total, title, message)
 
 
 def archive_modules(course: Course, course_path: Path, verbose: bool):
@@ -838,10 +871,6 @@ def archive_rubrics(course: Course, course_path: Path, verbose: bool):
         with progressbar(rubric_objects, length=rubric_total) as progress:
             for rubric in progress:
                 archive_rubric(rubric, course_path, verbose)
-
-
-def should_run_option(option: Optional[bool], archive_all: bool) -> bool:
-    return option if isinstance(option, bool) else archive_all
 
 
 def archive_main(
