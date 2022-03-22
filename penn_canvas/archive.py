@@ -770,22 +770,22 @@ def archive_main(
     discussion_total = quiz_total = 0
     assignment_objects: list[Assignment] = list()
     course_path = create_directory(RESULTS / course_name)
-    if content is not None:
+    if content is not False:
         echo(") Exporting content...")
         archive_content(course, course_path, instance, verbose)
-    if announcements is not None:
+    if announcements is not False:
         echo(") Exporting announcements...")
         archive_announcements(course, course_path, verbose)
-    if modules is not None:
+    if modules is not False:
         echo(") Exporting modules...")
         archive_modules(course, course_path, verbose)
-    if pages is not None:
+    if pages is not False:
         echo(") Exporting pages...")
         archive_pages(course, course_path, verbose)
-    if syllabus is not None:
+    if syllabus is not False:
         echo(") Exporting syllabus...")
         archive_syllabus(course, course_path, verbose)
-    if assignments is not None:
+    if assignments is not False:
         echo(") Exporting assignments...")
         assignment_objects, assignment_total = get_assignments(course)
         if verbose:
@@ -797,9 +797,9 @@ def archive_main(
             with progressbar(assignment_objects, length=assignment_total) as progress:
                 for assignment in progress:
                     archive_assignment(assignment, course_path, instance)
-    if groups is not None:
+    if groups is not False:
         archive_groups(course, course_path, instance, verbose)
-    if discussions is not None:
+    if discussions is not False:
         echo(") Exporting discussions...")
         discussion_topics, discussion_total = get_discussions(course)
         if verbose:
@@ -819,9 +819,9 @@ def archive_main(
                     archive_discussion(
                         discussion, course_path, use_timestamp, instance=instance
                     )
-    if grades is not None:
+    if grades is not False:
         archive_grades(course, course_path, assignment_objects, instance, verbose)
-    if quizzes is not None:
+    if quizzes is not False:
         echo(") Exporting quizzes...")
         quiz_objects, quiz_total = get_quizzes(course)
         if verbose:
@@ -832,7 +832,7 @@ def archive_main(
             with progressbar(quiz_objects, length=quiz_total) as progress:
                 for quiz in progress:
                     archive_quiz(quiz, verbose, course_path, instance)
-    if rubrics is not None:
+    if rubrics is not False:
         echo(") Exporting rubrics...")
         rubric_objects, rubric_total = get_rubrics(course)
         if verbose:
@@ -847,7 +847,7 @@ def archive_main(
         f"- Archived {color(discussion_total, 'magenta')} DISCUSSIONS for"
         f" {color(course.name, 'blue')}."
     )
-    if quizzes is not None:
+    if quizzes is not False:
         echo(
             f"- Archived {color(quiz_total, 'magenta')} QUIZZES for"
             f" {color(course.name, 'blue')}."
