@@ -8,8 +8,8 @@ from penn_canvas.api import Instance, get_section
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import print_item
 
-from .archive import format_name
 from .assignment import get_assignments
+from .helpers import format_name
 
 
 def get_score_from_submissions(submissions: list[tuple[int, int]], user_id: str):
