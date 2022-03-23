@@ -12,14 +12,8 @@ from .archive import format_name
 from .assignment import get_assignments
 
 
-def get_enrollments(course: Course) -> list[Enrollment]:
-    echo(") Finding students...")
-    enrollments = [
-        enrollment
-        for enrollment in course.get_enrollments()
-        if enrollment.type == "StudentEnrollment"
-    ]
-    return enrollments
+def get_score_from_submissions(submissions: list[tuple[int, int]], user_id: str):
+    return next(item[1] for item in submissions if item[0] == user_id)
 
 
 def archive_grade(
@@ -27,8 +21,6 @@ def archive_grade(
     submissions: list[tuple[str, list[tuple[int, int]]]],
     instance: Instance,
 ) -> list:
-    def get_score_from_submissions(submissions: list[tuple[int, int]], user_id: str):
-        return next(item[1] for item in submissions if item[0] == user_id)
 
     user_id = enrollment.user_id
     user = enrollment.user
@@ -56,14 +48,25 @@ def archive_grade(
     return student_data + submission_scores + total_scores
 
 
+def get_enrollments(course: Course) -> list[Enrollment]:
+    echo(") Finding students...")
+    enrollments = [
+        enrollment
+        for enrollment in course.get_enrollments()
+        if enrollment.type == "StudentEnrollment"
+    ]
+    return enrollments
+
+
+def get_manual_posting(assignment):
+    return "Manual Posting" if assignment.post_manually else ""
+
+
 def get_submission_score(submission: Submission):
     return round(float(submission.score), 2) if submission.score else submission.score
 
 
 def archive_grades(course, course_directory, assignment_objects, instance, verbose):
-    def get_manual_posting(assignment):
-        return "Manual Posting" if assignment.post_manually else ""
-
     echo(") Exporting grades...")
     enrollments = get_enrollments(course)
     if not assignment_objects:

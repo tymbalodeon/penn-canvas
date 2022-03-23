@@ -14,16 +14,6 @@ from penn_canvas.style import color
 CONTENT_EXPORT_TYPES = ["zip", "common_cartridge"]
 
 
-def unzip_content(course_path: Path, verbose: bool):
-    paths = [course_path / content_type for content_type in CONTENT_EXPORT_TYPES]
-    content_path = create_directory(course_path / "Content")
-    for path in paths:
-        if verbose:
-            echo(f") Unzipping {color(path, 'blue')}")
-        with ZipFile(path) as unzipper:
-            unzipper.extractall(content_path)
-
-
 def archive_content(
     course: Course,
     course_directory: Path,
@@ -56,3 +46,13 @@ def archive_content(
         with open(file_path, "wb") as stream:
             for chunk in response.iter_content(chunk_size=128):
                 stream.write(chunk)
+
+
+def unzip_content(course_path: Path, verbose: bool):
+    paths = [course_path / content_type for content_type in CONTENT_EXPORT_TYPES]
+    content_path = create_directory(course_path / "Content")
+    for path in paths:
+        if verbose:
+            echo(f") Unzipping {color(path, 'blue')}")
+        with ZipFile(path) as unzipper:
+            unzipper.extractall(content_path)

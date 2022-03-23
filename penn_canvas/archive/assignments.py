@@ -20,6 +20,20 @@ def get_assignments(course: Course) -> tuple[list[Assignment], int]:
     return assignments, len(assignments)
 
 
+def process_comment(comment: dict) -> str:
+    author = comment["author_name"]
+    created_at = format_timestamp(comment["created_at"])
+    edited_at = format_timestamp(comment["edited_at"]) if comment["edited_at"] else ""
+    comment = comment["comment"]
+    media_comment = (
+        comment["media_comment"]["url"] if "media_comment" in comment else ""
+    )
+    return (
+        f"{author}\nCreated: {created_at}\nEdited:"
+        f" {edited_at}\n\n{comment}{media_comment}"
+    )
+
+
 def process_submission(
     submission: Submission,
     instance: Instance,
@@ -69,25 +83,7 @@ def process_submission(
                     stream.write(chunk)
     except Exception:
         attachments = []
-
-    def process_comments(submission: dict) -> str:
-        author = submission["author_name"]
-        created_at = format_timestamp(submission["created_at"])
-        edited_at = (
-            format_timestamp(submission["edited_at"]) if submission["edited_at"] else ""
-        )
-        comment = submission["comment"]
-        media_comment = (
-            submission["media_comment"]["url"] if "media_comment" in submission else ""
-        )
-        return (
-            f"{author}\nCreated: {created_at}\nEdited:"
-            f" {edited_at}\n\n{comment}{media_comment}"
-        )
-
-    comments = [
-        process_comments(submission) for submission in submission.submission_comments
-    ]
+    comments = [process_comment(comment) for comment in submission.submission_comments]
     comments_body = "\n\n".join(comments)
     submission_comments_path = comments_path / f"{assignment}_COMMENTS ({user}).txt"
     with open(submission_comments_path, "w") as submission_comments_file:

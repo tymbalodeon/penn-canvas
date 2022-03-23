@@ -42,7 +42,7 @@ class HTMLStripper(HTMLParser):
         return self.text.getvalue()
 
 
-def strip_tags(html):
+def strip_tags(html: str) -> str:
     stripper = HTMLStripper()
     stripper.feed(html)
     return stripper.get_data()
