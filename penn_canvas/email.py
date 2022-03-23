@@ -37,6 +37,7 @@ from .helpers import (
     handle_clear_processed,
     make_csv_paths,
     make_index_headers,
+    make_single_item,
     print_skip_message,
     switch_logger_file,
 )
@@ -475,8 +476,8 @@ def email_main(
     processed_errors_path = (
         PROCESSED / f"{YEAR}_email_processed_errors{instance_display}.csv"
     )
-    report_path = get_report(
-        "users", CURRENT_YEAR_AND_TERM, force_report, instance, verbose
+    report_path = make_single_item(
+        get_report("users", CURRENT_YEAR_AND_TERM, force_report, instance, verbose)
     )
     handle_clear_processed(clear_processed, [processed_path, processed_errors_path])
     processed_users = get_processed(processed_path, HEADERS)

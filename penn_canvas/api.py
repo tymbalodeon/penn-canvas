@@ -43,12 +43,12 @@ def validate_instance_name(instance_name: str | Instance, verbose=False):
     if isinstance(instance_name, Instance):
         instance = instance_name
     else:
-        instances = [instance.value for instance in Instance]
-        if instance_name not in instances:
+        instance_names = [instance.value for instance in Instance]
+        if instance_name not in instance_names:
             echo(f'ERROR: Invalid instance name "{instance_name}"')
             echo("\nAvailable instances are:")
-            for instance in instances:
-                echo(f'\t"{instance}"')
+            for name in instance_names:
+                echo(f'\t"{name}"')
             raise Exit()
         instance = Instance(instance_name)
     if verbose:

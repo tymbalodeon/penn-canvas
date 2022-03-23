@@ -2,7 +2,8 @@ from typing import Optional
 
 from typer import Argument, Option, Typer
 
-from .api import Instance
+from penn_canvas.api import Instance
+
 from .archive.archive import archive_main
 from .browser import browser_main
 from .bulk_enroll import bulk_enroll_main

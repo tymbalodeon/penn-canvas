@@ -7,10 +7,9 @@ from penn_canvas.config import get_penn_canvas_config
 
 from .api import get_canvas
 
-TESTING = False
 course_id = 1569010
 course_date = "2021-02-11"
-canvas = get_canvas(TESTING)
+canvas = get_canvas()
 course = canvas.get_course(course_id)
 students = course.get_users()
 canvas_prod_key = get_penn_canvas_config("canvas_keys")[0]

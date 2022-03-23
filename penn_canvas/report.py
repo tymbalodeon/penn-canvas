@@ -16,7 +16,6 @@ from penn_canvas.constants import PENN_CANVAS_MAIN_ACCOUNT_ID
 
 from .api import (
     Instance,
-    collect,
     format_instance_name,
     get_account,
     get_main_account_id,
@@ -77,13 +76,18 @@ class Report:
         }.get(self.report_type, "provisioning_csv")
 
     @property
-    def parameters(self) -> dict:
-        parameters_object: dict = {
-            ReportType.COURSES: {"courses": True},
-            ReportType.USERS: {"users": True},
-            ReportType.STORAGE: dict(),
-            ReportType.PROVISIONING: {"courses": True, "users": True},
-        }.get(self.report_type, dict())
+    def parameters(self):
+        parameters_object = dict()
+        if (
+            self.report_type == ReportType.COURSES
+            or self.report_type == ReportType.PROVISIONING
+        ):
+            parameters_object["courses"] = True
+        elif (
+            self.report_type == ReportType.USERS
+            or self.report_type == ReportType.PROVISIONING
+        ):
+            parameters_object["users"] = True
         if self.term:
             parameters_object["enrollment_term_id"] = get_enrollment_term_id(self.term)
         return parameters_object
@@ -92,7 +96,7 @@ class Report:
     def file_name(self) -> str:
         instance = format_instance_name(self.instance)
         term = f"_{self.term}" if self.term else ""
-        report_type = f"_{self.report_type.name}"
+        report_type = f"{self.account_report_type}"
         return f"{report_type}{term}{instance}"
 
     def create_account_report(self):
@@ -114,37 +118,27 @@ class Report:
         )
 
 
-def get_enrollment_term_id(
-    term_name, by_year=True, account: int | Account = PENN_CANVAS_MAIN_ACCOUNT_ID
-):
-    def raise_exception(enrollment_terms):
-        echo(f"- ERROR: Enrollment term not found: {term_name}")
-        echo("- Available enrollment terms are:")
-        for enrollment_term in enrollment_terms:
-            echo(f"\t{enrollment_term}")
-        raise Exit()
+def print_available_term_names(term_name: str, enrollment_terms: list[str]):
+    echo(f"- ERROR: Enrollment term not found: {term_name}")
+    echo("- Available enrollment terms are:")
+    for enrollment_term in enrollment_terms:
+        echo(f"\t{enrollment_term}")
 
+
+def get_enrollment_term_id(
+    term_name: str, account: int | Account = PENN_CANVAS_MAIN_ACCOUNT_ID
+) -> int:
     account = get_account(account)
-    if by_year:
-        try:
-            enrollment_terms = collect(account.get_enrollment_terms())
-            return next(term.id for term in enrollment_terms if term_name in term.name)
-        except Exception:
-            enrollment_terms = [term.name for term in account.get_enrollment_terms()]
-            raise_exception(enrollment_terms)
+    term_id = next(
+        (term.id for term in account.get_enrollment_terms() if term_name in term.name),
+        None,
+    )
+    if not term_id:
+        enrollment_terms = [term.name for term in account.get_enrollment_terms()]
+        print_available_term_names(term_name, enrollment_terms)
+        raise Exit()
     else:
-        enrollment_terms = [
-            {"name": enrollment_term.name, "id": enrollment_term.id}
-            for enrollment_term in account.get_enrollment_terms()
-        ]
-        enrollment_term_ids = dict()
-        for term in enrollment_terms:
-            enrollment_term_ids[term["name"]] = term["id"]
-        try:
-            return enrollment_term_ids.get(term_name)
-        except Exception:
-            enrollment_terms = [term["name"] for term in account.get_enrollment_terms()]
-            raise_exception(enrollment_terms)
+        return term_id
 
 
 def get_report_statuses(reports: list[Report]) -> list[str]:
@@ -240,40 +234,42 @@ def create_reports(
     ]
     if failed_reports:
         for report in failed_reports:
-            report = report.account_report
+            account_report = report.account_report
             if verbose:
                 try:
                     last_run_text = (
-                        report.last_run["paramters"]["extra_text"] if report else ""
+                        account_report.last_run["paramters"]["extra_text"]
+                        if account_report
+                        else ""
                     )
                     echo(f"ERROR: {last_run_text}")
                 except Exception:
                     echo(
                         "ERROR: The report failed to generate a file. Please try again."
                     )
-            if report:
-                report.delete_report()
+            if account_report:
+                account_report.delete_report()
     if verbose:
         echo("COMPLETE")
     for report in reports_to_run:
         report.report_path = download_report(report, base_path, verbose)
-    report_paths = [
+    completed_paths = [
         report.report_path for report in reports if isinstance(report.report_path, Path)
     ]
     if verbose:
-        for path in report_paths:
+        for path in completed_paths:
             echo(f'REPORT: {color(path, "blue")}')
-    return report_paths
+    return completed_paths
 
 
 def get_report(
     report: str | ReportType = ReportType.PROVISIONING,
     term=CURRENT_YEAR_AND_TERM,
     force=False,
-    instance: str | Instance = Instance.PRODUCTION,
+    instance_name: str | Instance = Instance.PRODUCTION,
     verbose=False,
 ) -> list[Path]:
-    instance = validate_instance_name(instance)
+    instance = validate_instance_name(instance_name)
     report_type = validate_report_type(report)
     return create_reports(
         Report(report_type, instance=instance, term=term, force=force), verbose=verbose

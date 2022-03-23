@@ -22,7 +22,7 @@ from .helpers import (
 
 GRADUATION_YEAR = str(int(datetime.now().strftime("%Y")) + 4)
 PATHS = get_command_paths("New Student Orientation", include_processed_directory=True)
-INPUT = ""
+INPUT = Path.home()
 RESULTS = PATHS["results"]
 PROCESSED = PATHS["processed"]
 FINAL_LIST_PATH = RESULTS / f"{YEAR}_new_student_orientation_final_list.csv"

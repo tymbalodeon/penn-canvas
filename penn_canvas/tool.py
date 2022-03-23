@@ -29,6 +29,7 @@ from .helpers import (
     handle_clear_processed,
     make_csv_paths,
     make_index_headers,
+    make_single_item,
     print_skip_message,
     switch_logger_file,
 )
@@ -401,7 +402,9 @@ def tool_main(
     switch_logger_file(LOGS, "tool", instance.name)
     if not use_id:
         tool = get_tool(tool)
-    report_path = get_report("courses", term, force_report, instance, verbose)
+    report_path = make_single_item(
+        get_report("courses", term, force_report, instance, verbose)
+    )
     year_display = f"{YEAR}_" if enable else ""
     tool_display = tool if use_id else tool.replace(" ", "_")
     instance_display = format_instance_name(instance)
