@@ -9,9 +9,10 @@ from requests import get
 from typer import echo, progressbar
 
 from penn_canvas.api import Instance, collect, get_user
-from penn_canvas.archive.archive import format_name, strip_tags
 from penn_canvas.helpers import create_directory, format_timestamp
 from penn_canvas.style import color, print_item
+
+from .helpers import format_name, strip_tags
 
 
 def get_assignments(course: Course) -> tuple[list[Assignment], int]:

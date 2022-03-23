@@ -6,9 +6,10 @@ from pandas import DataFrame
 from typer import echo, progressbar
 
 from penn_canvas.api import Instance, collect, get_user
-from penn_canvas.archive.archive import format_name, strip_tags
 from penn_canvas.helpers import create_directory, format_timestamp
 from penn_canvas.style import color
+
+from .helpers import format_name, strip_tags
 
 
 def get_discussions(course: Course) -> tuple[list[DiscussionTopic], int]:

@@ -1,10 +1,11 @@
 from pathlib import Path
 
 from canvasapi.course import Course
-from penn_canas.helpers import create_directory
 from typer import echo
 
-from .archive import strip_tags
+from penn_canvas.helpers import create_directory
+
+from .helpers import strip_tags
 
 
 def archive_syllabus(course: Course, course_path: Path, verbose: bool):

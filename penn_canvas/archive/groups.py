@@ -3,9 +3,10 @@ from requests import get
 from typer import echo
 
 from penn_canvas.api import collect, get_user
-from penn_canvas.archive.archive import format_name
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
+
+from .helpers import format_name
 
 
 def archive_groups(course, course_directory, instance, verbose):

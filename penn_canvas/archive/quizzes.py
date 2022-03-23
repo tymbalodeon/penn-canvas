@@ -6,11 +6,10 @@ from pandas import DataFrame
 from typer import echo, progressbar
 
 from penn_canvas.api import Instance, collect
-from penn_canvas.archive.archive import format_name
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import print_item
 
-from .archive import strip_tags
+from .helpers import format_name, strip_tags
 from .style import color
 
 

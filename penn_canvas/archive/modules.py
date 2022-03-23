@@ -8,10 +8,11 @@ from requests import get
 from typer import echo
 
 from penn_canvas.api import collect
-from penn_canvas.archive.archive import format_name, strip_tags
 from penn_canvas.config import get_config_option
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
+
+from .helpers import format_name, strip_tags
 
 
 def archive_modules(course: Course, course_path: Path, verbose: bool):
