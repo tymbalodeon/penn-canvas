@@ -8,7 +8,7 @@ from penn_canvas.api import Instance, get_section
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import print_item
 
-from .assignment import get_assignments
+from .assignments import get_assignments
 from .helpers import format_name
 
 

@@ -7,9 +7,7 @@ from typer import echo, progressbar
 
 from penn_canvas.api import collect
 from penn_canvas.helpers import create_directory
-from penn_canvas.style import print_item
-
-from .style import color
+from penn_canvas.style import color, print_item
 
 
 def get_rubrics(course: Course) -> tuple[list[Rubric], int]:

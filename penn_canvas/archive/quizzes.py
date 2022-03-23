@@ -7,10 +7,9 @@ from typer import echo, progressbar
 
 from penn_canvas.api import Instance, collect
 from penn_canvas.helpers import create_directory
-from penn_canvas.style import print_item
+from penn_canvas.style import color, print_item
 
 from .helpers import format_name, strip_tags
-from .style import color
 
 
 def get_quizzes(course: Course) -> tuple[list[Quiz], int]:
