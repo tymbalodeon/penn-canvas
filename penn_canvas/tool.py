@@ -198,10 +198,10 @@ def process_result(
         error_path = BASE / f"{result_path.stem}_ERROR.csv"
         dynamic_to_csv(error_path, error_result, new)
         if new:
-            drop_duplicate_errors([error_path])
+            drop_duplicate_errors(error_path)
         else:
             add_headers_to_empty_files(
-                [enabled_path],
+                enabled_path,
                 ["canvas course id", "course id", "error"],
             )
     else:

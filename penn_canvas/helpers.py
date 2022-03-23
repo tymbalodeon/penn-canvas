@@ -388,17 +388,25 @@ def get_processed(processed_path, columns: str | list[str] = "pennkey") -> list[
         return list()
 
 
+def make_list(item) -> list:
+    return [item] if not isinstance(item, list) else item
+
+
 def dynamic_to_csv(path: Path, data_frame: DataFrame, condition):
     mode = "a" if condition else "w"
     data_frame.to_csv(path, mode=mode, header=not condition, index=False)
 
 
-def drop_duplicate_errors(paths: list[Path]):
+def drop_duplicate_errors(paths: Path | list[Path]):
+    paths = make_list(paths)
     for path in paths:
-        read_csv(path).drop_duplicates().to_csv(path, index=False)
+        data_frame = read_csv(path)
+        if not data_frame.empty:
+            data_frame.drop_duplicates().to_csv(path, index=False)
 
 
-def add_headers_to_empty_files(paths: list[Path], headers: list[str]):
+def add_headers_to_empty_files(paths: Path | list[Path], headers: str | list[str]):
+    paths = make_list(paths)
     for path in paths:
         try:
             read_csv(path)
