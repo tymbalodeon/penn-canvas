@@ -89,7 +89,7 @@ def check_percent_storage(course: tuple, instance: Instance) -> tuple[str, bool,
             logger_message = f"course {sis_id} ({canvas_id}) not found: {error_message}"
             logger.error(logger_message)
             send_email("Course Storage", logger_message)
-    return canvas_course.name if canvas_course else "", needs_increase, message
+    return canvas_course.sis_course_id if canvas_course else "", needs_increase, message
 
 
 def increase_quota(
@@ -129,12 +129,12 @@ def increase_quota(
 
 def process_result(result_path: Path, instance: Instance) -> tuple[int, int]:
     result = read_csv(result_path, dtype=str)
-    increased_count = len(result[result["error"].isna()].index)
-    result = result.drop(result[result["error"] == "increase not required"])
-    result = result.drop(result[result["error"] == "missing sis id"])
-    result = result.drop(result[result["error"].isna()])
-    error_count = len(result.index)
-    if not error_count:
+    result[["error"]] = result[["error"]].fillna("")
+    increased_count = len(result[result["error"] == ""].index)
+    result = result[result["error"] != "increase not required"]
+    result = result[result["error"] != "missing sis id"]
+    error_count = len(result[result["error"] != ""].index)
+    if result[result["error"] != ""].empty:
         result.drop(columns=["error"], inplace=True)
     result = result.drop(columns=["index", "account id", "storage used in MB"])
     result = result.rename(columns={"id": "subaccount id", "sis id": "course code"})
@@ -166,7 +166,7 @@ def check_and_increase_storage(
     verbose: bool,
 ):
     index, canvas_account_id, sis_id = course[:3]
-    course_name, needs_increase, message = check_percent_storage(course, instance)
+    course_code, needs_increase, message = check_percent_storage(course, instance)
     new_quota = old_quota = None
     status = ""
     if needs_increase:
@@ -190,7 +190,7 @@ def check_and_increase_storage(
             if increased
             else color(status, display_color)
         )
-        display_message = f"{color(course_name)}: {increase_message}"
+        display_message = f"{color(course_code, 'blue')}: {increase_message}"
         print_item(index, total, display_message)
 
 
