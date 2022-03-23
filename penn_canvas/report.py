@@ -188,6 +188,11 @@ def download_report(report: Report, base_path: Path, verbose: bool) -> Optional[
         return None
 
 
+def print_report_paths(report_paths: list[Path]):
+    for path in report_paths:
+        echo(f'REPORT: {color(path, "blue")}')
+
+
 def create_reports(
     reports: Report | list[Report],
     base_path=REPORTS,
@@ -202,16 +207,19 @@ def create_reports(
             report.report_path = report_path
     report_paths = [report.report_path for report in reports]
     if all(report_paths):
-        return [
+        completed_paths = [
             report.report_path
             for report in reports
             if isinstance(report.report_path, Path)
         ]
+        if verbose:
+            print_report_paths(completed_paths)
+        return completed_paths
     reports_to_run = [report for report in reports if not report.report_path]
     report_types_display = ", ".join(
         f'"{report.report_type.name}"' for report in reports_to_run
     )
-    echo(f") Generating {report_types_display}...")
+    echo(f") Generating {report_types_display} report...")
     attempts = 0
     status = get_progress_status(reports_to_run)
     while status and attempts <= 180:
@@ -257,8 +265,7 @@ def create_reports(
         report.report_path for report in reports if isinstance(report.report_path, Path)
     ]
     if verbose:
-        for path in completed_paths:
-            echo(f'REPORT: {color(path, "blue")}')
+        print_report_paths(completed_paths)
     return completed_paths
 
 
