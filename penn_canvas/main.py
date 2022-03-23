@@ -3,7 +3,7 @@ from typing import Optional
 from typer import Argument, Option, Typer
 
 from .api import Instance
-from .archive import archive_main
+from .archive.archive import archive_main
 from .browser import browser_main
 from .bulk_enroll import bulk_enroll_main
 from .check_enrollment import check_enrollment_main

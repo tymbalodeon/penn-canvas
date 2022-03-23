@@ -8,8 +8,9 @@ from canvasapi.account import Account
 from requests import get
 from typer import Exit, echo
 
+from penn_canvas.constants import PENN_CANVAS_MAIN_ACCOUNT_ID
+
 from .api import (
-    PENN_CANVAS_MAIN_ACCOUNT_ID,
     Instance,
     collect,
     format_instance_name,
