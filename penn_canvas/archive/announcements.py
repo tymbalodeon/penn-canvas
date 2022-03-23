@@ -7,14 +7,15 @@ from pandas.io.pickle import read_pickle
 from typer import echo
 
 from penn_canvas.api import collect
-from penn_canvas.archive.archive import (
+from penn_canvas.helpers import create_directory
+from penn_canvas.style import color, print_item
+
+from .helpers import (
     PICKLE_COMPRESSION_TYPE,
     format_display_text,
     format_name,
     strip_tags,
 )
-from penn_canvas.helpers import create_directory
-from penn_canvas.style import color, print_item
 
 ANNOUNCEMENTS_PICKLE_FILE = "announcements.pickle"
 
