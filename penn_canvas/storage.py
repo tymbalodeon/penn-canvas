@@ -18,11 +18,12 @@ from .helpers import (
     get_start_index,
     make_csv_paths,
     make_index_headers,
+    make_single_item,
     print_skip_message,
     switch_logger_file,
 )
 from .notifier import send_email
-from .report import get_report
+from .report import Report, ReportType, create_reports
 from .style import print_item
 
 COMMAND_PATH = create_directory(BASE_PATH / "Storage")
@@ -204,9 +205,8 @@ def storage_main(
     instance = validate_instance_name(instance_name, verbose=True)
     switch_logger_file(LOGS, "course_storage", instance.name)
     result_path = RESULTS / f"{TODAY_AS_Y_M_D}_storage_result_{instance.name}.csv"
-    report_path = get_report(
-        "storage", CURRENT_YEAR_AND_TERM, force_report, instance, verbose
-    )
+    report_object = Report(ReportType.STORAGE, instance=instance, force=force_report)
+    report_path = make_single_item(create_reports(report_object, verbose=verbose))
     start = get_start_index(force, result_path)
     make_csv_paths(result_path, make_index_headers(HEADERS))
     report, total = process_report(report_path, start)

@@ -34,7 +34,12 @@ def get_data_warehouse_cursor():
     return connect(user, password, dsn).cursor()
 
 
-def validate_instance_name(instance_name, verbose=False):
+def print_instance(instance: Instance):
+    instance_name = instance.name.replace("_", " ")
+    echo(f"INSTANCE: {style(instance_name, bold=True)} Canvas")
+
+
+def validate_instance_name(instance_name: str | Instance, verbose=False):
     if isinstance(instance_name, Instance):
         instance = instance_name
     else:
@@ -49,11 +54,6 @@ def validate_instance_name(instance_name, verbose=False):
     if verbose:
         print_instance(instance)
     return instance
-
-
-def print_instance(instance: Instance):
-    instance_name = instance.name.replace("_", " ")
-    echo(f"INSTANCE: {style(instance_name, bold=True)} Canvas")
 
 
 def format_instance_name(instance: Instance) -> str:
@@ -170,14 +170,14 @@ def get_user(
     return user
 
 
-def get_main_account_id(instance: Instance) -> Optional[int]:
+def get_main_account_id(instance: Instance) -> int:
     return {
         Instance.PRODUCTION: PENN_CANVAS_MAIN_ACCOUNT_ID,
         Instance.TEST: PENN_CANVAS_MAIN_ACCOUNT_ID,
         Instance.BETA: PENN_CANVAS_MAIN_ACCOUNT_ID,
         Instance.OPEN: OPEN_CANVAS_MAIN_ACCOUNT_ID,
         Instance.OPEN_TEST: OPEN_CANVAS_MAIN_ACCOUNT_ID,
-    }.get(instance)
+    }.get(instance, PENN_CANVAS_MAIN_ACCOUNT_ID)
 
 
 def get_sub_account_ids(

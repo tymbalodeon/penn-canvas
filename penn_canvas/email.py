@@ -195,7 +195,8 @@ def get_result_paths(base: Path, instance: Instance) -> tuple:
         "USERS_NOT_FOUND",
     ]
     paths = tuple(
-        base / f"{YEAR}_{RESULT_BASE}_{report}_{instance.name}" for report in reports
+        base / f"{YEAR}_{RESULT_BASE}_{report}_{instance.name}.csv"
+        for report in reports
     )
     return paths
 

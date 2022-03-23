@@ -1,10 +1,14 @@
+from dataclasses import dataclass
+from enum import Enum
 from os import remove
 from pathlib import Path
 from shutil import rmtree
 from time import sleep
+from typing import Optional
 from zipfile import ZipFile
 
-from canvasapi.account import Account
+from canvasapi.account import Account, AccountReport
+from click.termui import style
 from requests import get
 from typer import Exit, echo
 
@@ -15,28 +19,99 @@ from .api import (
     collect,
     format_instance_name,
     get_account,
+    get_main_account_id,
     validate_instance_name,
 )
-from .helpers import CURRENT_YEAR_AND_TERM, REPORTS
+from .helpers import CURRENT_YEAR_AND_TERM, REPORTS, make_list
 from .style import color
 
 
-def validate_report_type(
-    report_type,
-    by_filename=False,
-    account: int | Account = PENN_CANVAS_MAIN_ACCOUNT_ID,
-):
-    if by_filename:
-        report_types = {"provisioning", "courses", "users", "storage", "course storage"}
+class ReportType(Enum):
+    COURSES = "courses"
+    USERS = "users"
+    STORAGE = "storage"
+    PROVISIONING = "provisioning"
+
+
+def print_report_type(report_type: ReportType):
+    instance_name = report_type.name.replace("_", " ")
+    echo(f"INSTANCE: {style(instance_name, bold=True)} Canvas")
+
+
+def validate_report_type(report_name, verbose=False):
+    if isinstance(report_name, ReportType):
+        report_type = report_name
     else:
-        account = get_account(account)
-        report_types = {report.report for report in account.get_reports()}
-    if report_type not in report_types:
-        echo(f'ERROR: Unkown report type "{report_type}"')
-        echo("\nAvailable report types are:")
-        for report_type in report_types:
-            echo(f'\t"{report_type}"')
-        raise Exit()
+        report_types = [report_type.value for report_type in ReportType]
+        if report_name not in report_types:
+            echo(f'ERROR: Invalid report type "{report_name}"')
+            echo("\nAvailable report types are:")
+            for report_type in report_types:
+                echo(f'\t"{report_type}"')
+            raise Exit()
+        report_type = ReportType(report_name)
+    if verbose:
+        print_report_type(report_type)
+    return report_type
+
+
+@dataclass
+class Report:
+    report_type: ReportType
+    account: Optional[int] = None
+    instance: Instance = Instance.PRODUCTION
+    term: Optional[str] = CURRENT_YEAR_AND_TERM
+    account_report_type: str = ""
+    account_report: Optional[AccountReport] = None
+    force: bool = False
+    report_path: Optional[Path] = None
+
+    def __post_init__(self):
+        if self.account is None:
+            self.account = get_main_account_id(self.instance)
+        self.account_report_type = {
+            ReportType.COURSES: "provisioning_csv",
+            ReportType.USERS: "provisioning_csv",
+            ReportType.STORAGE: "course_storage_csv",
+            ReportType.PROVISIONING: "provisioning_csv",
+        }.get(self.report_type, "provisioning_csv")
+
+    @property
+    def parameters(self) -> dict:
+        parameters_object: dict = {
+            ReportType.COURSES: {"courses": True},
+            ReportType.USERS: {"users": True},
+            ReportType.STORAGE: dict(),
+            ReportType.PROVISIONING: {"courses": True, "users": True},
+        }.get(self.report_type, dict())
+        if self.term:
+            parameters_object["enrollment_term_id"] = get_enrollment_term_id(self.term)
+        return parameters_object
+
+    @property
+    def file_name(self) -> str:
+        instance = format_instance_name(self.instance)
+        term = f"_{self.term}" if self.term else ""
+        report_type = f"_{self.report_type.name}"
+        return f"{report_type}{term}{instance}"
+
+    def create_account_report(self):
+        account = get_account(self.account, instance=self.instance)
+        if self.parameters:
+            account_report = account.create_report(
+                self.account_report_type, parameters=self.parameters
+            )
+        else:
+            account_report = account.create_report(self.account_report_type)
+        self.account_report = account_report
+
+    def update_account_report(self):
+        if not self.account_report:
+            return
+        account = get_account(self.account, instance=self.instance)
+        self.account_report = account.get_report(
+            self.account_report.report, self.account_report.id
+        )
 
 
 def get_enrollment_term_id(
@@ -72,177 +147,137 @@ def get_enrollment_term_id(
             raise_exception(enrollment_terms)
 
 
-def create_report(
-    report_type: str,
-    parameters=dict(),
-    base_path=REPORTS,
-    filename_replacement="",
-    account: int | Account = PENN_CANVAS_MAIN_ACCOUNT_ID,
-    instance=Instance.PRODUCTION,
-    verbose=False,
-) -> Path:
-    instance = validate_instance_name(instance)
-    validate_report_type(report_type, account=account)
-    account = get_account(account, instance=instance)
-    if parameters:
-        report = account.create_report(report_type, parameters=parameters)
-    else:
-        report = account.create_report(report_type)
-    status = report.status
-    echo(f') Generating "{report_type}"...')
-    attempts = 0
-    while status in {"created", "running"} and attempts <= 180:
-        echo("\t* Running...")
-        sleep(5)
-        report = account.get_report(report_type, report.id)
-        status = report.status
-        attempts += 1
-    if status != "complete":
-        if verbose:
-            try:
-                echo(f"ERROR: {report.last_run['paramters']['extra_text']}")
-            except Exception:
-                echo("ERROR: The report failed to generate a file. Please try again.")
-        report.delete_report()
-        raise Exit()
-    else:
-        if verbose:
-            echo("COMPLETE")
-        try:
-            filename: str = report.attachment["filename"]
-            url = report.attachment["url"]
-            report_path = base_path / filename
-            with open(report_path, "wb") as stream:
-                response = get(url, stream=True)
-                for chunk in response.iter_content(chunk_size=128):
-                    stream.write(chunk)
-            if report.attachment["mime_class"] == "zip":
-                export_path = base_path / filename.replace(".zip", "")
-                with ZipFile(report_path) as unzipper:
-                    unzipper.extractall(export_path)
-                paths = export_path.glob("*.csv")
-                for path in paths:
-                    path.replace(
-                        base_path / f"{path.stem}{filename_replacement}{path.suffix}"
-                    )
-                remove(report_path)
-                rmtree(export_path)
-            elif filename_replacement:
-                report_path = report_path.replace(
-                    base_path / f"{filename_replacement}{report_path.suffix}"
+def get_report_statuses(reports: list[Report]) -> list[str]:
+    return [report.account_report.status for report in reports if report.account_report]
+
+
+def get_progress_status(reports: list[Report]) -> Optional[str]:
+    statuses = get_report_statuses(reports)
+    return next(
+        (status for status in statuses if status in {"created", "running"}), None
+    )
+
+
+def download_report(report: Report, base_path: Path, verbose: bool) -> Optional[Path]:
+    if not report.account_report:
+        return None
+    file_name_replacement = report.file_name
+    account_report = report.account_report
+    try:
+        filename: str = account_report.attachment["filename"]
+        url = account_report.attachment["url"]
+        report_path = base_path / filename
+        with open(report_path, "wb") as stream:
+            response = get(url, stream=True)
+            for chunk in response.iter_content(chunk_size=128):
+                stream.write(chunk)
+        if account_report.attachment["mime_class"] == "zip":
+            export_path = base_path / filename.replace(".zip", "")
+            with ZipFile(report_path) as unzipper:
+                unzipper.extractall(export_path)
+            paths = export_path.glob("*.csv")
+            for path in paths:
+                path.replace(
+                    base_path / f"{path.stem}{file_name_replacement}{path.suffix}"
                 )
-            return report_path
-        except Exception as error:
+            remove(report_path)
+            rmtree(export_path)
+        elif file_name_replacement:
+            report_path = report_path.replace(
+                base_path / f"{file_name_replacement}{report_path.suffix}"
+            )
+        return report_path
+    except Exception as error:
+        if verbose:
+            echo(f"ERROR: {error}")
+        account_report.delete_report()
+        return None
+
+
+def create_reports(
+    reports: Report | list[Report],
+    base_path=REPORTS,
+    verbose=False,
+) -> list[Path]:
+    reports = make_list(reports)
+    for report in reports:
+        report_path = base_path / f"{report.file_name}.csv"
+        if report.force or not report_path.is_file():
+            report.create_account_report()
+        else:
+            report.report_path = report_path
+    report_paths = [report.report_path for report in reports]
+    if all(report_paths):
+        return [
+            report.report_path
+            for report in reports
+            if isinstance(report.report_path, Path)
+        ]
+    reports_to_run = [report for report in reports if not report.report_path]
+    report_types_display = ", ".join(
+        f'"{report.report_type.name}"' for report in reports_to_run
+    )
+    echo(f") Generating {report_types_display}...")
+    attempts = 0
+    status = get_progress_status(reports_to_run)
+    while status and attempts <= 180:
+        for report in reports_to_run:
+            account_report = report.account_report
+            progress = account_report.status if account_report else ""
+            report_type = (
+                account_report.report if account_report else report.report_type.name
+            )
+            echo(f"\t* {report_type} {progress}...")
+        sleep(5)
+        for report in reports_to_run:
+            report.update_account_report()
+        status = get_progress_status(reports_to_run)
+        attempts += 1
+    failed_reports = [
+        report
+        for report in reports_to_run
+        if report.account_report and report.account_report.status != "complete"
+    ]
+    if failed_reports:
+        for report in failed_reports:
+            report = report.account_report
             if verbose:
-                echo(f"ERROR: {error}")
-            report.delete_report()
-            raise Exit()
-
-
-def create_provisioning_report(
-    courses=False,
-    users=False,
-    term_name=CURRENT_YEAR_AND_TERM,
-    base_path=REPORTS,
-    account: int | Account = PENN_CANVAS_MAIN_ACCOUNT_ID,
-    instance=Instance.PRODUCTION,
-    verbose=False,
-) -> Path:
-    instance = validate_instance_name(instance)
-    instance_display = format_instance_name(instance)
-    filename_term = ""
-    parameters = dict()
-    if term_name:
-        parameters["enrollment_term_id"] = get_enrollment_term_id(term_name)
-        filename_term = term_name
-    filename_term = f"_{filename_term}" if filename_term else ""
-    if courses != users:
-        filename_replacement = (
-            f"courses{filename_term}" if courses else f"users{filename_term}"
-        )
-    else:
-        courses = users = True
-        filename_replacement = filename_term
-    if courses:
-        parameters["courses"] = courses
-    if users:
-        parameters["users"] = users
-    return create_report(
-        "provisioning_csv",
-        parameters,
-        base_path,
-        f"{filename_replacement}{instance_display}",
-        account,
-        instance,
-        verbose,
-    )
-
-
-def create_course_storage_report(
-    term_name=CURRENT_YEAR_AND_TERM,
-    base_path=REPORTS,
-    account: int | Account = PENN_CANVAS_MAIN_ACCOUNT_ID,
-    instance=Instance.PRODUCTION,
-    verbose=False,
-) -> Path:
-    instance = validate_instance_name(instance)
-    instance_display = format_instance_name(instance)
-    filename_term = ""
-    parameters = dict()
-    if term_name:
-        parameters["enrollment_term_id"] = get_enrollment_term_id(term_name)
-        filename_term = term_name
-    filename_term = f"_{filename_term}" if filename_term else ""
-    filename_replacement = f"course_storage{filename_term}{instance_display}"
-    return create_report(
-        "course_storage_csv",
-        parameters,
-        base_path,
-        filename_replacement,
-        account,
-        instance,
-        verbose,
-    )
+                try:
+                    last_run_text = (
+                        report.last_run["paramters"]["extra_text"] if report else ""
+                    )
+                    echo(f"ERROR: {last_run_text}")
+                except Exception:
+                    echo(
+                        "ERROR: The report failed to generate a file. Please try again."
+                    )
+            if report:
+                report.delete_report()
+    if verbose:
+        echo("COMPLETE")
+    for report in reports_to_run:
+        report.report_path = download_report(report, base_path, verbose)
+    report_paths = [
+        report.report_path for report in reports if isinstance(report.report_path, Path)
+    ]
+    if verbose:
+        for path in report_paths:
+            echo(f'REPORT: {color(path, "blue")}')
+    return report_paths
 
 
 def get_report(
-    report_type: str,
-    term_name=CURRENT_YEAR_AND_TERM,
+    report: str | ReportType = ReportType.PROVISIONING,
+    term=CURRENT_YEAR_AND_TERM,
     force=False,
-    instance=Instance.PRODUCTION,
+    instance: str | Instance = Instance.PRODUCTION,
     verbose=False,
-) -> Path:
+) -> list[Path]:
     instance = validate_instance_name(instance)
-    validate_report_type(report_type, by_filename=True)
-    term_display = f"_{term_name}" if term_name else term_name
-    instance_display = format_instance_name(instance)
-    if report_type == "storage":
-        report_type = "course_storage"
-    report_path = REPORTS / f"{report_type}{term_display}{instance_display}.csv"
-    if force or not report_path.is_file():
-        if report_type == "provisioning":
-            report_path = create_provisioning_report(
-                courses=True,
-                users=True,
-                term_name=term_name,
-                instance=instance,
-                verbose=verbose,
-            )
-        elif report_type == "courses":
-            report_path = create_provisioning_report(
-                courses=True, term_name=term_name, instance=instance, verbose=verbose
-            )
-        elif report_type == "users":
-            report_path = create_provisioning_report(
-                users=True, term_name=term_name, instance=instance, verbose=verbose
-            )
-        elif "storage" in report_type:
-            report_path = create_course_storage_report(
-                term_name=term_name, instance=instance, verbose=verbose
-            )
-    if verbose:
-        echo(f'REPORT: {color(report_path, "blue")}')
-    return report_path
+    report_type = validate_report_type(report)
+    return create_reports(
+        Report(report_type, instance=instance, term=term, force=force), verbose=verbose
+    )
 
 
 def report_main(report_type, term_name, force, instance, verbose):

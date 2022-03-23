@@ -164,8 +164,8 @@ def get_command_paths(
 
 
 def print_task_complete_message(result_path: Path):
-    color("TASK ALREADY COMPLETE", "yellow", True)
-    result_path_display = color(result_path, "green")
+    echo(color("TASK ALREADY COMPLETE", "yellow"))
+    result_path_display = color(result_path, "blue")
     echo(f"- Output available at: {result_path_display}")
     echo(
         "- To re-run the task, overwriting previous results, run this command"
@@ -392,9 +392,18 @@ def make_list(item) -> list:
     return [item] if not isinstance(item, list) else item
 
 
+def make_single_item(item_list: list):
+    return item_list[0] if item_list else None
+
+
 def dynamic_to_csv(path: Path, data_frame: DataFrame, condition):
-    mode = "a" if condition else "w"
-    data_frame.to_csv(path, mode=mode, header=not condition, index=False)
+    if not path.exists():
+        mode = "w"
+        header = True
+    else:
+        mode = "a" if condition else "w"
+        header = not condition
+    data_frame.to_csv(path, mode=mode, header=header, index=False)
 
 
 def drop_duplicate_errors(paths: Path | list[Path]):
