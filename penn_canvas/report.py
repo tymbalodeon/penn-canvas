@@ -366,7 +366,7 @@ def get_report(
 def get_course_ids_from_reports(terms, instance, force_report, verbose):
     if verbose:
         term_displays = ", ".join(style(term, bold=True) for term in terms)
-        echo(f"pluralize('TERM', len(terms)): {term_displays}")
+        echo(f"{pluralize('TERM', len(terms))}: {term_displays}")
     report_objects = [
         Report(ReportType.COURSES, instance=instance, term=term, force=force_report)
         for term in terms
