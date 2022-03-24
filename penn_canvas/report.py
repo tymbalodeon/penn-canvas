@@ -20,6 +20,7 @@ from .api import (
     format_instance_name,
     get_account,
     get_main_account_id,
+    print_instance,
     validate_instance_name,
 )
 from .helpers import (
@@ -337,6 +338,7 @@ def get_report(
     verbose=False,
 ) -> list[Path]:
     instance = validate_instance_name(instance_name)
+    print_instance(instance)
     switch_logger_file(LOGS, "report", instance.name)
     if report == "weekly":
         storage_report = Report(

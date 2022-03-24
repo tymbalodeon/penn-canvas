@@ -3,6 +3,7 @@ from time import sleep
 from typing import Optional
 
 from canvasapi.assignment import Assignment
+from canvasapi.rubric import Rubric
 from click.termui import style
 from pandas.io.parsers.readers import read_csv
 from requests.api import post
@@ -89,8 +90,8 @@ def archive_main(
     groups: Optional[bool],
     discussions: Optional[bool],
     grades: Optional[bool],
-    quizzes: Optional[bool],
     rubrics: Optional[bool],
+    quizzes: Optional[bool],
     force_report: bool,
 ):
     archive_all = not any(
@@ -104,12 +105,11 @@ def archive_main(
             groups,
             discussions,
             grades,
-            quizzes,
             rubrics,
+            quizzes,
         ]
     )
     instance = validate_instance_name(instance_name)
-    print_instance(instance)
     echo(f"TERM: {style(term, bold=True)}")
     switch_logger_file(LOGS, "archive", instance.name)
     if not course_id:
@@ -119,6 +119,7 @@ def archive_main(
         report_path = make_single_item(create_reports(report_object, verbose=verbose))
         courses = read_csv(report_path)["canvas_course_id"].tolist()
     else:
+        print_instance(instance)
         courses = make_list(course_id)
     total = len(courses)
     for index, canvas_id in enumerate(courses):
@@ -127,6 +128,7 @@ def archive_main(
         print_item(index, total, color(course_name, "blue"))
         course_path = create_directory(RESULTS / course_name)
         assignment_objects: list[Assignment] = list()
+        rubric_objects: list[Rubric] = list()
         if should_run_option(content, archive_all):
             archive_content(course, course_path, instance, verbose)
         if should_run_option(announcements, archive_all):
@@ -147,8 +149,8 @@ def archive_main(
             archive_discussions(course, course_path, use_timestamp, instance, verbose)
         if should_run_option(grades, archive_all):
             archive_grades(course, course_path, assignment_objects, instance, verbose)
-        if should_run_option(quizzes, archive_all):
-            archive_quizzes(course, course_path, instance, verbose)
         if should_run_option(rubrics, archive_all):
-            archive_rubrics(course, course_path, verbose)
+            rubric_objects = archive_rubrics(course, course_path, verbose)
+        if should_run_option(quizzes, archive_all):
+            archive_quizzes(course, course_path, rubric_objects, verbose)
         echo("COMPELTE")

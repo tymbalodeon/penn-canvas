@@ -104,15 +104,15 @@ def archive(
         "--grades/--no-grades",
         help="Inlcude grades in the archive output.",
     ),
-    quizzes: Optional[bool] = Option(
-        None,
-        "--quizzes/--no-quizzes",
-        help="Inlcude quizzes in the archive output.",
-    ),
     rubrics: Optional[bool] = Option(
         None,
         "--rubrics/--no-rubrics",
         help="Inlcude rubrics in the archive output.",
+    ),
+    quizzes: Optional[bool] = Option(
+        None,
+        "--quizzes/--no-quizzes",
+        help="Inlcude quizzes in the archive output.",
     ),
     force_report: bool = Option(
         False,
@@ -145,8 +145,8 @@ def archive(
         groups,
         discussions,
         grades,
-        quizzes,
         rubrics,
+        quizzes,
         force_report,
     )
 

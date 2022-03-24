@@ -56,3 +56,4 @@ def archive_rubrics(course: Course, course_path: Path, verbose: bool):
         with progressbar(rubric_objects, length=rubric_total) as progress:
             for rubric in progress:
                 archive_rubric(rubric, course_path, verbose)
+    return rubric_objects
