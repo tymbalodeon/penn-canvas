@@ -43,8 +43,9 @@ def parse_user_agent_string(user_agent_string: str) -> str:
     return " / ".join([browser_name, os_name, device_name])
 
 
-def get_user_agents(user: User, index: int, total: int) -> list:
-    echo(f") Fetching user agents for {color(user)}...")
+def get_user_agents(user: User, index: int, total: int, verbose: bool) -> list:
+    if verbose:
+        echo(f") Fetching user agents for {color(user)}...")
     user_agents = {
         parse_user_agent_string(page_view.user_agent)
         for page_view in tqdm(user.get_page_views())
@@ -53,7 +54,8 @@ def get_user_agents(user: User, index: int, total: int) -> list:
     user_display = color(user.name)
     user_agents_display = color(len(user_agents), "yellow")
     message = f"{user_display} used {user_agents_display} different agents."
-    print_item(index, total, message)
+    if verbose:
+        print_item(index, total, message)
     return make_list(user_agents)
 
 
@@ -73,7 +75,7 @@ def get_course_browser_data(
         echo(f") Fetching users for {color(course, 'blue')}...")
     users = collect(course.get_users(enrollment_type=["student"]))
     users = [
-        get_user_account_data(user) + get_user_agents(user, index, len(users))
+        get_user_account_data(user) + get_user_agents(user, index, len(users), verbose)
         for index, user in enumerate(users)
     ]
     columns = ["Canvas User ID", "Name", "Email"]

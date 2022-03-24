@@ -4,7 +4,6 @@ from typing import Optional
 
 from canvasapi.assignment import Assignment
 from canvasapi.rubric import Rubric
-from loguru import logger
 from requests.api import post
 from typer import echo
 
@@ -73,7 +72,6 @@ def restore_course(course, instance):
     echo("MIGRATION COMPLETE")
 
 
-@logger.catch
 def archive_main(
     course_ids: Optional[int | list[int]],
     terms: str | list[str],
