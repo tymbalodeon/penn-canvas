@@ -400,6 +400,18 @@ def make_single_item(item_list: list):
     return item_list[0] if item_list else None
 
 
+def make_list_from_optional_tuple(optional_tuple):
+    if isinstance(optional_tuple, tuple):
+        return [item for item in optional_tuple]
+    else:
+        return optional_tuple
+
+
+def get_course_ids_from_input(course_ids):
+    courses = make_list_from_optional_tuple(course_ids)
+    return make_list(courses)
+
+
 def dynamic_to_csv(path: Path, data_frame: DataFrame, condition):
     if not path.exists():
         mode = "w"

@@ -9,6 +9,7 @@ from ua_parser import user_agent_parser
 from penn_canvas.helpers import (
     BASE_PATH,
     create_directory,
+    get_course_ids_from_input,
     make_list,
     switch_logger_file,
 )
@@ -99,7 +100,7 @@ def browser_main(
         courses = get_course_ids_from_reports(terms, instance, force_report, verbose)
     else:
         print_instance(instance)
-        courses = make_list(course_ids)
+        courses = get_course_ids_from_input(course_ids)
     total_courses = len(courses)
     if verbose:
         for index, course in enumerate(courses):

@@ -1,6 +1,6 @@
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional
 
 from canvasapi import Canvas
 from canvasapi.account import Account
@@ -208,5 +208,5 @@ def get_external_tool_names(verbose=False):
     return external_tool_names
 
 
-def collect(paginator: PaginatedList | list) -> list:
+def collect(paginator: PaginatedList | Iterable) -> list:
     return [item for item in paginator]

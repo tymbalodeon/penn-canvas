@@ -16,7 +16,7 @@ from penn_canvas.api import (
 from penn_canvas.helpers import (
     BASE_PATH,
     create_directory,
-    make_list,
+    get_course_ids_from_input,
     switch_logger_file,
 )
 from penn_canvas.report import get_course_ids_from_reports
@@ -112,7 +112,7 @@ def archive_main(
         courses = get_course_ids_from_reports(terms, instance, force_report, verbose)
     else:
         print_instance(instance)
-        courses = make_list(course_ids)
+        courses = get_course_ids_from_input(course_ids)
     total = len(courses)
     for index, canvas_id in enumerate(courses):
         course = get_course(canvas_id, include=["syllabus_body"], instance=instance)
