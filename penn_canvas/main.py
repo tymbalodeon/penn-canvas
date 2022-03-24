@@ -3,6 +3,7 @@ from typing import Optional
 from typer import Argument, Option, Typer
 
 from penn_canvas.api import Instance
+from penn_canvas.roles import roles_main
 
 from .archive.archive import archive_main
 from .browser import browser_main
@@ -711,6 +712,24 @@ def report(
 ):
     """Generate reports"""
     report_main(report_type, term, force, instance, verbose)
+
+
+@app.command()
+def roles(
+    permission: str = Option(
+        "view_statistics", "--permission", help="The permission to check"
+    ),
+    instance: str = Option(
+        Instance.PRODUCTION.value,
+        "--instance",
+        help="The Canvas instance to use.",
+    ),
+    verbose: bool = Option(
+        False, "--verbose", help="Print out detailed information as the task runs."
+    ),
+):
+    """Generate a report of role permissions."""
+    roles_main(permission, instance, verbose)
 
 
 @app.command()
