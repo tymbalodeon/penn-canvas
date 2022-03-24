@@ -44,7 +44,7 @@ def process_submission(
                     name,
                     submission_data["correct"],
                     submission_data["points"],
-                    questions[submission_data["question_id"]]["answers"],
+                    questions[submission_data["question_id"]]["question"],
                     strip_tags(submission_data["text"]),
                 ]
                 for submission_data in history["submission_data"]
@@ -78,10 +78,8 @@ def archive_quiz(
         echo("\t> Getting questions...")
     questions = {
         question.id: {
-            "answers": [
-                strip_tags(question.question_text),
-                ", ".join([answer["text"] for answer in question.answers]),
-            ],
+            "question": strip_tags(question.question_text),
+            "answer": ", ".join([answer["text"] for answer in question.answers]),
         }
         for question in quiz.get_questions()
     }
@@ -125,7 +123,9 @@ def archive_quiz(
     user_scores = DataFrame(
         submission_scores, columns=["Student", "Score", "Points Possible"]
     )
-    questions_text = [question["answers"] for question in questions.values()]
+    questions_text = [
+        [question["question"], question["answers"]] for question in questions.values()
+    ]
     questions_data_frame = DataFrame(questions_text, columns=["Question", "Answers"])
     user_scores.to_csv(scores_path, index=False)
     questions_data_frame.to_csv(questions_path, index=False)
