@@ -23,6 +23,7 @@ def get_quizzes(course: Course) -> tuple[list[Quiz], int]:
 
 def process_submission(
     questions: dict,
+    points_possible: int,
     submission_history: tuple[str, list],
     submissions_path: Path,
     index: int,
@@ -44,6 +45,7 @@ def process_submission(
                     name,
                     submission_data["correct"],
                     submission_data["points"],
+                    points_possible,
                     questions[submission_data["question_id"]]["question"],
                     strip_tags(submission_data["text"]),
                 ]
@@ -54,7 +56,14 @@ def process_submission(
         )
         history_data_frame = DataFrame(
             submission_data,
-            columns=["Student", "Correct", "Points", "Question ID", "Text"],
+            columns=[
+                "Student",
+                "Correct",
+                "Points",
+                "Points Possible",
+                "Question",
+                "Text",
+            ],
         )
         submission_data_path = (
             submissions_path / f"{name}_submissions_{history['id']}.csv"
@@ -79,7 +88,7 @@ def archive_quiz(
     questions = {
         question.id: {
             "question": strip_tags(question.question_text),
-            "answer": ", ".join([answer["text"] for answer in question.answers]),
+            "answers": ", ".join([answer["text"] for answer in question.answers]),
         }
         for question in quiz.get_questions()
     }
@@ -99,10 +108,12 @@ def archive_quiz(
         (submission.user["name"], submission.submission_history)
         for submission in submissions
     ]
+    points_possible = quiz.points_possible
     submissions_total = len(submission_histories)
     for index, submission_history in enumerate(submission_histories):
         process_submission(
             questions,
+            points_possible,
             submission_history,
             submissions_path,
             index,
@@ -111,7 +122,6 @@ def archive_quiz(
         )
     if verbose:
         echo("\t> Collecting user scores...")
-    points_possible = quiz.points_possible
     submission_scores = [
         [
             submission.user["name"],
