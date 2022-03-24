@@ -22,7 +22,7 @@ from .api import (
     validate_instance_name,
 )
 from .helpers import CURRENT_YEAR_AND_TERM, REPORTS, make_list
-from .style import color
+from .style import color, pluralize
 
 
 class ReportType(Enum):
@@ -83,7 +83,7 @@ class Report:
             or self.report_type == ReportType.PROVISIONING
         ):
             parameters_object["courses"] = True
-        elif (
+        if (
             self.report_type == ReportType.USERS
             or self.report_type == ReportType.PROVISIONING
         ):
@@ -96,8 +96,11 @@ class Report:
     def file_name(self) -> str:
         instance = format_instance_name(self.instance)
         term = f"_{self.term}" if self.term else ""
-        report_type = f"{self.account_report_type}"
-        return f"{report_type}{term}{instance}"
+        if self.report_type != ReportType.PROVISIONING:
+            report_type = f"{self.account_report_type}"
+            return f"{report_type}{term}{instance}"
+        else:
+            return f"{term}{instance}"
 
     def create_account_report(self):
         account = get_account(self.account, instance=self.instance)
@@ -178,7 +181,7 @@ def download_report(report: Report, base_path: Path, verbose: bool) -> Optional[
             rmtree(export_path)
         elif file_name_replacement:
             report_path = report_path.replace(
-                base_path / f"{file_name_replacement}{report_path.suffix}"
+                base_path / f"{report.file_name}{report_path.suffix}"
             )
         return report_path
     except Exception as error:
@@ -191,6 +194,11 @@ def download_report(report: Report, base_path: Path, verbose: bool) -> Optional[
 def print_report_paths(report_paths: list[Path]):
     for path in report_paths:
         echo(f'REPORT: {color(path, "blue")}')
+
+
+def get_report_display(report):
+    term_display = f" {report.term}" if report.term else ""
+    return color(f"{report.report_type.name}{term_display}", "blue")
 
 
 def create_reports(
@@ -216,10 +224,9 @@ def create_reports(
             print_report_paths(completed_paths)
         return completed_paths
     reports_to_run = [report for report in reports if not report.report_path]
-    report_types_display = ", ".join(
-        f'"{report.report_type.name}"' for report in reports_to_run
-    )
-    echo(f") Generating {report_types_display} report...")
+    report_displays = [get_report_display(report) for report in reports_to_run]
+    display = ", ".join(report_displays)
+    echo(f") Generating {display} {pluralize('report', len(report_displays))}")
     attempts = 0
     status = get_progress_status(reports_to_run)
     while status and attempts <= 180:
