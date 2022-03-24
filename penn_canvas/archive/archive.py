@@ -1,15 +1,23 @@
+from pathlib import Path
+from time import sleep
 from typing import Optional
 
 from canvasapi.assignment import Assignment
+from requests.api import post
 from typer import echo
 
-from penn_canvas.api import get_course, validate_instance_name
+from penn_canvas.api import (
+    get_canvas,
+    get_course,
+    print_instance,
+    validate_instance_name,
+)
 from penn_canvas.helpers import BASE_PATH, create_directory, switch_logger_file
 from penn_canvas.style import color
 
 from .announcements import archive_announcements
 from .assignments import archive_assignments
-from .content import archive_content
+from .content import CONTENT_DIRECTORY_NAME, archive_content
 from .discussions import archive_discussions
 from .grades import archive_grades
 from .groups import archive_groups
@@ -23,6 +31,38 @@ from .syllabus import archive_syllabus
 COMMAND_PATH = create_directory(BASE_PATH / "Archive")
 RESULTS = create_directory(COMMAND_PATH / "Results")
 LOGS = create_directory(COMMAND_PATH / "Logs")
+
+
+def restore_course(course, instance):
+    content_file = next(
+        path / CONTENT_DIRECTORY_NAME
+        for path in Path(RESULTS).iterdir()
+        if path.is_dir() and str(course) in path.name
+    )
+    canvas_course = get_canvas(instance).get_course(course)
+    content_migration = canvas_course.create_content_migration(
+        "common_cartridge_importer",
+        pre_attachment={"name": content_file.name, "size": content_file.stat().st_size},
+    )
+    echo(f") Uploading {canvas_course} content file...")
+    with open(content_file, "rb") as content:
+        upload_url = content_migration.pre_attachment["upload_url"]
+        data = dict()
+        for key, value in content_migration.pre_attachment["upload_params"].items():
+            data[key] = value
+        status_code = post(upload_url, data=data, files={"file": content}).status_code
+    if not status_code == 201:
+        echo(color("ERROR: file not uploaded", "red"))
+        return
+    content_migration = canvas_course.get_content_migration(content_migration)
+    echo(") Running migration...")
+    while (
+        content_migration.get_progress().workflow_state == "queued"
+        or content_migration.get_progress().workflow_state == "running"
+    ):
+        echo("\t* Migration running...")
+        sleep(8)
+    echo("MIGRATION COMPLETE")
 
 
 def archive_main(
@@ -58,6 +98,7 @@ def archive_main(
         ]
     )
     instance = validate_instance_name(instance_name)
+    print_instance(instance)
     switch_logger_file(LOGS, "archive", instance.name)
     course = get_course(course_id, include=["syllabus_body"], instance=instance)
     course_name = f"{format_name(course.name)} ({course.id})"

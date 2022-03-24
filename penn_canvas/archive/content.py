@@ -12,6 +12,7 @@ from penn_canvas.helpers import create_directory
 from penn_canvas.style import color
 
 CONTENT_EXPORT_TYPES = ["zip", "common_cartridge"]
+CONTENT_DIRECTORY_NAME = "Content"
 
 
 def archive_content(
@@ -26,19 +27,21 @@ def archive_content(
         export = course.export_content(export_type=export_type, skip_notifications=True)
         regex_search = search(r"\d*$", export.progress_url)
         progress_id = regex_search.group() if regex_search else None
-        canvas = get_canvas(instance)
+        canvas = get_canvas(instance, verbose=False)
         workflow_state = canvas.get_progress(progress_id).workflow_state
-        while workflow_state in {"running", "created"}:
+        while workflow_state in {"running", "created", "queued"}:
             if verbose:
-                echo(f"- {workflow_state}...")
+                echo(
+                    f"\t* {color(f'{export_type} export', 'cyan')} {workflow_state}..."
+                )
             sleep(5)
-            workflow_state = canvas.get_progress(progress_id).wofklow_state
+            workflow_state = canvas.get_progress(progress_id).workflow_state
         if workflow_state == "failed":
             echo("- EXPORT FAILED")
         url = course.get_content_export(export).attachment["url"]
         response = get(url, stream=True)
         file_name = f"{export_type}_content.zip"
-        content_path = create_directory(course_directory / "Content")
+        content_path = create_directory(course_directory / CONTENT_DIRECTORY_NAME)
         export_path = create_directory(
             content_path / export_type.replace("_", " ").title()
         )
@@ -50,7 +53,7 @@ def archive_content(
 
 def unzip_content(course_path: Path, verbose: bool):
     paths = [course_path / content_type for content_type in CONTENT_EXPORT_TYPES]
-    content_path = create_directory(course_path / "Content")
+    content_path = create_directory(course_path / CONTENT_DIRECTORY_NAME)
     for path in paths:
         if verbose:
             echo(f") Unzipping {color(path, 'blue')}")
