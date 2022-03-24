@@ -38,11 +38,17 @@ app = Typer(
 
 @app.command()
 def archive(
-    course: int = Argument(
-        ..., help="The course whose discussions you want to archive."
+    course: Optional[int] = Option(
+        None, "--course", help="The course whose discussions you want to archive."
     ),
-    instance: str = Argument(
-        "prod",
+    term: str = Option(
+        CURRENT_YEAR_AND_TERM,
+        "--term",
+        help="The display name of the term for the report",
+    ),
+    instance: str = Option(
+        Instance.PRODUCTION.value,
+        "--instance",
         help="The Canvas instance to use.",
     ),
     verbose: bool = Option(
@@ -108,6 +114,11 @@ def archive(
         "--rubrics/--no-rubrics",
         help="Inlcude rubrics in the archive output.",
     ),
+    force_report: bool = Option(
+        False,
+        "--force-report",
+        help="Force a new report to be generated rather than use a cahced one.",
+    ),
 ):
     """
     Archives a Canvas course's discussions and quiz participation.
@@ -121,6 +132,7 @@ def archive(
     """
     archive_main(
         course,
+        term,
         instance,
         verbose,
         timestamp,
@@ -135,6 +147,7 @@ def archive(
         grades,
         quizzes,
         rubrics,
+        force_report,
     )
 
 

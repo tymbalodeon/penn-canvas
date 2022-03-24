@@ -3,6 +3,8 @@ from time import sleep
 from typing import Optional
 
 from canvasapi.assignment import Assignment
+from click.termui import style
+from pandas.io.parsers.readers import read_csv
 from requests.api import post
 from typer import echo
 
@@ -12,8 +14,15 @@ from penn_canvas.api import (
     print_instance,
     validate_instance_name,
 )
-from penn_canvas.helpers import BASE_PATH, create_directory, switch_logger_file
-from penn_canvas.style import color
+from penn_canvas.helpers import (
+    BASE_PATH,
+    create_directory,
+    make_list,
+    make_single_item,
+    switch_logger_file,
+)
+from penn_canvas.report import Report, ReportType, create_reports
+from penn_canvas.style import color, print_item
 
 from .announcements import archive_announcements
 from .assignments import archive_assignments
@@ -66,7 +75,8 @@ def restore_course(course, instance):
 
 
 def archive_main(
-    course_id: int,
+    course_id: Optional[int],
+    term: str,
     instance_name: str,
     verbose: bool,
     use_timestamp: bool,
@@ -81,6 +91,7 @@ def archive_main(
     grades: Optional[bool],
     quizzes: Optional[bool],
     rubrics: Optional[bool],
+    force_report: bool,
 ):
     archive_all = not any(
         [
@@ -99,32 +110,45 @@ def archive_main(
     )
     instance = validate_instance_name(instance_name)
     print_instance(instance)
+    echo(f"TERM: {style(term, bold=True)}")
     switch_logger_file(LOGS, "archive", instance.name)
-    course = get_course(course_id, include=["syllabus_body"], instance=instance)
-    course_name = f"{format_name(course.name)} ({course.id})"
-    echo(f") Archiving course: {color(course_name, 'blue')}...")
-    course_path = create_directory(RESULTS / course_name)
-    assignment_objects: list[Assignment] = list()
-    if should_run_option(content, archive_all):
-        archive_content(course, course_path, instance, verbose)
-    if should_run_option(announcements, archive_all):
-        archive_announcements(course, course_path, verbose)
-    if should_run_option(modules, archive_all):
-        archive_modules(course, course_path, verbose)
-    if should_run_option(pages, archive_all):
-        archive_pages(course, course_path, verbose)
-    if should_run_option(syllabus, archive_all):
-        archive_syllabus(course, course_path, verbose)
-    if should_run_option(assignments, archive_all):
-        assignment_objects = archive_assignments(course, course_path, instance, verbose)
-    if should_run_option(groups, archive_all):
-        archive_groups(course, course_path, instance, verbose)
-    if should_run_option(discussions, archive_all):
-        archive_discussions(course, course_path, use_timestamp, instance, verbose)
-    if should_run_option(grades, archive_all):
-        archive_grades(course, course_path, assignment_objects, instance, verbose)
-    if should_run_option(quizzes, archive_all):
-        archive_quizzes(course, course_path, instance, verbose)
-    if should_run_option(rubrics, archive_all):
-        archive_rubrics(course, course_path, verbose)
-    echo("COMPELTE")
+    if not course_id:
+        report_object = Report(
+            ReportType.COURSES, instance=instance, term=term, force=force_report
+        )
+        report_path = make_single_item(create_reports(report_object, verbose=verbose))
+        courses = read_csv(report_path)["canvas_course_id"].tolist()
+    else:
+        courses = make_list(course_id)
+    total = len(courses)
+    for index, canvas_id in enumerate(courses):
+        course = get_course(canvas_id, include=["syllabus_body"], instance=instance)
+        course_name = f"{format_name(course.name)} ({course.id})"
+        print_item(index, total, color(course_name, "blue"))
+        course_path = create_directory(RESULTS / course_name)
+        assignment_objects: list[Assignment] = list()
+        if should_run_option(content, archive_all):
+            archive_content(course, course_path, instance, verbose)
+        if should_run_option(announcements, archive_all):
+            archive_announcements(course, course_path, verbose)
+        if should_run_option(modules, archive_all):
+            archive_modules(course, course_path, verbose)
+        if should_run_option(pages, archive_all):
+            archive_pages(course, course_path, verbose)
+        if should_run_option(syllabus, archive_all):
+            archive_syllabus(course, course_path, verbose)
+        if should_run_option(assignments, archive_all):
+            assignment_objects = archive_assignments(
+                course, course_path, instance, verbose
+            )
+        if should_run_option(groups, archive_all):
+            archive_groups(course, course_path, instance, verbose)
+        if should_run_option(discussions, archive_all):
+            archive_discussions(course, course_path, use_timestamp, instance, verbose)
+        if should_run_option(grades, archive_all):
+            archive_grades(course, course_path, assignment_objects, instance, verbose)
+        if should_run_option(quizzes, archive_all):
+            archive_quizzes(course, course_path, instance, verbose)
+        if should_run_option(rubrics, archive_all):
+            archive_rubrics(course, course_path, verbose)
+        echo("COMPELTE")
