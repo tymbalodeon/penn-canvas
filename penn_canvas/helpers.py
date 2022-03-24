@@ -37,7 +37,7 @@ def create_directory(new_directory: Path, parents=True) -> Path:
 
 def remove_old_reports_directories(reports_path: Path):
     def is_old_reports_directory(path):
-        if not path.is_dir():
+        if not path.is_dir() or path.name == "Logs":
             return False
         try:
             date = datetime.strptime(str(path).split("/")[-1], "%Y-%m-%d")
@@ -54,12 +54,16 @@ def remove_old_reports_directories(reports_path: Path):
 
 def get_reports_directory() -> Path:
     base_path = BOX_CLI_PATH if BOX_PATH.exists() else COMMAND_DIRECTORY_BASE
-    reports_path = create_directory(base_path / "REPORTS")
+    return create_directory(base_path / "REPORTS")
+
+
+def get_current_reports_directory() -> Path:
+    reports_path = get_reports_directory()
     remove_old_reports_directories(reports_path)
     return create_directory(reports_path / TODAY_AS_Y_M_D.replace("_", "-"))
 
 
-REPORTS = get_reports_directory()
+REPORTS = get_current_reports_directory()
 
 
 class Term(Enum):

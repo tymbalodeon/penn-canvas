@@ -4,11 +4,12 @@ from os import remove
 from pathlib import Path
 from shutil import rmtree
 from time import sleep
-from typing import Optional
+from typing import Any, Iterable, Literal, Optional
 from zipfile import ZipFile
 
 from canvasapi.account import Account, AccountReport
 from click.termui import style
+from loguru import logger
 from requests import get
 from typer import Exit, echo
 
@@ -21,8 +22,17 @@ from .api import (
     get_main_account_id,
     validate_instance_name,
 )
-from .helpers import CURRENT_YEAR_AND_TERM, REPORTS, make_list
+from .helpers import (
+    CURRENT_YEAR_AND_TERM,
+    REPORTS,
+    create_directory,
+    get_reports_directory,
+    make_list,
+    switch_logger_file,
+)
 from .style import color, pluralize
+
+LOGS = create_directory(get_reports_directory() / "Logs")
 
 
 class ReportType(Enum):
@@ -41,7 +51,7 @@ def validate_report_type(report_name, verbose=False):
     if isinstance(report_name, ReportType):
         report_type = report_name
     else:
-        report_types = [report_type.value for report_type in ReportType]
+        report_types = [report_type.value for report_type in ReportType] + ["weekly"]
         if report_name not in report_types:
             echo(f'ERROR: Invalid report type "{report_name}"')
             echo("\nAvailable report types are:")
@@ -63,7 +73,7 @@ class Report:
     account_report_type: str = ""
     account_report: Optional[AccountReport] = None
     force: bool = False
-    report_path: Optional[Path] = None
+    report_paths: Optional[Path | list[Path]] = None
 
     def __post_init__(self):
         if self.account is None:
@@ -155,11 +165,14 @@ def get_progress_status(reports: list[Report]) -> Optional[str]:
     )
 
 
-def download_report(report: Report, base_path: Path, verbose: bool) -> Optional[Path]:
+def download_report(
+    report: Report, base_path: Path, verbose: bool
+) -> Optional[Path | list[Path]]:
     if not report.account_report:
         return None
     file_name_replacement = report.file_name
     account_report = report.account_report
+    report_paths: Path | list[Path]
     try:
         filename: str = account_report.attachment["filename"]
         url = account_report.attachment["url"]
@@ -172,19 +185,22 @@ def download_report(report: Report, base_path: Path, verbose: bool) -> Optional[
             export_path = base_path / filename.replace(".zip", "")
             with ZipFile(report_path) as unzipper:
                 unzipper.extractall(export_path)
-            paths = export_path.glob("*.csv")
-            for path in paths:
+            paths = [
                 path.replace(
                     base_path / f"{path.stem}{file_name_replacement}{path.suffix}"
                 )
+                for path in export_path.glob("*.csv")
+            ]
             remove(report_path)
             rmtree(export_path)
-        elif file_name_replacement:
-            report_path = report_path.replace(
+            report_paths = paths
+        else:
+            report_paths = report_path.replace(
                 base_path / f"{report.file_name}{report_path.suffix}"
             )
-        return report_path
+        return report_paths
     except Exception as error:
+        logger.error(error)
         if verbose:
             echo(f"ERROR: {error}")
         account_report.delete_report()
@@ -196,9 +212,27 @@ def print_report_paths(report_paths: list[Path]):
         echo(f'REPORT: {color(path, "blue")}')
 
 
-def get_report_display(report):
+def get_report_display(report: Report) -> str:
     term_display = f" {report.term}" if report.term else ""
     return color(f"{report.report_type.name}{term_display}", "blue")
+
+
+def get_report_displays(reports: list[Report]) -> str:
+    report_displays = [get_report_display(report) for report in reports]
+    return ", ".join(report_displays)
+
+
+def flatten(irregular_nested_list: list[list | Any]) -> Iterable:
+    for sub_list in irregular_nested_list:
+        if isinstance(sub_list, list):
+            for item in sub_list:
+                yield item
+        else:
+            yield sub_list
+
+
+def flatten_paths(paths: list[Path | list[Path]]) -> list[Path]:
+    return list(flatten(paths))
 
 
 def create_reports(
@@ -208,25 +242,40 @@ def create_reports(
 ) -> list[Path]:
     reports = make_list(reports)
     for report in reports:
-        report_path = base_path / f"{report.file_name}.csv"
-        if report.force or not report_path.is_file():
+        if report.report_type == ReportType.PROVISIONING:
+            report_paths = [
+                base_path / f"users{report.file_name}.csv",
+                base_path / f"courses{report.file_name}.csv",
+            ]
+            existing_paths = all(path.exists() for path in report_paths)
+        else:
+            report_path = base_path / f"{report.file_name}.csv"
+            existing_paths = (report_path).exists()
+            report_paths = report_path
+        if report.force or not existing_paths:
             report.create_account_report()
         else:
-            report.report_path = report_path
-    report_paths = [report.report_path for report in reports]
+            report.report_paths = report_paths
+    report_paths = [report.report_paths for report in reports]
     if all(report_paths):
-        completed_paths = [
-            report.report_path
-            for report in reports
-            if isinstance(report.report_path, Path)
+        completed_paths_list = [
+            report.report_paths for report in reports if report.report_paths
         ]
+        completed_paths = flatten_paths(completed_paths_list)
         if verbose:
             print_report_paths(completed_paths)
         return completed_paths
-    reports_to_run = [report for report in reports if not report.report_path]
+    reports_to_run = [report for report in reports if not report.report_paths]
+    completed_reports = [report for report in reports if report.report_paths]
+    if completed_reports:
+        completed_report_displays = get_report_displays(completed_reports)
+        echo(
+            f"{color('Using cached report for', 'yellow')}: {completed_report_displays}"
+        )
     report_displays = [get_report_display(report) for report in reports_to_run]
-    display = ", ".join(report_displays)
-    echo(f") Generating {display} {pluralize('report', len(report_displays))}")
+    reports_to_run_display = get_report_displays(reports_to_run)
+    pluralized_report = pluralize("report", len(report_displays))
+    echo(f") Generating {reports_to_run_display} {pluralized_report}...")
     attempts = 0
     status = get_progress_status(reports_to_run)
     while status and attempts <= 180:
@@ -236,7 +285,9 @@ def create_reports(
             report_type = (
                 account_report.report if account_report else report.report_type.name
             )
-            echo(f"\t* {report_type} {progress}...")
+            term_display = f" {report.term}" if report.term else ""
+            report_display = color(f"{report_type}{term_display}", "cyan")
+            echo(f"\t* {report_display} {progress}...")
         sleep(5)
         for report in reports_to_run:
             report.update_account_report()
@@ -258,7 +309,8 @@ def create_reports(
                         else ""
                     )
                     echo(f"ERROR: {last_run_text}")
-                except Exception:
+                except Exception as error:
+                    logger.error(error)
                     echo(
                         "ERROR: The report failed to generate a file. Please try again."
                     )
@@ -267,27 +319,45 @@ def create_reports(
     if verbose:
         echo("COMPLETE")
     for report in reports_to_run:
-        report.report_path = download_report(report, base_path, verbose)
-    completed_paths = [
-        report.report_path for report in reports if isinstance(report.report_path, Path)
+        report.report_paths = download_report(report, base_path, verbose)
+    completed_paths_list = [
+        report.report_paths for report in reports_to_run if report.report_paths
     ]
+    completed_paths = flatten_paths(completed_paths_list)
     if verbose:
         print_report_paths(completed_paths)
     return completed_paths
 
 
 def get_report(
-    report: str | ReportType = ReportType.PROVISIONING,
+    report: str | Literal["weekly"] | ReportType = ReportType.PROVISIONING,
     term=CURRENT_YEAR_AND_TERM,
     force=False,
     instance_name: str | Instance = Instance.PRODUCTION,
     verbose=False,
 ) -> list[Path]:
     instance = validate_instance_name(instance_name)
-    report_type = validate_report_type(report)
-    return create_reports(
-        Report(report_type, instance=instance, term=term, force=force), verbose=verbose
-    )
+    switch_logger_file(LOGS, "report", instance.name)
+    if report == "weekly":
+        storage_report = Report(
+            ReportType.STORAGE,
+            instance=instance,
+            term=term,
+            force=force,
+        )
+        provisioning_report = Report(
+            ReportType.PROVISIONING,
+            instance=instance,
+            term=term,
+            force=force,
+        )
+        return create_reports([storage_report, provisioning_report], verbose=verbose)
+    else:
+        report_type = validate_report_type(report)
+        return create_reports(
+            Report(report_type, instance=instance, term=term, force=force),
+            verbose=verbose,
+        )
 
 
 def report_main(report_type, term_name, force, instance, verbose):
