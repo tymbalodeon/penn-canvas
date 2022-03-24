@@ -1,19 +1,32 @@
-from pathlib import Path
+from typing import Optional
 
+from canvasapi.user import User
 from pandas import DataFrame
 from tqdm import tqdm
-from typer import Exit, echo
+from typer import echo, progressbar
 from ua_parser import user_agent_parser
 
-from .api import get_canvas
+from penn_canvas.helpers import (
+    BASE_PATH,
+    create_directory,
+    make_list,
+    switch_logger_file,
+)
+from penn_canvas.report import get_course_ids_from_reports
+
+from .api import Instance, collect, get_course, print_instance, validate_instance_name
 from .style import color, print_item
 
+COMMAND_PATH = create_directory(BASE_PATH / "Archive")
+RESULTS = create_directory(COMMAND_PATH / "Results")
+LOGS = create_directory(COMMAND_PATH / "Logs")
 
-def get_user_account_data(user):
+
+def get_user_account_data(user: User) -> list:
     return [user.id, user.name, user.email]
 
 
-def parse_user_agent_string(user_agent_string):
+def parse_user_agent_string(user_agent_string: str) -> str:
     browser = user_agent_parser.ParseUserAgent(user_agent_string)
     user_os = user_agent_parser.ParseOS(user_agent_string)
     browser_family = browser["family"]
@@ -30,47 +43,66 @@ def parse_user_agent_string(user_agent_string):
     return " / ".join([browser_name, os_name, device_name])
 
 
-def get_user_agents(index, total, user):
+def get_user_agents(user: User, index: int, total: int) -> list:
     echo(f") Fetching user agents for {color(user)}...")
     user_agents = {
         parse_user_agent_string(page_view.user_agent)
         for page_view in tqdm(user.get_page_views())
         if page_view.user_agent
     }
-    message = (
-        f"{color(user.name)} used {color(len(user_agents), 'yellow')} different agents."
-    )
+    user_display = color(user.name)
+    user_agents_display = color(len(user_agents), "yellow")
+    message = f"{user_display} used {user_agents_display} different agents."
     print_item(index, total, message)
-    return list(user_agents)
+    return make_list(user_agents)
 
 
-def fill_empty_columns(data_list, total_columns):
+def fill_empty_columns(data_list: list, total_columns: int) -> list:
     if len(data_list) < total_columns:
         return data_list + ([None] * (total_columns - len(data_list)))
     else:
         return data_list
 
 
-def browser_main(courses, instance, result_path=Path.home() / "Desktop/results.csv"):
-    if not courses:
-        echo("No courses provided.")
-        raise Exit()
-
-    canvas = get_canvas(instance)
-    total_courses = len(courses)
-    for index, course in enumerate(courses):
-        echo(f"==== COURSE {index + 1:,} of {total_courses:,} ====")
-        course = canvas.get_course(course)
+def get_course_browser_data(
+    course_id: int, instance: Instance, verbose: bool, index=0, total=0
+):
+    course = get_course(course_id, instance=instance)
+    if verbose:
+        echo(f"==== COURSE {index + 1:,} of {total:,} ====")
         echo(f") Fetching users for {color(course, 'blue')}...")
-        users = [user for user in course.get_users(enrollment_type=["student"])]
-        total_users = len(users)
-        users = [
-            get_user_account_data(user) + get_user_agents(index, total_users, user)
-            for index, user in enumerate(users)
-        ]
-        columns = ["Canvas User ID", "Name", "Email"]
-        number_of_user_agent_columns = max({len(user) for user in users}) - len(columns)
-        columns = columns + ["User Agent"] * number_of_user_agent_columns
-        users = [fill_empty_columns(user, len(columns)) for user in users]
-        users = DataFrame(users, columns=columns)
-        users.to_csv(result_path, index=False)
+    users = collect(course.get_users(enrollment_type=["student"]))
+    users = [
+        get_user_account_data(user) + get_user_agents(user, index, len(users))
+        for index, user in enumerate(users)
+    ]
+    columns = ["Canvas User ID", "Name", "Email"]
+    number_of_user_agent_columns = max({len(user) for user in users}) - len(columns)
+    columns = columns + ["User Agent"] * number_of_user_agent_columns
+    users = [fill_empty_columns(user, len(columns)) for user in users]
+    data_frame = DataFrame(users, columns=columns)
+    data_frame.to_csv(RESULTS / "results.csv", index=False)
+
+
+def browser_main(
+    course_ids: Optional[int | list[int]],
+    terms: str | list[str],
+    instance_name: str,
+    force_report: bool,
+    verbose: bool,
+):
+    instance = validate_instance_name(instance_name)
+    switch_logger_file(LOGS, "browser", instance.name)
+    if not course_ids:
+        courses = get_course_ids_from_reports(terms, instance, force_report, verbose)
+    else:
+        print_instance(instance)
+        courses = make_list(course_ids)
+    total_courses = len(courses)
+    if verbose:
+        for index, course in enumerate(courses):
+            get_course_browser_data(course, instance, verbose, index, total_courses)
+    else:
+        with progressbar(courses, length=total_courses) as progress:
+            for course in progress:
+                get_course_browser_data(course, instance, verbose)

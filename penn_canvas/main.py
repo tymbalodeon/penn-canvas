@@ -29,114 +29,80 @@ from .tool import tool_main
 from .update_term import update_term_main
 from .usage_count import usage_count_main
 
-app = Typer(
-    help=(
-        "Welcome to Penn-Canvas -- working with Penn's Canvas instances has never been"
-        " easier!"
-    )
-)
+app = Typer(help="CLI for managing Penn's Canvas instances")
 
 
 @app.command()
 def archive(
-    course: Optional[int] = Option(
-        None, "--course", help="The course whose discussions you want to archive."
+    course_ids: Optional[list[int]] = Option(None, "--course", help="Canvas course id"),
+    terms: list[str] = Option([CURRENT_YEAR_AND_TERM], "--term", help="Term name"),
+    instance_name: str = Option(
+        Instance.PRODUCTION.value, "--instance", help="Canvas instance name"
     ),
-    term: str = Option(
-        CURRENT_YEAR_AND_TERM,
-        "--term",
-        help="The display name of the term for the report",
-    ),
-    instance: str = Option(
-        Instance.PRODUCTION.value,
-        "--instance",
-        help="The Canvas instance to use.",
-    ),
-    verbose: bool = Option(
-        False, "--verbose", help="Print out detailed information as the task runs."
-    ),
-    timestamp: bool = Option(
-        False,
-        "--timestamp",
-        help="Include the timestamp in the output.",
+    use_timestamp: bool = Option(
+        False, "--timestamp", help="Include/exclude the timestamp in the output"
     ),
     content: Optional[bool] = Option(
-        None,
-        "--content/--no-content",
-        help="Export course content in the archive output.",
+        None, "--content/--no-content", help="Include/exclude course content"
     ),
     announcements: Optional[bool] = Option(
         None,
         "--announcements/--no-announcements",
-        help="Export course announcements in the archive output.",
+        help="Include/exclude course announcements",
     ),
     groups: Optional[bool] = Option(
-        None,
-        "--groups/--no-groups",
-        help="Export course groups in the archive output.",
+        None, "--groups/--no-groups", help="Include/exclude course groups"
     ),
     modules: Optional[bool] = Option(
-        None,
-        "--modules/--no-modeules",
-        help="Export course modules in the archive output.",
+        None, "--modules/--no-modeules", help="Include/exclude course modules"
     ),
     pages: Optional[bool] = Option(
-        None,
-        "--pages/--no-pages",
-        help="Export course pages in the archive output.",
+        None, "--pages/--no-pages", help="Include/exclude course pages"
     ),
     syllabus: Optional[bool] = Option(
-        None,
-        "--syllabus/--no-syllabus",
-        help="Export course syllabus in the archive output.",
+        None, "--syllabus/--no-syllabus", help="Include/exclude course syllabus"
     ),
     assignments: Optional[bool] = Option(
         None,
         "--assignments/--no-assignments",
-        help="Inlcude assignments in the archive output.",
+        help="Include/exclude course assignments",
     ),
     discussions: Optional[bool] = Option(
         None,
         "--discussions/--no-discussions",
-        help="Inlcude discussions in the archive output.",
+        help="Include/exclude course discussions",
     ),
     grades: Optional[bool] = Option(
-        None,
-        "--grades/--no-grades",
-        help="Inlcude grades in the archive output.",
+        None, "--grades/--no-grades", help="Include/exclude course grades"
     ),
     rubrics: Optional[bool] = Option(
-        None,
-        "--rubrics/--no-rubrics",
-        help="Inlcude rubrics in the archive output.",
+        None, "--rubrics/--no-rubrics", help="Include/exclude course rubrics"
     ),
     quizzes: Optional[bool] = Option(
-        None,
-        "--quizzes/--no-quizzes",
-        help="Inlcude quizzes in the archive output.",
+        None, "--quizzes/--no-quizzes", help="Include/exclude course quizzes"
     ),
     force_report: bool = Option(
         False,
         "--force-report",
-        help="Force a new report to be generated rather than use a cahced one.",
+        help="Ignore cache and force a new report to be generated",
+    ),
+    verbose: bool = Option(
+        False, "--verbose", help="Print verbose output to the console"
     ),
 ):
     """
-    Archives a Canvas course's discussions and quiz participation.
+    Archives Canvas courses
 
-    INPUT: Canvas course id whose discussions (and optionally quiz
-    participation) you want to archive
 
-    OUTPUT: Folder with the course name containing csv files for each
-    discussion, listing the user, email, (OPTIONAL: timestamp), and post; as
-    well as a list of users who submitted for each of the course's quizzes.
+    Options with "include" and "exclude" flags will all be included if none of
+    the flags are specified.
+
     """
     archive_main(
-        course,
-        term,
-        instance,
-        verbose,
-        timestamp,
+        course_ids,
+        terms,
+        instance_name,
+        use_timestamp,
         content,
         announcements,
         modules,
@@ -149,31 +115,30 @@ def archive(
         rubrics,
         quizzes,
         force_report,
+        verbose,
     )
 
 
 @app.command()
 def browser(
-    courses: list[int] = Argument(
-        ...,
-        help=(
-            "The Canvas Sub-account ID whose course's enrollment terms need to be"
-            " changed"
-        ),
+    course_ids: Optional[list[int]] = Option(None, "--course", help="Canvas course id"),
+    terms: list[str] = Option([CURRENT_YEAR_AND_TERM], "--term", help="Term name"),
+    instance_name: str = Option(
+        Instance.PRODUCTION.value, "--instance", help="Canvas instance name"
     ),
-    instance: str = Option(
-        "prod",
-        "--instance",
-        help=(
-            'The Canvas instnace to check. Can be one of the following: "prod", "test",'
-            ' "open", "open_test".'
-        ),
+    force_report: bool = Option(
+        False,
+        "--force-report",
+        help="Ignore cache and force a new report to be generated",
+    ),
+    verbose: bool = Option(
+        False, "--verbose", help="Print verbose output to the console"
     ),
 ):
     """
-    Get browser information for Canvas users.
+    Report user browser data for Canvas courses
     """
-    browser_main(courses, instance)
+    browser_main(course_ids, terms, instance_name, force_report, verbose)
 
 
 @app.command()
@@ -737,10 +702,8 @@ def storage(
     increment_value: int = Option(
         1000, "--increment", help="The amount in MB to increase a course's storage."
     ),
-    instance_name: str = Option(
-        Instance.PRODUCTION.value,
-        "--instance",
-        help="The Canvas instance to use.",
+    instance: str = Option(
+        Instance.PRODUCTION.value, "--instance", help="The Canvas instance to use."
     ),
     force: bool = Option(
         False,
@@ -762,7 +725,7 @@ def storage(
     Increases the storage quota for each course that currently uses 79% or more
     of its current storage allotment.
     """
-    storage_main(increment_value, instance_name, force, force_report, verbose)
+    storage_main(increment_value, instance, force, force_report, verbose)
 
 
 @app.command()

@@ -10,6 +10,7 @@ from zipfile import ZipFile
 from canvasapi.account import Account, AccountReport
 from click.termui import style
 from loguru import logger
+from pandas.io.parsers.readers import read_csv
 from requests import get
 from typer import Exit, echo
 
@@ -360,6 +361,22 @@ def get_report(
             Report(report_type, instance=instance, term=term, force=force),
             verbose=verbose,
         )
+
+
+def get_course_ids_from_reports(terms, instance, force_report, verbose):
+    if verbose:
+        term_displays = ", ".join(style(term, bold=True) for term in terms)
+        echo(f"pluralize('TERM', len(terms)): {term_displays}")
+    report_objects = [
+        Report(ReportType.COURSES, instance=instance, term=term, force=force_report)
+        for term in terms
+    ]
+    report_paths = create_reports(report_objects, verbose=verbose)
+    return [
+        course_id_list
+        for path in report_paths
+        for course_id_list in read_csv(path)["canvas_course_id"].tolist()
+    ]
 
 
 def report_main(report_type, term_name, force, instance, verbose):

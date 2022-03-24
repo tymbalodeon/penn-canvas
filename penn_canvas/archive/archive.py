@@ -4,9 +4,7 @@ from typing import Optional
 
 from canvasapi.assignment import Assignment
 from canvasapi.rubric import Rubric
-from click.termui import style
 from loguru import logger
-from pandas.io.parsers.readers import read_csv
 from requests.api import post
 from typer import echo
 
@@ -20,10 +18,9 @@ from penn_canvas.helpers import (
     BASE_PATH,
     create_directory,
     make_list,
-    make_single_item,
     switch_logger_file,
 )
-from penn_canvas.report import Report, ReportType, create_reports
+from penn_canvas.report import get_course_ids_from_reports
 from penn_canvas.style import color, print_item
 
 from .announcements import archive_announcements
@@ -78,10 +75,9 @@ def restore_course(course, instance):
 
 @logger.catch
 def archive_main(
-    course_id: Optional[int],
-    term: str,
+    course_ids: Optional[int | list[int]],
+    terms: str | list[str],
     instance_name: str,
-    verbose: bool,
     use_timestamp: bool,
     content: Optional[bool],
     announcements: Optional[bool],
@@ -95,6 +91,7 @@ def archive_main(
     rubrics: Optional[bool],
     quizzes: Optional[bool],
     force_report: bool,
+    verbose: bool,
 ):
     archive_all = not any(
         [
@@ -112,17 +109,12 @@ def archive_main(
         ]
     )
     instance = validate_instance_name(instance_name)
-    echo(f"TERM: {style(term, bold=True)}")
     switch_logger_file(LOGS, "archive", instance.name)
-    if not course_id:
-        report_object = Report(
-            ReportType.COURSES, instance=instance, term=term, force=force_report
-        )
-        report_path = make_single_item(create_reports(report_object, verbose=verbose))
-        courses = read_csv(report_path)["canvas_course_id"].tolist()
+    if not course_ids:
+        courses = get_course_ids_from_reports(terms, instance, force_report, verbose)
     else:
         print_instance(instance)
-        courses = make_list(course_id)
+        courses = make_list(course_ids)
     total = len(courses)
     for index, canvas_id in enumerate(courses):
         course = get_course(canvas_id, include=["syllabus_body"], instance=instance)
