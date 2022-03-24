@@ -17,7 +17,7 @@ from penn_canvas.report import get_course_ids_from_reports
 from .api import Instance, collect, get_course, print_instance, validate_instance_name
 from .style import color, print_item
 
-COMMAND_PATH = create_directory(BASE_PATH / "Archive")
+COMMAND_PATH = create_directory(BASE_PATH / "Browser")
 RESULTS = create_directory(COMMAND_PATH / "Results")
 LOGS = create_directory(COMMAND_PATH / "Logs")
 
