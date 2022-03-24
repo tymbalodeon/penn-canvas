@@ -4,6 +4,7 @@ from enum import Enum
 from os import remove
 from pathlib import Path
 from shutil import copy, rmtree
+from typing import Iterable
 from zipfile import ZipFile
 
 from loguru import logger
@@ -400,15 +401,15 @@ def make_single_item(item_list: list):
     return item_list[0] if item_list else None
 
 
-def make_list_from_optional_tuple(optional_tuple):
-    if isinstance(optional_tuple, tuple):
-        return [item for item in optional_tuple]
+def make_list_from_optional_iterable(optional_iterable):
+    if isinstance(optional_iterable, Iterable):
+        return [item for item in optional_iterable]
     else:
-        return optional_tuple
+        return optional_iterable
 
 
 def get_course_ids_from_input(course_ids):
-    courses = make_list_from_optional_tuple(course_ids)
+    courses = make_list_from_optional_iterable(course_ids)
     return make_list(courses)
 
 

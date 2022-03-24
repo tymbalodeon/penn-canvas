@@ -122,14 +122,8 @@ def archive(
 @app.command()
 def browser(
     course_ids: Optional[list[int]] = Option(None, "--course", help="Canvas course id"),
-    terms: list[str] = Option([CURRENT_YEAR_AND_TERM], "--term", help="Term name"),
     instance_name: str = Option(
-        Instance.PRODUCTION.value, "--instance", help="Canvas instance name"
-    ),
-    force_report: bool = Option(
-        False,
-        "--force-report",
-        help="Ignore cache and force a new report to be generated",
+        Instance.OPEN.value, "--instance", help="Canvas instance name"
     ),
     verbose: bool = Option(
         False, "--verbose", help="Print verbose output to the console"
@@ -138,7 +132,7 @@ def browser(
     """
     Report user browser data for Canvas courses
     """
-    browser_main(course_ids, terms, instance_name, force_report, verbose)
+    browser_main(course_ids, instance_name, verbose)
 
 
 @app.command()
