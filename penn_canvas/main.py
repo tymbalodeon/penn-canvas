@@ -94,8 +94,8 @@ def archive(
     Archive Canvas courses
 
 
-    Options with "include" and "exclude" flags will all be included if none of
-    the flags are specified.
+    Options with both "include" and "exclude" flags will all be included if none
+    of the flags are specified.
 
     """
     archive_main(
