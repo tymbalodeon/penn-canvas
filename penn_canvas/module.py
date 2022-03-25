@@ -10,7 +10,7 @@ def module_main(test, course_id):
     echo(f") Getting modules for course {color(course.name, 'yellow')}...")
     modules = [module for module in course.get_modules()]
     if not modules:
-        color("- No modules found.", "yellow", True)
+        echo(color("No modules found.", "yellow"))
     else:
         for module in modules:
             relocked_module = module.relock()

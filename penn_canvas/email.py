@@ -291,27 +291,27 @@ def print_messages(
     supported_not_found,
     user_not_found,
 ):
-    color("SUMMARY:", "yellow", True)
-    echo(f"- Processed {color(total, 'magenta')} accounts.")
+    echo(color("SUMMARY:", "yellow"))
+    echo(f"Processed {color(total, 'magenta')} accounts.")
     activated_display = color(activated, "yellow" if not activated else "green")
     echo(
-        "- Activated"
+        "Activated"
         f" {activated_display} supported users with unconfirmed email addresses."
     )
     if already_active:
         echo(
-            f"- Found {color(already_active, 'cyan')} supported and unsupported"
+            f"Found {color(already_active, 'cyan')} supported and unsupported"
             f" {'user' if already_active == 1 else 'users'} with email addresses"
             " already active."
         )
     if supported_not_found:
         echo(
-            f"- Found {color(supported_not_found, 'red')} supported"
+            f"Found {color(supported_not_found, 'red')} supported"
             f" {'user' if supported_not_found == 1 else 'users'} with no email address."
         )
     if unsupported:
         echo(
-            f"- Found {color(unsupported, 'yellow')} unsupported"
+            f"Found {color(unsupported, 'yellow')} unsupported"
             f" {'user' if unsupported == 1 else 'users'} with missing or unconfirmed"
             " email addresses."
         )
@@ -322,22 +322,22 @@ def print_messages(
             " email address(es).",
             "red",
         )
-        echo(f"- {message}. Affected accounts are recorded in the log file.")
+        echo(f"{message}. Affected accounts are recorded in the log file.")
     if user_not_found:
         message = color(
             "Failed to find"
             f" {user_not_found} {'user' if user_not_found == 1 else 'users'}.",
             "red",
         )
-        echo(f"- {message}")
+        echo(f"{message}")
     if error_supported:
         echo(
-            f"- Encountered an error for {color(error_supported, 'red')} supported"
+            f"Encountered an error for {color(error_supported, 'red')} supported"
             f" {'user' if error_supported == 1 else 'users'}."
         )
     if error_unsupported:
         echo(
-            "- Encountered an error for"
+            "Encountered an error for"
             f" {color(error_unsupported, 'red')} unsupported"
             f" {'user' if error_unsupported == 1 else 'users'}."
         )

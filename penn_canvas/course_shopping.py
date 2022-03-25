@@ -84,9 +84,9 @@ def section_contains_srs(canvas_course):
 
 
 def print_messages(total):
-    color("SUMMARY:", "yellow", True)
+    echo(color("SUMMARY:", "yellow"))
     echo(f"- Processed {color(total)} courses.")
-    color("FINISHED", "yellow", True)
+    echo(color("FINISHED", "yellow"))
 
 
 def process_result(result_path, processed_path):

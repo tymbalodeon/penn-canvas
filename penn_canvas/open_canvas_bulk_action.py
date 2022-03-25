@@ -654,12 +654,12 @@ def open_canvas_bulk_action_main(verbose, force, test):
             ARGS = (CANVAS.get_account(ACCOUNT) if CANVAS else CANVAS, action)
             if verbose:
                 echo(f"==== FILE {index + 1}/{len(input_files)} ====")
-                color(input_file.stem, "blue", True)
+                echo(color(input_file.stem, "blue"))
             toggle_progress_bar(users, perform_canvas_action, CANVAS, verbose, ARGS)
             new_path = get_timestamped_path(RESULT_PATH, open_test)
             RESULT_PATHS.append((new_path, TOTAL))
             dated_input_file.rename(COMPLETED / dated_input_file.name)
-    color("SUMMARY:", "yellow", True)
+    echo(color("SUMMARY:", "yellow"))
     echo(f"- PROCESSED {color(len(RESULT_PATHS))} FILES.")
     for result_path, total in RESULT_PATHS:
         echo(f"==== {color(result_path.stem, 'green')} ====")
@@ -672,4 +672,4 @@ def open_canvas_bulk_action_main(verbose, force, test):
         else:
             counts, penn_id = process_result(result_path)
             print_messages(total, counts, penn_id)
-    color("FINISHED", "yellow", True)
+    echo(color("FINISHED", "yellow"))

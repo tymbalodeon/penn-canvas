@@ -268,38 +268,38 @@ def print_messages(
     result_path: Path,
 ):
     tool_display = color(tool, "blue")
-    color("SUMMARY:", "yellow", True)
-    echo(f"- Processed {color(total, 'magenta')} courses.")
+    echo(color("SUMMARY:", "yellow"))
+    echo(f"Processed {color(total, 'magenta')} courses.")
     total_enabled = color(enabled, "green" if enabled else "yellow")
     total_already_enabled = color(already_enabled, "cyan")
     if enable:
-        echo(f'- Enabled "{tool_display}" for {total_enabled} courses.')
+        echo(f'Enabled "{tool_display}" for {total_enabled} courses.')
         if already_enabled:
             echo(
-                f'- Found {total_already_enabled} courses with "{tool_display}" already'
+                f'Found {total_already_enabled} courses with "{tool_display}" already'
                 " enabled."
             )
     else:
-        echo(f'- Found {total_enabled} courses with "{tool_display}" enabled.')
+        echo(f'Found {total_enabled} courses with "{tool_display}" enabled.')
         echo(
-            f'- Found {color(disabled, "yellow")} courses with disabled'
+            f'Found {color(disabled, "yellow")} courses with disabled'
             f' "{tool_display}" tab.'
         )
     if not_found:
         message = color(not_found, "yellow")
-        echo(f'- Found {message} courses with no "{tool_display}" tab.')
+        echo(f'Found {message} courses with no "{tool_display}" tab.')
     if not_supported:
         message = color(not_supported, "yellow")
         echo(
-            f"- Found {message} courses in schools not participating in automatic"
+            f"Found {message} courses in schools not participating in automatic"
             f' enabling of "{tool_display}".'
         )
     if error:
         message = color(f"Encountered errors for {error:,} courses.", "red")
-        echo(f"- {message}")
+        echo(f"{message}")
         result_path_display = color(result_path, "green")
-        echo(f"- Details recorded to result file: {result_path_display}")
-    color("FINISHED", "yellow", True)
+        echo(f"Details recorded to result file: {result_path_display}")
+    echo(color("FINISHED", "yellow"))
 
 
 def check_tool_usage(
@@ -461,7 +461,7 @@ def tool_main(
             terms = report["term_id"].drop_duplicates().tolist()
             if not terms:
                 echo("NO NEW TERMS TO PROCESS")
-                color("FINISHED", "yellow", True)
+                echo(color("FINISHED", "yellow"))
                 raise Exit()
     make_csv_paths(result_path, make_index_headers(HEADERS))
     print_skip_message(start, "course")

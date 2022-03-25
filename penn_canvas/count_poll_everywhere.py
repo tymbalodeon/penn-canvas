@@ -65,13 +65,13 @@ def process_result(result_path, term_id):
 
 
 def print_messages(total, courses_with_quiz):
-    color("SUMMARY:", "yellow", True)
+    echo(color("SUMMARY:", "yellow"))
     echo(f"- Processed {color(total)} courses.")
     echo(
         f"- Found {color(courses_with_quiz, 'green')} courses with Poll Everywhere"
         " enabled."
     )
-    color("FINISHED", "yellow", True)
+    echo(color("FINISHED", "yellow"))
 
 
 def count_poll_everywhere_main(test, force, verbose):

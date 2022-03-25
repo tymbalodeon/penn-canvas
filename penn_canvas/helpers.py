@@ -171,12 +171,12 @@ def get_command_paths(
 def print_task_complete_message(result_path: Path):
     echo(color("TASK ALREADY COMPLETE", "yellow"))
     result_path_display = color(result_path, "blue")
-    echo(f"- Output available at: {result_path_display}")
+    echo(f"Output available at: {result_path_display}")
     echo(
-        "- To re-run the task, overwriting previous results, run this command"
+        "To re-run the task, overwriting previous results, run this command"
         " with the '--force' option"
     )
-    color("FINISHED", "yellow", True)
+    echo(color("FINISHED", "yellow"))
 
 
 def get_start_index(force: bool, result_path: Path) -> int:

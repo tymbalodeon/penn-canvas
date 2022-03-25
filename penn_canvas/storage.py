@@ -149,12 +149,12 @@ def process_result(result_path: Path, instance: Instance) -> tuple[int, int]:
 
 
 def print_messages(total: int, increased: int, errors: int):
-    color("SUMMARY:", "yellow", True)
+    echo(color("SUMMARY:", "yellow"))
     echo(f"- Processed {color(total, 'magenta')} courses.")
     echo(f"- Increased storage quota for {color(increased, 'yellow')} courses.")
     if errors:
         echo(f"- {color(f'Failed to find {str(errors)} courses.', 'red')}")
-    color("FINISHED", "yellow", True)
+    echo(color("FINISHED", "yellow"))
 
 
 def check_and_increase_storage(

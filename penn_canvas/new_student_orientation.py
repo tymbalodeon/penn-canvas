@@ -285,7 +285,7 @@ def print_messages(
 
     final_list_path = color(FINAL_LIST_PATH, "green")
     echo(f"- Final Group membership assignments recorded to: {final_list_path}")
-    color("FINISHED", "yellow", True)
+    echo(("FINISHED", "yellow"))
 
 
 def new_student_orientation_main(test, verbose, force, clear_processed):
