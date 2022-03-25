@@ -21,7 +21,6 @@ from .api import (
     format_instance_name,
     get_account,
     get_main_account_id,
-    print_instance,
     validate_instance_name,
 )
 from .helpers import (
@@ -109,8 +108,7 @@ class Report:
         instance = format_instance_name(self.instance)
         term = f"_{self.term}" if self.term else ""
         if self.report_type != ReportType.PROVISIONING:
-            report_type = f"{self.account_report_type}"
-            return f"{report_type}{term}{instance}"
+            return f"{self.report_type.value}{term}{instance}"
         else:
             return f"{term}{instance}"
 
@@ -252,7 +250,7 @@ def create_reports(
             existing_paths = all(path.exists() for path in report_paths)
         else:
             report_path = base_path / f"{report.file_name}.csv"
-            existing_paths = (report_path).exists()
+            existing_paths = report_path.exists()
             report_paths = report_path
         if report.force or not existing_paths:
             report.create_account_report()
@@ -338,8 +336,7 @@ def get_report(
     instance_name: str | Instance = Instance.PRODUCTION,
     verbose=False,
 ) -> list[Path]:
-    instance = validate_instance_name(instance_name)
-    print_instance(instance)
+    instance = validate_instance_name(instance_name, verbose=verbose)
     switch_logger_file(LOGS, "report", instance.name)
     if report == "weekly":
         storage_report = Report(

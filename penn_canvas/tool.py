@@ -398,7 +398,7 @@ def tool_main(
     account_id: str,
 ):
 
-    instance = validate_instance_name(instance_name, verbose=True)
+    instance = validate_instance_name(instance_name, verbose=not verbose)
     switch_logger_file(LOGS, "tool", instance.name)
     if not use_id:
         tool = get_tool(tool)

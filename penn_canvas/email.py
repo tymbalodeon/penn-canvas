@@ -468,7 +468,7 @@ def email_main(
 ):
     if prompt and use_data_warehouse and not confirm_global_protect_enabled():
         raise Exit()
-    instance = validate_instance_name(instance_name, verbose=True)
+    instance = validate_instance_name(instance_name, verbose=not verbose)
     switch_logger_file(LOGS, "email", instance.name)
     instance_display = format_instance_name(instance)
     result_path = COMMAND_PATH / f"{YEAR}_{RESULT_BASE}{instance_display}.csv"
