@@ -4,8 +4,7 @@ from typing import Optional
 
 from canvasapi.user import User
 from loguru import logger
-from pandas import DataFrame
-from pandas.io.parsers.readers import read_csv
+from pandas import read_csv
 from tqdm import tqdm
 from typer import Exit, echo, progressbar
 from ua_parser import user_agent_parser
@@ -67,6 +66,12 @@ def parse_user_agent_string(
 def get_user_agents(
     user: User, result_path: Path, index: int, total: int, verbose: bool
 ):
+    # results = read_csv(result_path, usecols=["user_id"], header=None)[
+    #     "user_id"
+    # ].tolist()
+    # if user.id in results:
+    #     print_item(index, total, f"User agents already processed for {color(user)}...")
+    #     return 0
     if verbose:
         print_item(index, total, f"Fetching user agents for {color(user)}...")
     user_agents = {
@@ -117,9 +122,12 @@ def get_course_browser_data(
     for index in range(1, number_of_user_agent_columns + 1):
         user_agent_columns.append(f"User Agent {index}")
     columns = columns + user_agent_columns
-    results = read_csv(result_path, names=columns, header=None)
-    data_frame = DataFrame(results, columns=columns)
-    data_frame.to_csv(result_path, index=False)
+    columns_row = ",".join(columns)
+    with open(result_path) as result_file:
+        rows = result_file.read()
+    with open(result_path, "w") as result_file:
+        writer(result_file).writerow(columns_row)
+        result_file.write(rows)
 
 
 def browser_main(
