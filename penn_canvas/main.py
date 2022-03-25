@@ -140,14 +140,8 @@ def browser(
 
 @app.command()
 def bulk_enroll(
-    user: int = Option(
-        5966278, "--user", help="The Canvas user id of the user to be bulk enrolled."
-    ),
-    sub_account: int = Option(
-        99241,
-        "--sub-account",
-        help="The Canvas account id of the school to pull courses from.",
-    ),
+    user: int = Option(5966278, "--user", help="Canvas user id"),
+    sub_account: int = Option(99241, "--sub-account", help="Canvas account id"),
     terms: list[int] = Option(
         [
             5773,
@@ -177,7 +171,7 @@ def bulk_enroll(
             2244,
         ],
         "--terms",
-        help="A list of Canvas enrollment term ids to pull courses from.",
+        help="Canvas enrollment term id",
     ),
     input_file: bool = Option(
         True,
@@ -215,7 +209,7 @@ def bulk_enroll(
     ),
 ):
     """
-    Enrolls a given user into all courses for the given school and terms.
+    Enroll user into multiple courses
 
     """
     bulk_enroll_main(
