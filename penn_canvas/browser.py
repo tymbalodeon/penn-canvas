@@ -66,12 +66,12 @@ def parse_user_agent_string(
 def get_user_agents(
     user: User, result_path: Path, index: int, total: int, verbose: bool
 ):
-    # results = read_csv(result_path, usecols=["user_id"], header=None)[
-    #     "user_id"
-    # ].tolist()
-    # if user.id in results:
-    #     print_item(index, total, f"User agents already processed for {color(user)}...")
-    #     return 0
+    results = read_csv(result_path, usecols=["user_id"], header=None)[
+        "user_id"
+    ].tolist()
+    if user.id in results:
+        print_item(index, total, f"User agents already processed for {color(user)}...")
+        return 0
     if verbose:
         print_item(index, total, f"Fetching user agents for {color(user)}...")
     user_agents = {
@@ -110,7 +110,7 @@ def get_course_browser_data(
         echo(f"==== COURSE {index + 1:,} of {total:,} ====")
         echo(f") Fetching users for {color(course, 'blue')}...")
     result_path = RESULTS / f"{course}_browser_data{format_instance_name(instance)}.csv"
-    users = collect(course.get_users(enrollment_type=["student"]))[:2]
+    users = collect(course.get_users(enrollment_type=["student"]))
     max_row_length = 0
     for index, user in enumerate(users):
         length_of_row = get_user_agents(user, result_path, index, len(users), verbose)
