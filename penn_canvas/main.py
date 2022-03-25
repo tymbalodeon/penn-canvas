@@ -125,9 +125,7 @@ def browser(
     instance_name: str = Option(
         Instance.OPEN.value, "--instance", help="Canvas instance name"
     ),
-    force: bool = Option(
-        False, "--force", help="Run and overwrite any existing results"
-    ),
+    force: bool = Option(False, "--force", help="Overwrite existing results"),
     verbose: bool = Option(
         False, "--verbose", help="Print verbose output to the console"
     ),
