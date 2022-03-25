@@ -30,15 +30,21 @@ from .update_term import update_term_main
 from .usage_count import usage_count_main
 
 app = Typer(help="CLI for managing Penn's Canvas instances")
+instance_name = Option(
+    Instance.PRODUCTION.value, "--instance", help="Canvas instance name"
+)
+force_report = Option(
+    False, "--force-report", help="Ignore cache and force a new report to be generated"
+)
+force = Option(False, "--force", help="Overwrite existing results")
+verbose = Option(False, "--verbose", help="Print verbose output to the console")
 
 
 @app.command()
 def archive(
     course_ids: Optional[list[int]] = Option(None, "--course", help="Canvas course id"),
     terms: list[str] = Option([CURRENT_YEAR_AND_TERM], "--term", help="Term name"),
-    instance_name: str = Option(
-        Instance.PRODUCTION.value, "--instance", help="Canvas instance name"
-    ),
+    instance_name: str = instance_name,
     use_timestamp: bool = Option(
         False, "--timestamp", help="Include/exclude the timestamp in the output"
     ),
@@ -81,14 +87,8 @@ def archive(
     quizzes: Optional[bool] = Option(
         None, "--quizzes/--no-quizzes", help="Include/exclude course quizzes"
     ),
-    force_report: bool = Option(
-        False,
-        "--force-report",
-        help="Ignore cache and force a new report to be generated",
-    ),
-    verbose: bool = Option(
-        False, "--verbose", help="Print verbose output to the console"
-    ),
+    force_report: bool = force_report,
+    verbose: bool = verbose,
 ):
     """
     Archive Canvas courses
@@ -122,13 +122,9 @@ def archive(
 @app.command()
 def browser(
     course_ids: Optional[list[int]] = Option(None, "--course", help="Canvas course id"),
-    instance_name: str = Option(
-        Instance.OPEN.value, "--instance", help="Canvas instance name"
-    ),
-    force: bool = Option(False, "--force", help="Overwrite existing results"),
-    verbose: bool = Option(
-        False, "--verbose", help="Print verbose output to the console"
-    ),
+    instance_name: str = instance_name,
+    force: bool = force,
+    verbose: bool = verbose,
 ):
     """
     Report user browser data for Canvas courses
