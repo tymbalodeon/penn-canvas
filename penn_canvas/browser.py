@@ -1,4 +1,5 @@
 from csv import reader, writer
+from os import remove
 from pathlib import Path
 from typing import Optional
 
@@ -65,15 +66,22 @@ def parse_user_agent_string(
 
 
 def get_user_agents(
-    user: User, result_path: Path, index: int, total: int, verbose: bool
+    user: User,
+    result_path: Path,
+    verbose: bool,
+    index: int,
+    total: int,
 ):
-    if result_path.is_file():
-        results = read_csv(result_path, usecols=[0], header=None)[0].tolist()
-        if user.id in results:
-            print_item(
-                index, total, f"User agents already processed for {color(user)}..."
-            )
-            return
+    first_time = not result_path.is_file()
+    if not first_time:
+        with open(result_path) as result_file:
+            results = list(reader(result_file))
+            processed_users = [row[1] for row in results[1:]]
+            if str(user.id) in processed_users:
+                print_item(
+                    index, total, f"User agents already processed for {color(user)}..."
+                )
+                return
     if verbose:
         print_item(index, total, f"Fetching user agents for {color(user)}...")
     user_agents = {
@@ -91,60 +99,51 @@ def get_user_agents(
         user_agents_display = color(len(user_agents), "yellow")
         echo(f"\tFOUND {user_agents_display} unique agents.")
     user_data = get_user_account_data(user)
-    row = user_data + make_list_from_optional_iterable(user_agents)
+    row = [str(index)] + user_data + make_list_from_optional_iterable(user_agents)
+    columns = ["index", "Canvas User ID", "Name", "Email"]
+    number_of_user_agent_columns = len(row) - len(columns)
+    user_agent_columns = [
+        f"User Agent {index}" for index in range(1, number_of_user_agent_columns + 1)
+    ]
+    columns = columns + user_agent_columns
+    previous_rows = list()
+    if not first_time:
+        with open(result_path) as result_file:
+            previous_rows = result_file.readlines()[1:]
+    with open(result_path, "w") as result_file:
+        writer(result_file).writerow(columns)
+        result_file.writelines(previous_rows)
     with open(result_path, "a") as result_file:
         writer(result_file).writerow(row)
 
 
-def fill_empty_columns(data_list: list, total_columns: int) -> list:
-    if len(data_list) < total_columns:
-        return data_list + ([None] * (total_columns - len(data_list)))
-    else:
-        return data_list
-
-
 def get_course_browser_data(
-    course_id: int, instance: Instance, verbose: bool, index=0, total=0
+    course_id: int, instance: Instance, force: bool, verbose: bool, index=0, total=0
 ):
-    processing_text = "_IN_PROCESS"
     course = get_course(course_id, instance=instance)
-    completed_path_name = f"{course}_browser_data{format_instance_name(instance)}"
-    completed_path = RESULTS / f"{completed_path_name}.csv"
-    if completed_path.exists():
-        print_task_complete_message(completed_path)
+    result_path = RESULTS / f"{course}_browser_data{format_instance_name(instance)}.csv"
+    if force and result_path.is_file():
+        remove(result_path)
+    elif result_path.is_file() and "index" not in read_csv(result_path).columns:
+        print_task_complete_message(result_path, already_complete=True)
         return
     if verbose:
         echo(f"==== COURSE {index + 1:,} of {total:,} ====")
         echo(f") Fetching users for {color(course, 'blue')}...")
-    print(completed_path)
-    result_path = (
-        completed_path.parent
-        / f"{completed_path_name}{processing_text}{completed_path.suffix}"
-    )
-    users = collect(course.get_users(enrollment_type=["student"]))[:6]
+    users = collect(course.get_users(enrollment_type=["student"]))[:2]
     for index, user in enumerate(users):
-        get_user_agents(user, result_path, index, len(users), verbose)
-    with open(result_path) as result_file:
-        results = reader(result_file)
-        max_row_length = max([len(row) for row in results])
-    columns = ["Canvas User ID", "Name", "Email"]
-    number_of_user_agent_columns = max_row_length - len(columns)
-    user_agent_columns = list()
-    for index in range(1, number_of_user_agent_columns + 1):
-        user_agent_columns.append(f"User Agent {index}")
-    columns = columns + user_agent_columns
-    with open(result_path) as result_file:
-        rows = result_file.read()
-    with open(result_path, "w") as result_file:
-        writer(result_file).writerow(columns)
-        result_file.write(rows)
-    new_name = result_path.name.replace(processing_text, "")
-    result_path.replace(result_path.parent / new_name)
-    echo("COMPLETE")
+        get_user_agents(user, result_path, verbose, index, len(users))
+    results = read_csv(result_path)
+    results.drop("index", axis=1, inplace=True)
+    results.to_csv(result_path, index=False)
+    print_task_complete_message(result_path)
 
 
 def browser_main(
-    course_ids: Optional[int | list[int]], instance_name: str, verbose: bool
+    course_ids: Optional[int | list[int]],
+    instance_name: str,
+    force: bool,
+    verbose: bool,
 ):
     instance = validate_instance_name(instance_name)
     switch_logger_file(LOGS, "browser", instance.name)
@@ -157,8 +156,10 @@ def browser_main(
     total_courses = len(courses)
     if verbose:
         for index, course in enumerate(courses):
-            get_course_browser_data(course, instance, verbose, index, total_courses)
+            get_course_browser_data(
+                course, instance, force, verbose, index, total_courses
+            )
     else:
         with progressbar(courses, length=total_courses) as progress:
             for course in progress:
-                get_course_browser_data(course, instance, verbose)
+                get_course_browser_data(course, instance, force, verbose)

@@ -168,15 +168,18 @@ def get_command_paths(
     return paths
 
 
-def print_task_complete_message(result_path: Path):
-    echo(color("TASK ALREADY COMPLETE", "yellow"))
+def print_task_complete_message(result_path: Path, already_complete=False):
+    if already_complete:
+        echo(color("TASK ALREADY COMPLETE", "yellow"))
+    else:
+        echo("COMPLETE")
     result_path_display = color(result_path, "blue")
     echo(f"Output available at: {result_path_display}")
-    echo(
-        "To re-run the task, overwriting previous results, run this command"
-        " with the '--force' option"
-    )
-    echo(color("FINISHED", "yellow"))
+    if already_complete:
+        echo(
+            "To re-run the task, overwriting previous results, run this command"
+            " with the '--force' option"
+        )
 
 
 def get_start_index(force: bool, result_path: Path) -> int:
@@ -200,7 +203,7 @@ def get_start_index(force: bool, result_path: Path) -> int:
             except Exception:
                 return index
         else:
-            print_task_complete_message(result_path)
+            print_task_complete_message(result_path, already_complete=True)
             raise Exit()
         return index
 

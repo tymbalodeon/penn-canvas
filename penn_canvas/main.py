@@ -91,7 +91,7 @@ def archive(
     ),
 ):
     """
-    Archives Canvas courses
+    Archive Canvas courses
 
 
     Options with "include" and "exclude" flags will all be included if none of
@@ -125,6 +125,9 @@ def browser(
     instance_name: str = Option(
         Instance.OPEN.value, "--instance", help="Canvas instance name"
     ),
+    force: bool = Option(
+        False, "--force", help="Run and overwrite any existing results"
+    ),
     verbose: bool = Option(
         False, "--verbose", help="Print verbose output to the console"
     ),
@@ -132,7 +135,7 @@ def browser(
     """
     Report user browser data for Canvas courses
     """
-    browser_main(course_ids, instance_name, verbose)
+    browser_main(course_ids, instance_name, force, verbose)
 
 
 @app.command()
