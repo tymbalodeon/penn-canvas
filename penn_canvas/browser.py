@@ -130,7 +130,7 @@ def get_course_browser_data(
     if verbose:
         echo(f"==== COURSE {index + 1:,} of {total:,} ====")
         echo(f") Fetching users for {color(course, 'blue')}...")
-    users = collect(course.get_users(enrollment_type=["student"]))[:2]
+    users = collect(course.get_users(enrollment_type=["student"]))
     for index, user in enumerate(users):
         get_user_agents(user, result_path, verbose, index, len(users))
     results = read_csv(result_path)
