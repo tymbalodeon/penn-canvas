@@ -17,7 +17,7 @@ from .count_sites import count_sites_main
 from .course_shopping import course_shopping_main
 from .email import email_main
 from .find_users_by_email import find_users_by_email_main
-from .helpers import CURRENT_YEAR_AND_TERM
+from .helpers import CURRENT_DATE, CURRENT_YEAR_AND_TERM
 from .integrity import integrity_main
 from .investigate import investigate_main
 from .module import module_main
@@ -220,43 +220,14 @@ def bulk_enroll(
 
 @app.command()
 def check_enrollment(
-    course: int = Argument(
-        ...,
-        help="The Canvas course id of the course whose enrollments you wish to check.",
-    ),
-    year: int = Argument(
-        ...,
-        help=(
-            "The year of the start date for checking enrollments, in the format: YYYY."
-        ),
-    ),
-    month: int = Argument(
-        ...,
-        help=(
-            "The month of the start date for checking enrollments, in the format: M or"
-            " MM (Do not use leading zeros)."
-        ),
-    ),
-    day: int = Argument(
-        ...,
-        help=(
-            "The day of the start date for checking enrollments, in the format: D or DD"
-            " (Do not use leading zeros)."
-        ),
-    ),
-    instance: str = Option(
-        "prod",
-        "--instance",
-        help=(
-            'The Canvas instnace to check. Can be one of the following: "prod", "test",'
-            ' "open", "open_test".'
-        ),
-    ),
+    course: int = Option(..., "--course", help="Canvas course id"),
+    date: str = Option(CURRENT_DATE.strftime("%Y-%m-%d"), help="Date (Y-M-D)"),
+    instance_name: str = instance_name,
 ):
     """
-    Check enrollment.
+    Check enrollment
     """
-    check_enrollment_main(course, year, month, day, instance)
+    check_enrollment_main(course, date, instance_name)
 
 
 @app.command()
