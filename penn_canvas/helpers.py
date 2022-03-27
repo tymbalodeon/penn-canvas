@@ -4,7 +4,7 @@ from enum import Enum
 from os import remove
 from pathlib import Path
 from shutil import copy, rmtree
-from typing import Iterable
+from typing import Iterable, Optional
 from zipfile import ZipFile
 
 from loguru import logger
@@ -510,7 +510,10 @@ def writerow(path: Path, items: list, mode="w"):
 
 
 @logger.catch
-def switch_logger_file(log_path: Path, log_name: str, instance_name: str):
-    log = log_path / (log_name + "_{time}" + f"_{instance_name}.log")
+def switch_logger_file(
+    log_path: Path, log_name: str, instance_name: Optional[str] = None
+):
+    instance_name = f"_{instance_name}.log" if instance_name else ""
+    log = log_path / (log_name + "_{time}" + instance_name)
     logger.remove()
     logger.add(log, retention=10)

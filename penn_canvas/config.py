@@ -151,7 +151,7 @@ def get_penn_canvas_config(section=None, as_tuple=False):
 
 
 def print_config(show_secrets):
-    switch_logger_file(LOGS / "config_{time}.log")
+    switch_logger_file(LOGS, "config")
     for option, value in get_penn_canvas_config(as_tuple=True):
         if not value:
             value = color("[ empty ]", "yellow")
