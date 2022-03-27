@@ -17,6 +17,7 @@ from penn_canvas.helpers import (
     make_list_from_optional_iterable,
     print_task_complete_message,
     switch_logger_file,
+    writerow,
 )
 
 from .api import (
@@ -113,8 +114,7 @@ def get_user_agents(
     with open(result_path, "w") as result_file:
         writer(result_file).writerow(columns)
         result_file.writelines(previous_rows)
-    with open(result_path, "a") as result_file:
-        writer(result_file).writerow(row)
+    writerow(result_path, row, "a")
 
 
 def get_course_browser_data(

@@ -1,15 +1,26 @@
-from csv import writer
 from datetime import datetime
 
 from pytz import UTC
 from typer import echo, prompt
 
-from .api import get_canvas
-from .helpers import get_command_paths, make_csv_paths
-from .style import color
+from .api import (
+    Instance,
+    format_instance_name,
+    get_course,
+    get_user,
+    validate_instance_name,
+)
+from .helpers import (
+    BASE_PATH,
+    create_directory,
+    make_csv_paths,
+    print_task_complete_message,
+    writerow,
+)
+from .style import color, print_item
 
-COMMAND_NAME = "Check Enrollment"
-RESULTS = get_command_paths(COMMAND_NAME)["results"]
+COMMAND_PATH = create_directory(BASE_PATH / "Check Enrollment")
+RESULTS = create_directory(COMMAND_PATH / "Results")
 HEADERS = ["Name", "Email", "Date Enrolled"]
 
 
@@ -40,40 +51,43 @@ def get_enrolled_at_date(enrollment):
     return enrollment[2]
 
 
-def check_enrollment_main(course_id, year, month, day, instance):
+def check_enrollment_main(
+    course_id: int, year: int, month: int, day: int, instance_name: str | Instance
+):
     start_date = get_valid_date(year, month, day)
-    INSTANCE = get_valid_instance(instance)
-    CANVAS = get_canvas(INSTANCE)
-    course = CANVAS.get_course(course_id)
-    RESULT_PATH_STRING = (
-        f"{INSTANCE.upper()}_{course}_enrollments_after"
+    instance = validate_instance_name(instance_name)
+    course = get_course(course_id, instance=instance)
+    result_path_string = (
+        f"{format_instance_name(instance)}_{course}_enrollments_after"
         "_{start_date.strftime('%Y_%m_%d')}.csv"
     )
-    RESULT_PATH = RESULTS / RESULT_PATH_STRING
-    make_csv_paths(RESULT_PATH, HEADERS)
+    result_path = RESULTS / result_path_string
+    make_csv_paths(result_path, HEADERS)
     enrollments = [
         [enrollment.user["name"], enrollment.user_id, enrollment.created_at_date]
         for enrollment in course.get_enrollments()
         if enrollment.created_at_date > start_date
     ]
     enrollments = sorted(enrollments, key=get_enrolled_at_date)
-
     for index, user in enumerate(enrollments):
         name, user_id, date_enrolled = user
         date_enrolled = date_enrolled.strftime("%Y-%m-%d")
         email = next(
             channel
-            for channel in CANVAS.get_user(user_id).get_communication_channels()
+            for channel in get_user(
+                user_id, instance=instance
+            ).get_communication_channels()
             if channel.type == "email"
         )
         user[1] = email
-
-        with open(RESULT_PATH, "a", newline="") as output_file:
-            writer(output_file).writerow([name, email, date_enrolled])
-
-        echo(
-            f"- ({(index + 1):,}/{len(enrollments)}) {color(name, 'green')} enrolled"
-            f" in {color(course)} on {color(date_enrolled, 'yellow')}."
+        writerow(result_path, [name, email, date_enrolled], "a")
+        message = (
+            f"{color(name, 'green')} enrolled in {color(course)} on"
+            f" {color(date_enrolled, 'yellow')}."
         )
-
-    echo("FINISHED")
+        print_item(index, len(enrollments), message)
+        echo(
+            f"{color(name, 'green')} enrolled in {color(course)} on"
+            f" {color(date_enrolled, 'yellow')}."
+        )
+    print_task_complete_message(result_path)

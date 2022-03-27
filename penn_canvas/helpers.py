@@ -504,6 +504,11 @@ def toggle_progress_bar(data, callback, canvas, verbose, args=None):
             progress_bar_mode()
 
 
+def writerow(path: Path, items: list, mode="w"):
+    with open(path, mode) as output:
+        writer(output).writerow(items)
+
+
 @logger.catch
 def switch_logger_file(log_path: Path, log_name: str, instance_name: str):
     log = log_path / (log_name + "_{time}" + f"_{instance_name}.log")
