@@ -1,5 +1,4 @@
 from csv import reader, writer
-from os import remove
 from pathlib import Path
 from typing import Optional
 
@@ -14,7 +13,9 @@ from penn_canvas.helpers import (
     BASE_PATH,
     create_directory,
     get_course_ids_from_input,
+    get_start_index,
     make_list_from_optional_iterable,
+    print_skip_message,
     print_task_complete_message,
     switch_logger_file,
     writerow,
@@ -25,7 +26,6 @@ from .api import (
     collect,
     format_instance_name,
     get_course,
-    print_instance,
     validate_instance_name,
 )
 from .style import color, print_item
@@ -118,16 +118,21 @@ def get_user_agents(
 
 
 def get_course_browser_data(
-    course_id: int, instance: Instance, force: bool, verbose: bool, index=0, total=0
+    course_id: int,
+    instance: Instance,
+    force: bool,
+    verbose: bool,
+    override_result_path: Optional[Path],
+    index=0,
+    total=0,
 ):
     course = get_course(course_id, instance=instance)
-    result_path = RESULTS / f"{course}_browser_data{format_instance_name(instance)}.csv"
-    if result_path.is_file():
-        if force:
-            remove(result_path)
-        elif "index" not in read_csv(result_path).columns:
-            print_task_complete_message(result_path, already_complete=True)
-            return
+    result_path = (
+        override_result_path
+        or RESULTS / f"{course}_browser_data{format_instance_name(instance)}.csv"
+    )
+    start = get_start_index(force, result_path)
+    print_skip_message(start, "enrollments")
     if verbose:
         echo(f"==== COURSE {index + 1:,} of {total:,} ====")
         echo(f") Fetching users for {color(course, 'blue')}...")
@@ -142,25 +147,32 @@ def get_course_browser_data(
 
 def browser_main(
     course_ids: Optional[int | list[int]],
-    instance_name: str,
+    instance_name: str | Instance,
     force: bool,
     verbose: bool,
+    override_result_path: Optional[Path] = None,
 ):
-    instance = validate_instance_name(instance_name)
-    switch_logger_file(LOGS, "browser", instance.name)
     if not course_ids:
         echo("NO COURSE(S) PROVIDED")
         raise Exit()
-    else:
-        print_instance(instance)
-        courses = get_course_ids_from_input(course_ids)
+    instance = validate_instance_name(instance_name, verbose=True)
+    switch_logger_file(LOGS, "browser", instance.name)
+    courses = get_course_ids_from_input(course_ids)
     total_courses = len(courses)
     if verbose:
         for index, course in enumerate(courses):
             get_course_browser_data(
-                course, instance, force, verbose, index, total_courses
+                course,
+                instance,
+                force,
+                verbose,
+                override_result_path,
+                index,
+                total_courses,
             )
     else:
         with progressbar(courses, length=total_courses) as progress:
             for course in progress:
-                get_course_browser_data(course, instance, force, verbose)
+                get_course_browser_data(
+                    course, instance, force, verbose, override_result_path
+                )

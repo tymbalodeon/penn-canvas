@@ -82,7 +82,7 @@ def get_enrollment(
 def check_enrollment_main(
     course_id: int, date: str, instance_name: str | Instance, force: bool, verbose: bool
 ):
-    instance = validate_instance_name(instance_name, verbose=verbose)
+    instance = validate_instance_name(instance_name, verbose=True)
     switch_logger_file(LOGS, "check_enrollment", instance.name)
     start_date = utc.localize(datetime.strptime(date, "%Y-%m-%d"))
     course = get_course(course_id, instance=instance)

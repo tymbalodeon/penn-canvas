@@ -385,5 +385,11 @@ def get_course_ids_from_reports(terms, instance, force_report, verbose):
     ]
 
 
-def report_main(report_type, term_name, force, instance, verbose):
+def report_main(
+    report_type: str | ReportType,
+    term_name: str,
+    force: bool,
+    instance: str | Instance,
+    verbose: bool,
+):
     get_report(report_type, term_name, force, instance, verbose)
