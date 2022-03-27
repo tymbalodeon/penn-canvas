@@ -40,11 +40,15 @@ force = Option(False, "--force", help="Overwrite existing results")
 verbose = Option(False, "--verbose", help="Print verbose output to the console")
 
 
+def get_instance_option(default=Instance.PRODUCTION):
+    return Option(default.value, "--instance", help="Canvas instance name")
+
+
 @app.command()
 def archive(
     course_ids: Optional[list[int]] = Option(None, "--course", help="Canvas course id"),
     terms: list[str] = Option([CURRENT_YEAR_AND_TERM], "--term", help="Term name"),
-    instance_name: str = instance_name,
+    instance_name: str = get_instance_option(),
     use_timestamp: bool = Option(
         False, "--timestamp", help="Include/exclude the timestamp in the output"
     ),
@@ -122,7 +126,7 @@ def archive(
 @app.command()
 def browser(
     course_ids: Optional[list[int]] = Option(None, "--course", help="Canvas course id"),
-    instance_name: str = instance_name,
+    instance_name: str = get_instance_option(default=Instance.OPEN),
     force: bool = force,
     verbose: bool = verbose,
 ):
@@ -222,7 +226,7 @@ def bulk_enroll(
 def check_enrollment(
     course: int = Option(..., "--course", help="Canvas course id"),
     date: str = Option(CURRENT_DATE.strftime("%Y-%m-%d"), help="Date (Y-M-D)"),
-    instance_name: str = instance_name,
+    instance_name: str = get_instance_option(),
     force: bool = force,
     verbose: bool = verbose,
 ):

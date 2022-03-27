@@ -136,9 +136,14 @@ def get_course(
     verbose=False,
     pretty_print=False,
 ):
-    course = get_canvas(instance, verbose).get_course(
-        course_id, use_sis_id, include=include
-    )
+    try:
+        course = get_canvas(instance, verbose).get_course(
+            course_id, use_sis_id, include=include
+        )
+    except Exception as error:
+        echo(f"ERROR: Failed to find course ({error})")
+        logger.error(error)
+        raise Exit(1)
     if pretty_print:
         pprint(course)
     return course
