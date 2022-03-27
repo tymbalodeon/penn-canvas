@@ -10,7 +10,7 @@ from pandas import concat, read_csv
 from pandas.core.frame import DataFrame
 from typer import Exit, echo, progressbar
 
-from penn_canvas.report import get_report
+from penn_canvas.report import Report, ReportType, get_single_report
 from penn_canvas.style import print_item
 
 from .api import (
@@ -24,7 +24,6 @@ from .api import (
 )
 from .helpers import (
     BASE_PATH,
-    CURRENT_YEAR_AND_TERM,
     YEAR,
     add_headers_to_empty_files,
     color,
@@ -37,7 +36,6 @@ from .helpers import (
     handle_clear_processed,
     make_csv_paths,
     make_index_headers,
-    make_single_item,
     print_skip_message,
     switch_logger_file,
 )
@@ -476,9 +474,8 @@ def email_main(
     processed_errors_path = (
         PROCESSED / f"{YEAR}_email_processed_errors{instance_display}.csv"
     )
-    report_path = make_single_item(
-        get_report("users", CURRENT_YEAR_AND_TERM, force_report, instance, verbose)
-    )
+    report_object = Report(ReportType.USERS, instance=instance, force=force_report)
+    report_path = get_single_report(report_object, verbose=verbose)
     handle_clear_processed(clear_processed, [processed_path, processed_errors_path])
     processed_users = get_processed(processed_path, HEADERS)
     processed_errors = get_processed(processed_errors_path, HEADERS)

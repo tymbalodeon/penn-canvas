@@ -223,11 +223,13 @@ def check_enrollment(
     course: int = Option(..., "--course", help="Canvas course id"),
     date: str = Option(CURRENT_DATE.strftime("%Y-%m-%d"), help="Date (Y-M-D)"),
     instance_name: str = instance_name,
+    force: bool = force,
+    verbose: bool = verbose,
 ):
     """
     Check enrollment
     """
-    check_enrollment_main(course, date, instance_name)
+    check_enrollment_main(course, date, instance_name, force, verbose)
 
 
 @app.command()

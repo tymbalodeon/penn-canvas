@@ -122,11 +122,12 @@ def get_course_browser_data(
 ):
     course = get_course(course_id, instance=instance)
     result_path = RESULTS / f"{course}_browser_data{format_instance_name(instance)}.csv"
-    if force and result_path.is_file():
-        remove(result_path)
-    elif result_path.is_file() and "index" not in read_csv(result_path).columns:
-        print_task_complete_message(result_path, already_complete=True)
-        return
+    if result_path.is_file():
+        if force:
+            remove(result_path)
+        elif "index" not in read_csv(result_path).columns:
+            print_task_complete_message(result_path, already_complete=True)
+            return
     if verbose:
         echo(f"==== COURSE {index + 1:,} of {total:,} ====")
         echo(f") Fetching users for {color(course, 'blue')}...")
