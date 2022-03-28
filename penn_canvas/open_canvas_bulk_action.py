@@ -17,6 +17,7 @@ from .helpers import (
     get_start_index,
     make_csv_paths,
     make_index_headers,
+    make_list,
     print_skip_message,
     process_input,
     switch_logger_file,
@@ -602,7 +603,13 @@ def open_canvas_bulk_action_main(verbose, force, test):
                 new_path = new_path.rename(
                     RESULTS / f"{new_path.stem}_COURSE_{course}.csv"
                 )
-                browser_main([course], INSTANCE, new_path)
+                browser_main(
+                    make_list(course),
+                    instance_name=INSTANCE,
+                    force=force,
+                    verbose=verbose,
+                    override_result_path=new_path,
+                )
                 new_path.rename(RESULTS / f"{new_path.stem}_COMPLETED.csv")
             RESULT_PATHS.append((input_file, None))
             input_file.rename(COMPLETED / input_file.name)

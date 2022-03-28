@@ -400,10 +400,6 @@ def make_list(item) -> list:
     return [item] if not isinstance(item, list) else item
 
 
-def make_single_item(item_list: list):
-    return item_list[0] if item_list else None
-
-
 def make_list_from_optional_iterable(optional_iterable):
     if isinstance(optional_iterable, Iterable):
         return [item for item in optional_iterable]
@@ -448,7 +444,7 @@ def convert_to_est(timestamp: datetime) -> datetime:
     return utc.localize(timestamp).astimezone(timezone("US/Eastern"))
 
 
-def format_timestamp(timestamp: str, localize=True) -> str | None:
+def format_timestamp(timestamp: str, localize=True) -> Optional[str]:
     if timestamp:
         date = datetime.fromisoformat(timestamp.replace("Z", ""))
         if localize:

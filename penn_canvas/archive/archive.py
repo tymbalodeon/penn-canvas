@@ -7,12 +7,7 @@ from canvasapi.rubric import Rubric
 from requests.api import post
 from typer import echo
 
-from penn_canvas.api import (
-    get_canvas,
-    get_course,
-    print_instance,
-    validate_instance_name,
-)
+from penn_canvas.api import get_canvas, get_course, validate_instance_name
 from penn_canvas.helpers import (
     BASE_PATH,
     create_directory,
@@ -106,12 +101,11 @@ def archive_main(
             quizzes,
         ]
     )
-    instance = validate_instance_name(instance_name)
+    instance = validate_instance_name(instance_name, verbose=True)
     switch_logger_file(LOGS, "archive", instance.name)
     if not course_ids:
         courses = get_course_ids_from_reports(terms, instance, force_report, verbose)
     else:
-        print_instance(instance)
         courses = get_course_ids_from_input(course_ids)
     total = len(courses)
     for index, canvas_id in enumerate(courses):

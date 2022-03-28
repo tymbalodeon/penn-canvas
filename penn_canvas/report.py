@@ -360,6 +360,15 @@ def get_report(
         )
 
 
+def get_single_report(report_object: Report, verbose: bool) -> Path:
+    reports = create_reports(report_object, verbose=verbose)
+    try:
+        return next(report for report in reports)
+    except Exception:
+        echo("ERROR: Failed to get report")
+        raise Exit()
+
+
 def get_course_ids_from_reports(terms, instance, force_report, verbose):
     if verbose:
         term_displays = ", ".join(style(term, bold=True) for term in terms)
@@ -376,5 +385,11 @@ def get_course_ids_from_reports(terms, instance, force_report, verbose):
     ]
 
 
-def report_main(report_type, term_name, force, instance, verbose):
+def report_main(
+    report_type: str | ReportType,
+    term_name: str,
+    force: bool,
+    instance: str | Instance,
+    verbose: bool,
+):
     get_report(report_type, term_name, force, instance, verbose)

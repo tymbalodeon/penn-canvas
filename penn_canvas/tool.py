@@ -6,7 +6,7 @@ from loguru import logger
 from pandas import DataFrame, concat, isna, read_csv
 from typer import Exit, confirm, echo, progressbar
 
-from penn_canvas.report import get_report
+from penn_canvas.report import Report, ReportType, get_report, get_single_report
 from penn_canvas.style import print_item
 
 from .api import (
@@ -29,7 +29,6 @@ from .helpers import (
     handle_clear_processed,
     make_csv_paths,
     make_index_headers,
-    make_single_item,
     print_skip_message,
     switch_logger_file,
 )
@@ -402,9 +401,10 @@ def tool_main(
     switch_logger_file(LOGS, "tool", instance.name)
     if not use_id:
         tool = get_tool(tool)
-    report_path = make_single_item(
-        get_report("courses", term, force_report, instance, verbose)
+    report_object = Report(
+        ReportType.COURSES, instance=instance, term=term, force=force_report
     )
+    report_path = get_single_report(report_object, verbose=verbose)
     year_display = f"{YEAR}_" if enable else ""
     tool_display = tool if use_id else tool.replace(" ", "_")
     instance_display = format_instance_name(instance)
