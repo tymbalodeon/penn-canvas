@@ -462,10 +462,10 @@ def new_student_orientation(
 def open_canvas_bulk_action(
     verbose: bool = verbose,
     force: bool = force,
-    test: bool = Option(False, "--test", help="Use test instance"),
+    instance_name: str = get_instance_option(default=Instance.OPEN),
 ):
     """Process staff input files"""
-    open_canvas_bulk_action_main(verbose, force, test)
+    open_canvas_bulk_action_main(verbose, force, instance_name)
 
 
 @app.command()

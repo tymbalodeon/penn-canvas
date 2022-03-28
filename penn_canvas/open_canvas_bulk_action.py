@@ -26,6 +26,7 @@ from .api import (
     get_main_account_id,
     get_section,
     get_user,
+    validate_instance_name,
 )
 from .helpers import (
     BASE_PATH,
@@ -350,7 +351,7 @@ def process_result(result_path: Path):
     return penn_id_counts if penn_id else counts, penn_id
 
 
-def print_messages(total: int, counts: tuple, penn_id: bool):
+def print_messages(total: int, counts, penn_id: bool):
     echo(f"- Processed {color(total, 'magenta')} {'user' if total == 1 else 'users'}.")
     if penn_id:
         penn_ids, not_found, error = counts
@@ -471,7 +472,9 @@ def print_messages(total: int, counts: tuple, penn_id: bool):
             )
 
 
-def open_canvas_bulk_action_main(verbose: bool, force: bool, test: bool):
+def open_canvas_bulk_action_main(
+    verbose: bool, force: bool, instance_name: str | Instance
+):
     def perform_canvas_action(
         user: Series, verbose: bool, args: tuple[Account, Action]
     ):
@@ -578,7 +581,7 @@ def open_canvas_bulk_action_main(verbose: bool, force: bool, test: bool):
                 else:
                     display_color = "green" if status != "not found" else "yellow"
             else:
-                display_color = COLOR_MAP.get(status, "")
+                display_color = COLOR_MAP.get(str(status), "")
             message = ""
             print_item(index, TOTAL, message)
             name_display = color(full_name, "yellow")
@@ -619,11 +622,11 @@ def open_canvas_bulk_action_main(verbose: bool, force: bool, test: bool):
         elif "user_agent" in file_name:
             action = Action.USER_AGENT
             display_action = "Getting user agent information for"
-        open_test = test or "test" in file_name
+        instance = validate_instance_name(instance_name)
+        open_test = instance == Instance.OPEN_TEST or "test" in file_name
         RESULT_STRING = f"{input_file.stem}_RESULT.csv"
         RESULT_PATH = RESULTS / RESULT_STRING
         START = get_start_index(force, RESULT_PATH)
-        instance = Instance.OPEN_TEST if open_test else Instance.OPEN
         switch_logger_file(LOGS, "open_canvas_bulk_action", instance.name)
         if action == Action.ENROLL:
             action_headers = HEADERS[:]
