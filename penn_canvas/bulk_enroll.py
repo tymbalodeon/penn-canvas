@@ -4,27 +4,34 @@ from datetime import datetime, timedelta
 from pandas import DataFrame, read_csv
 from typer import Exit, echo
 
-from .api import PENN_CANVAS_MAIN_ACCOUNT_ID, Instance, get_canvas
+from .api import (
+    Instance,
+    format_instance_name,
+    get_account,
+    get_course,
+    get_main_account_id,
+    get_user,
+    validate_instance_name,
+)
 from .helpers import (
+    BASE_PATH,
     YEAR,
     color,
+    create_directory,
     find_input,
-    get_command_paths,
     get_processed,
     handle_clear_processed,
     make_csv_paths,
     process_input,
+    switch_logger_file,
 )
 
-COMMAND_NAME = "Bulk Enroll"
 INPUT_FILE_NAME = "Terms input file"
-PATHS = get_command_paths(
-    COMMAND_NAME, include_logs_directory=True, include_processed_directory=True
-)
-INPUT = ""
-RESULTS = PATHS["results"]
-LOGS = PATHS["logs"]
-PROCESSED = PATHS["processed"]
+COMMAND_PATH = create_directory(BASE_PATH / "Storage")
+INPUT = create_directory(COMMAND_PATH / "Input")
+RESULTS = create_directory(COMMAND_PATH / "Results")
+LOGS = create_directory(COMMAND_PATH / "Logs")
+PROCESSED = create_directory(COMMAND_PATH / ".processed")
 ONGOING_TERM_ID = 4373
 HEADERS = ["canvas course id", "canvas sis course id", "error"]
 PROCESSED_HEADERS = HEADERS[:2]
@@ -43,54 +50,61 @@ def cleanup_data(data):
 
 
 def bulk_enroll_main(
-    user, sub_account, terms, input_file, dry_run, test, check_errors, clear_processed
+    user: int,
+    sub_account: int,
+    terms: list[int],
+    input_file: bool,
+    dry_run: bool,
+    instance_name: str | Instance,
+    check_errors: bool,
+    clear_processed: bool,
 ):
-    INSTANCE = Instance.TEST if test else Instance.PRODUCTION
-    CANVAS = get_canvas(INSTANCE)
+    instance = validate_instance_name(instance_name)
+    switch_logger_file(LOGS, "bulk_enroll", instance.name)
     try:
-        USER_NAME = CANVAS.get_user(user).name
+        user_name = get_user(user, instance=instance).name
     except Exception:
-        color(
-            f"- ERROR: User {user} not found. Please verify that you have the correct"
-            " Canvas user id and try again.",
-            "yellow",
-            True,
+        echo(
+            color(
+                f"- ERROR: User {user} not found. Please verify that you have the"
+                " correct Canvas user id and try again.",
+                "yellow",
+            )
         )
         raise Exit()
-    ACCOUNT = CANVAS.get_account(PENN_CANVAS_MAIN_ACCOUNT_ID)
-    SUB_ACCOUNT = CANVAS.get_account(sub_account).name
-    PROCESSED_STEM_STRING = (
-        f"{YEAR}_bulk_enroll_{USER_NAME}_in_{SUB_ACCOUNT}_"
-        f"processed_courses{'_test' if test else ''}.csv"
+    account = get_account(get_main_account_id(instance))
+    sub_account = get_account(sub_account).name
+    prefix = f"{YEAR}_bulk_enroll_{user_name}_in_{sub_account}_"
+    processed_stem_string = (
+        f"{prefix}processed_courses{format_instance_name(instance)}.csv"
     )
-    PROCESSED_PATH = PROCESSED / PROCESSED_STEM_STRING
-    PROCESSED_ERRORS_STEM_STRING = (
-        f"{YEAR}_bulk_enroll_{USER_NAME}_in_{SUB_ACCOUNT}_"
-        f"processed_errors{'_test' if test else ''}.csv"
+    processed_path = PROCESSED / processed_stem_string
+    processed_errors_stem_string = (
+        f"{prefix}processed_errors{format_instance_name(instance)}.csv"
     )
-    PROCESSED_ERRORS_PATH = PROCESSED / PROCESSED_ERRORS_STEM_STRING
+    processed_errors_path = PROCESSED / processed_errors_stem_string
     handle_clear_processed(
-        clear_processed, [PROCESSED_PATH, PROCESSED_ERRORS_PATH], item_plural="courses"
+        clear_processed, [processed_path, processed_errors_path], item_plural="courses"
     )
-    PROCESSED_COURSES = get_processed(PROCESSED_PATH, PROCESSED_HEADERS)
-    PROCESSED_ERRORS = get_processed(PROCESSED_ERRORS_PATH, PROCESSED_HEADERS)
+    processed_courses = get_processed(processed_path, PROCESSED_HEADERS)
+    processed_errors = get_processed(processed_errors_path, PROCESSED_HEADERS)
     if input_file:
-        INPUT_FILES, MISSING_FILE_MESSAGE = find_input(
+        input_files, missing_file_message = find_input(
             INPUT_FILE_NAME, INPUT, date=False, bulk_enroll=True
         )
         terms = process_input(
-            INPUT_FILES,
+            input_files,
             INPUT_FILE_NAME,
             INPUT,
             ["canvas_term_id"],
             cleanup_data,
-            MISSING_FILE_MESSAGE,
+            missing_file_message,
             bulk_enroll=True,
         )
     already_processed_count = (
-        len(PROCESSED_COURSES)
+        len(processed_courses)
         if check_errors
-        else len(PROCESSED_COURSES) + len(PROCESSED_ERRORS)
+        else len(processed_courses) + len(processed_errors)
     )
     if already_processed_count:
         message = color(
@@ -101,14 +115,14 @@ def bulk_enroll_main(
         echo(f") {message}")
     TOTAL = len(terms)
     TOMORROW = get_tomorrow()
-    LOG_PATH = LOGS / f"{YEAR}_bulk_enrollment_log_{USER_NAME}_in_{SUB_ACCOUNT}.csv"
-    echo(f") Finding {SUB_ACCOUNT} courses for {TOTAL} terms...")
+    LOG_PATH = LOGS / f"{YEAR}_bulk_enrollment_log_{user_name}_in_{sub_account}.csv"
+    echo(f") Finding {sub_account} courses for {TOTAL} terms...")
     COURSES = list()
     for term in terms:
         COURSES.extend(
             [
                 course
-                for course in ACCOUNT.get_courses(
+                for course in account.get_courses(
                     enrollment_term_id=term, by_subaccounts=[sub_account]
                 )
             ]
@@ -121,23 +135,23 @@ def bulk_enroll_main(
         dry_run_output = DataFrame(course_codes, columns=["course"])
         dry_run_output.to_csv(
             RESULTS
-            / f"{SUB_ACCOUNT}_courses_for_bulk_enrollment_of_{USER_NAME}_{YEAR}.csv",
+            / f"{sub_account}_courses_for_bulk_enrollment_of_{user_name}_{YEAR}.csv",
             index=False,
         )
     else:
         COURSES = [
-            course for course in COURSES if str(course.id) not in PROCESSED_COURSES
+            course for course in COURSES if str(course.id) not in processed_courses
         ]
         if not check_errors:
             COURSES = [
-                course for course in COURSES if str(course.id) not in PROCESSED_ERRORS
+                course for course in COURSES if str(course.id) not in processed_errors
             ]
         ERROR_FILE = (
-            RESULTS / f"{SUB_ACCOUNT}_bulk_enrollment_{USER_NAME}_{YEAR}_ERRORS.csv"
+            RESULTS / f"{sub_account}_bulk_enrollment_{user_name}_{YEAR}_ERRORS.csv"
         )
         make_csv_paths(ERROR_FILE, HEADERS)
         make_csv_paths(LOG_PATH, LOG_HEADERS)
-        echo(f") Enrolling {USER_NAME} in {SUB_ACCOUNT} courses...")
+        echo(f") Enrolling {user_name} in {sub_account} courses...")
         TOTAL_COURSES = len(COURSES)
         for index, course in enumerate(COURSES):
             index += 1
@@ -163,7 +177,7 @@ def bulk_enroll_main(
                 course.update(course={"term_id": enrollment_term_id})
                 if end_at:
                     course.update(course={"end_at": end_at})
-                updated_course = CANVAS.get_course(course.id)
+                updated_course = get_course(course.id, instance=instance)
                 if updated_course.enrollment_term_id == enrollment_term_id and bool(
                     updated_course.end_at
                 ) == bool(end_at):
@@ -172,13 +186,13 @@ def bulk_enroll_main(
                         errors["canvas sis course id"] != sis_course_id_or_name
                     ]
                     errors.to_csv(ERROR_FILE, index=False)
-                    log = read_csv(LOG_PATH)
-                    log.drop(index=log.index[-1:], inplace=True)
-                    log.to_csv(LOG_PATH, index=False)
+                    log_file = read_csv(LOG_PATH)
+                    log_file.drop(index=log_file.index[-1:], inplace=True)
+                    log_file.to_csv(LOG_PATH, index=False)
 
                     echo(
                         f"- ({index}/{TOTAL_COURSES})"
-                        f" {color('ENROLLED', 'green')} {color(USER_NAME)} in"
+                        f" {color('ENROLLED', 'green')} {color(user_name)} in"
                         f" {color(course.name, 'blue')}."
                     )
                 else:
@@ -187,20 +201,20 @@ def bulk_enroll_main(
                         " Failed to restore original term and/or end_at data. Please"
                         f" see log path for details: {color(LOG_PATH, 'green')}"
                     )
-                if str(course.id) in PROCESSED_ERRORS:
-                    processed_errors_csv = read_csv(PROCESSED_ERRORS_PATH)
+                if str(course.id) in processed_errors:
+                    processed_errors_csv = read_csv(processed_errors_path)
                     processed_errors_csv = processed_errors_csv[
                         processed_errors_csv["canvas sis course id"]
                         != sis_course_id_or_name
                     ]
-                    processed_errors_csv.to_csv(PROCESSED_ERRORS_PATH, index=False)
+                    processed_errors_csv.to_csv(processed_errors_path, index=False)
 
-                with open(PROCESSED_PATH, "a+", newline="") as processed_file:
+                with open(processed_path, "a+", newline="") as processed_file:
                     writer(processed_file).writerow([course.id, sis_course_id_or_name])
             except Exception as error:
                 color(
                     f"- ({index}/{TOTAL_COURSES}) ERROR: Failed to enroll"
-                    f" {USER_NAME} in {course.name} ({error})",
+                    f" {user_name} in {course.name} ({error})",
                     "red",
                     True,
                 )
@@ -215,9 +229,9 @@ def bulk_enroll_main(
                                 error,
                             ]
                         )
-                if str(course.id) not in PROCESSED_ERRORS:
+                if str(course.id) not in processed_errors:
                     with open(
-                        PROCESSED_ERRORS_PATH, "a+", newline=""
+                        processed_errors_path, "a+", newline=""
                     ) as processed_file:
                         writer(processed_file).writerow(
                             [course.id, sis_course_id_or_name]

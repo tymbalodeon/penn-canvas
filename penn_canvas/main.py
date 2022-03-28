@@ -29,12 +29,13 @@ from .tool import tool_main
 from .update_term import update_term_main
 from .usage_count import usage_count_main
 
-app = Typer(help="CLI for managing Penn's Canvas instances")
+app = Typer(help="Manage Canvas instances")
 force_report = Option(
     False, "--force-report", help="Ignore cached report and get a new one"
 )
 force = Option(False, "--force", help="Overwrite existing results")
 verbose = Option(False, "--verbose", help="Print verbose output to the console")
+course_ids = Option(None, "--course", help="Canvas course id")
 
 
 def get_instance_option(default=Instance.PRODUCTION):
@@ -43,7 +44,7 @@ def get_instance_option(default=Instance.PRODUCTION):
 
 @app.command()
 def archive(
-    course_ids: Optional[list[int]] = Option(None, "--course", help="Canvas course id"),
+    course_ids: Optional[list[int]] = course_ids,
     terms: list[str] = Option([CURRENT_YEAR_AND_TERM], "--term", help="Term name"),
     instance_name: str = get_instance_option(),
     use_timestamp: bool = Option(
@@ -121,7 +122,7 @@ def archive(
 
 @app.command()
 def browser(
-    course_ids: Optional[list[int]] = Option(None, "--course", help="Canvas course id"),
+    course_ids: Optional[list[int]] = course_ids,
     instance_name: str = get_instance_option(default=Instance.OPEN),
     force: bool = force,
     verbose: bool = verbose,
@@ -165,39 +166,18 @@ def bulk_enroll(
         "--terms",
         help="Canvas enrollment term id",
     ),
-    input_file: bool = Option(
-        True,
-        "--no-input-file",
-        help="Use a csv file to input terms instead of a command-line option.",
-    ),
+    input_file: bool = Option(True, "--no-input-file", help="Get terms from csv file"),
     dry_run: bool = Option(
         False,
         "--dry-run",
-        help=(
-            "Ouput a list of courses found for the given school and terms without"
-            " enrolling the user."
-        ),
+        help="Print courses for review without performing enrollment",
     ),
-    test: bool = Option(
-        False,
-        "--test",
-        help=(
-            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)."
-        ),
-    ),
+    instance_name=get_instance_option(default=Instance.TEST),
     check_errors: bool = Option(
-        False,
-        "--check-errors",
-        help=(
-            "Attempt to enroll user in courses that previously hit an error (skips"
-            " errors by default)."
-        ),
+        False, "--check-errors", help="Locate previous errors and re-attempt"
     ),
     clear_processed: bool = Option(
-        False,
-        "--clear-processed",
-        help="Clear the list of courses already processed for a given user/school.",
+        False, "--clear-processed", help="Clear processed cache"
     ),
 ):
     """Enroll user into multiple courses"""
@@ -207,7 +187,7 @@ def bulk_enroll(
         terms,
         input_file,
         dry_run,
-        test,
+        instance_name,
         check_errors,
         clear_processed,
     )
