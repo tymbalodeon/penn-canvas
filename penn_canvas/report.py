@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
+from functools import cached_property
 from os import remove
 from pathlib import Path
 from shutil import rmtree
@@ -86,7 +87,7 @@ class Report:
             ReportType.PROVISIONING: "provisioning_csv",
         }.get(self.report_type, "provisioning_csv")
 
-    @property
+    @cached_property
     def parameters(self):
         parameters_object = dict()
         if (
@@ -103,7 +104,7 @@ class Report:
             parameters_object["enrollment_term_id"] = get_enrollment_term_id(self.term)
         return parameters_object
 
-    @property
+    @cached_property
     def file_name(self) -> str:
         instance = format_instance_name(self.instance)
         term = f"_{self.term}" if self.term else ""
