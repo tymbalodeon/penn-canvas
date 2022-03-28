@@ -44,9 +44,7 @@ def get_user_account_data(user: User) -> list:
     return [user.id, user.name, email]
 
 
-def parse_user_agent_string(
-    user_agent_string: str, verbose: bool, index: int, total: int
-) -> str:
+def parse_user_agent_string(user_agent_string: str) -> str:
     browser = user_agent_parser.ParseUserAgent(user_agent_string)
     user_os = user_agent_parser.ParseOS(user_agent_string)
     browser_family = browser["family"]
@@ -61,8 +59,6 @@ def parse_user_agent_string(
     os_name = f"{os_family}{os_major}{os_minor}{os_patch}"
     device_name = user_agent_parser.ParseDevice(user_agent_string)["family"]
     user_agent_string = " / ".join([browser_name, os_name, device_name])
-    if verbose:
-        print_item(index, total, color(user_agent_string, "cyan"), prefix="\t-")
     return user_agent_string
 
 
@@ -92,11 +88,11 @@ def get_user_agents(
     }
     if verbose:
         echo(f"\t* Parsing user agents for {color(user)}...")
-    user_agents = {
-        parse_user_agent_string(user_agent, verbose, index, len(user_agents))
-        for index, user_agent in enumerate(user_agents)
-    }
+    user_agents = {parse_user_agent_string(user_agent) for user_agent in user_agents}
     if verbose:
+        total_agents = len(user_agents)
+        for index, user_agent in enumerate(user_agents):
+            print_item(index, total_agents, color(user_agent, "cyan"), prefix="\t-")
         user_agents_display = color(len(user_agents), "yellow")
         echo(f"\tFOUND {user_agents_display} unique agents.")
     user_data = get_user_account_data(user)

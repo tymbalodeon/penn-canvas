@@ -490,9 +490,8 @@ def open_canvas_bulk_action(
 
 @app.command()
 def report(
-    report_type: str
-    | ReportType = Option(
-        ReportType.PROVISIONING, "--report-type", help="Canvas AccountReport type"
+    report_type: str = Option(
+        ReportType.PROVISIONING.value, "--report-type", help="Canvas AccountReport type"
     ),
     term: str = Option(
         CURRENT_YEAR_AND_TERM,
