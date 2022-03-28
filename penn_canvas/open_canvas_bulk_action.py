@@ -101,9 +101,17 @@ def get_penn_id_from_penn_key(penn_key: str) -> Optional[str]:
         "SELECT penn_id FROM person_all_v WHERE pennkey = :pennkey",
         pennkey=penn_key.strip().lower(),
     )
+    student = None
     for penn_id in cursor:
-        return penn_id[0]
-    return None
+        student = penn_id[0]
+    if not student:
+        cursor.execute(
+            "SELECT penn_id FROM employee_general WHERE pennkey = :pennkey",
+            pennkey=penn_key.strip().lower(),
+        )
+        for penn_id in cursor:
+            student = penn_id[0]
+    return student
 
 
 def email_in_use(user: User, email: str) -> bool:
