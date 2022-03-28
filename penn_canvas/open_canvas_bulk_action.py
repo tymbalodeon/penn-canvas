@@ -582,15 +582,14 @@ def open_canvas_bulk_action_main(
                     display_color = "green" if status != "not found" else "yellow"
             else:
                 display_color = COLOR_MAP.get(str(status), "")
-            message = ""
-            print_item(index, TOTAL, message)
             name_display = color(full_name, "yellow")
             colon_display = ":" if canvas_user else ""
             status_display = color(status.upper(), display_color)
             user_display = (
                 color(" " + str(canvas_user), "magenta") if canvas_user else ""
             )
-            echo(f"{name_display}{colon_display} {status_display}{user_display}.")
+            message = f"{name_display}{colon_display} {status_display}{user_display}."
+            print_item(index, TOTAL, message)
 
     user_agent_courses = 0
     input_files, missing_file_message = find_input(
