@@ -588,17 +588,10 @@ def update_term(
         "Penn Term",
         help="The new enrollment term value to udpate courses with",
     ),
-    test: bool = Option(
-        False,
-        "--test",
-        help=(
-            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)."
-        ),
-    ),
+    instance_name=get_instance_option(),
 ):
     """Update enrollment term for courses"""
-    update_term_main(account, current_term, new_term, test)
+    update_term_main(account, current_term, new_term, instance_name)
 
 
 @app.command()

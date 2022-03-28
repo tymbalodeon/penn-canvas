@@ -9,14 +9,8 @@ from canvasapi.course import Course
 from canvasapi.enrollment import Enrollment
 from canvasapi.section import Section
 from canvasapi.user import User
-from click.termui import progressbar
-from pandas import concat, read_csv
-from pandas.core.frame import DataFrame
-from pandas.core.series import Series
-from typer import echo
-
-from penn_canvas.browser import browser_main
-from penn_canvas.style import print_item
+from pandas import DataFrame, Series, concat, read_csv
+from typer import echo, progressbar
 
 from .api import (
     Instance,
@@ -28,6 +22,7 @@ from .api import (
     get_user,
     validate_instance_name,
 )
+from .browser import browser_main
 from .helpers import (
     BASE_PATH,
     color,
@@ -42,6 +37,7 @@ from .helpers import (
     process_input,
     switch_logger_file,
 )
+from .style import print_item
 
 INPUT_FILE_NAME = "Open Canvas Bulk Action csv file"
 COMMAND_PATH = create_directory(BASE_PATH / "Open Canvas Bulk Action")

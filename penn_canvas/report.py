@@ -8,19 +8,17 @@ from time import sleep
 from typing import Any, Iterable, Literal, Optional
 from zipfile import ZipFile
 
-from canvasapi.account import Account, AccountReport
-from click.termui import style
+from canvasapi.account import AccountReport
 from loguru import logger
 from pandas.io.parsers.readers import read_csv
 from requests import get
-from typer import Exit, echo
-
-from penn_canvas.constants import PENN_CANVAS_MAIN_ACCOUNT_ID
+from typer import Exit, echo, style
 
 from .api import (
     Instance,
     format_instance_name,
     get_account,
+    get_enrollment_term_id,
     get_main_account_id,
     validate_instance_name,
 )
@@ -130,29 +128,6 @@ class Report:
         self.account_report = account.get_report(
             self.account_report.report, self.account_report.id
         )
-
-
-def print_available_term_names(term_name: str, enrollment_terms: list[str]):
-    echo(f"- ERROR: Enrollment term not found: {term_name}")
-    echo("- Available enrollment terms are:")
-    for enrollment_term in enrollment_terms:
-        echo(f"\t{enrollment_term}")
-
-
-def get_enrollment_term_id(
-    term_name: str, account: int | Account = PENN_CANVAS_MAIN_ACCOUNT_ID
-) -> int:
-    account = get_account(account)
-    term_id = next(
-        (term.id for term in account.get_enrollment_terms() if term_name in term.name),
-        None,
-    )
-    if not term_id:
-        enrollment_terms = [term.name for term in account.get_enrollment_terms()]
-        print_available_term_names(term_name, enrollment_terms)
-        raise Exit()
-    else:
-        return term_id
 
 
 def get_report_statuses(reports: list[Report]) -> list[str]:

@@ -3,9 +3,9 @@ from datetime import datetime
 from pathlib import Path
 
 from canvasapi.enrollment import Enrollment as CanvasEnrollment
-from click.utils import echo
-from pandas.io.parsers.readers import read_csv
+from pandas import read_csv
 from pytz import utc
+from typer import echo
 
 from .api import (
     Instance,

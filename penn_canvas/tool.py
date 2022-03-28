@@ -57,7 +57,6 @@ RESERVE_ACCOUNTS = [
     "99238",
     "99240",
 ]
-
 PRINT_COLOR_MAPS = {
     "not found": "red",
     "already processed": "yellow",

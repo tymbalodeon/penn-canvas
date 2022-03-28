@@ -1,7 +1,13 @@
-from typer import echo
+from penn_canvas.style import print_item
 
-from .api import PENN_CANVAS_MAIN_ACCOUNT_ID, Instance, get_canvas
-from .helpers import PREVIOUS_YEAR_AND_TERM, color, get_command_paths
+from .api import (
+    Instance,
+    format_instance_name,
+    get_account,
+    get_enrollment_term_id,
+    validate_instance_name,
+)
+from .helpers import color, get_command_paths
 
 COMMAND_NAME = "Update Terms"
 RESULTS = get_command_paths(COMMAND_NAME)["results"]
@@ -15,49 +21,24 @@ HEADERS = [
 ]
 
 
-def update_term_main(account_id, current_term, new_term, test):
-    if not current_term:
-        term = "".join(
-            [character for character in PREVIOUS_YEAR_AND_TERM if character.isalpha()]
-        )
-        term_string = {"A": "Spring", "B": "Summer", "C": "Fall"}.get(term)
-        year = "".join(
-            [character for character in PREVIOUS_YEAR_AND_TERM if character.isnumeric()]
-        )
-        current_term = f"{PREVIOUS_YEAR_AND_TERM} ({term_string} {year})"
-    canvas = get_canvas(Instance.TEST if test else Instance.PRODUCTION)
-    main_account = canvas.get_account(PENN_CANVAS_MAIN_ACCOUNT_ID)
-    enrollment_terms = [
-        enrollment_term for enrollment_term in main_account.get_enrollment_terms()
-    ]
-    current_term_id = next(
-        (
-            enrollment_term.id
-            for enrollment_term in enrollment_terms
-            if enrollment_term.name == current_term
-            or enrollment_term.id == current_term
-        ),
-        None,
+def update_term_main(
+    account_id: int, current_term: str, new_term: str, instance_name: str | Instance
+):
+    instance = validate_instance_name(instance_name)
+    account = get_account(account_id, instance=instance)
+    current_term_id = get_enrollment_term_id(current_term, account)
+    new_term_id = get_enrollment_term_id(new_term, account)
+    instance_name = format_instance_name(instance)
+    results_path = (
+        RESULTS / f"{account}_update_{current_term}_to_{new_term}{instance_name}.csv"
     )
-    new_term_id = next(
-        (
-            enrollment_term.id
-            for enrollment_term in enrollment_terms
-            if enrollment_term.name == new_term or enrollment_term.id == new_term
-        ),
-        None,
-    )
-    account = canvas.get_account(account_id)
     courses = [
         course for course in account.get_courses(enrollment_term_id=current_term_id)
     ]
-    results_path = (
-        RESULTS
-        / f"{account}_update_{current_term}_to_{new_term}_{'test' if test else ''}.csv"
-    )
     if not results_path.exists():
         with open(results_path, "w") as results_file:
             results_file.write(",".join(HEADERS))
+    total = len(courses)
     for index, course in enumerate(courses):
         row = [
             str(course.id),
@@ -69,17 +50,17 @@ def update_term_main(account_id, current_term, new_term, test):
         try:
             course.update(course={"term_id": new_term_id})
             row.append(f"{new_term} ({new_term_id})")
-            echo(
-                f"- ({index + 1:,}/{len(courses):,}) Updated"
-                f" {color(course, 'yellow')} with enrollment term"
+            message = (
+                f"Updated {color(course, 'yellow')} with enrollment term"
                 f" {color(new_term, 'blue')}"
             )
         except Exception as error:
             row.append(f"ERROR: {error}")
-            echo(
-                f"- ({index + 1:,}/{len(courses):,}) ERROR: Failed to update"
+            message = (
+                "ERROR: Failed to update"
                 f" {color(course, 'yellow')} ({color(error, 'red')})"
             )
+        print_item(index, total, message)
         with open(results_path, "a") as results_file:
             results_file.write("\n")
             results_file.write(",".join(row))

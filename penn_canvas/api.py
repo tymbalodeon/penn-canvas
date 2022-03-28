@@ -199,6 +199,27 @@ def get_sub_account_ids(
     return [str(account_id) for account_id in account_ids]
 
 
+def get_enrollment_term_id(
+    term_name: str,
+    account: int | Account = PENN_CANVAS_MAIN_ACCOUNT_ID,
+    instance: Instance = Instance.PRODUCTION,
+) -> int:
+    account = get_account(account, instance=instance)
+    term_id = next(
+        (term.id for term in account.get_enrollment_terms() if term_name in term.name),
+        None,
+    )
+    if not term_id:
+        enrollment_terms = [term.name for term in account.get_enrollment_terms()]
+        echo(f"- ERROR: Enrollment term not found: {term_name}")
+        echo("- Available enrollment terms are:")
+        for enrollment_term in enrollment_terms:
+            echo(f"\t{enrollment_term}")
+        raise Exit()
+    else:
+        return term_id
+
+
 def get_external_tool_names(verbose=False):
     account = get_account()
     sub_accounts = collect(account.get_subaccounts(recursive=True))
