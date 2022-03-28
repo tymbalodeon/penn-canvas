@@ -52,10 +52,6 @@ def get_email(user_id: int, instance: Instance) -> str:
     )
 
 
-def format_date_enrolled(date: datetime) -> str:
-    return date.strftime("%Y-%m-%d")
-
-
 def get_enrollment(
     canvas_enrollment: CanvasEnrollment,
     result_path: Path,
@@ -67,7 +63,7 @@ def get_enrollment(
 ) -> Enrollment:
     name = canvas_enrollment.user["name"]
     email = get_email(canvas_enrollment.user_id, instance)
-    date_enrolled = format_date_enrolled(canvas_enrollment.created_at_date)
+    date_enrolled = canvas_enrollment.created_at_date.strftime("%Y-%m-%d")
     index = index + start
     if verbose:
         date_display = color(date_enrolled, "cyan")

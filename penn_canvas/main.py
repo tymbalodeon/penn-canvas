@@ -280,17 +280,12 @@ def count_sites(
     graduate_course_minimum_number: int = Argument(
         500, help="The course number at which or above designates a graduate course."
     ),
-    test: bool = Option(
-        False,
-        "--test",
-        help=(
-            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)."
-        ),
-    ),
+    instance_name=get_instance_option(),
 ):
     """Count course codes with a Canvas site"""
-    count_sites_main(year_and_term, separate, graduate_course_minimum_number, test)
+    count_sites_main(
+        year_and_term, separate, graduate_course_minimum_number, instance_name
+    )
 
 
 @app.command()

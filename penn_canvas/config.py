@@ -118,18 +118,14 @@ def write_config_options(first_time=False, new_section=None):
     return get_all_config_options()
 
 
-def print_create_config_message():
-    echo(
-        f"A config file is required. Please create one at {CONFIG_FILE} and try again."
-    )
-
-
 def confirm_create_config():
-    return (
-        write_config_options(first_time=True)
-        if confirm("Config file not found. Would you like to create one now?")
-        else print_create_config_message()
-    )
+    if confirm("Config file not found. Would you like to create one now?"):
+        return write_config_options(first_time=True)
+    else:
+        echo(
+            f"A config file is required. Please create one at {CONFIG_FILE} and try"
+            " again."
+        )
 
 
 def get_config(section, as_tuple):
