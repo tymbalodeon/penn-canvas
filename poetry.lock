@@ -802,7 +802,7 @@ dev = ["pytest (>=4.6.2)", "black (>=19.3b0)"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "4094ca4039d0351cde7ed532c9e848b2cd568be0ef0295d76b702725aeac340d"
+content-hash = "90d72947f45193bf22747b7c3f5c5187b090d8285e7f00efdf885f8d9ae1f90e"
 
 [metadata.files]
 altgraph = [
