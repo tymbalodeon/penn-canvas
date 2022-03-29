@@ -12,13 +12,21 @@ _This README uses these aliases. Actual commands can be seen in the Makefile its
 
 ## Installation & Setup
 
-NOTE: This project is intended to be developed and built using
-[poetry](https://python-poetry.org/).
+### Poetry
+
+[Learn more about Poetry](https://python-poetry.org/)
 
 1. `poetry install`
 2. `make build`
 
 The `penn-canvas` command will then be globally available in your shell.
+
+### Pyinstaller
+
+_Instructions are for macOS_
+
+1. Build python with `--enable-framework`: `env PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install <python version>`
+2. `make binary`
 
 ### Development
 

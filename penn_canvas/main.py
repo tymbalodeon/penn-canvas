@@ -2,9 +2,7 @@ from typing import Optional
 
 from typer import Argument, Option, Typer
 
-from penn_canvas.api import Instance
-from penn_canvas.roles import roles_main
-
+from .api import Instance
 from .archive.archive import archive_main
 from .browser import browser_main
 from .bulk_enroll import bulk_enroll_main
@@ -24,12 +22,13 @@ from .module import module_main
 from .new_student_orientation import new_student_orientation_main
 from .open_canvas_bulk_action import open_canvas_bulk_action_main
 from .report import ReportType, report_main
+from .roles import roles_main
 from .storage import storage_main
 from .tool import tool_main
 from .update_term import update_term_main
 from .usage_count import usage_count_main
 
-app = Typer(help="Manage Canvas instances")
+app = Typer(no_args_is_help=True, help="Manage Canvas instances")
 force_report = Option(
     False, "--force-report", help="Ignore cached report and get a new one"
 )

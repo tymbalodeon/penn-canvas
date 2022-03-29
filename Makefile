@@ -5,8 +5,12 @@ REQUIREMENTS = requirements.txt
 POETRY = poetry run
 PRE_COMMIT = pre-commit run
 COMMAND = penn-canvas
+ENTRY_POINT = penncanvas.py
 
 all: help
+
+binary: ## Build a binary executable with pyinstaller
+	poetry run pyinstaller $(ROOT_DIR)/$(ENTRY_POINT)
 
 black: ## Format code
 	$(POETRY) black $(ROOT_DIR)
