@@ -20,10 +20,10 @@ black: ## Format code
 build: ## Build the CLI and isntall it in your global pip packages
 	poetry build && pip install $(WHEEL) --force-reinstall
 
-flake8: ## Lint code
-	$(POETRY) flake8 $(ROOT_DIR)
+flake: ## Lint code
+	$(POETRY) pflake8 $(ROOT_DIR)
 
-format: isort black flake8 mypy ## Format and lint code
+format: isort black flake mypy ## Format and lint code
 
 freeze: ## Freeze the dependencies to the requirements.txt file
 	poetry export -f $(REQUIREMENTS) --output $(REQUIREMENTS)
