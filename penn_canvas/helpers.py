@@ -141,8 +141,7 @@ def make_csv_paths(csv_file: Path, headers: list[str]):
     if not csv_file.is_file():
         parent_directory = next(parent for parent in csv_file.parents)
         create_directory(parent_directory)
-        with open(csv_file, "w", newline="") as result:
-            writer(result).writerow(headers)
+        writerow(csv_file, headers)
 
 
 def get_command_paths(
@@ -500,9 +499,14 @@ def toggle_progress_bar(data, callback, canvas, verbose, args=None):
             progress_bar_mode()
 
 
-def writerow(path: Path, items: list, mode="w"):
+def writerow(path: Path, row: list, mode="w"):
     with open(path, mode) as output:
-        writer(output).writerow(items)
+        writer(output).writerow(row)
+
+
+def write(path: Path, text: str, mode="w"):
+    with open(path, mode) as output:
+        output.write(text)
 
 
 @logger.catch

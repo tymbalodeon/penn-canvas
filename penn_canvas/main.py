@@ -8,7 +8,6 @@ from .browser import browser_main
 from .bulk_enroll import bulk_enroll_main
 from .check_enrollment import check_enrollment_main
 from .config import print_config, write_config_options
-from .constants import PENN_CANVAS_MAIN_ACCOUNT_ID
 from .count_poll_everywhere import count_poll_everywhere_main
 from .count_quizzes import count_quizzes_main
 from .count_sites import count_sites_main
@@ -572,25 +571,13 @@ def tool(
 
 @app.command()
 def update_term(
-    account: int = Option(
-        PENN_CANVAS_MAIN_ACCOUNT_ID,
-        help=(
-            "The Canvas Sub-account ID whose course's enrollment terms need to be"
-            " changed"
-        ),
-    ),
-    current_term: str = Option(
-        "",
-        help="The existing enrollment term value to be updated",
-    ),
-    new_term: str = Option(
-        "Penn Term",
-        help="The new enrollment term value to udpate courses with",
-    ),
+    account_id: Optional[int] = Option(None, help="Canvas account id"),
+    current_term_name: str = Option("", help="Term name"),
+    new_term_name: str = Option("Penn Term", help="Term name"),
     instance_name=get_instance_option(),
 ):
     """Update enrollment term for courses"""
-    update_term_main(account, current_term, new_term, instance_name)
+    update_term_main(account_id, current_term_name, new_term_name, instance_name)
 
 
 @app.command()
