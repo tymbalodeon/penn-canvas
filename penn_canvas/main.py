@@ -1,6 +1,9 @@
 from typing import Optional
 
-from typer import Argument, Option, Typer
+from click.exceptions import Exit
+from typer import Argument, Option, Typer, echo
+
+from penn_canvas import __version__
 
 from .api import Instance
 from .archive.archive import archive_main
@@ -584,3 +587,16 @@ def update_term(
 def usage_count(tool: str = Option("turnitin", help="The tool to count usage for")):
     """Get tool usage for courses"""
     usage_count_main(tool)
+
+
+def display_version():
+    echo(f"penncanvas {__version__}")
+    raise Exit()
+
+
+@app.callback()
+def main(
+    version: bool = Option(None, "--version", callback=display_version, is_eager=True)
+):
+    if version:
+        return
