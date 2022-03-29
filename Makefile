@@ -39,6 +39,9 @@ isort: ## Sort imports
 mypy: ## Type-check code
 	$(POETRY) $(PRE_COMMIT) mypy -a
 
+python: ## Run bpython in project virtual environment
+	$(POETRY) bpython
+
 sandbox: ## Open an interactive Python shell with connections to Canvas
 	tmux new-session -d; \
 	tmux send-keys '$(POETRY) bpython' C-m; \
