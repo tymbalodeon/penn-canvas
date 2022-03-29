@@ -1,10 +1,11 @@
 ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-VERSION := $(shell awk -F '[ ="]+' '$$1 == "version" { print $$2 }' $(ROOT_DIR)/pyproject.toml)
+PYPROJECT := $(ROOT_DIR)/pyproject.toml
+VERSION := $(shell awk -F '[ ="]+' '$$1 == "version" { print $$2 }' $(PYPROJECT))
 WHEEL := $(ROOT_DIR)/dist/penn_canvas-$(VERSION)-py3-none-any.whl
 REQUIREMENTS = requirements.txt
 POETRY = poetry run
 PRE_COMMIT = pre-commit run
-COMMAND = penn-canvas
+COMMAND := $(shell awk -F '[ ="]+' '$$1 == "name" { print $$2 }' $(PYPROJECT))
 ENTRY_POINT = penncanvas.py
 
 all: help

@@ -30,7 +30,12 @@ from .tool import tool_main
 from .update_term import update_term_main
 from .usage_count import usage_count_main
 
-app = Typer(no_args_is_help=True, help="Manage Canvas instances")
+app = Typer(
+    no_args_is_help=True,
+    help=f"penncanvas ({__version__}) - CLI for working with Penn's Canvas instances",
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False,
+)
 force_report = Option(
     False, "--force-report", help="Ignore cached report and get a new one"
 )
@@ -589,19 +594,19 @@ def usage_count(tool: str = Option("turnitin", help="The tool to count usage for
     usage_count_main(tool)
 
 
-def display_version():
-    echo(f"penncanvas {__version__}")
-    raise Exit()
+def display_version(version: bool):
+    if version:
+        echo(f"penncanvas {__version__}")
+        raise Exit()
 
 
 @app.callback()
-def main(
+def version(
     version: bool = Option(
-        None,
+        False,
         "--version",
         "-V",
         callback=display_version,
-        is_eager=True,
         help="Display version number",
     )
 ):

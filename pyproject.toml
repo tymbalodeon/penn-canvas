@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "penn-canvas"
+name = "penncanvas"
 version = "0.2.0"
 description = "CLI for working with Penn's Canvas instances"
 authors = ["Ben Rosen <benrosen@upenn.edu>"]
 readme = "README.md"
 
 [tool.poetry.scripts]
-penn-canvas = "penn_canvas.main:app"
+penncanvas = "penn_canvas.main:app"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
