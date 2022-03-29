@@ -596,7 +596,14 @@ def display_version():
 
 @app.callback()
 def main(
-    version: bool = Option(None, "--version", callback=display_version, is_eager=True)
+    version: bool = Option(
+        None,
+        "--version",
+        "-V",
+        callback=display_version,
+        is_eager=True,
+        help="Display version number",
+    )
 ):
     if version:
         return
