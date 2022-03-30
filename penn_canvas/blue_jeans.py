@@ -102,9 +102,19 @@ def get_blue_jeans_report(course_id: int):
     course = get_course(course_id, verbose=True)
     term_name = get_account().get_enrollment_term(course.enrollment_term_id).sis_term_id
     echo(f"Getting Blue Jeans usage for course {color(course)}...")
-    data_frame = DataFrame()
+    results = DataFrame()
     timestamp = datetime.now().astimezone(timezone("UTC"))
     blue_jeans_tabs = get_blue_jeans_tabs(course)
+    course_data = {
+        "canvas_acct_id": course.account_id,
+        "canvas_course_id": course.id,
+        "canvas_course_name": course.name,
+        "term": term_name,
+        "canvas_course_blueprint": course.blueprint,
+        "canvas_course_status": course.workflow_state,
+        "timestamp": timestamp,
+    }
+    meeting_name_data = {"mtg_name": "None"}
     for tab in blue_jeans_tabs:
         form = get_form_from_tab_url(tab.url)
         if not form:
@@ -117,20 +127,17 @@ def get_blue_jeans_report(course_id: int):
             continue
         meetings = get_meetings_data(lti_auth_token, lti_course_id, lti_user_id)
         meetings = [parse_meeting_ids(meeting) for meeting in meetings]
+        tab_data = {
+            "canvas_course_tab_id": tab.id,
+            "canvas_course_tab_is_hidden": hasattr(tab, "hidden"),
+            "canvas_course_tab_is_unused": hasattr(tab, "unused"),
+            "canvas_course_tab_vis_group": tab.visibility,
+        }
+        course_with_tab_data = course_data | tab_data
+        meetings = [meeting | course_with_tab_data for meeting in meetings]
         if meetings:
-            meetings_data_frame = DataFrame(meetings)
-            meetings_data_frame["canvas_acct_id"] = course.account_id
-            meetings_data_frame["canvas_course_blueprint"] = course.blueprint
-            meetings_data_frame["canvas_course_id"] = course_id
-            meetings_data_frame["canvas_course_name"] = course.name
-            meetings_data_frame["canvas_course_status"] = course.workflow_state
-            meetings_data_frame["canvas_course_tab_id"] = tab.id
-            meetings_data_frame["canvas_course_tab_is_hidden"] = hasattr(tab, "hidden")
-            meetings_data_frame["canvas_course_tab_is_unused"] = hasattr(tab, "unused")
-            meetings_data_frame["canvas_course_tab_vis_group"] = tab.visibility
-            meetings_data_frame["term"] = term_name
-            meetings_data_frame["timestamp"] = timestamp
-            meetings_data_frame.rename(
+            meetings_data = DataFrame(meetings)
+            meetings_data.rename(
                 columns={
                     "listStartTime": "startTimeForList",
                     "title": "mtg_name",
@@ -143,49 +150,13 @@ def get_blue_jeans_report(course_id: int):
                 },
                 inplace=True,
             )
-            data_frame = concat(
-                [data_frame, meetings_data_frame], ignore_index=True, sort=True
-            )
+            results = concat([results, meetings_data], ignore_index=True, sort=True)
         else:
-            meetings_data_frame = DataFrame(
-                [
-                    {
-                        "canvas_acct_id": course.account_id,
-                        "canvas_course_id": course.id,
-                        "canvas_course_name": course.name,
-                        "mtg_name": "None",
-                        "term": term_name,
-                        "timestamp": timestamp,
-                        "canvas_course_blueprint": course.blueprint,
-                        "canvas_course_status": course.workflow_state,
-                        "canvas_course_tab_id": tab.id,
-                        "canvas_course_tab_is_hidden": hasattr(tab, "hidden"),
-                        "canvas_course_tab_is_unused": hasattr(tab, "unused"),
-                        "canvas_course_tab_vis_group": tab.visibility,
-                    }
-                ]
-            )
-            data_frame = concat(
-                [data_frame, meetings_data_frame], ignore_index=True, sort=True
-            )
+            meetings_data = DataFrame([course_with_tab_data | meeting_name_data])
+            results = concat([results, meetings_data], ignore_index=True, sort=True)
     if not blue_jeans_tabs:
-        course_data_frame = DataFrame(
-            [
-                {
-                    "canvas_acct_id": course.account_id,
-                    "canvas_course_id": course_id,
-                    "canvas_course_name": course.name,
-                    "canvas_course_blueprint": course.blueprint,
-                    "canvas_course_status": course.workflow_state,
-                    "mtg_name": "None",
-                    "term": term_name,
-                    "timestamp": timestamp,
-                }
-            ]
-        )
-        data_frame = concat(
-            [data_frame, course_data_frame], ignore_index=True, sort=True
-        )
+        course_data_frame = DataFrame([course_data | meeting_name_data])
+        results = concat([results, course_data_frame], ignore_index=True, sort=True)
     blue_jeans_count, bluejeans_count, virtual_meetings_count = get_tab_type_counts(
         blue_jeans_tabs
     )
