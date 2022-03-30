@@ -40,7 +40,7 @@ def get_form_from_tab_url(url: str) -> Tag:
     canvas_prod_url = get_config_option("canvas_urls", "canvas_prod_url")
     canvas_prod_key = get_config_option("canvas_keys", "canvas_prod_key")
     response = Requester(canvas_prod_url, canvas_prod_key).request("GET", _url=url)
-    form_url = response.json().get("url")
+    form_url = response.json()["url"]
     form_text = get(form_url).text
     beautiful_soup_form = BeautifulSoup(form_text, "html.parser")
     return cast(Tag, beautiful_soup_form.find("form"))
@@ -48,8 +48,8 @@ def get_form_from_tab_url(url: str) -> Tag:
 
 def get_lti_credentials(form: Tag) -> tuple[str, str, str]:
     input_fields = form.findAll("input")
-    data = {field.get("name"): field.get("value") for field in input_fields}
-    url = cast(Text, form.get("action"))
+    data = {field["name"]: field["value"] for field in input_fields}
+    url = cast(Text, form["action"])
     response = request(method="post", url=url, data=data, allow_redirects=False)
     location = response.headers["Location"]
     auth_token = location.split("&")[0].split("=")[1]
@@ -59,7 +59,7 @@ def get_lti_credentials(form: Tag) -> tuple[str, str, str]:
 
 
 def get_meetings(session: Session, url: str, meeting_status: str) -> list:
-    meetings = session.get(url=url).json().get("details")
+    meetings = session.get(url=url).json()["details"]
     for meeting in meetings:
         meeting["mtg_status"] = meeting_status
     return meetings
