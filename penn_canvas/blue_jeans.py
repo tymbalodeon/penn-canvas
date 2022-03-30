@@ -99,7 +99,7 @@ def parse_meeting_ids(meeting: dict) -> dict:
     return flatten(meeting)
 
 
-def get_blue_jeans_report(
+def blue_jeans_main(
     course_id: int, instance_name: str | Instance = Instance.PRODUCTION
 ):
     instance = validate_instance_name(instance_name)

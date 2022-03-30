@@ -4,6 +4,7 @@ from click.exceptions import Exit
 from typer import Argument, Option, Typer, echo
 
 from penn_canvas import __version__
+from penn_canvas.blue_jeans import blue_jeans_main
 
 from .api import Instance
 from .archive.archive import archive_main
@@ -124,6 +125,15 @@ def archive(
         force_report,
         verbose,
     )
+
+
+@app.command()
+def blue_jeans(
+    course_id: int = Option(1635419, "--course", help="Canvas course id"),
+    instance_name: str = get_instance_option(),
+):
+    """Get Blue Jeans usage for a courses"""
+    blue_jeans_main(course_id, instance_name)
 
 
 @app.command()
