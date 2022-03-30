@@ -1,7 +1,3 @@
-# import math
-# import os
-# import re
-# import time
 from datetime import datetime
 from typing import Text, cast
 
@@ -11,8 +7,6 @@ from canvasapi.requester import Requester
 from canvasapi.tab import Tab
 from flatten_json import flatten
 from pandas import DataFrame, concat
-
-# from lxml.html.clean import unicode
 from pytz import timezone
 from requests import Session, get, request
 from typer import echo
@@ -21,8 +15,6 @@ from penn_canvas.config import get_config_option
 
 from .api import get_account, get_course
 from .style import color
-
-# from urllib.parse import urljoin
 
 
 def get_blue_jeans_tabs(course: Course) -> list[Tab]:
