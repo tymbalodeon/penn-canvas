@@ -113,8 +113,8 @@ def get_blue_jeans_report(course_id: int):
         "canvas_course_status": course.workflow_state,
         "timestamp": timestamp,
     }
-    blue_jeans_tabs = get_blue_jeans_tabs(course)
     meeting_name_data = {"mtg_name": "None"}
+    blue_jeans_tabs = get_blue_jeans_tabs(course)
     for tab in blue_jeans_tabs:
         form = get_form_from_tab_url(tab.url)
         if not form:
