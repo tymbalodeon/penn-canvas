@@ -5,11 +5,13 @@ from typing import Iterable, Optional
 from canvasapi import Canvas
 from canvasapi.account import Account
 from canvasapi.paginated_list import PaginatedList
+from canvasapi.requester import Requester
 from cx_Oracle import connect, init_oracle_client
 from loguru import logger
+from requests.models import Response
 from typer import Exit, echo, style
 
-from .config import get_penn_canvas_config
+from .config import get_config_option, get_penn_canvas_config
 from .constants import OPEN_CANVAS_MAIN_ACCOUNT_ID, PENN_CANVAS_MAIN_ACCOUNT_ID
 from .style import pprint
 
@@ -60,38 +62,25 @@ def format_instance_name(instance: Instance) -> str:
     return f"_{instance.name}"
 
 
+def get_canvas_url_and_key(instance=Instance.PRODUCTION) -> tuple[str, str]:
+    url, key = {
+        Instance.PRODUCTION: ("canvas_prod_url", "canvas_prod_key"),
+        Instance.TEST: ("canvas_test_url", "canvas_test_key"),
+        Instance.BETA: ("canvas_beta_url", "canvas_beta_key"),
+        Instance.OPEN: ("open_canvas_url", "open_canvas_prod_key"),
+        Instance.OPEN_TEST: ("open_canvas_test_url", "open_canvas_test_key"),
+    }.get(instance, ("canvas_prod_url", "canvas_prod_key"))
+    return (
+        get_config_option("canvas_urls", url),
+        get_config_option("canvas_keys", key),
+    )
+
+
 def get_canvas(instance=Instance.PRODUCTION, verbose=True, override_key=None) -> Canvas:
     instance = validate_instance_name(instance)
-    canvas_urls = get_penn_canvas_config("canvas_urls")
-    canvas_keys = get_penn_canvas_config("canvas_keys")
-    (
-        canvas_prod_key,
-        canvas_test_key,
-        canvas_beta_key,
-        open_canvas_key,
-        open_canvas_test_key,
-    ) = canvas_keys
-    (
-        canvas_prod_url,
-        canvas_test_url,
-        canvas_beta_url,
-        open_canvas_url,
-        open_canvas_test_url,
-    ) = canvas_urls
-    url = canvas_prod_url
-    key = override_key or canvas_prod_key
-    if instance == Instance.TEST:
-        url = canvas_test_url
-        key = override_key or canvas_test_key
-    elif instance == Instance.BETA:
-        url = canvas_beta_url
-        key = override_key or canvas_beta_key
-    elif instance == Instance.OPEN:
-        url = open_canvas_url
-        key = override_key or open_canvas_key
-    elif instance == Instance.OPEN_TEST:
-        url = open_canvas_test_url
-        key = override_key or open_canvas_test_key
+    url, key = get_canvas_url_and_key(instance)
+    if override_key:
+        key = override_key
     canvas = Canvas(url, key)
     try:
         canvas.get_accounts()
@@ -218,6 +207,13 @@ def get_enrollment_term_id(
         raise Exit()
     else:
         return term_id
+
+
+def request_external_url(
+    url: str, instance=Instance.PRODUCTION, method="GET"
+) -> Response:
+    canvas_url, key = get_canvas_url_and_key(instance)
+    return Requester(canvas_url, key).request(method, _url=url)
 
 
 def get_external_tool_names(verbose=False):

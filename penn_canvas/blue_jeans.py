@@ -3,7 +3,6 @@ from typing import Text, cast
 
 from bs4 import BeautifulSoup, Tag
 from canvasapi.course import Course
-from canvasapi.requester import Requester
 from canvasapi.tab import Tab
 from flatten_json import flatten
 from pandas import DataFrame, concat
@@ -11,9 +10,13 @@ from pytz import timezone
 from requests import Session, get, request
 from typer import echo
 
-from penn_canvas.config import get_config_option
-
-from .api import get_account, get_course
+from .api import (
+    Instance,
+    get_account,
+    get_course,
+    request_external_url,
+    validate_instance_name,
+)
 from .style import color
 
 
@@ -36,10 +39,8 @@ def get_tab_type_counts(tabs: list[Tab]) -> tuple[int, int, int]:
     return total_blue_jeans_tabs, total_bluejeans_tabs, total_virtual_meetings_tabs
 
 
-def get_form_from_tab_url(url: str) -> Tag:
-    canvas_prod_url = get_config_option("canvas_urls", "canvas_prod_url")
-    canvas_prod_key = get_config_option("canvas_keys", "canvas_prod_key")
-    response = Requester(canvas_prod_url, canvas_prod_key).request("GET", _url=url)
+def get_form_from_tab_url(url: str, instance: Instance) -> Tag:
+    response = request_external_url(url, instance=instance)
     form_url = response.json()["url"]
     form_text = get(form_url).text
     beautiful_soup_form = BeautifulSoup(form_text, "html.parser")
@@ -98,9 +99,16 @@ def parse_meeting_ids(meeting: dict) -> dict:
     return flatten(meeting)
 
 
-def get_blue_jeans_report(course_id: int):
-    course = get_course(course_id, verbose=True)
-    term_name = get_account().get_enrollment_term(course.enrollment_term_id).sis_term_id
+def get_blue_jeans_report(
+    course_id: int, instance_name: str | Instance = Instance.PRODUCTION
+):
+    instance = validate_instance_name(instance_name)
+    course = get_course(course_id, instance=instance, verbose=True)
+    term_name = (
+        get_account(instance=instance)
+        .get_enrollment_term(course.enrollment_term_id)
+        .sis_term_id
+    )
     echo(f"Getting Blue Jeans usage for course {color(course)}...")
     results = DataFrame()
     timestamp = datetime.now().astimezone(timezone("UTC"))
@@ -116,7 +124,7 @@ def get_blue_jeans_report(course_id: int):
     meeting_name_data = {"mtg_name": "None"}
     blue_jeans_tabs = get_blue_jeans_tabs(course)
     for tab in blue_jeans_tabs:
-        form = get_form_from_tab_url(tab.url)
+        form = get_form_from_tab_url(tab.url, instance=instance)
         if not form:
             echo("Form not found for tab {tab.label}. Skipping...")
             continue
