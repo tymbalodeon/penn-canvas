@@ -65,6 +65,22 @@ def get_meetings(session: Session, url: str, meeting_status: str) -> list:
     return meetings
 
 
+def get_meetings_data(
+    lti_auth_token: str, lti_course_id: str, lti_user_id: str
+) -> list[dict]:
+    session = Session()
+    session.headers.update({"Authorization": f"Bearer {lti_auth_token}"})
+    base_url = "https://canvaslms.bluejeansint.com/api/canvas/course/"
+    user_url = f"{base_url}{lti_course_id}/user/{lti_user_id}/"
+    upcoming_url = f"{user_url}conferences?limit=100"
+    upcoming_meetings = get_meetings(session, upcoming_url, "upcoming")
+    current_url = f"{user_url}conferences?limit=100&current=true"
+    current_meetings = get_meetings(session, current_url, "current")
+    recorded_url = f"{user_url}recordings?limit=100"
+    recorded_meetings = get_meetings(session, recorded_url, "recorded")
+    return upcoming_meetings + current_meetings + recorded_meetings
+
+
 def parse_meeting_ids(meeting: dict) -> dict:
     meeting["bj_meeting_id"] = (
         meeting["meetingLink"].split("/")[3] if "meetingLink" in meeting else "0"
@@ -83,15 +99,12 @@ def parse_meeting_ids(meeting: dict) -> dict:
 
 
 def get_blue_jeans_report(course_id: int):
-    data_frame = DataFrame()
     course = get_course(course_id, verbose=True)
     term_name = get_account().get_enrollment_term(course.enrollment_term_id).sis_term_id
     echo(f"Getting Blue Jeans usage for course {color(course)}...")
-    timestamp_utc = datetime.now().astimezone(timezone("UTC"))
+    data_frame = DataFrame()
+    timestamp = datetime.now().astimezone(timezone("UTC"))
     blue_jeans_tabs = get_blue_jeans_tabs(course)
-    blue_jeans_count, bluejeans_count, virtual_meetings_count = get_tab_type_counts(
-        blue_jeans_tabs
-    )
     for tab in blue_jeans_tabs:
         form = get_form_from_tab_url(tab.url)
         if not form:
@@ -102,17 +115,7 @@ def get_blue_jeans_report(course_id: int):
         except Exception:
             echo("ERROR. Skipping...")
             continue
-        session = Session()
-        session.headers.update({"Authorization": f"Bearer {lti_auth_token}"})
-        base_url = "https://canvaslms.bluejeansint.com/api/canvas/course/"
-        user_url = f"{base_url}{lti_course_id}/user/{lti_user_id}/"
-        upcoming_url = f"{user_url}conferences?limit=100"
-        upcoming_meetings = get_meetings(session, upcoming_url, "upcoming")
-        current_url = f"{user_url}conferences?limit=100&current=true"
-        current_meetings = get_meetings(session, current_url, "current")
-        recorded_url = f"{user_url}recordings?limit=100"
-        recorded_meetings = get_meetings(session, recorded_url, "recorded")
-        meetings = upcoming_meetings + current_meetings + recorded_meetings
+        meetings = get_meetings_data(lti_auth_token, lti_course_id, lti_user_id)
         meetings = [parse_meeting_ids(meeting) for meeting in meetings]
         if meetings:
             meetings_data_frame = DataFrame(meetings)
@@ -126,7 +129,7 @@ def get_blue_jeans_report(course_id: int):
             meetings_data_frame["canvas_course_tab_is_unused"] = hasattr(tab, "unused")
             meetings_data_frame["canvas_course_tab_vis_group"] = tab.visibility
             meetings_data_frame["term"] = term_name
-            meetings_data_frame["timestamp"] = timestamp_utc
+            meetings_data_frame["timestamp"] = timestamp
             meetings_data_frame.rename(
                 columns={
                     "listStartTime": "startTimeForList",
@@ -152,7 +155,7 @@ def get_blue_jeans_report(course_id: int):
                         "canvas_course_name": course.name,
                         "mtg_name": "None",
                         "term": term_name,
-                        "timestamp": timestamp_utc,
+                        "timestamp": timestamp,
                         "canvas_course_blueprint": course.blueprint,
                         "canvas_course_status": course.workflow_state,
                         "canvas_course_tab_id": tab.id,
@@ -165,7 +168,7 @@ def get_blue_jeans_report(course_id: int):
             data_frame = concat(
                 [data_frame, meetings_data_frame], ignore_index=True, sort=True
             )
-    if blue_jeans_tabs:
+    if not blue_jeans_tabs:
         course_data_frame = DataFrame(
             [
                 {
@@ -176,13 +179,16 @@ def get_blue_jeans_report(course_id: int):
                     "canvas_course_status": course.workflow_state,
                     "mtg_name": "None",
                     "term": term_name,
-                    "timestamp": timestamp_utc,
+                    "timestamp": timestamp,
                 }
             ]
         )
         data_frame = concat(
             [data_frame, course_data_frame], ignore_index=True, sort=True
         )
-    echo(f"Number of Blue Jeans tabs: {blue_jeans_count}")
-    echo(f"Number of BlueJeans tabs: {bluejeans_count}")
-    echo(f"Number of Virtual Meetings tabs: {virtual_meetings_count}")
+    blue_jeans_count, bluejeans_count, virtual_meetings_count = get_tab_type_counts(
+        blue_jeans_tabs
+    )
+    echo(f'Number of "Blue Jeans" tabs: {blue_jeans_count}')
+    echo(f'Number of "BlueJeans" tabs: {bluejeans_count}')
+    echo(f'Number of "Virtual Meetings" tabs: {virtual_meetings_count}')

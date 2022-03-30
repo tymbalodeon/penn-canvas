@@ -39,15 +39,15 @@ isort: ## Sort imports
 mypy: ## Type-check code
 	$(POETRY) $(PRE_COMMIT) mypy -a
 
-python: ## Run bpython in project virtual environment
-	$(POETRY) bpython
-
 sandbox: ## Open an interactive Python shell with connections to Canvas
 	tmux new-session -d; \
 	tmux send-keys '$(POETRY) bpython' C-m; \
 	tmux send-keys 'from sandbox import *' C-m; \
 	tmux send-keys 'from penn_canvas.api import collect' C-m; \
 	tmux attach
+
+shell: ## Run bpython in project virtual environment
+	$(POETRY) bpython
 
 try: ## Try a command using the current state of the files without building
 ifdef args
