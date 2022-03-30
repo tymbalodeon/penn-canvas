@@ -21,11 +21,13 @@ _This README uses these aliases. Actual commands can be seen in the Makefile its
 
 The `penn-canvas` command will then be globally available in your shell.
 
+If you need to change the python version and are using pyenv: `poetry env use $(pyenv which python)`
+
 ### Pyinstaller
 
 _Instructions are for macOS_
 
-1. Build python with `--enable-framework`: `env PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install <python version>`
+1. Build python with `--enable-shared`: `env PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install <python version>`
 2. `make binary`
 
 ### Development
