@@ -52,18 +52,30 @@ def get_config_option(section: Section, option: Option) -> Option:
     except Exception as error:
         echo(error)
         logger.warning(error)
-        write_config_options(new_section=section)
+        get_new_config_value(section, option, first_time=True)
     return option
 
 
 def get_section_options(
-    section: Section, with_option=False
+    section: Section, with_option_name=False
 ) -> list[Value] | list[OptionAndValue]:
     config = ConfigParser()
     config.read(CONFIG_FILE)
     try:
+        required_options = set(CONFIG_OPTIONS.get(section, list()))
         options = config.options(section)
-        if with_option:
+        new_options = required_options ^ set(options)
+        if new_options:
+            values = [
+                (option, get_new_config_value(section, option, first_time=True))
+                for option in new_options
+            ]
+            for option, value in values:
+                write_config_option(config, section, option, value)
+            with open(CONFIG_FILE, "w") as config_file:
+                config.write(config_file)
+            options = config.options(section)
+        if with_option_name:
             return [(option, config.get(section, option)) for option in options]
         else:
             return [config.get(section, option) for option in options]
@@ -71,16 +83,12 @@ def get_section_options(
         echo(error)
         logger.warning(error)
         write_config_options(new_section=section)
-        return get_section_options(section, with_option)
+        return get_section_options(section, with_option_name)
 
 
-def get_all_config_options(with_option=False) -> list[Value | OptionAndValue]:
+def get_all_config_options(with_option_name=False) -> list[Value | OptionAndValue]:
     keys = CONFIG_OPTIONS.keys()
-    options = list()
-    for key in keys:
-        values = CONFIG_OPTIONS.get(key, "")
-        options.append([get_config_option(key, value) for value in values])
-    # options = [get_section_options(section, with_option) for section in keys]
+    options = [get_section_options(section, with_option_name) for section in keys]
     return list(chain.from_iterable(options))
 
 
@@ -112,6 +120,12 @@ def get_new_section_values(section: Section, first_time: bool) -> list[OptionAnd
     return get_new_config_values(section, first_time) if get_new_values else []
 
 
+def write_config_option(
+    config: ConfigParser, section: Section, option: Option, value: Value
+):
+    config[section][option] = value
+
+
 def write_config_section(
     config: ConfigParser, section: Section, first_time: bool
 ) -> ConfigParser:
@@ -120,7 +134,7 @@ def write_config_section(
         config[section] = dict()
     for option, value in new_values:
         if value is not None:
-            config[section][option] = value
+            write_config_option(config, section, option, value)
     return config
 
 
@@ -151,19 +165,19 @@ def confirm_create_config() -> Optional[list[Value | OptionAndValue]]:
 
 
 def get_config(
-    section: Optional[Section], with_option: bool
+    section: Optional[Section], with_option_name: bool
 ) -> list[Value] | list[OptionAndValue] | list[Value | OptionAndValue]:
     if section:
-        return get_section_options(section, with_option)
+        return get_section_options(section, with_option_name)
     else:
-        return get_all_config_options(with_option)
+        return get_all_config_options(with_option_name)
 
 
 def get_penn_canvas_config(
-    section: Optional[Section] = None, with_option=False
+    section: Optional[Section] = None, with_option_name=False
 ) -> list[Value] | list[OptionAndValue] | list[Value | OptionAndValue]:
     config = (
-        get_config(section, with_option)
+        get_config(section, with_option_name)
         if CONFIG_FILE.is_file()
         else confirm_create_config()
     )
@@ -174,7 +188,7 @@ def get_penn_canvas_config(
 
 def print_config(show_secrets: bool):
     switch_logger_file(LOGS, "config")
-    for option, value in get_penn_canvas_config(with_option=True):
+    for option, value in get_penn_canvas_config(with_option_name=True):
         if not value:
             value = color("[ empty ]", "yellow")
         elif not show_secrets and option in SECRET_OPTIONS:
