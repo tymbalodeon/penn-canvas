@@ -29,6 +29,7 @@ class Instance(Enum):
     BETA = "beta"
     OPEN = "open"
     OPEN_TEST = "open_test"
+    OPEN_BETA = "open_beta"
 
 
 def get_data_warehouse_cursor():
@@ -67,8 +68,9 @@ def get_canvas_url_and_key(instance=Instance.PRODUCTION) -> tuple[str, str]:
         Instance.PRODUCTION: ("canvas_prod_url", "canvas_prod_key"),
         Instance.TEST: ("canvas_test_url", "canvas_test_key"),
         Instance.BETA: ("canvas_beta_url", "canvas_beta_key"),
-        Instance.OPEN: ("open_canvas_url", "open_canvas_prod_key"),
+        Instance.OPEN: ("open_canvas_prod_url", "open_canvas_prod_key"),
         Instance.OPEN_TEST: ("open_canvas_test_url", "open_canvas_test_key"),
+        Instance.OPEN_BETA: ("open_canvas_beta_url", "open_canvas_beta_key"),
     }.get(instance, ("canvas_prod_url", "canvas_prod_key"))
     return (
         get_config_option("canvas_urls", url),
@@ -171,6 +173,7 @@ def get_main_account_id(instance: Instance) -> int:
         Instance.BETA: PENN_CANVAS_MAIN_ACCOUNT_ID,
         Instance.OPEN: OPEN_CANVAS_MAIN_ACCOUNT_ID,
         Instance.OPEN_TEST: OPEN_CANVAS_MAIN_ACCOUNT_ID,
+        Instance.OPEN_BETA: OPEN_CANVAS_MAIN_ACCOUNT_ID,
     }.get(instance, PENN_CANVAS_MAIN_ACCOUNT_ID)
 
 
