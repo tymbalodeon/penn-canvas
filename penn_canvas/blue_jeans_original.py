@@ -1,4 +1,5 @@
 from datetime import datetime
+from click.termui import style
 
 import pandas as pd
 import requests
@@ -16,12 +17,11 @@ pd.set_option("display.max_columns", 200)
 # API_KEY = canvas_token
 bjc_base_url = "https://canvaslms.bluejeansint.com"
 # canvas = Canvas(API_URL, API_KEY)
-canvas = get_canvas()
 
 
 def bluejeans_course_report(term_name="Test", course_id=1635419, course_index=0):
-    global canvas, df
-
+    global df
+    canvas = get_canvas()
     course = canvas.get_course(course_id)
 
     # Setup a way to know when the Courseware team changes Virtual Meetings to BlueJeans
@@ -78,7 +78,8 @@ def bluejeans_course_report(term_name="Test", course_id=1635419, course_index=0)
             fields = form.findAll("input")
             formdata = dict((field.get("name"), field.get("value")) for field in fields)
             print("\n")
-            print(f"==== {color('FORM DATA VALUES', 'cyan')} ====")
+            form_data_text = color("FORM DATA VALUES", "cyan", bold=True)
+            print(f"==== {form_data_text} ====")
             for key, value in formdata.items():
                 print(f"{key.upper()}: {color(value, 'yellow')}")
             print("\n")
@@ -100,7 +101,8 @@ def bluejeans_course_report(term_name="Test", course_id=1635419, course_index=0)
             # print("rsp_formpost: {}".format(rsp_formpost))
             # print("rsp_formpost headers: {}".format(rsp_formpost.headers))
 
-            print(f"==== {color('POST RESPONSE VALUES', 'cyan')} ====")
+            post_response_text = color("POST RESPONSE VALUES", "cyan", bold=True)
+            print(f"==== {post_response_text} ====")
             for key, value in rsp_formpost.headers.items():
                 print(f"{key.upper()}: {color(value, 'yellow')}")
             print("\n")
