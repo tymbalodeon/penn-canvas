@@ -1,5 +1,4 @@
 from datetime import datetime
-from click.termui import style
 
 import pandas as pd
 import requests
