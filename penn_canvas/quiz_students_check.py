@@ -13,7 +13,7 @@ canvas = get_canvas()
 course = canvas.get_course(course_id)
 students = course.get_users()
 canvas_prod_key = get_penn_canvas_config("canvas_keys")[0]
-headers = {"Authorization": "Bearer %s" % canvas_prod_key}
+headers = {"Authorization": f"Bearer {canvas_prod_key}"}
 outputFile = "data/{0}_{1}.csv".format(course_id, course_date)
 output = writer(open(outputFile, "w+", newline=""))
 

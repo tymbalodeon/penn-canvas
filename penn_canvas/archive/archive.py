@@ -118,13 +118,13 @@ def archive_main(
         if should_run_option(content, archive_all):
             archive_content(course, course_path, instance, verbose)
         if should_run_option(announcements, archive_all):
-            archive_announcements(course, course_path, verbose)
+            archive_announcements(course, course_path, True, verbose)
         if should_run_option(modules, archive_all):
             archive_modules(course, course_path, verbose)
         if should_run_option(pages, archive_all):
             archive_pages(course, course_path, verbose)
         if should_run_option(syllabus, archive_all):
-            archive_syllabus(course, course_path, verbose)
+            archive_syllabus(course, course_path, True, verbose)
         if should_run_option(assignments, archive_all):
             assignment_objects = archive_assignments(
                 course, course_path, instance, verbose

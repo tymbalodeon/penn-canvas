@@ -40,11 +40,8 @@ SECRET_OPTIONS = CONFIG_OPTIONS["canvas_keys"][:]
 SECRET_OPTIONS.append(CONFIG_OPTIONS["data_warehouse"][1])
 SECRET_OPTIONS.append(CONFIG_OPTIONS["email"][1])
 
-Section = Option = Value = str
-OptionAndValue = tuple[Value, Option]
 
-
-def get_config_option(section: Section, option: Option) -> Option:
+def get_config_option(section: str, option: str) -> str:
     config = ConfigParser()
     try:
         config.read(CONFIG_FILE)
@@ -57,8 +54,8 @@ def get_config_option(section: Section, option: Option) -> Option:
 
 
 def get_section_options(
-    section: Section, with_option_name=False
-) -> list[Value] | list[OptionAndValue]:
+    section: str, with_option_name=False
+) -> list[str] | list[list[str]] | list[tuple[str, str]]:
     config = ConfigParser()
     config.read(CONFIG_FILE)
     try:
@@ -86,13 +83,15 @@ def get_section_options(
         return get_section_options(section, with_option_name)
 
 
-def get_all_config_options(with_option_name=False) -> list[Value | OptionAndValue]:
+def get_all_config_options(
+    with_option_name=False,
+) -> list[str | list[str] | tuple[str, str]]:
     keys = CONFIG_OPTIONS.keys()
     options = [get_section_options(section, with_option_name) for section in keys]
     return list(chain.from_iterable(options))
 
 
-def get_new_config_value(section: Section, option: Option, first_time: bool) -> Value:
+def get_new_config_value(section: str, option: str, first_time: bool) -> str:
     option_display = option.replace("_", " ").upper()
     confirm_message = f"Would you like to update the {option_display} value?"
     prompt_message = f"Please provide your {option_display} value"
@@ -105,29 +104,31 @@ def get_new_config_value(section: Section, option: Option, first_time: bool) -> 
     )
 
 
-def get_new_config_values(section: Section, first_time: bool) -> list[OptionAndValue]:
+def get_new_config_values(
+    section: str, first_time: bool
+) -> list[list[str]] | list[tuple[str, str]]:
     return [
         (option, get_new_config_value(section, option, first_time))
         for option in CONFIG_OPTIONS[section]
     ]
 
 
-def get_new_section_values(section: Section, first_time: bool) -> list[OptionAndValue]:
+def get_new_section_values(
+    section: str, first_time: bool
+) -> list[list[str]] | list[tuple[str, str]]:
     get_new_values = first_time or confirm(
         f"Would you like to update the {section.replace('_', ' ').upper()} config"
         " values?"
     )
-    return get_new_config_values(section, first_time) if get_new_values else []
+    return get_new_config_values(section, first_time) if get_new_values else [("", "")]
 
 
-def write_config_option(
-    config: ConfigParser, section: Section, option: Option, value: Value
-):
+def write_config_option(config: ConfigParser, section: str, option: str, value: str):
     config[section][option] = value
 
 
 def write_config_section(
-    config: ConfigParser, section: Section, first_time: bool
+    config: ConfigParser, section: str, first_time: bool
 ) -> ConfigParser:
     new_values = get_new_section_values(section, first_time)
     if first_time:
@@ -139,8 +140,8 @@ def write_config_section(
 
 
 def write_config_options(
-    first_time=False, new_section: Optional[Section] = None
-) -> list[Value | OptionAndValue]:
+    first_time=False, new_section: Optional[str] = None
+) -> list[str | list[str] | tuple[str, str]]:
     config = ConfigParser()
     if not first_time:
         config.read(CONFIG_FILE)
@@ -154,7 +155,7 @@ def write_config_options(
     return get_all_config_options()
 
 
-def confirm_create_config() -> Optional[list[Value | OptionAndValue]]:
+def confirm_create_config() -> Optional[list[str | list[str] | tuple[str, str]]]:
     if confirm("Config file not found. Would you like to create one now?"):
         return write_config_options(first_time=True)
     else:
@@ -162,11 +163,15 @@ def confirm_create_config() -> Optional[list[Value | OptionAndValue]]:
             f"A config file is required. Please create one at {CONFIG_FILE} and try"
             " again."
         )
+        return None
 
 
 def get_config(
-    section: Optional[Section], with_option_name: bool
-) -> list[Value] | list[OptionAndValue] | list[Value | OptionAndValue]:
+    section: Optional[str], with_option_name: bool
+) -> list[str] | list[list[str]] | list[tuple[str, str]] | list[
+    str | list[str] | tuple[str, str]
+]:
+
     if section:
         return get_section_options(section, with_option_name)
     else:
@@ -174,8 +179,10 @@ def get_config(
 
 
 def get_penn_canvas_config(
-    section: Optional[Section] = None, with_option_name=False
-) -> list[Value] | list[OptionAndValue] | list[Value | OptionAndValue]:
+    section: Optional[str] = None, with_option_name=False
+) -> list[str] | list[list[str]] | list[tuple[str, str]] | list[
+    str | list[str] | tuple[str, str]
+]:
     config = (
         get_config(section, with_option_name)
         if CONFIG_FILE.is_file()
@@ -188,15 +195,20 @@ def get_penn_canvas_config(
 
 def print_config(show_secrets: bool):
     switch_logger_file(LOGS, "config")
-    for option, value in get_penn_canvas_config(with_option_name=True):
-        if not value:
-            value = color("[ empty ]", "yellow")
-        elif not show_secrets and option in SECRET_OPTIONS:
-            value = color("[ ...hidden... ]", "yellow")
-        else:
-            value = color(value, "green")
-        echo(f"{color(option.replace('_', ' ').upper())}: {value}")
+    config = get_penn_canvas_config(with_option_name=True)
+    if not isinstance(config, tuple):
+        logger.error("Failed to display config (wrong return type)")
+        logger.error(f"Config: {config}")
+    else:
+        for option, value in config:
+            if not value:
+                value = color("[ empty ]", "yellow")
+            elif not show_secrets and option in SECRET_OPTIONS:
+                value = color("[ ...hidden... ]", "yellow")
+            else:
+                value = color(value, "green")
+            echo(f"{color(option.replace('_', ' ').upper())}: {value}")
 
 
-def get_email_credentials() -> list[Value] | list[OptionAndValue]:
+def get_email_credentials() -> list[str] | list[list[str]] | list[tuple[str, str]]:
     return get_section_options("email")
