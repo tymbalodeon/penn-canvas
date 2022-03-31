@@ -97,6 +97,7 @@ def archive(
     quizzes: Optional[bool] = Option(
         None, "--quizzes/--no-quizzes", help="Include/exclude course quizzes"
     ),
+    unpack: bool = Option(False, "--unpack", help="Unpack compressed files"),
     force_report: bool = force_report,
     verbose: bool = verbose,
 ):
@@ -123,6 +124,7 @@ def archive(
         grades,
         rubrics,
         quizzes,
+        unpack,
         force_report,
         verbose,
     )

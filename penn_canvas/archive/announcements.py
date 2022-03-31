@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 from canvasapi.course import Course
 from canvasapi.discussion_topic import DiscussionTopic
@@ -28,11 +29,16 @@ def display_announcement(index: int, total: int, title: str, message: str):
     print_item(index, total, announcement_display)
 
 
-def unpack_announcements(course_path: Path, verbose: bool):
+def unpack_announcements(
+    compress_path: Path, unpack_path: Path, verbose: bool
+) -> Optional[Path]:
     echo(") Unpacking announcements...")
-    data_frame = read_csv(course_path / ANNOUNCEMENTS_COMPRESSED_FILE)
+    compressed_file = compress_path / ANNOUNCEMENTS_COMPRESSED_FILE
+    if not compressed_file.is_file():
+        return None
+    data_frame = read_csv(compressed_file)
     announcements = data_frame.values.tolist()
-    announcements_path = create_directory(course_path / "Announcements")
+    announcements_path = create_directory(unpack_path / "Announcements")
     total = len(announcements)
     for index, announcement in enumerate(announcements):
         title, message = announcement
@@ -42,10 +48,15 @@ def unpack_announcements(course_path: Path, verbose: bool):
         if verbose:
             display_announcement(index, total, title, message)
             print_task_complete_message(announcements_path)
+    return announcements_path
 
 
 def archive_announcements(
-    course: Course, course_path: Path, unpack: bool, verbose: bool
+    course: Course,
+    compress_path: Path,
+    unpack_path: Path,
+    unpack: bool,
+    verbose: bool,
 ):
     echo(") Exporting announcements...")
     announcements: list[DiscussionTopic] = collect(
@@ -55,7 +66,7 @@ def archive_announcements(
         process_announcement(announcement) for announcement in announcements
     ]
     data_frame = DataFrame(announcement_data, columns=["Title", "Message"])
-    announcements_path = course_path / ANNOUNCEMENTS_COMPRESSED_FILE
+    announcements_path = compress_path / ANNOUNCEMENTS_COMPRESSED_FILE
     data_frame.to_csv(announcements_path, index=False)
     total = len(announcement_data)
     if verbose:
@@ -64,4 +75,6 @@ def archive_announcements(
             if verbose:
                 display_announcement(index, total, title, message)
     if unpack:
-        unpack_announcements(course_path, verbose=False)
+        unpacked_path = unpack_announcements(compress_path, unpack_path, verbose=False)
+        if verbose:
+            echo(f"Unpacked to: {color(unpacked_path, 'blue')}")

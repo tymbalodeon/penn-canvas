@@ -31,14 +31,15 @@ from .rubrics import archive_rubrics
 from .syllabus import archive_syllabus
 
 COMMAND_PATH = create_directory(BASE_PATH / "Archive")
-RESULTS = create_directory(COMMAND_PATH / "Results")
+COMPRESSED_COURSES = create_directory(COMMAND_PATH / "Compressed Courses")
+UNPACKED_COURSES = create_directory(COMMAND_PATH / "Courses")
 LOGS = create_directory(COMMAND_PATH / "Logs")
 
 
 def restore_course(course, instance):
     content_file = next(
         path / CONTENT_DIRECTORY_NAME
-        for path in Path(RESULTS).iterdir()
+        for path in Path(COMPRESSED_COURSES).iterdir()
         if path.is_dir() and str(course) in path.name
     )
     canvas_course = get_canvas(instance).get_course(course)
@@ -83,6 +84,7 @@ def archive_main(
     grades: Optional[bool],
     rubrics: Optional[bool],
     quizzes: Optional[bool],
+    unpack: bool,
     force_report: bool,
     verbose: bool,
 ):
@@ -112,31 +114,32 @@ def archive_main(
         course = get_course(canvas_id, include=["syllabus_body"], instance=instance)
         course_name = f"{format_name(course.name)} ({course.id})"
         print_item(index, total, color(course_name, "blue"))
-        course_path = create_directory(RESULTS / course_name)
+        compress_path = create_directory(COMPRESSED_COURSES / course_name)
+        unpack_path = create_directory(UNPACKED_COURSES / course_name)
         assignment_objects: list[Assignment] = list()
         rubric_objects: list[Rubric] = list()
         if should_run_option(content, archive_all):
-            archive_content(course, course_path, instance, verbose)
+            archive_content(course, compress_path, instance, verbose)
         if should_run_option(announcements, archive_all):
-            archive_announcements(course, course_path, True, verbose)
+            archive_announcements(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(modules, archive_all):
-            archive_modules(course, course_path, verbose)
+            archive_modules(course, compress_path, verbose)
         if should_run_option(pages, archive_all):
-            archive_pages(course, course_path, verbose)
+            archive_pages(course, compress_path, verbose)
         if should_run_option(syllabus, archive_all):
-            archive_syllabus(course, course_path, True, verbose)
+            archive_syllabus(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(assignments, archive_all):
             assignment_objects = archive_assignments(
-                course, course_path, instance, verbose
+                course, compress_path, instance, verbose
             )
         if should_run_option(groups, archive_all):
-            archive_groups(course, course_path, instance, verbose)
+            archive_groups(course, compress_path, instance, verbose)
         if should_run_option(discussions, archive_all):
-            archive_discussions(course, course_path, use_timestamp, instance, verbose)
+            archive_discussions(course, compress_path, use_timestamp, instance, verbose)
         if should_run_option(grades, archive_all):
-            archive_grades(course, course_path, assignment_objects, instance, verbose)
+            archive_grades(course, compress_path, assignment_objects, instance, verbose)
         if should_run_option(rubrics, archive_all):
-            rubric_objects = archive_rubrics(course, course_path, verbose)
+            rubric_objects = archive_rubrics(course, compress_path, verbose)
         if should_run_option(quizzes, archive_all):
-            archive_quizzes(course, course_path, rubric_objects, verbose)
+            archive_quizzes(course, compress_path, rubric_objects, verbose)
         echo("COMPELTE")
