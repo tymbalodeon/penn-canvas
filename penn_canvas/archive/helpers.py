@@ -1,6 +1,8 @@
 from html.parser import HTMLParser
 from io import StringIO
-from typing import Optional
+from pathlib import Path
+from pickle import HIGHEST_PROTOCOL, dump
+from typing import Any, Optional
 
 PICKLE_COMPRESSION_TYPE = "zip"
 
@@ -44,3 +46,8 @@ def format_display_text(text: str, limit=50) -> str:
 
 def should_run_option(option: Optional[bool], archive_all: bool) -> bool:
     return option if isinstance(option, bool) else archive_all
+
+
+def pickle(item: Any, path: Path):
+    with open(path, "wb") as pickle_file:
+        dump(item, pickle_file, HIGHEST_PROTOCOL)

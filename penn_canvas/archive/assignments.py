@@ -12,7 +12,7 @@ from penn_canvas.api import Instance, collect, get_user
 from penn_canvas.helpers import create_directory, format_timestamp
 from penn_canvas.style import color, print_item
 
-from .helpers import format_name, strip_tags
+from .helpers import format_display_text, format_name, pickle, strip_tags
 
 
 def get_assignments(course: Course) -> tuple[list[Assignment], int]:
@@ -39,8 +39,6 @@ def process_submission(
     submission: Submission,
     instance: Instance,
     verbose: bool,
-    assignment_index: int,
-    total_assignments: int,
     submission_index: int,
     total_submissions: int,
     assignment: str,
@@ -63,12 +61,13 @@ def process_submission(
     submissions_path = create_directory(assignment_path / "Submission Files")
     try:
         body = strip_tags(submission.body.replace("\n", " ")).strip()
+    except Exception:
+        body = ""
+    if body:
         with open(
             submissions_path / f"{assignment}_SUBMISSION ({user}).txt", "w"
         ) as submissions_file:
             submissions_file.write(body)
-    except Exception:
-        body = ""
     try:
         attachments = [
             (attachment["url"], attachment["filename"])
@@ -91,17 +90,8 @@ def process_submission(
         submission_comments_file.write(comments_body)
     if verbose:
         user_display = color(user, "cyan")
-        if submission_index == 0:
-            color(
-                f"==== ASSIGNMENT {assignment_index + 1}/{total_assignments}:"
-                f" {assignment} ====",
-                "magenta",
-                True,
-            )
-        echo(
-            f" - ({submission_index + 1}/{total_submissions})"
-            f" {user_display} {color(grade, 'yellow')}"
-        )
+        message = f"{user_display} {color(grade, 'yellow')}"
+        print_item(submission_index, total_submissions, message, prefix="\t*")
     return [
         user,
         submission.submission_type.replace("_", " ")
@@ -124,17 +114,29 @@ def archive_assignment(
     assignment_name = format_name(assignment.name)
     assignment_directory = create_directory(course_directory / "Assignments")
     assignment_path = create_directory(assignment_directory / assignment_name)
-    description_path = assignment_path / f"{assignment_name}_DESCRIPTION.txt"
-    submissions_path = assignment_path / f"{assignment_name}_GRADES.csv"
+    assignment_path = assignment_path / f"{assignment_name}.pickle"
+    # description_path = assignment_path / f"{assignment_name}_DESCRIPTION.txt"
+    # submissions_path = assignment_path / f"{assignment_name}_GRADES.csv"
     comments_path = create_directory(assignment_path / "Submission Comments")
+    try:
+        description = assignment.description.replace("\n", " ")
+        description = strip_tags(description).strip().split()
+        description = " ".join(description)
+    except Exception:
+        description = ""
+    if verbose:
+        name_display = color(assignment_name)
+        description_display = (
+            f": {format_display_text(description)}" if description else ""
+        )
+        assignment_display = f"{name_display}{description_display}"
+        print_item(index, total, assignment_display)
     submissions = collect(assignment.get_submissions(include="submission_comments"))
     submissions = [
         process_submission(
             submission,
             instance,
             verbose,
-            index,
-            total,
             submission_index,
             len(submissions),
             assignment_name,
@@ -143,19 +145,19 @@ def archive_assignment(
         )
         for submission_index, submission in enumerate(submissions)
     ]
-    try:
-        description = assignment.description.replace("\n", " ")
-        description = strip_tags(description).strip().split()
-        description = " ".join(description)
-    except Exception:
-        description = ""
     columns = ["User", "Submission type", "Grade", "Score", "Grader"]
     submissions_data_frame = DataFrame(submissions, columns=columns)
-    submissions_data_frame.to_csv(submissions_path, index=False)
-    with open(description_path, "w") as assignment_file:
-        assignment_file.write(description)
-    if verbose:
-        print_item(index, total, f"{color(assignment_name)}: {description}")
+    assignment_object = {
+        "submissions": submissions_data_frame,
+        "description": description,
+    }
+    pickle(assignment_object, assignment_path)
+    # submissions_data_frame.to_pickle(
+    #     assignment_path, compression=PICKLE_COMPRESSION_TYPE
+    # )
+    # submissions_data_frame.to_csv(submissions_path, index=False)
+    # with open(description_path, "w") as assignment_file:
+    #     assignment_file.write(description)
 
 
 def archive_assignments(

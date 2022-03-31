@@ -5,6 +5,7 @@ from typer import Argument, Option, Typer, echo
 
 from penn_canvas import __version__
 from penn_canvas.blue_jeans import blue_jeans_main
+from penn_canvas.blue_jeans_original import bluejeans_course_report
 
 from .api import Instance
 from .archive.archive import archive_main
@@ -131,9 +132,13 @@ def archive(
 def blue_jeans(
     course_id: int = Option(1635419, "--course", help="Canvas course id"),
     instance_name: str = get_instance_option(),
+    new: bool = Option(False, "--new"),
 ):
     """Get Blue Jeans usage for a courses"""
-    blue_jeans_main(course_id, instance_name)
+    if new:
+        blue_jeans_main(course_id, instance_name)
+    else:
+        bluejeans_course_report()
 
 
 @app.command()

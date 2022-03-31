@@ -52,12 +52,12 @@ def archive_announcements(course: Course, course_path: Path, verbose: bool):
                 display_announcement(index, total, title, message)
 
 
-def unpickle_announcements(course_path: Path, verbose: bool):
+def unpickle_announcements(course_path: Path, view_path: Path, verbose: bool):
     data_frame = read_pickle(
         course_path / ANNOUNCEMENTS_PICKLE_FILE, compression=PICKLE_COMPRESSION_TYPE
     )
     announcements: list[list[str]] = data_frame.values.tolist()
-    announcements_path = create_directory(course_path / "Announcements")
+    announcements_path = create_directory(view_path / "Announcements")
     total = len(announcements)
     for index, announcement in enumerate(announcements):
         title, message = announcement
