@@ -13,6 +13,9 @@ from penn_canvas.helpers import (
     BASE_PATH,
     create_directory,
     get_start_index,
+    make_csv_paths,
+    make_index_headers,
+    print_skip_message,
     switch_logger_file,
 )
 from penn_canvas.report import Report, ReportType, create_reports
@@ -24,11 +27,24 @@ from .api import (
     request_external_url,
     validate_instance_name,
 )
-from .style import color, print_item
+from .style import color, pluralize, print_item
 
 COMMAND_PATH = create_directory(BASE_PATH / "Blue Jeans")
 LOGS = create_directory(COMMAND_PATH / "Logs")
 BLUE_JEANS_LABELS = {"Virtual Meetings", "BlueJeans", "Blue Jeans"}
+HEADERS = [
+    "canvas course id",
+    "course id",
+    "short name",
+    "canvas account id",
+    "term id",
+    "status",
+    "blue jeans enabled",
+    "total meetings",
+    "total recordings",
+    "total current",
+    "total upcoming",
+]
 
 
 def is_active_blue_jeans_tab(tab: Tab) -> bool:
@@ -61,7 +77,7 @@ def get_lti_credentials(form: Tag) -> tuple[str, str, str]:
     return auth_token, course_id, user_id
 
 
-def get_meeting_object(meeting, status):
+def get_meeting_object(meeting: dict, status: str) -> tuple[str, str]:
     return meeting["recordingTime"], status
 
 
@@ -87,7 +103,7 @@ def get_meetings_data(
     return upcoming_meetings + current_meetings + recorded_meetings
 
 
-def get_meetings_from_tab(tab: Tab, instance: Instance):
+def get_meetings_from_tab(tab: Tab, instance: Instance) -> list[tuple]:
     form = get_form_from_tab_url(tab.url, instance=instance)
     if not form:
         echo(color("ERROR getting Blue Jeans form", "yellow"))
@@ -128,19 +144,29 @@ def get_blue_jeans_data(
     if isna(course_id):
         report.at[index, "course_id"] = f"{short_name} ({canvas_account_id})"
     report.at[index, "tool status"] = enabled
-    meetings_count = len(meetings)
-    report.at[index, "meetings count"] = meetings_count
+    total_meetings = len(meetings)
+    report.at[index, "total meetings"] = total_meetings
+    if meetings:
+        recordings = [meeting for meeting in meetings if meeting[1] == "recorded"]
+        current = [meeting for meeting in meetings if meeting[1] == "current"]
+        upcoming = [meeting for meeting in meetings if meeting[1] == "upcoming"]
+        report.at[index, "total recordings"] = recordings
+        report.at[index, "total current"] = current
+        report.at[index, "total upcoming"] = upcoming
     report.loc[index].to_frame().T.to_csv(result_path, mode="a", header=False)
     if verbose:
+        label_display = f'"{blue_jeans_tab.label}"' if blue_jeans_tab else ""
+        total_display = f"({total_meetings} {pluralize('meeting', total_meetings)})"
+        found_display = f"FOUND {label_display} {total_display}"
         status_display = (
-            color("FOUND", "green") if enabled else color("NOT ENABLED", "yellow")
+            color(found_display, "green") if enabled else color("not enabled", "yellow")
         )
         message = f"{color(canvas_course)}: {status_display}"
         print_item(index, total, message)
 
 
 def process_report(
-    report_path: Path, start: int, account_id: int
+    report_path: Path, start: int, account_id: Optional[int]
 ) -> tuple[DataFrame, int]:
     report = read_csv(report_path)
     report = report[
@@ -168,7 +194,7 @@ def process_report(
 def blue_jeans_main(
     terms: str | list[str],
     instance_name: str | Instance,
-    account_id: int,
+    account_id: Optional[int],
     verbose: bool,
     force: bool,
     force_report: bool,
@@ -181,8 +207,10 @@ def blue_jeans_main(
     ]
     report_paths = create_reports(report_objects, verbose=verbose)
     for path in report_paths:
-        result_path = COMMAND_PATH / f"Blue_Jeans{path.stem}.csv"
+        result_path = COMMAND_PATH / f"Blue_Jeans_{path.stem}.csv"
         start = get_start_index(force, result_path)
+        make_csv_paths(result_path, make_index_headers(HEADERS))
+        print_skip_message(start, "course")
         report, total = process_report(path, start, account_id)
         for course in report.itertuples():
             get_blue_jeans_data(report, total, course, result_path, instance, verbose)

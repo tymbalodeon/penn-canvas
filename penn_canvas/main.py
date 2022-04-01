@@ -134,7 +134,7 @@ def archive(
 def blue_jeans(
     terms: list[str] = Option([CURRENT_YEAR_AND_TERM], "--term", help="Term name"),
     instance_name: str = get_instance_option(),
-    account_id: int = Option(81471, "--account", help="Canvas account id"),
+    account_id: Optional[int] = Option(None, "--account", help="Canvas account id"),
     verbose: bool = verbose,
     force: bool = force,
     force_report: bool = force_report,
