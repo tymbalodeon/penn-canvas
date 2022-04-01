@@ -115,12 +115,12 @@ def get_new_config_values(
 
 def get_new_section_values(
     section: str, first_time: bool
-) -> list[list[str]] | list[tuple[str, str]]:
+) -> Optional[list[list[str]] | list[tuple[str, str]]]:
     get_new_values = first_time or confirm(
         f"Would you like to update the {section.replace('_', ' ').upper()} config"
         " values?"
     )
-    return get_new_config_values(section, first_time) if get_new_values else [("", "")]
+    return get_new_config_values(section, first_time) if get_new_values else None
 
 
 def write_config_option(config: ConfigParser, section: str, option: str, value: str):
@@ -133,9 +133,10 @@ def write_config_section(
     new_values = get_new_section_values(section, first_time)
     if first_time:
         config[section] = dict()
-    for option, value in new_values:
-        if value is not None:
-            write_config_option(config, section, option, value)
+    if new_values:
+        for option, value in new_values:
+            if value is not None:
+                write_config_option(config, section, option, value)
     return config
 
 
@@ -171,7 +172,6 @@ def get_config(
 ) -> list[str] | list[list[str]] | list[tuple[str, str]] | list[
     str | list[str] | tuple[str, str]
 ]:
-
     if section:
         return get_section_options(section, with_option_name)
     else:

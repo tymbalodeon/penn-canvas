@@ -549,11 +549,6 @@ def tool(
         "--term-name",
         help="The display name of the term for the report",
     ),
-    use_id: bool = Option(
-        False,
-        "--id",
-        help="Locate the specified tool using the tool's tab's id rather than label.",
-    ),
     enable: bool = Option(
         False,
         "--enable",
@@ -587,7 +582,6 @@ def tool(
     tool_main(
         tool,
         term,
-        use_id,
         enable,
         instance_name,
         verbose,
