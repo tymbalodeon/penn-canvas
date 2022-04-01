@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Text, cast
+from typing import Optional, Text, cast
 
 from bs4 import BeautifulSoup, Tag
 from canvasapi.course import Course
@@ -20,23 +20,12 @@ from .api import (
 from .style import color
 
 
-def get_blue_jeans_tabs(course: Course) -> list[Tab]:
-    return [
+def get_blue_jeans_tab(course: Course) -> Optional[Tab]:
+    return next((
         tab
         for tab in course.get_tabs()
         if tab.label in {"Virtual Meetings", "BlueJeans", "Blue Jeans"}
-    ]
-
-
-def get_tab_label_count(tabs: list[Tab], label: str) -> int:
-    return len([tab for tab in tabs if tab.label == label])
-
-
-def get_tab_type_counts(tabs: list[Tab]) -> tuple[int, int, int]:
-    total_blue_jeans_tabs = get_tab_label_count(tabs, "Blue Jeans")
-    total_bluejeans_tabs = get_tab_label_count(tabs, "BlueJeans")
-    total_virtual_meetings_tabs = get_tab_label_count(tabs, "Virtual Meetings")
-    return total_blue_jeans_tabs, total_bluejeans_tabs, total_virtual_meetings_tabs
+    ), None)
 
 
 def get_form_from_tab_url(url: str, instance: Instance) -> Tag:
@@ -122,52 +111,48 @@ def blue_jeans_main(
         "timestamp": timestamp,
     }
     meeting_name_data = {"mtg_name": "None"}
-    blue_jeans_tabs = get_blue_jeans_tabs(course)
-    for tab in blue_jeans_tabs:
-        form = get_form_from_tab_url(tab.url, instance=instance)
-        if not form:
-            echo("Form not found for tab {tab.label}. Skipping...")
-            continue
-        try:
-            lti_auth_token, lti_course_id, lti_user_id = get_lti_credentials(form)
-        except Exception:
-            echo("ERROR getting LTI credentials. Skipping...")
-            continue
-        meetings = get_meetings_data(lti_auth_token, lti_course_id, lti_user_id)
-        meetings = [parse_meeting_ids(meeting) for meeting in meetings]
-        tab_data = {
-            "canvas_course_tab_id": tab.id,
-            "canvas_course_tab_is_hidden": hasattr(tab, "hidden"),
-            "canvas_course_tab_is_unused": hasattr(tab, "unused"),
-            "canvas_course_tab_vis_group": tab.visibility,
-        }
-        course_with_tab_data = course_data | tab_data
-        meetings = [meeting | course_with_tab_data for meeting in meetings]
-        if meetings:
-            meetings_data = DataFrame(meetings)
-            meetings_data.rename(
-                columns={
-                    "listStartTime": "startTimeForList",
-                    "title": "mtg_name",
-                    "description": "mtg_desc",
-                    "start": "mtg_start_time",
-                    "end": "mtg_end_time",
-                    "recordingTime": "mtg_recording_time",
-                    "meetingLink": "mtg_join_link",
-                    "recordingUrl": "mtg_play_link",
-                },
-                inplace=True,
-            )
-            results = concat([results, meetings_data], ignore_index=True, sort=True)
-        else:
-            meetings_data = DataFrame([course_with_tab_data | meeting_name_data])
-            results = concat([results, meetings_data], ignore_index=True, sort=True)
-    if not blue_jeans_tabs:
+    blue_jeans_tab = get_blue_jeans_tab(course)
+    if not blue_jeans_tab:
         course_data_frame = DataFrame([course_data | meeting_name_data])
         results = concat([results, course_data_frame], ignore_index=True, sort=True)
-    blue_jeans_count, bluejeans_count, virtual_meetings_count = get_tab_type_counts(
-        blue_jeans_tabs
-    )
-    echo(f'Number of "Blue Jeans" tabs: {blue_jeans_count}')
-    echo(f'Number of "BlueJeans" tabs: {bluejeans_count}')
-    echo(f'Number of "Virtual Meetings" tabs: {virtual_meetings_count}')
+        return False
+    form = get_form_from_tab_url(blue_jeans_tab.url, instance=instance)
+    if not form:
+        echo("Form not found for tab {tab.label}. Skipping...")
+        return False
+    try:
+        lti_auth_token, lti_course_id, lti_user_id = get_lti_credentials(form)
+    except Exception:
+        echo("ERROR getting LTI credentials. Skipping...")
+        return False
+    meetings = get_meetings_data(lti_auth_token, lti_course_id, lti_user_id)
+    meetings = [parse_meeting_ids(meeting) for meeting in meetings]
+    tab_data = {
+        "canvas_course_tab_id": blue_jeans_tab.id,
+        "canvas_course_tab_is_hidden": hasattr(blue_jeans_tab, "hidden"),
+        "canvas_course_tab_is_unused": hasattr(blue_jeans_tab, "unused"),
+        "canvas_course_tab_vis_group": blue_jeans_tab.visibility,
+    }
+    course_with_tab_data = course_data | tab_data
+    meetings = [meeting | course_with_tab_data for meeting in meetings]
+    if meetings:
+        meetings_data = DataFrame(meetings)
+        meetings_data.rename(
+            columns={
+                "listStartTime": "startTimeForList",
+                "title": "mtg_name",
+                "description": "mtg_desc",
+                "start": "mtg_start_time",
+                "end": "mtg_end_time",
+                "recordingTime": "mtg_recording_time",
+                "meetingLink": "mtg_join_link",
+                "recordingUrl": "mtg_play_link",
+            },
+            inplace=True,
+        )
+        results = concat([results, meetings_data], ignore_index=True, sort=True)
+    else:
+        meetings_data = DataFrame([course_with_tab_data | meeting_name_data])
+        results = concat([results, meetings_data], ignore_index=True, sort=True)
+    echo(f"FOUND: {color(blue_jeans_tab.label, 'cyan')}")
+    return True
