@@ -1,6 +1,6 @@
 from pathlib import Path
-from click.termui import style
 
+from click.termui import style
 from loguru import logger
 from pandas import isna, read_csv
 from pandas.core.frame import DataFrame
