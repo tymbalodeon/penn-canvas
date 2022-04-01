@@ -702,7 +702,10 @@ def open_canvas_bulk_action_main(
                     "already in use": "red",
                     "course not found": "red",
                 }
-            ARGS = (get_account(get_main_account_id(instance)), action)
+            ARGS = (
+                get_account(get_main_account_id(instance), instance=instance),
+                action,
+            )
             if verbose:
                 echo(f"==== FILE {index + 1}/{len(input_files)} ====")
                 echo(color(input_file.stem, "blue"))

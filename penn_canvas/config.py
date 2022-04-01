@@ -197,12 +197,11 @@ def print_config(show_secrets: bool):
     switch_logger_file(LOGS, "config")
     config = get_penn_canvas_config(with_option_name=True)
     for item in config:
-        try:
-            option, value = item
-        except Exception as error:
-            logger.error(f"Failed to display config option ({error})")
+        if not isinstance(item, tuple):
+            logger.error("Failed to display config option: expected tuple")
             logger.error(f"Config: {item}")
             continue
+        option, value = item
         if not value:
             value = color("<empty>", "white")
         elif not show_secrets and option in SECRET_OPTIONS:
