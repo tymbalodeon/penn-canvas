@@ -1,4 +1,5 @@
 from pathlib import Path
+from click.termui import style
 
 from loguru import logger
 from pandas import isna, read_csv
@@ -186,7 +187,10 @@ def check_and_increase_storage(
         increased = old_quota and new_quota
         display_color = "red" if status == "course not found" else "yellow"
         increase_message = (
-            f"increased {color(old_quota, 'cyan')} --> {color(new_quota, 'green')}"
+            style(
+                f"increased {color(old_quota, 'cyan')} --> {color(new_quota, 'green')}",
+                bold=True,
+            )
             if increased
             else color(status, display_color)
         )

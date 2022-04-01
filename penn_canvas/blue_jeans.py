@@ -164,7 +164,9 @@ def get_blue_jeans_data(
         total_display = f"({total_meetings} {pluralize('meeting', total_meetings)})"
         found_display = f"FOUND {label_display} {total_display}"
         status_display = (
-            color(found_display, "green") if enabled else color("not enabled", "yellow")
+            color(found_display, "green", bold=True)
+            if enabled
+            else color("not enabled", "yellow")
         )
         message = f"{color(canvas_course)}: {status_display}"
         print_item(index, total, message)
