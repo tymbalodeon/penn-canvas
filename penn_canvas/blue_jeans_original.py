@@ -70,6 +70,7 @@ def bluejeans_course_report(term_name="Test", course_id=1635419, course_index=0)
             soup_form = bs(rsp_form.text, "html.parser")
             # Get the form and parse out all of the inputs
             form = soup_form.find("form")
+            print(form.prettify())
             if not form:
                 print("Could not find a form to launch this BJ page, skipping")
                 break

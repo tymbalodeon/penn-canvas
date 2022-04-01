@@ -131,7 +131,7 @@ def blue_jeans_main(
         try:
             lti_auth_token, lti_course_id, lti_user_id = get_lti_credentials(form)
         except Exception:
-            echo("ERROR. Skipping...")
+            echo("ERROR getting LTI credentials. Skipping...")
             continue
         meetings = get_meetings_data(lti_auth_token, lti_course_id, lti_user_id)
         meetings = [parse_meeting_ids(meeting) for meeting in meetings]
