@@ -196,18 +196,20 @@ def get_penn_canvas_config(
 def print_config(show_secrets: bool):
     switch_logger_file(LOGS, "config")
     config = get_penn_canvas_config(with_option_name=True)
-    if not isinstance(config, tuple):
-        logger.error("Failed to display config (wrong return type)")
-        logger.error(f"Config: {config}")
-    else:
-        for option, value in config:
-            if not value:
-                value = color("[ empty ]", "yellow")
-            elif not show_secrets and option in SECRET_OPTIONS:
-                value = color("[ ...hidden... ]", "yellow")
-            else:
-                value = color(value, "green")
-            echo(f"{color(option.replace('_', ' ').upper())}: {value}")
+    for item in config:
+        try:
+            option, value = item
+        except Exception as error:
+            logger.error(f"Failed to display config option ({error})")
+            logger.error(f"Config: {item}")
+            continue
+        if not value:
+            value = color("<empty>", "white")
+        elif not show_secrets and option in SECRET_OPTIONS:
+            value = color("[ ...hidden... ]", "yellow")
+        else:
+            value = color(value, "green")
+        echo(f"{color(option.replace('_', ' ').upper())}: {value}")
 
 
 def get_email_credentials() -> list[str] | list[list[str]] | list[tuple[str, str]]:
