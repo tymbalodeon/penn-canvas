@@ -1,7 +1,10 @@
 from csv import writer
 from os import remove
 from pathlib import Path
+from typing import Optional
 
+from canvasapi.paginated_list import PaginatedList
+from canvasapi.tab import Tab
 from loguru import logger
 from pandas import DataFrame, concat, isna, read_csv
 from typer import Exit, confirm, echo, progressbar
@@ -300,12 +303,19 @@ def print_messages(
     echo(color("FINISHED", "yellow"))
 
 
+def is_tool_tab(tab: Tab, tool: str) -> bool:
+    return tab.id in tool or tab.label in tool
+
+
+def get_tool_tab(tabs: PaginatedList, tool: str) -> Optional[Tab]:
+    return next((tab for tab in tabs if is_tool_tab(tab, tool)), None)
+
+
 def check_tool_usage(
     report: DataFrame,
     total: int,
     course: tuple,
     tool: str,
-    use_id: bool,
     enable: bool,
     result_path: Path,
     processed_path: Path,
@@ -335,10 +345,7 @@ def check_tool_usage(
         try:
             canvas_course = get_course(canvas_course_id, instance=instance)
             tabs = canvas_course.get_tabs()
-            if use_id:
-                tool_tab = next((tab for tab in tabs if tab.id == tool), None)
-            else:
-                tool_tab = next((tab for tab in tabs if tab.label == tool), None)
+            tool_tab = get_tool_tab(tabs, tool)
             if tool_tab and tool_tab.visibility == "public":
                 tool_status = "already enabled" if enable else "enabled"
             elif tool_tab and enable:
@@ -385,7 +392,6 @@ def check_tool_usage(
 def tool_main(
     tool: str,
     term: str,
-    use_id: bool,
     enable: bool,
     instance_name: str | Instance,
     verbose: bool,
@@ -398,14 +404,13 @@ def tool_main(
 
     instance = validate_instance_name(instance_name, verbose=not verbose)
     switch_logger_file(LOGS, "tool", instance.name)
-    if not use_id:
-        tool = get_tool(tool)
+    tool = get_tool(tool)
     report_object = Report(
         ReportType.COURSES, instance=instance, term=term, force=force_report
     )
     report_path = get_single_report(report_object, verbose=verbose)
     year_display = f"{YEAR}_" if enable else ""
-    tool_display = tool if use_id else tool.replace(" ", "_")
+    tool_display = tool.replace(" ", "_")
     instance_display = format_instance_name(instance)
     result_path = COMMAND_PATH / f"{year_display}{tool_display}{instance_display}.csv"
     start = get_start_index(force, result_path)
@@ -488,7 +493,6 @@ def tool_main(
                 total,
                 course,
                 tool,
-                use_id,
                 enable,
                 result_path,
                 processed_path,
@@ -505,7 +509,6 @@ def tool_main(
                     total,
                     course,
                     tool,
-                    use_id,
                     enable,
                     result_path,
                     processed_path,

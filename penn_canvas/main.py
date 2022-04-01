@@ -132,13 +132,18 @@ def archive(
 
 @app.command()
 def blue_jeans(
-    course_id: int = Option(1635419, "--course", help="Canvas course id"),
+    terms: list[str] = Option([CURRENT_YEAR_AND_TERM], "--term", help="Term name"),
     instance_name: str = get_instance_option(),
+    account_id: int = Option(81471, "--account", help="Canvas account id"),
+    verbose: bool = verbose,
+    force: bool = force,
+    force_report: bool = force_report,
+    course_id: int = Option(1635419, "--course", help="Canvas course id"),
     new: bool = Option(False, "--new"),
 ):
     """Get Blue Jeans usage for a courses"""
     if new:
-        blue_jeans_main(course_id, instance_name)
+        blue_jeans_main(terms, instance_name, account_id, verbose, force, force_report)
     else:
         bluejeans_course_report(course_id=course_id)
 
