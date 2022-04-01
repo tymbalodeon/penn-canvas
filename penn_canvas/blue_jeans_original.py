@@ -39,7 +39,11 @@ def bluejeans_course_report(term_name="Test", course_id=1635419, course_index=0)
     this_course_has_bj_tab = False
     for tab in tabs:
         # print("{} ({})".format(tab.label, tab.id))
-        if tab.label in ["Virtual Meetings", "BlueJeans"]:  # ,'Class Recordings']:
+        if tab.label in [
+            "Virtual Meetings",
+            "BlueJeans",
+            "Blue Jeans",
+        ]:  # ,'Class Recordings']:
             if tab.label == "Virtual Meetings":
                 found_VM += 1
             elif tab.label == "BlueJeans":
