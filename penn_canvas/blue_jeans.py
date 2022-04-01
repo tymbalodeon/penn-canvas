@@ -147,9 +147,14 @@ def get_blue_jeans_data(
     total_meetings = len(meetings)
     report.at[index, "total meetings"] = total_meetings
     if meetings:
-        recordings = [meeting for meeting in meetings if meeting[1] == "recorded"]
-        current = [meeting for meeting in meetings if meeting[1] == "current"]
-        upcoming = [meeting for meeting in meetings if meeting[1] == "upcoming"]
+        recordings = current = upcoming = 0
+        for meeting in meetings:
+            if meeting[1] == "recorded":
+                recordings += 1
+            if meeting[1] == "current":
+                current += 1
+            if meeting[1] == "upcoming":
+                upcoming += 1
         report.at[index, "total recordings"] = recordings
         report.at[index, "total current"] = current
         report.at[index, "total upcoming"] = upcoming
