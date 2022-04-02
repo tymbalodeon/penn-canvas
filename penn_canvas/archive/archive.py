@@ -139,7 +139,9 @@ def archive_main(
         if should_run_option(grades, archive_all):
             archive_grades(course, compress_path, assignment_objects, instance, verbose)
         if should_run_option(rubrics, archive_all):
-            rubric_objects = archive_rubrics(course, compress_path, verbose)
+            rubric_objects = archive_rubrics(
+                course, compress_path, unpack_path, unpack, verbose
+            )
         if should_run_option(quizzes, archive_all):
             archive_quizzes(course, compress_path, rubric_objects, verbose)
         echo("COMPELTE")

@@ -2,6 +2,10 @@ from html.parser import HTMLParser
 from io import StringIO
 from typing import Optional
 
+from typer import echo
+
+from penn_canvas.style import color
+
 COMPRESSION_TYPE = "gz"
 
 
@@ -44,3 +48,7 @@ def format_display_text(text: str, limit=50) -> str:
 
 def should_run_option(option: Optional[bool], archive_all: bool) -> bool:
     return option if isinstance(option, bool) else archive_all
+
+
+def print_unpacked_file(unpacked_file):
+    echo(f"Unpacked to: {color(unpacked_file, 'blue')}")

@@ -11,7 +11,13 @@ from penn_canvas.api import collect
 from penn_canvas.helpers import create_directory, print_task_complete_message
 from penn_canvas.style import color, print_item
 
-from .helpers import COMPRESSION_TYPE, format_display_text, format_name, strip_tags
+from .helpers import (
+    COMPRESSION_TYPE,
+    format_display_text,
+    format_name,
+    print_unpacked_file,
+    strip_tags,
+)
 
 ANNOUNCEMENTS_COMPRESSED_FILE = f"announcements.{COMPRESSION_TYPE}"
 
@@ -77,4 +83,4 @@ def archive_announcements(
     if unpack:
         unpacked_path = unpack_announcements(compress_path, unpack_path, verbose=False)
         if verbose:
-            echo(f"Unpacked to: {color(unpacked_path, 'blue')}")
+            print_unpacked_file(unpacked_path)

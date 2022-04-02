@@ -8,7 +8,12 @@ from typer import echo
 from penn_canvas.helpers import print_task_complete_message, write
 from penn_canvas.style import color
 
-from .helpers import COMPRESSION_TYPE, format_display_text, strip_tags
+from .helpers import (
+    COMPRESSION_TYPE,
+    format_display_text,
+    print_unpacked_file,
+    strip_tags,
+)
 
 SYLLABUS_COMPRESSION_FILE = f"syllabus.{COMPRESSION_TYPE}"
 
@@ -26,12 +31,12 @@ def unpack_syllabus(
         return None
     data_frame = read_csv(compressed_file)
     syllabus = next(iter(data_frame["syllabus"].tolist()), "")
-    syllabus_path = unpack_path / "Syllabus.txt"
-    write(syllabus_path, syllabus)
+    syllabus_file = unpack_path / "Syllabus.txt"
+    write(syllabus_file, syllabus)
     if verbose:
         display_syllabus(syllabus)
-        print_task_complete_message(syllabus_path)
-    return syllabus_path
+        print_task_complete_message(syllabus_file)
+    return syllabus_file
 
 
 def archive_syllabus(
@@ -51,6 +56,6 @@ def archive_syllabus(
         if verbose:
             display_syllabus(syllabus)
         if unpack:
-            unpacked_path = unpack_syllabus(compress_pack, unpack_path, verbose=False)
+            unpacked_file = unpack_syllabus(compress_pack, unpack_path, verbose=False)
             if verbose:
-                echo(f"Unpacked to: {color(unpacked_path, 'blue')}")
+                print_unpacked_file(unpacked_file)
