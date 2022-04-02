@@ -2,7 +2,7 @@ from html.parser import HTMLParser
 from io import StringIO
 from typing import Optional
 
-COMPRESSION_TYPE = "xz"
+COMPRESSION_TYPE = "gz"
 
 
 class HTMLStripper(HTMLParser):
