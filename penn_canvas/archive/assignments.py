@@ -8,7 +8,7 @@ from pandas import DataFrame
 from requests import get
 from typer import echo, progressbar
 
-from penn_canvas.api import Instance, collect, get_user
+from penn_canvas.api import Instance, get_user
 from penn_canvas.helpers import create_directory, format_timestamp
 from penn_canvas.style import color, print_item
 
@@ -17,7 +17,7 @@ from .helpers import format_name, strip_tags
 
 def get_assignments(course: Course) -> tuple[list[Assignment], int]:
     echo(") Finding assignments...")
-    assignments = collect(course.get_assignments())
+    assignments = list(course.get_assignments())
     return assignments, len(assignments)
 
 
@@ -127,7 +127,7 @@ def archive_assignment(
     description_path = assignment_path / f"{assignment_name}_DESCRIPTION.txt"
     submissions_path = assignment_path / f"{assignment_name}_GRADES.csv"
     comments_path = create_directory(assignment_path / "Submission Comments")
-    submissions = collect(assignment.get_submissions(include="submission_comments"))
+    submissions = list(assignment.get_submissions(include="submission_comments"))
     submissions = [
         process_submission(
             submission,

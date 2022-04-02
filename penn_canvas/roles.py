@@ -1,12 +1,7 @@
 from loguru import logger
 from pandas import DataFrame
 
-from penn_canvas.api import (
-    collect,
-    get_account,
-    get_sub_account_ids,
-    validate_instance_name,
-)
+from penn_canvas.api import get_account, get_sub_account_ids, validate_instance_name
 from penn_canvas.helpers import (
     BASE_PATH,
     TODAY_AS_Y_M_D,
@@ -22,7 +17,7 @@ LOGS = create_directory(COMMAND_PATH / "Logs")
 
 def get_role_data(account_id, permission, verbose):
     account = get_account(account_id)
-    roles = collect(account.get_roles())
+    roles = list(account.get_roles())
     roles = [
         [
             account.name,

@@ -3,7 +3,6 @@ from pathlib import Path
 from canvasapi.course import Course
 from typer import echo
 
-from penn_canvas.api import collect
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
 
@@ -13,7 +12,7 @@ from .helpers import format_name, strip_tags
 def archive_pages(course: Course, course_path: Path, verbose: bool):
     echo(") Exporting pages...")
     pages_path = create_directory(course_path / "Pages")
-    pages = collect(course.get_pages())
+    pages = list(course.get_pages())
     total = len(pages)
     for index, page in enumerate(pages):
         title = format_name(page.title)

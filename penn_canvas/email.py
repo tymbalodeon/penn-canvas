@@ -15,7 +15,6 @@ from penn_canvas.style import print_item
 
 from .api import (
     Instance,
-    collect,
     format_instance_name,
     get_account,
     get_data_warehouse_cursor,
@@ -146,7 +145,7 @@ def is_already_active(
 def check_schools(
     canvas_user: User, sub_accounts: list[int]
 ) -> tuple[bool, int | None]:
-    account_ids = collect(canvas_user.get_courses())
+    account_ids = list(canvas_user.get_courses())
     fixable_id = next(
         (account for account in account_ids if account in sub_accounts), None
     )

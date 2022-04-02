@@ -21,13 +21,7 @@ from penn_canvas.helpers import (
     writerow,
 )
 
-from .api import (
-    Instance,
-    collect,
-    format_instance_name,
-    get_course,
-    validate_instance_name,
-)
+from .api import Instance, format_instance_name, get_course, validate_instance_name
 from .style import color, print_item
 
 COMMAND_PATH = create_directory(BASE_PATH / "Browser")
@@ -132,7 +126,7 @@ def get_course_browser_data(
     if verbose:
         echo(f"==== COURSE {index + 1:,} of {total:,} ====")
         echo(f") Fetching users for {color(course, 'blue')}...")
-    users = collect(course.get_users(enrollment_type=["student"]))
+    users = list(course.get_users(enrollment_type=["student"]))
     for index, user in enumerate(users):
         get_user_agents(user, result_path, verbose, index, len(users))
     results = read_csv(result_path)

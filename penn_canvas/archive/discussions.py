@@ -5,7 +5,7 @@ from canvasapi.discussion_topic import DiscussionEntry, DiscussionTopic
 from pandas import DataFrame
 from typer import echo, progressbar
 
-from penn_canvas.api import Instance, collect, get_user
+from penn_canvas.api import Instance, get_user
 from penn_canvas.helpers import create_directory, format_timestamp
 from penn_canvas.style import color
 
@@ -14,7 +14,7 @@ from .helpers import format_name, strip_tags
 
 def get_discussions(course: Course) -> tuple[list[DiscussionTopic], int]:
     echo(") Finding discussions...")
-    discussions = collect(course.get_discussion_topics())
+    discussions = list(course.get_discussion_topics())
     return discussions, len(discussions)
 
 
@@ -66,7 +66,7 @@ def archive_discussion(
     DISCUSSION_DIRECTORY = create_directory(course_directory / "Discussions")
     discussion_path = create_directory(DISCUSSION_DIRECTORY / discussion_name)
     description_path = discussion_path / f"{discussion_name}_DESCRIPTION.txt"
-    entries = collect(discussion.get_topic_entries())
+    entries = list(discussion.get_topic_entries())
     if verbose and not entries:
         echo(f"==== DISCUSSION {index + 1} ====")
         echo("- NO ENTRIES")

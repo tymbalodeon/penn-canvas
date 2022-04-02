@@ -6,7 +6,6 @@ from canvasapi.rubric import Rubric
 from pandas import DataFrame, concat, read_csv
 from typer import echo, progressbar
 
-from penn_canvas.api import collect
 from penn_canvas.helpers import create_directory, print_task_complete_message
 from penn_canvas.style import color, print_item
 
@@ -17,7 +16,7 @@ RUBRICS_COMPRESSED_FILE = f"rubrics.{COMPRESSION_TYPE}"
 
 def get_rubrics(course: Course) -> tuple[list[Rubric], int]:
     echo(") Finding rubrics...")
-    rubrics = collect(course.get_rubrics())
+    rubrics = list(course.get_rubrics())
     return rubrics, len(rubrics)
 
 

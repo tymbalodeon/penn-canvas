@@ -7,7 +7,6 @@ from magic.magic import from_file
 from requests import get
 from typer import echo
 
-from penn_canvas.api import collect
 from penn_canvas.config import get_config_option
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
@@ -18,14 +17,14 @@ from .helpers import format_name, strip_tags
 def archive_modules(course: Course, course_path: Path, verbose: bool):
     echo(") Exporting modules...")
     modules_path = create_directory(course_path / "Modules")
-    modules = collect(course.get_modules())
+    modules = list(course.get_modules())
     module_total = len(modules)
     for module_index, module in enumerate(modules):
         module_name = format_name(module.name)
         if verbose:
             print_item(module_index, module_total, color(module_name, "blue"))
         module_path = create_directory(modules_path / module_name)
-        items = collect(module.get_module_items())
+        items = list(module.get_module_items())
         item_total = len(items)
         for item_index, item in enumerate(items):
             content = None

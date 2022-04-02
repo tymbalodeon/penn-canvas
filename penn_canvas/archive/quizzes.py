@@ -7,7 +7,6 @@ from canvasapi.submission import Submission
 from pandas import DataFrame
 from typer import echo, progressbar
 
-from penn_canvas.api import collect
 from penn_canvas.archive.rubrics import get_rubrics
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
@@ -17,7 +16,7 @@ from .helpers import format_name, strip_tags
 
 def get_quizzes(course: Course) -> tuple[list[Quiz], int]:
     echo(") Finding quizzes...")
-    quizzes = collect(course.get_quizzes())
+    quizzes = list(course.get_quizzes())
     return quizzes, len(quizzes)
 
 
@@ -95,7 +94,7 @@ def archive_quiz(
     assignment = course.get_assignment(quiz.assignment_id)
     if verbose:
         echo("\t> Getting submissions...")
-    submissions: list[Submission] = collect(
+    submissions: list[Submission] = list(
         assignment.get_submissions(include=["submission_history", "user"])
     )
     quiz_directory = create_directory(course_directory / "Quizzes")
@@ -121,7 +120,7 @@ def archive_quiz(
             verbose,
         )
     if verbose:
-        echo("\t> Collecting user scores...")
+        echo("\t> Listing user scores...")
     submission_scores = [
         [
             submission.user["name"],

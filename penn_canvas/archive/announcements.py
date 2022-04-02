@@ -7,7 +7,6 @@ from pandas import read_csv
 from pandas.core.frame import DataFrame
 from typer import echo
 
-from penn_canvas.api import collect
 from penn_canvas.helpers import create_directory, print_task_complete_message
 from penn_canvas.style import color, print_item
 
@@ -65,7 +64,7 @@ def archive_announcements(
     verbose: bool,
 ):
     echo(") Exporting announcements...")
-    announcements: list[DiscussionTopic] = collect(
+    announcements: list[DiscussionTopic] = list(
         course.get_discussion_topics(only_announcements=True)
     )
     announcement_data = [

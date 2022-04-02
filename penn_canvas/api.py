@@ -1,10 +1,9 @@
 from enum import Enum
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Optional
 
 from canvasapi import Canvas
 from canvasapi.account import Account
-from canvasapi.paginated_list import PaginatedList
 from canvasapi.requester import Requester
 from cx_Oracle import connect, init_oracle_client
 from loguru import logger
@@ -221,17 +220,13 @@ def request_external_url(
 
 def get_external_tool_names(verbose=False):
     account = get_account()
-    sub_accounts = collect(account.get_subaccounts(recursive=True))
+    sub_accounts = list(account.get_subaccounts(recursive=True))
     external_tool_names = list()
     for sub_account in sub_accounts:
         external_tool_names = external_tool_names + [
-            tool.name.lower() for tool in collect(sub_account.get_external_tools())
+            tool.name.lower() for tool in list(sub_account.get_external_tools())
         ]
     external_tool_names = sorted(set(external_tool_names))
     if verbose:
         print(*external_tool_names, sep="\n")
     return external_tool_names
-
-
-def collect(paginator: PaginatedList | Iterable) -> list:
-    return [item for item in paginator]
