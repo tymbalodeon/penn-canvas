@@ -186,13 +186,13 @@ def check_and_increase_storage(
     if verbose:
         increased = old_quota and new_quota
         display_color = "red" if status == "course not found" else "yellow"
+        increased_display = style("INCREASED", bold=True)
+        old = color(old_quota, "cyan", bold=True)
+        arrow = style("-->", bold=True)
+        new = color(new_quota, "green", bold=True)
+        increase_message = f"{increased_display} {old} {arrow} {new}"
         increase_message = (
-            style(
-                f"increased {color(old_quota, 'cyan')} --> {color(new_quota, 'green')}",
-                bold=True,
-            )
-            if increased
-            else color(status, display_color)
+            increase_message if increased else color(status, display_color)
         )
         display_message = f"{color(course_code, 'blue')}: {increase_message}"
         print_item(index, total, display_message)
@@ -234,3 +234,9 @@ def storage_main(
                 )
     increased_count, error_count = process_result(result_path, instance)
     print_messages(total, increased_count, error_count)
+
+
+increase_message = style(
+    f"INCREASED {color(1000, 'cyan', bold=True)} --> {color(2000, 'green', bold=True)}",
+    bold=True,
+)
