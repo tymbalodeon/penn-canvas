@@ -41,7 +41,7 @@ def unpack_syllabus(
 
 def archive_syllabus(
     course: Course,
-    compress_pack: Path,
+    compress_path: Path,
     unpack_path: Path,
     unpack: bool,
     verbose: bool,
@@ -51,11 +51,11 @@ def archive_syllabus(
     if syllabus:
         syllabus = strip_tags(syllabus)
         syllabus_data = DataFrame([syllabus], columns=["syllabus"])
-        syllabus_file = compress_pack / SYLLABUS_COMPRESSION_FILE
+        syllabus_file = compress_path / SYLLABUS_COMPRESSION_FILE
         syllabus_data.to_csv(syllabus_file, index=False)
         if verbose:
             display_syllabus(syllabus)
         if unpack:
-            unpacked_file = unpack_syllabus(compress_pack, unpack_path, verbose=False)
+            unpacked_file = unpack_syllabus(compress_path, unpack_path, verbose=False)
             if verbose:
                 print_unpacked_file(unpacked_file)

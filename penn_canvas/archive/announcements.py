@@ -21,17 +21,17 @@ from .helpers import (
 ANNOUNCEMENTS_COMPRESSED_FILE = f"announcements.{COMPRESSION_TYPE}"
 
 
-def process_announcement(announcement: DiscussionTopic) -> list[str]:
-    title = format_name(announcement.title)
-    message = strip_tags(announcement.message)
-    return [title, message]
-
-
 def display_announcement(index: int, total: int, title: str, message: str):
     title = color(format_display_text(title, limit=15))
     message = format_display_text(message)
     announcement_display = f"{title}: {message}"
     print_item(index, total, announcement_display)
+
+
+def process_announcement(announcement: DiscussionTopic) -> list[str]:
+    title = format_name(announcement.title)
+    message = strip_tags(announcement.message)
+    return [title, message]
 
 
 def unpack_announcements(

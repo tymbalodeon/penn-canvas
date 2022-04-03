@@ -36,7 +36,7 @@ def format_name(name: str) -> str:
 
 def format_display_text(text: str, limit=50) -> str:
     truncated = len(text) > limit
-    text = text.replace("\n", " ").replace("\t", " ")[:limit]
+    text = text.replace("\n", " ").replace("\t", " ").strip()[:limit]
     if truncated:
         final_character = text[-1]
         while final_character == " " or final_character == ".":

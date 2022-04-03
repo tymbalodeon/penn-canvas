@@ -125,7 +125,7 @@ def archive_main(
         if should_run_option(modules, archive_all):
             archive_modules(course, compress_path, verbose)
         if should_run_option(pages, archive_all):
-            archive_pages(course, compress_path, verbose)
+            archive_pages(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(syllabus, archive_all):
             archive_syllabus(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(assignments, archive_all):

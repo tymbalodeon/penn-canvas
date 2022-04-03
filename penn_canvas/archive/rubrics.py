@@ -60,10 +60,10 @@ def unpack_rubrics(
     compressed_file = compress_path / RUBRICS_COMPRESSED_FILE
     if not compressed_file.is_file():
         return None
-    data_frame = read_csv(compressed_file)
-    rubric_ids = data_frame["Rubric ID"].unique()
+    rubrics_data = read_csv(compressed_file)
+    rubric_ids = rubrics_data["Rubric ID"].unique()
     rubrics = [
-        data_frame[data_frame["Rubric ID"] == rubric_id] for rubric_id in rubric_ids
+        rubrics_data[rubrics_data["Rubric ID"] == rubric_id] for rubric_id in rubric_ids
     ]
     rubrics_path = create_directory(unpack_path / "Rubrics")
     total = len(rubrics)
