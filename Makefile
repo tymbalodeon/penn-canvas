@@ -43,7 +43,6 @@ sandbox: ## Open an interactive Python shell with connections to Canvas
 	tmux new-session -d; \
 	tmux send-keys '$(POETRY) bpython' C-m; \
 	tmux send-keys 'from sandbox import *' C-m; \
-	tmux send-keys 'from penn_canvas.api import list' C-m; \
 	tmux attach
 
 shell: ## Run bpython in project virtual environment

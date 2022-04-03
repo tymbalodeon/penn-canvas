@@ -14,20 +14,14 @@ from .helpers import COMPRESSION_TYPE, print_unpacked_file
 RUBRICS_COMPRESSED_FILE = f"rubrics.{COMPRESSION_TYPE}"
 
 
-def get_rubrics(course: Course) -> tuple[list[Rubric], int]:
-    echo(") Finding rubrics...")
-    rubrics = list(course.get_rubrics())
-    return rubrics, len(rubrics)
-
-
-def process_criterion_rating(rating):
+def process_criterion_rating(rating: dict) -> str:
     points = rating["points"]
     description = rating["description"]
     long_description = rating["long_description"] or ""
     return f"{points} {description} {long_description}"
 
 
-def process_criterion(criterion, rubric_id, title):
+def process_criterion(criterion: dict, rubric_id: str, title: str) -> list[str]:
     description = criterion["description"]
     ratings = criterion["ratings"]
     ratings = [process_criterion_rating(rating) for rating in ratings]
@@ -81,15 +75,15 @@ def archive_rubrics(
     course: Course, compress_path: Path, unpack_path: Path, unpack: bool, verbose: bool
 ):
     echo(") Exporting rubrics...")
-    rubric_objects, rubric_total = get_rubrics(course)
+    rubric_objects = list(course.get_rubrics())
+    total = len(rubric_objects)
     if verbose:
-        total = len(rubric_objects)
         rubrics = [
             archive_rubric(rubric, verbose, index, total)
             for index, rubric in enumerate(rubric_objects)
         ]
     else:
-        with progressbar(rubric_objects, length=rubric_total) as progress:
+        with progressbar(rubric_objects, length=total) as progress:
             rubrics = [archive_rubric(rubric, verbose) for rubric in progress]
     rubrics_path = compress_path / RUBRICS_COMPRESSED_FILE
     rubric_data = concat(rubrics)

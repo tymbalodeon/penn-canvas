@@ -1,3 +1,4 @@
+from functools import lru_cache
 from html.parser import HTMLParser
 from io import StringIO
 from typing import Optional
@@ -34,6 +35,7 @@ def format_name(name: str) -> str:
     return name.strip().replace("/", "-").replace(":", "-")
 
 
+@lru_cache
 def format_display_text(text: str, limit=50) -> str:
     truncated = len(text) > limit
     text = text.replace("\n", " ").replace("\t", " ").strip()[:limit]

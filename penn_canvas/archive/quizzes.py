@@ -7,7 +7,6 @@ from canvasapi.submission import Submission
 from pandas import DataFrame
 from typer import echo, progressbar
 
-from penn_canvas.archive.rubrics import get_rubrics
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
 
@@ -151,7 +150,7 @@ def archive_quizzes(
     echo(") Exporting quizzes...")
     quiz_objects, quiz_total = get_quizzes(course)
     if not rubrics:
-        rubrics, _ = get_rubrics(course)
+        rubrics = list(course.get_rubrics())
     if verbose:
         total = len(quiz_objects)
         for index, quiz in enumerate(quiz_objects):
