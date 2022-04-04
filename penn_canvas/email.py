@@ -10,14 +10,14 @@ from pandas import concat, read_csv
 from pandas.core.frame import DataFrame
 from typer import Exit, echo, progressbar
 
-from penn_canvas.report import Report, ReportType, get_single_report
+from penn_canvas.report import Report, ReportType, flatten, get_single_report
 from penn_canvas.style import print_item
 
 from .api import (
     Instance,
     format_instance_name,
-    get_account,
     get_data_warehouse_cursor,
+    get_sub_account_ids,
     get_user,
     validate_instance_name,
 )
@@ -53,7 +53,7 @@ HEADERS = [
 ]
 LOG_HEADERS = HEADERS[:3]
 LOG_HEADERS.extend(["email address"])
-ACCOUNTS = [
+ACCOUNT_IDS = [
     99243,
     99237,
     128877,
@@ -79,6 +79,7 @@ PRINT_COLOR_MAPS = {
 
 def process_report(
     report_path: Path,
+    start: int,
     processed_users: list[str],
     processed_errors: list[str],
     new: bool,
@@ -94,10 +95,13 @@ def process_report(
     already_processed_count = len(processed_users)
     if new:
         report = report[~report["canvas_user_id"].isin(processed_errors)]
+        report.reset_index(drop=True, inplace=True)
         already_processed_count = already_processed_count + len(processed_errors)
     if already_processed_count:
-        print_skip_message(already_processed_count, "user", current_report=True)
-    return report, len(report.index)
+        print_skip_message(already_processed_count, "user")
+    total = len(report.index)
+    report = report.loc[start:total, :]
+    return report, total
 
 
 def get_user_emails(user: User) -> list[CommunicationChannel]:
@@ -479,14 +483,13 @@ def email_main(
     processed_users = get_processed(processed_path, HEADERS)
     processed_errors = get_processed(processed_errors_path, HEADERS)
     start = get_start_index(force, result_path)
-    report, total = process_report(report_path, processed_users, processed_errors, new)
+    print_skip_message(start, "user", current_report=True)
+    report, total = process_report(
+        report_path, start, processed_users, processed_errors, new
+    )
     make_csv_paths(result_path, make_index_headers(HEADERS))
-    print_skip_message(start, "user")
-    main_account = get_account(instance=instance)
-    sub_accounts = [
-        account.id for account in main_account.get_subaccounts(recursive=True)
-    ]
-    sub_accounts = [main_account.id] + [sub_accounts]
+    sub_account_lists = [get_sub_account_ids(account_id) for account_id in ACCOUNT_IDS]
+    sub_accounts = list(flatten(sub_account_lists))
     echo(") Processing users...")
     if verbose:
         for user in report.itertuples():
