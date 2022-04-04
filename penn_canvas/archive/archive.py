@@ -123,7 +123,7 @@ def archive_main(
         if should_run_option(announcements, archive_all):
             archive_announcements(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(modules, archive_all):
-            archive_modules(course, compress_path, verbose)
+            archive_modules(course, compress_path, instance, verbose)
         if should_run_option(pages, archive_all):
             archive_pages(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(syllabus, archive_all):

@@ -62,19 +62,34 @@ def format_instance_name(instance: Instance) -> str:
     return f"_{instance.name}"
 
 
+def get_canvas_url(instance=Instance.PRODUCTION) -> str:
+    url = {
+        Instance.PRODUCTION: "canvas_prod_url",
+        Instance.TEST: "canvas_test_url",
+        Instance.BETA: "canvas_beta_url",
+        Instance.OPEN: "open_canvas_prod_url",
+        Instance.OPEN_TEST: "open_canvas_test_url",
+        Instance.OPEN_BETA: "open_canvas_beta_url",
+    }.get(instance, "canvas_prod_url")
+    return get_config_option("canvas_urls", url)
+
+
+def get_canvas_key(instance=Instance.PRODUCTION) -> str:
+    key = {
+        Instance.PRODUCTION: "canvas_prod_key",
+        Instance.TEST: "canvas_test_key",
+        Instance.BETA: "canvas_beta_key",
+        Instance.OPEN: "open_canvas_prod_key",
+        Instance.OPEN_TEST: "open_canvas_test_key",
+        Instance.OPEN_BETA: "open_canvas_beta_key",
+    }.get(instance, "canvas_prod_key")
+    return get_config_option("canvas_keys", key)
+
+
 def get_canvas_url_and_key(instance=Instance.PRODUCTION) -> tuple[str, str]:
-    url, key = {
-        Instance.PRODUCTION: ("canvas_prod_url", "canvas_prod_key"),
-        Instance.TEST: ("canvas_test_url", "canvas_test_key"),
-        Instance.BETA: ("canvas_beta_url", "canvas_beta_key"),
-        Instance.OPEN: ("open_canvas_prod_url", "open_canvas_prod_key"),
-        Instance.OPEN_TEST: ("open_canvas_test_url", "open_canvas_test_key"),
-        Instance.OPEN_BETA: ("open_canvas_beta_url", "open_canvas_beta_key"),
-    }.get(instance, ("canvas_prod_url", "canvas_prod_key"))
-    return (
-        get_config_option("canvas_urls", url),
-        get_config_option("canvas_keys", key),
-    )
+    url = get_canvas_url(instance)
+    key = get_canvas_key(instance)
+    return url, key
 
 
 def get_canvas(instance=Instance.PRODUCTION, verbose=True, override_key=None) -> Canvas:
