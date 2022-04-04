@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 from canvasapi.assignment import Assignment
 from canvasapi.course import Course
@@ -15,12 +16,6 @@ from penn_canvas.style import color, print_item
 from .helpers import format_name, strip_tags
 
 
-def get_assignments(course: Course) -> tuple[list[Assignment], int]:
-    echo(") Finding assignments...")
-    assignments = list(course.get_assignments())
-    return assignments, len(assignments)
-
-
 def process_comment(comment: dict) -> str:
     author = comment["author_name"]
     created_at = format_timestamp(comment["created_at"])
@@ -33,6 +28,27 @@ def process_comment(comment: dict) -> str:
         f"{author}\nCreated: {created_at}\nEdited:"
         f" {edited_at}\n\n{comment}{media_comment}"
     )
+
+
+def get_grader(submission: Submission, instance: Instance) -> Optional[User]:
+    try:
+        return get_user(submission.grader_id, instance=instance).name
+    except Exception:
+        return None
+
+
+def get_grade(submission: Submission) -> float:
+    try:
+        return round(float(submission.grade), 2)
+    except Exception:
+        return submission.grade
+
+
+def get_score(submission: Submission) -> int:
+    try:
+        return round(submission.score, 2)
+    except Exception:
+        return submission.score
 
 
 def process_submission(
@@ -48,18 +64,9 @@ def process_submission(
     comments_path: Path,
 ) -> list[User | str | int]:
     user = get_user(submission.user_id, instance=instance).name
-    try:
-        grader = get_user(submission.grader_id, instance=instance).name
-    except Exception:
-        grader = None
-    try:
-        grade = round(float(submission.grade), 2)
-    except Exception:
-        grade = submission.grade
-    try:
-        score = round(submission.score, 2)
-    except Exception:
-        score = submission.score
+    grader = get_grader(submission, instance)
+    grade = get_grade(submission)
+    score = get_score(submission)
     submissions_path = create_directory(assignment_path / "Submission Files")
     try:
         body = strip_tags(submission.body.replace("\n", " ")).strip()
@@ -117,9 +124,9 @@ def archive_assignment(
     assignment: Assignment,
     course_directory: Path,
     instance: Instance,
+    verbose: bool,
     index=0,
     total=0,
-    verbose=False,
 ):
     assignment_name = format_name(assignment.name)
     assignment_directory = create_directory(course_directory / "Assignments")
@@ -162,14 +169,13 @@ def archive_assignments(
     course: Course, course_path: Path, instance: Instance, verbose: bool
 ):
     echo(") Exporting assignments...")
-    assignment_objects, assignment_total = get_assignments(course)
+    assignment_objects = list(course.get_assignments())
+    total = len(assignment_objects)
     if verbose:
         for index, assignment in enumerate(assignment_objects):
-            archive_assignment(
-                assignment, course_path, instance, index, assignment_total, verbose
-            )
+            archive_assignment(assignment, course_path, instance, verbose, index, total)
     else:
-        with progressbar(assignment_objects, length=assignment_total) as progress:
+        with progressbar(assignment_objects, length=total) as progress:
             for assignment in progress:
-                archive_assignment(assignment, course_path, instance)
+                archive_assignment(assignment, course_path, instance, verbose)
     return assignment_objects

@@ -8,7 +8,7 @@ from typer import echo
 from penn_canvas.style import color
 
 CSV_COMPRESSION_TYPE = "gz"
-TAR_COMPRESSION_TYPE = "gztar"
+TAR_COMPRESSION_TYPE = f"{CSV_COMPRESSION_TYPE}tar"
 
 
 class HTMLStripper(HTMLParser):

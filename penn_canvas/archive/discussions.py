@@ -12,12 +12,6 @@ from penn_canvas.style import color
 from .helpers import format_name, strip_tags
 
 
-def get_discussions(course: Course) -> tuple[list[DiscussionTopic], int]:
-    echo(") Finding discussions...")
-    discussions = list(course.get_discussion_topics())
-    return discussions, len(discussions)
-
-
 def process_entry(
     entry: DiscussionEntry,
     instance: Instance,
@@ -57,10 +51,10 @@ def archive_discussion(
     course_directory: Path,
     use_timestamp: bool,
     instance,
-    csv_style=False,
+    verbose: bool,
     index=0,
     total=0,
-    verbose=False,
+    csv_style=False,
 ):
     discussion_name = format_name(discussion.title)
     DISCUSSION_DIRECTORY = create_directory(course_directory / "Discussions")
@@ -114,21 +108,22 @@ def archive_discussions(
     verbose: bool,
 ):
     echo(") Exporting discussions...")
-    discussion_topics, discussion_total = get_discussions(course)
+    discussions = list(course.get_discussion_topics())
+    total = len(discussions)
     if verbose:
-        for index, discussion in enumerate(discussion_topics):
+        for index, discussion in enumerate(discussions):
             archive_discussion(
                 discussion,
                 course_path,
                 use_timestamp,
                 instance,
+                verbose,
                 index=index,
-                total=discussion_total,
-                verbose=verbose,
+                total=total,
             )
     else:
-        with progressbar(discussion_topics, length=discussion_total) as progress:
+        with progressbar(discussions, length=total) as progress:
             for discussion in progress:
                 archive_discussion(
-                    discussion, course_path, use_timestamp, instance=instance
+                    discussion, course_path, use_timestamp, instance, verbose
                 )

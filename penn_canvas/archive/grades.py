@@ -8,7 +8,6 @@ from penn_canvas.api import Instance, get_section
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import print_item
 
-from .assignments import get_assignments
 from .helpers import format_name
 
 
@@ -50,12 +49,11 @@ def archive_grade(
 
 def get_enrollments(course: Course) -> list[Enrollment]:
     echo(") Finding students...")
-    enrollments = [
+    return [
         enrollment
         for enrollment in course.get_enrollments()
         if enrollment.type == "StudentEnrollment"
     ]
-    return enrollments
 
 
 def get_manual_posting(assignment):
@@ -66,21 +64,19 @@ def get_submission_score(submission: Submission):
     return round(float(submission.score), 2) if submission.score else submission.score
 
 
-def archive_grades(course, course_directory, assignment_objects, instance, verbose):
+def archive_grades(course, course_directory, assignments, instance, verbose):
     echo(") Exporting grades...")
     enrollments = get_enrollments(course)
-    if not assignment_objects:
-        assignment_objects, _ = get_assignments(course)
-    assignment_objects = [
-        assignment for assignment in assignment_objects if assignment.published
-    ]
+    if not assignments:
+        assignments = course.get_assignments()
+    assignments = [assignment for assignment in assignments if assignment.published]
     assignment_posted = [""] * 5 + [
-        get_manual_posting(assignment) for assignment in assignment_objects
+        get_manual_posting(assignment) for assignment in assignments
     ]
     assignment_points = (
         ["    Points Possible"]
         + [""] * 4
-        + [assignment.points_possible for assignment in assignment_objects]
+        + [assignment.points_possible for assignment in assignments]
         + (["(read only)"] * 8)
     )
     submissions = [
@@ -91,7 +87,7 @@ def archive_grades(course, course_directory, assignment_objects, instance, verbo
                 for submission in assignment.get_submissions()
             ],
         )
-        for assignment in assignment_objects
+        for assignment in assignments
     ]
     assignment_names = [submission[0] for submission in submissions]
     columns = (
