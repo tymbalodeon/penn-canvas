@@ -6,7 +6,7 @@ from pandas import isna, read_csv
 from pandas.core.frame import DataFrame
 from typer import echo, progressbar
 
-from .api import Instance, get_course, validate_instance_name
+from .api import Instance, format_instance_name, get_course, validate_instance_name
 from .helpers import (
     BASE_PATH,
     BOX_PATH,
@@ -144,7 +144,9 @@ def process_result(result_path: Path, instance: Instance) -> tuple[int, int]:
         current_month_directory = create_directory(
             BOX_PATH / f"Storage_Quota_Monitoring/{MONTH} {YEAR}"
         )
-        result.to_csv(current_month_directory / result_path.name, index=False)
+        instance_display = format_instance_name(Instance.PRODUCTION)
+        box_result_name = result_path.name.replace(instance_display, "")
+        result.to_csv(current_month_directory / box_result_name, index=False)
     return increased_count, error_count
 
 
