@@ -24,7 +24,6 @@ loguru = "^0.6.0"
 inflect = "^5.4.0"
 beautifulsoup4 = "^4.10.0"
 flatten-json = "^0.1.13"
-click = "8.0.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
