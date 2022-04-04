@@ -133,7 +133,7 @@ def archive_main(
                 course, compress_path, instance, verbose
             )
         if should_run_option(groups, archive_all):
-            archive_groups(course, compress_path, verbose)
+            archive_groups(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(discussions, archive_all):
             archive_discussions(course, compress_path, use_timestamp, instance, verbose)
         if should_run_option(grades, archive_all):

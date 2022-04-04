@@ -11,14 +11,14 @@ from penn_canvas.helpers import create_directory, print_task_complete_message
 from penn_canvas.style import color, print_item
 
 from .helpers import (
-    COMPRESSION_TYPE,
+    CSV_COMPRESSION_TYPE,
     format_display_text,
     format_name,
     print_unpacked_file,
     strip_tags,
 )
 
-ANNOUNCEMENTS_COMPRESSED_FILE = f"announcements.{COMPRESSION_TYPE}"
+ANNOUNCEMENTS_COMPRESSED_FILE = f"announcements.{CSV_COMPRESSION_TYPE}"
 
 
 def display_announcement(index: int, total: int, title: str, message: str):

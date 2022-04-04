@@ -9,9 +9,11 @@ from typer import echo, progressbar
 from penn_canvas.helpers import create_directory, print_task_complete_message
 from penn_canvas.style import color, print_item
 
-from .helpers import COMPRESSION_TYPE, print_unpacked_file
+from .helpers import CSV_COMPRESSION_TYPE, print_unpacked_file
 
-RUBRICS_COMPRESSED_FILE = f"rubrics.{COMPRESSION_TYPE}"
+RUBRICS_COMPRESSED_FILE = f"rubrics.{CSV_COMPRESSION_TYPE}"
+RUBRIC_ID = "Rubric ID"
+RUBRIC_TITLE = "Rubric Title"
 
 
 def process_criterion_rating(rating: dict) -> str:
@@ -43,7 +45,7 @@ def archive_rubric(
         process_criterion(criterion, rubric.id, title) for criterion in rubric.data
     ]
     return DataFrame(
-        criteria, columns=["Rubric ID", "Rubric Title", "Criteria", "Ratings", "Pts"]
+        criteria, columns=[RUBRIC_ID, "Rubric Title", "Criteria", "Ratings", "Pts"]
     )
 
 
@@ -55,14 +57,14 @@ def unpack_rubrics(
     if not compressed_file.is_file():
         return None
     rubrics_data = read_csv(compressed_file)
-    rubric_ids = rubrics_data["Rubric ID"].unique()
+    rubric_ids = rubrics_data[RUBRIC_ID].unique()
     rubrics = [
-        rubrics_data[rubrics_data["Rubric ID"] == rubric_id] for rubric_id in rubric_ids
+        rubrics_data[rubrics_data[RUBRIC_ID] == rubric_id] for rubric_id in rubric_ids
     ]
     rubrics_path = create_directory(unpack_path / "Rubrics")
     total = len(rubrics)
     for index, rubric in enumerate(rubrics):
-        title = next(iter(rubric["Rubric Title"].tolist()), "")
+        title = next(iter(rubric[RUBRIC_TITLE].tolist()), "")
         rubric_path = rubrics_path / f"{title}.csv"
         rubric.to_csv(rubric_path, index=False)
         if verbose:

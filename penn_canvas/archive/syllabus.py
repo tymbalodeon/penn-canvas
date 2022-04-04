@@ -9,13 +9,13 @@ from penn_canvas.helpers import print_task_complete_message, write
 from penn_canvas.style import color
 
 from .helpers import (
-    COMPRESSION_TYPE,
+    CSV_COMPRESSION_TYPE,
     format_display_text,
     print_unpacked_file,
     strip_tags,
 )
 
-SYLLABUS_COMPRESSION_FILE = f"syllabus.{COMPRESSION_TYPE}"
+SYLLABUS_COMPRESSION_FILE = f"syllabus.{CSV_COMPRESSION_TYPE}"
 
 
 def display_syllabus(syllabus):

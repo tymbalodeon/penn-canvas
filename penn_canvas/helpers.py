@@ -30,10 +30,12 @@ NEXT_YEAR = CURRENT_YEAR + 1
 PREVIOUS_YEAR = CURRENT_YEAR - 1
 
 
-def create_directory(new_directory: Path, parents=True) -> Path:
-    if not new_directory.exists():
-        Path.mkdir(new_directory, parents=parents)
-    return new_directory
+def create_directory(directory: Path, parents=True, clear=False) -> Path:
+    if clear:
+        rmtree(directory)
+    if not directory.exists():
+        Path.mkdir(directory, parents=parents)
+    return directory
 
 
 def remove_old_reports_directories(reports_path: Path):

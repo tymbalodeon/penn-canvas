@@ -11,14 +11,14 @@ from penn_canvas.helpers import create_directory, print_task_complete_message, w
 from penn_canvas.style import color, print_item
 
 from .helpers import (
-    COMPRESSION_TYPE,
+    CSV_COMPRESSION_TYPE,
     format_display_text,
     format_name,
     print_unpacked_file,
     strip_tags,
 )
 
-PAGES_COMPRESSED_FILE = f"pages.{COMPRESSION_TYPE}"
+PAGES_COMPRESSED_FILE = f"pages.{CSV_COMPRESSION_TYPE}"
 
 
 def display_page(index: int, total: int, title: str, body: str):
