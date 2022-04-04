@@ -6,8 +6,8 @@ from typer import Argument, Option, Typer, echo
 from penn_canvas import __version__
 from penn_canvas.blue_jeans import blue_jeans_main
 
-from .api import Instance
-from .archive.archive import archive_main
+from .api import Instance, get_instance_option
+from .archive.archive import archive_app
 from .browser import browser_main
 from .bulk_enroll import bulk_enroll_main
 from .check_enrollment import check_enrollment_main
@@ -18,7 +18,14 @@ from .count_sites import count_sites_main
 from .course_shopping import course_shopping_main
 from .email import email_main
 from .find_users_by_email import find_users_by_email_main
-from .helpers import CURRENT_DATE, CURRENT_YEAR_AND_TERM
+from .helpers import (
+    COURSE_IDS,
+    CURRENT_DATE,
+    CURRENT_YEAR_AND_TERM,
+    FORCE,
+    FORCE_REPORT,
+    VERBOSE,
+)
 from .integrity import integrity_main
 from .investigate import investigate_main
 from .module import module_main
@@ -37,96 +44,7 @@ app = Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False,
 )
-force_report = Option(
-    False, "--force-report", help="Ignore cached report and get a new one"
-)
-force = Option(False, "--force", help="Overwrite existing results")
-verbose = Option(False, "--verbose", help="Print verbose output to the console")
-course_ids = Option(None, "--course", help="Canvas course id")
-
-
-def get_instance_option(default=Instance.PRODUCTION):
-    return Option(default.value, "--instance", help="Canvas instance name")
-
-
-@app.command()
-def archive(
-    course_ids: Optional[list[int]] = course_ids,
-    terms: list[str] = Option([CURRENT_YEAR_AND_TERM], "--term", help="Term name"),
-    instance_name: str = get_instance_option(),
-    use_timestamp: bool = Option(
-        False, "--timestamp", help="Include/exclude the timestamp in the output"
-    ),
-    content: Optional[bool] = Option(
-        None, "--content/--no-content", help="Include/exclude course content"
-    ),
-    announcements: Optional[bool] = Option(
-        None,
-        "--announcements/--no-announcements",
-        help="Include/exclude course announcements",
-    ),
-    groups: Optional[bool] = Option(
-        None, "--groups/--no-groups", help="Include/exclude course groups"
-    ),
-    modules: Optional[bool] = Option(
-        None, "--modules/--no-modeules", help="Include/exclude course modules"
-    ),
-    pages: Optional[bool] = Option(
-        None, "--pages/--no-pages", help="Include/exclude course pages"
-    ),
-    syllabus: Optional[bool] = Option(
-        None, "--syllabus/--no-syllabus", help="Include/exclude course syllabus"
-    ),
-    assignments: Optional[bool] = Option(
-        None,
-        "--assignments/--no-assignments",
-        help="Include/exclude course assignments",
-    ),
-    discussions: Optional[bool] = Option(
-        None,
-        "--discussions/--no-discussions",
-        help="Include/exclude course discussions",
-    ),
-    grades: Optional[bool] = Option(
-        None, "--grades/--no-grades", help="Include/exclude course grades"
-    ),
-    rubrics: Optional[bool] = Option(
-        None, "--rubrics/--no-rubrics", help="Include/exclude course rubrics"
-    ),
-    quizzes: Optional[bool] = Option(
-        None, "--quizzes/--no-quizzes", help="Include/exclude course quizzes"
-    ),
-    unpack: bool = Option(False, "--unpack", help="Unpack compressed files"),
-    force_report: bool = force_report,
-    verbose: bool = verbose,
-):
-    """
-    Archive Canvas courses
-
-    Options with both "include" and "exclude" flags will all be included if none
-    of the flags are specified.
-
-    """
-    archive_main(
-        course_ids,
-        terms,
-        instance_name,
-        use_timestamp,
-        content,
-        announcements,
-        modules,
-        pages,
-        syllabus,
-        assignments,
-        groups,
-        discussions,
-        grades,
-        rubrics,
-        quizzes,
-        unpack,
-        force_report,
-        verbose,
-    )
+app.add_typer(archive_app, name="archive")
 
 
 @app.command()
@@ -134,9 +52,9 @@ def blue_jeans(
     terms: list[str] = Option([CURRENT_YEAR_AND_TERM], "--term", help="Term name"),
     instance_name: str = get_instance_option(),
     account_id: Optional[int] = Option(None, "--account", help="Canvas account id"),
-    verbose: bool = verbose,
-    force: bool = force,
-    force_report: bool = force_report,
+    verbose: bool = VERBOSE,
+    force: bool = FORCE,
+    force_report: bool = FORCE_REPORT,
 ):
     """Get Blue Jeans usage for a courses"""
     blue_jeans_main(terms, instance_name, account_id, verbose, force, force_report)
@@ -144,10 +62,10 @@ def blue_jeans(
 
 @app.command()
 def browser(
-    course_ids: Optional[list[int]] = course_ids,
+    course_ids: Optional[list[int]] = COURSE_IDS,
     instance_name: str = get_instance_option(default=Instance.OPEN),
-    force: bool = force,
-    verbose: bool = verbose,
+    force: bool = FORCE,
+    verbose: bool = VERBOSE,
 ):
     """Report user browser data for Canvas courses"""
     browser_main(course_ids, instance_name, force, verbose)
@@ -220,8 +138,8 @@ def check_enrollment(
     course: int = Option(..., "--course", help="Canvas course id"),
     date: str = Option(CURRENT_DATE.strftime("%Y-%m-%d"), help="Date (Y-M-D)"),
     instance_name: str = get_instance_option(),
-    force: bool = force,
-    verbose: bool = verbose,
+    force: bool = FORCE,
+    verbose: bool = VERBOSE,
 ):
     """Check enrollment"""
     check_enrollment_main(course, date, instance_name, force, verbose)
@@ -258,8 +176,8 @@ def count_poll_everywhere(
             " instead of production (https://canvas.upenn.edu/)."
         ),
     ),
-    force: bool = force,
-    verbose: bool = verbose,
+    force: bool = FORCE,
+    verbose: bool = VERBOSE,
 ):
     """Get Poll Everywhere usage for courses"""
     count_poll_everywhere_main(test, force, verbose)
@@ -278,8 +196,8 @@ def count_quizzes(
             " instead of production (https://canvas.upenn.edu/)."
         ),
     ),
-    force: bool = force,
-    verbose: bool = verbose,
+    force: bool = FORCE,
+    verbose: bool = VERBOSE,
 ):
     """Get quiz usage for courses"""
     count_quizzes_main(new_quizzes, test, force, verbose)
@@ -325,8 +243,8 @@ def course_shopping(
         "--disable",
         help="Disable course shopping instead of enable",
     ),
-    force: bool = force,
-    verbose: bool = verbose,
+    force: bool = FORCE,
+    verbose: bool = VERBOSE,
     new: bool = Option(
         False,
         "--new",
@@ -351,8 +269,8 @@ def email(
             " errors."
         ),
     ),
-    force: bool = force,
-    force_report: bool = force_report,
+    force: bool = FORCE,
+    force_report: bool = FORCE_REPORT,
     clear_processed: bool = Option(
         False,
         "--clear-processed",
@@ -366,7 +284,7 @@ def email(
     prompt: bool = Option(
         True, " /--no-prompt", help="Print out detailed information as the task runs."
     ),
-    verbose: bool = verbose,
+    verbose: bool = VERBOSE,
 ):
     """
     Activate unconfirmed email for users in supported schools
@@ -451,8 +369,8 @@ def new_student_orientation(
             " of production (https://canvas.upenn.edu/)"
         ),
     ),
-    verbose: bool = verbose,
-    force: bool = force,
+    verbose: bool = VERBOSE,
+    force: bool = FORCE,
     clear_processed: bool = Option(
         False,
         "--clear-processed",
@@ -477,8 +395,8 @@ def new_student_orientation(
 
 @app.command()
 def open_canvas_bulk_action(
-    verbose: bool = verbose,
-    force: bool = force,
+    verbose: bool = VERBOSE,
+    force: bool = FORCE,
     instance_name: str = get_instance_option(default=Instance.OPEN),
 ):
     """Process staff input files"""
@@ -495,9 +413,9 @@ def report(
         "--term-name",
         help="The display name of the term for the report",
     ),
-    force: bool = force,
+    force: bool = FORCE,
     instance: str = get_instance_option(),
-    verbose: bool = verbose,
+    verbose: bool = VERBOSE,
 ):
     """Generate reports"""
     report_main(report_type, term, force, instance, verbose)
@@ -509,7 +427,7 @@ def roles(
         "view_statistics", "--permission", help="The permission to check"
     ),
     instance: str = get_instance_option(),
-    verbose: bool = verbose,
+    verbose: bool = VERBOSE,
 ):
     """Get role permissions"""
     roles_main(permission, instance, verbose)
@@ -521,9 +439,9 @@ def storage(
         1000, "--increment", help="The amount in MB to increase a course's storage."
     ),
     instance: str = get_instance_option(),
-    force: bool = force,
-    force_report: bool = force_report,
-    verbose: bool = verbose,
+    force: bool = FORCE,
+    force_report: bool = FORCE_REPORT,
+    verbose: bool = VERBOSE,
 ):
     """Increase storage quota for courses above 79% capacity"""
     storage_main(increment_value, instance, force, force_report, verbose)
@@ -549,7 +467,7 @@ def tool(
         help="Enable the specified tool rather than generate a usage report.",
     ),
     instance_name: str = get_instance_option(),
-    verbose: bool = verbose,
+    verbose: bool = VERBOSE,
     new: bool = Option(
         False,
         "--new",
@@ -558,8 +476,8 @@ def tool(
             " encountered errors."
         ),
     ),
-    force: bool = force,
-    force_report: bool = force_report,
+    force: bool = FORCE,
+    force_report: bool = FORCE_REPORT,
     clear_processed: bool = Option(
         False,
         "--clear-processed",

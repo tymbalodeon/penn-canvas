@@ -11,14 +11,14 @@ from loguru import logger
 from pandas import read_csv
 from pandas.core.frame import DataFrame
 from pytz import timezone, utc
-from typer import Exit, confirm, echo, progressbar
+from typer import Exit, Option, confirm, echo, progressbar
 
 from .style import color, pluralize
 
 COMMAND_DIRECTORY_BASE = Path.home() / "penn-canvas"
 BOX_PATH = Path.home() / "Library/CloudStorage/Box-Box"
 BOX_CLI_PATH = BOX_PATH / "Penn Canvas CLI"
-BASE_PATH = BOX_CLI_PATH if BOX_PATH.exists() else COMMAND_DIRECTORY_BASE
+BASE_PATH: Path = BOX_CLI_PATH if BOX_PATH.exists() else COMMAND_DIRECTORY_BASE
 CURRENT_DATE = datetime.now()
 YEAR = CURRENT_DATE.strftime("%Y")
 MONTH = CURRENT_DATE.strftime("%B")
@@ -28,6 +28,12 @@ CURRENT_YEAR = CURRENT_DATE.year
 CURRENT_MONTH = CURRENT_DATE.month
 NEXT_YEAR = CURRENT_YEAR + 1
 PREVIOUS_YEAR = CURRENT_YEAR - 1
+FORCE_REPORT = Option(
+    False, "--force-report", help="Ignore cached report and get a new one"
+)
+FORCE = Option(False, "--force", help="Overwrite existing results")
+VERBOSE = Option(False, "--verbose", help="Print verbose output to the console")
+COURSE_IDS = Option(None, "--course", help="Canvas course id")
 
 
 def create_directory(directory: Path, parents=True, clear=False) -> Path:

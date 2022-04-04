@@ -9,7 +9,7 @@ from canvasapi.requester import Requester
 from cx_Oracle import connect, init_oracle_client
 from loguru import logger
 from requests.models import Response
-from typer import Exit, echo, style
+from typer import Exit, Option, echo, style
 
 from .config import get_config_option, get_penn_canvas_config
 from .constants import OPEN_CANVAS_MAIN_ACCOUNT_ID, PENN_CANVAS_MAIN_ACCOUNT_ID
@@ -30,6 +30,10 @@ class Instance(Enum):
     OPEN = "open"
     OPEN_TEST = "open_test"
     OPEN_BETA = "open_beta"
+
+
+def get_instance_option(default=Instance.PRODUCTION):
+    return Option(default.value, "--instance", help="Canvas instance name")
 
 
 def get_data_warehouse_cursor():

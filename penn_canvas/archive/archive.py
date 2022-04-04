@@ -5,11 +5,20 @@ from typing import Optional
 from canvasapi.assignment import Assignment
 from canvasapi.rubric import Rubric
 from requests.api import post
-from typer import echo
+from typer import Option, Typer, echo
 
-from penn_canvas.api import get_canvas, get_course, validate_instance_name
+from penn_canvas.api import (
+    get_canvas,
+    get_course,
+    get_instance_option,
+    validate_instance_name,
+)
 from penn_canvas.helpers import (
     BASE_PATH,
+    COURSE_IDS,
+    CURRENT_YEAR_AND_TERM,
+    FORCE_REPORT,
+    VERBOSE,
     create_directory,
     get_course_ids_from_input,
     switch_logger_file,
@@ -30,6 +39,12 @@ from .quizzes import archive_quizzes
 from .rubrics import archive_rubrics
 from .syllabus import archive_syllabus
 
+archive_app = Typer(
+    no_args_is_help=True,
+    help="Archive Canvas courses",
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False,
+)
 COMMAND_PATH = create_directory(BASE_PATH / "Archive")
 COMPRESSED_COURSES = create_directory(COMMAND_PATH / "Compressed Courses")
 UNPACKED_COURSES = create_directory(COMMAND_PATH / "Courses")
@@ -68,26 +83,64 @@ def restore_course(course, instance):
     echo("MIGRATION COMPLETE")
 
 
-def archive_main(
-    course_ids: Optional[int | list[int]],
-    terms: str | list[str],
-    instance_name: str,
-    use_timestamp: bool,
-    content: Optional[bool],
-    announcements: Optional[bool],
-    modules: Optional[bool],
-    pages: Optional[bool],
-    syllabus: Optional[bool],
-    assignments: Optional[bool],
-    groups: Optional[bool],
-    discussions: Optional[bool],
-    grades: Optional[bool],
-    rubrics: Optional[bool],
-    quizzes: Optional[bool],
-    unpack: bool,
-    force_report: bool,
-    verbose: bool,
+@archive_app.command()
+def fetch(
+    course_ids: Optional[list[int]] = COURSE_IDS,
+    terms: list[str] = Option([CURRENT_YEAR_AND_TERM], "--term", help="Term name"),
+    instance_name: str = get_instance_option(),
+    use_timestamp: bool = Option(
+        False, "--timestamp", help="Include/exclude the timestamp in the output"
+    ),
+    content: Optional[bool] = Option(
+        None, "--content/--no-content", help="Include/exclude course content"
+    ),
+    announcements: Optional[bool] = Option(
+        None,
+        "--announcements/--no-announcements",
+        help="Include/exclude course announcements",
+    ),
+    groups: Optional[bool] = Option(
+        None, "--groups/--no-groups", help="Include/exclude course groups"
+    ),
+    modules: Optional[bool] = Option(
+        None, "--modules/--no-modeules", help="Include/exclude course modules"
+    ),
+    pages: Optional[bool] = Option(
+        None, "--pages/--no-pages", help="Include/exclude course pages"
+    ),
+    syllabus: Optional[bool] = Option(
+        None, "--syllabus/--no-syllabus", help="Include/exclude course syllabus"
+    ),
+    assignments: Optional[bool] = Option(
+        None,
+        "--assignments/--no-assignments",
+        help="Include/exclude course assignments",
+    ),
+    discussions: Optional[bool] = Option(
+        None,
+        "--discussions/--no-discussions",
+        help="Include/exclude course discussions",
+    ),
+    grades: Optional[bool] = Option(
+        None, "--grades/--no-grades", help="Include/exclude course grades"
+    ),
+    rubrics: Optional[bool] = Option(
+        None, "--rubrics/--no-rubrics", help="Include/exclude course rubrics"
+    ),
+    quizzes: Optional[bool] = Option(
+        None, "--quizzes/--no-quizzes", help="Include/exclude course quizzes"
+    ),
+    unpack: bool = Option(False, "--unpack", help="Unpack compressed files"),
+    force_report: bool = FORCE_REPORT,
+    verbose: bool = VERBOSE,
 ):
+    """
+    Archive Canvas courses
+
+    Options with both "include" and "exclude" flags will all be included if none
+    of the flags are specified.
+
+    """
     archive_all = not any(
         [
             content,
@@ -145,3 +198,8 @@ def archive_main(
         if should_run_option(quizzes, archive_all):
             archive_quizzes(course, compress_path, rubric_objects, verbose)
         echo("COMPELTE")
+
+
+@archive_app.command()
+def unpack():
+    echo(") Unpacking!")
