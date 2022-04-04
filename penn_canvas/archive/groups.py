@@ -161,7 +161,7 @@ def archive_groups(
     course: Course, compress_path: Path, unpack_path: Path, unpack: bool, verbose: bool
 ):
     echo(") Exporting groups...")
-    category_objects: list[GroupCategory] = list(course.get_group_categories())
+    category_objects = list(course.get_group_categories())
     total = len(category_objects)
     category_files_path = create_directory(compress_path / "group_files")
     if verbose:
