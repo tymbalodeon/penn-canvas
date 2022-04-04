@@ -110,34 +110,28 @@ def get_lti_credentials(form: Tag) -> tuple[str, str, str]:
     return auth_token, course_id, user_id
 
 
-def get_meeting_object(meeting: dict, status: str) -> tuple[str, str]:
-    recording_time = meeting["recordingTime"] if "recordingTime" in meeting else ""
-    return recording_time, status
-
-
-def get_meetings(session: Session, url: str, meeting_status: str) -> list[tuple]:
+def get_meetings(session: Session, url: str) -> int:
     meetings = session.get(url=url).json()["details"]
-    meetings = [get_meeting_object(meeting, meeting_status) for meeting in meetings]
-    return meetings
+    return len(meetings)
 
 
 def get_meetings_data(
     lti_auth_token: str, lti_course_id: str, lti_user_id: str
-) -> list[tuple]:
+) -> tuple[int, int, int]:
     session = Session()
     session.headers.update({"Authorization": f"Bearer {lti_auth_token}"})
     base_url = "https://canvaslms.bluejeansint.com/api/canvas/course/"
     user_url = f"{base_url}{lti_course_id}/user/{lti_user_id}/"
     upcoming_url = f"{user_url}conferences?limit=100"
-    upcoming_meetings = get_meetings(session, upcoming_url, "upcoming")
+    upcoming_meetings = get_meetings(session, upcoming_url)
     current_url = f"{user_url}conferences?limit=100&current=true"
-    current_meetings = get_meetings(session, current_url, "current")
+    current_meetings = get_meetings(session, current_url)
     recorded_url = f"{user_url}recordings?limit=100"
-    recorded_meetings = get_meetings(session, recorded_url, "recorded")
-    return upcoming_meetings + current_meetings + recorded_meetings
+    recorded_meetings = get_meetings(session, recorded_url)
+    return upcoming_meetings, current_meetings, recorded_meetings
 
 
-def get_meetings_from_tab(tab: Tab, instance: Instance) -> list[tuple]:
+def get_meetings_from_tab(tab: Tab, instance: Instance) -> tuple[int, int, int]:
     form = get_form_from_tab_url(tab.url, instance=instance)
     if not form:
         echo(color("ERROR getting Blue Jeans form", "yellow"))
@@ -145,7 +139,7 @@ def get_meetings_from_tab(tab: Tab, instance: Instance) -> list[tuple]:
         lti_auth_token, lti_course_id, lti_user_id = get_lti_credentials(form)
     except Exception:
         echo(color("ERROR getting LTI credentials", "yellow"))
-        return list()
+        return (0, 0, 0)
     return get_meetings_data(lti_auth_token, lti_course_id, lti_user_id)
 
 
@@ -183,27 +177,19 @@ def get_blue_jeans_data(
         blue_jeans_tab = None
         canvas_course = None
         enabled = None
-    meetings = None
     total_meetings = "0"
     if blue_jeans_tab:
-        meetings = get_meetings_from_tab(blue_jeans_tab, instance=instance)
+        upcoming, current, recorded = get_meetings_from_tab(
+            blue_jeans_tab, instance=instance
+        )
+        total_meetings = str(upcoming + current + recorded)
+        report.at[index, "total meetings"] = total_meetings
+        report.at[index, "total recordings"] = str(recorded)
+        report.at[index, "total current"] = str(current)
+        report.at[index, "total upcoming"] = str(upcoming)
     if isna(course_id):
         report.at[index, "course_id"] = f"{short_name} ({canvas_account_id})"
     report.at[index, "tool status"] = enabled
-    if meetings:
-        total_meetings = str(len(meetings))
-        recordings = current = upcoming = 0
-        for meeting in meetings:
-            if meeting[1] == "recorded":
-                recordings += 1
-            if meeting[1] == "current":
-                current += 1
-            if meeting[1] == "upcoming":
-                upcoming += 1
-        report.at[index, "total meetings"] = total_meetings
-        report.at[index, "total recordings"] = str(recordings)
-        report.at[index, "total current"] = str(current)
-        report.at[index, "total upcoming"] = str(upcoming)
     report.loc[index].to_frame().T.to_csv(result_path, mode="a", header=False)
     if verbose:
         label_display = f'"{blue_jeans_tab.label}"' if blue_jeans_tab else ""
