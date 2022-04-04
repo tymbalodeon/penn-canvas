@@ -111,7 +111,8 @@ def get_lti_credentials(form: Tag) -> tuple[str, str, str]:
 
 
 def get_meeting_object(meeting: dict, status: str) -> tuple[str, str]:
-    return meeting["recordingTime"], status
+    recording_time = meeting["recordingTime"] if "recordingTime" in meeting else ""
+    return recording_time, status
 
 
 def get_meetings(session: Session, url: str, meeting_status: str) -> list[tuple]:
