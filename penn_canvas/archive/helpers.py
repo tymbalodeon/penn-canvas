@@ -9,7 +9,7 @@ from penn_canvas.style import color
 
 COMPRESSION_TYPE = "gz"
 CSV_COMPRESSION_TYPE = f"csv.{COMPRESSION_TYPE}"
-TAR_COMPRESSION_TYPE = f"{CSV_COMPRESSION_TYPE}tar"
+TAR_COMPRESSION_TYPE = f"{COMPRESSION_TYPE}tar"
 
 
 class HTMLStripper(HTMLParser):

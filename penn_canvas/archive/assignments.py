@@ -1,6 +1,7 @@
 from functools import lru_cache
 from mimetypes import guess_extension
 from pathlib import Path
+from shutil import make_archive, rmtree
 from typing import Optional
 
 from canvasapi.assignment import Assignment
@@ -17,11 +18,18 @@ from penn_canvas.helpers import create_directory, format_timestamp
 from penn_canvas.report import flatten
 from penn_canvas.style import color, print_item
 
-from .helpers import CSV_COMPRESSION_TYPE, format_display_text, format_name, strip_tags
+from .helpers import (
+    CSV_COMPRESSION_TYPE,
+    TAR_COMPRESSION_TYPE,
+    format_display_text,
+    format_name,
+    strip_tags,
+)
 
 DESCRIPTIONS_COMPRESSED_FILE = f"descriptions.{CSV_COMPRESSION_TYPE}"
 SUBMISSION_COMMENTS_COMPRESSED_FILE = f"submission_comments.{CSV_COMPRESSION_TYPE}"
 GRADES_COMPRESSED_FILE = f"grades.{CSV_COMPRESSION_TYPE}"
+UNPACK_SUBMISSIONS_DIRECTORY = "Submission Files"
 
 
 @lru_cache
@@ -108,9 +116,8 @@ def get_attachments(submission: Submission) -> Optional[list[tuple]]:
 
 
 def download_submission_files(
-    submission: Submission, user_name: str, assignments_path: Path
+    submission: Submission, user_name: str, submissions_path: Path
 ):
-    submissions_path = create_directory(assignments_path / "Submission Files")
     attachments = get_attachments(submission)
     if not attachments:
         return
@@ -200,6 +207,8 @@ def archive_submissions(
     assignments: list[Assignment],
     instance: Instance,
     assignments_path: Path,
+    unpack_path: Path,
+    unpack: bool,
     verbose: bool,
     total: int,
 ):
@@ -223,6 +232,7 @@ def archive_submissions(
     grades_path = assignments_path / GRADES_COMPRESSED_FILE
     grades_data.to_csv(grades_path, index=False)
     echo(") Exporting submission files...")
+    submissions_path = create_directory(assignments_path / "submission_files")
     for index, assignment in enumerate(assignments):
         if verbose:
             assignment_display = color(format_display_text(assignment.name))
@@ -239,7 +249,16 @@ def archive_submissions(
                     prefix="\t*",
                 )
             user_name = get_user(submission.user_id, instance=instance).name
-            download_submission_files(submission, user_name, assignments_path)
+            download_submission_files(submission, user_name, submissions_path)
+    submission_files = str(submissions_path)
+    make_archive(submission_files, TAR_COMPRESSION_TYPE, root_dir=submission_files)
+    if unpack:
+        unpack_submissions_path = create_directory(
+            unpack_path / UNPACK_SUBMISSIONS_DIRECTORY, clear=True
+        )
+        submissions_path.replace(unpack_submissions_path)
+    else:
+        rmtree(submissions_path)
 
 
 def format_comment(comment: dict, verbose: bool, index: int, total: int) -> list[str]:
@@ -344,13 +363,23 @@ def archive_submission_comments(
 
 
 def archive_assignments(
-    course: Course, course_path: Path, instance: Instance, verbose: bool
+    course: Course,
+    course_path: Path,
+    unpack_path: Path,
+    unpack: bool,
+    instance: Instance,
+    verbose: bool,
 ):
     echo(") Exporting assignments...")
-    assignments_path = create_directory(course_path / "Assignments")
+    assignments_path = create_directory(course_path / "assignments")
     assignments = list(course.get_assignments())
     total = len(assignments)
     archive_descriptions(assignments, assignments_path, verbose, total)
-    archive_submissions(assignments, instance, assignments_path, verbose, total)
+    archive_submissions(
+        assignments, instance, assignments_path, unpack_path, unpack, verbose, total
+    )
     archive_submission_comments(assignments, assignments_path, verbose, total)
+    assignments_files = str(assignments_path)
+    make_archive(assignments_files, TAR_COMPRESSION_TYPE, root_dir=assignments_files)
+    rmtree(assignments_path)
     return assignments

@@ -130,7 +130,7 @@ def archive_main(
             archive_syllabus(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(assignments, archive_all):
             assignment_objects = archive_assignments(
-                course, compress_path, instance, verbose
+                course, compress_path, unpack_path, unpack, instance, verbose
             )
         if should_run_option(groups, archive_all):
             archive_groups(course, compress_path, unpack_path, unpack, verbose)
