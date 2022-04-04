@@ -3,6 +3,20 @@ from typer import echo
 from .api import PENN_CANVAS_MAIN_ACCOUNT_ID, get_canvas
 from .helpers import color, get_command_paths
 
+COMMAND_NAME = "Count Tool Usage"
+RESULTS = get_command_paths(COMMAND_NAME)["results"]
+HEADERS = [
+    "canvas course id",
+    "course id",
+    "course name",
+    "account",
+    "term",
+    "status",
+]
+terms = ["A", "B", "C"]
+year_and_terms = ["2021C", "2022A"]
+account_id = 99237
+
 
 def is_turnitin_assignment(assignment):
     try:
@@ -21,33 +35,14 @@ def is_voicethread_assignment(assignment):
         return False
 
 
-COMMAND_NAME = "Count Tool Usage"
-RESULTS = get_command_paths(COMMAND_NAME)["results"]
-HEADERS = [
-    "canvas course id",
-    "course id",
-    "course name",
-    "account",
-    "term",
-    "status",
-]
-terms = ["A", "B", "C"]
-year_and_terms = ["2021C", "2022A"]
-account_id = 99237
-
-
 def get_courses(term, main_account, account):
-    enrollment_term_id = next(
-        (
-            enrollment_term.id
-            for enrollment_term in main_account.get_enrollment_terms()
-            if term in enrollment_term.name
-        ),
-        None,
+    enrollment_term_ids = (
+        enrollment_term.id
+        for enrollment_term in main_account.get_enrollment_terms()
+        if term in enrollment_term.name
     )
-    return [
-        course for course in account.get_courses(enrollment_term_id=enrollment_term_id)
-    ]
+    enrollment_term_id = next(enrollment_term_ids, None)
+    return list(account.get_courses(enrollment_term_id=enrollment_term_id))
 
 
 def usage_count_main(tool):
