@@ -1,4 +1,5 @@
 from enum import Enum
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -167,6 +168,7 @@ def get_section(
     return section
 
 
+@lru_cache
 def get_user(
     user_id: str | int,
     id_type=None,

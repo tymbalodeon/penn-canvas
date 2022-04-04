@@ -7,7 +7,8 @@ from typer import echo
 
 from penn_canvas.style import color
 
-CSV_COMPRESSION_TYPE = "gz"
+COMPRESSION_TYPE = "gz"
+CSV_COMPRESSION_TYPE = f"csv.{COMPRESSION_TYPE}"
 TAR_COMPRESSION_TYPE = f"{CSV_COMPRESSION_TYPE}tar"
 
 
