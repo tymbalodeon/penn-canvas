@@ -1,79 +1,37 @@
-from functools import lru_cache
 from mimetypes import guess_extension
 from pathlib import Path
 from shutil import make_archive, rmtree
 from typing import Optional
 
 from canvasapi.assignment import Assignment
-from canvasapi.course import Course
 from canvasapi.submission import Submission
 from canvasapi.user import User
+from click.utils import echo
 from magic.magic import from_file
 from pandas import DataFrame
 from requests import get
-from typer import echo
 
 from penn_canvas.api import Instance, get_user
-from penn_canvas.helpers import create_directory, format_timestamp
-from penn_canvas.report import flatten
-from penn_canvas.style import color, print_item
-
-from .helpers import (
+from penn_canvas.archive.helpers import (
     CSV_COMPRESSION_TYPE,
     TAR_COMPRESSION_TYPE,
     format_display_text,
     format_name,
+    get_assignment_submissions,
+    get_submission_display,
     strip_tags,
 )
+from penn_canvas.helpers import create_directory
+from penn_canvas.report import flatten
+from penn_canvas.style import color, print_item
 
-DESCRIPTIONS_COMPRESSED_FILE = f"descriptions.{CSV_COMPRESSION_TYPE}"
-SUBMISSION_COMMENTS_COMPRESSED_FILE = f"submission_comments.{CSV_COMPRESSION_TYPE}"
 GRADES_COMPRESSED_FILE = f"grades.{CSV_COMPRESSION_TYPE}"
 UNPACK_SUBMISSIONS_DIRECTORY = "Submission Files"
 
 
-@lru_cache
-def get_assignment_submissions(assignment: Assignment) -> list[Submission]:
-    return list(assignment.get_submissions(include="submission_comments"))
-
-
-def format_description(assignment: Assignment) -> str:
-    try:
-        description = assignment.description.replace("\n", " ")
-        description = strip_tags(description).strip().split()
-        return " ".join(description)
-    except Exception:
-        return ""
-
-
-def get_description(assignment: Assignment, verbose: bool, index: int, total: int):
-    description = format_description(assignment)
-    name = assignment.name
-    if verbose:
-        assignment_display = color(format_display_text(assignment.name))
-        description_display = color(format_display_text(description), "yellow")
-        message = f"{assignment_display}: {description_display}"
-        print_item(index, total, message)
-    return [assignment.id, name, format_description(assignment)]
-
-
-def archive_descriptions(
-    assignments: list[Assignment], assignments_path: Path, verbose: bool, total: int
-):
-    echo(") Exporting assignment descriptions...")
-    descriptions = [
-        get_description(assignment, verbose, index, total)
-        for index, assignment in enumerate(assignments)
-    ]
-    columns = ["Assignment ID", "Assignment Name", "Descriptions"]
-    description_data = DataFrame(descriptions, columns=columns)
-    description_path = assignments_path / DESCRIPTIONS_COMPRESSED_FILE
-    description_data.to_csv(description_path, index=False)
-
-
 def get_grader(submission: Submission, instance: Instance) -> Optional[User]:
     try:
-        return get_user(submission.grader_id, instance=instance).name
+        return get_user(submission.grader_id, instance=instance)
     except Exception:
         return None
 
@@ -259,127 +217,3 @@ def archive_submissions(
         submissions_path.replace(unpack_submissions_path)
     else:
         rmtree(submissions_path)
-
-
-def format_comment(comment: dict, verbose: bool, index: int, total: int) -> list[str]:
-    author = comment["author_name"]
-    created_at = format_timestamp(comment["created_at"]) or ""
-    edited_at = format_timestamp(comment["edited_at"]) or ""
-    edited_at = edited_at if comment["edited_at"] else ""
-    comment_text = comment["comment"]
-    media_comment = (
-        comment["media_comment"]["url"] if "media_comment" in comment else ""
-    )
-    if verbose:
-        author_display = color(author)
-        comment_display = comment_text if comment_text else media_comment
-        comment_display = format_display_text(color(comment_display, "yellow"))
-        message = f"{author_display}: {comment_display}"
-        print_item(index, total, message, prefix="\t\t-")
-    return [author, created_at, edited_at, comment_text, media_comment]
-
-
-def prepend_submission_data(
-    comment_row: list[str], submission: Submission
-) -> list[str]:
-    return [submission.id] + comment_row
-
-
-@lru_cache
-def get_submission_display(submission):
-    try:
-        submission_display = next(iter(submission.attachments))["display_name"]
-    except Exception:
-        submission_display = submission
-    return color(submission_display, "cyan")
-
-
-def get_comments(
-    submission: Submission, verbose: bool, index: int, total: int
-) -> list[list[str]]:
-    if verbose:
-        submission_display = get_submission_display(submission)
-        print_item(index, total, submission_display, prefix="\t*")
-    comments = submission.submission_comments
-    comments_total = len(comments)
-    comment_rows = [
-        format_comment(comment, verbose, comment_index, comments_total)
-        for comment_index, comment in enumerate(comments)
-    ]
-    return [prepend_submission_data(comment, submission) for comment in comment_rows]
-
-
-def prepend_assignment_data(
-    submission_row: list[str], assignment: Assignment
-) -> list[str]:
-    return [assignment.id, assignment.name] + submission_row
-
-
-def get_submission_comments(
-    assignment: Assignment, verbose: bool, index: int, total: int
-) -> list[list[str]]:
-    if verbose:
-        message = color(assignment)
-        print_item(index, total, message)
-    submissions = get_assignment_submissions(assignment)
-    submission_total = len(submissions)
-    submissions = [
-        get_comments(submission, verbose, submission_index, submission_total)
-        for submission_index, submission in enumerate(submissions)
-    ]
-    submissions = list(flatten(submissions))
-    submission_rows = [submission for submission in submissions if submission]
-    return [
-        prepend_assignment_data(submission, assignment)
-        for submission in submission_rows
-    ]
-
-
-def archive_submission_comments(
-    assignments: list[Assignment], assignments_path: Path, verbose: bool, total: int
-):
-    echo(") Exporting assignment submission comments...")
-    submission_comments = [
-        get_submission_comments(assignment, verbose, index, total)
-        for index, assignment in enumerate(assignments)
-    ]
-    submission_comments = [
-        submission for submission in submission_comments if submission
-    ]
-    submission_comments = list(flatten(submission_comments))
-    columns = [
-        "Assignment ID",
-        "Assignment Name",
-        "Submission ID",
-        "Author",
-        "Created At",
-        "Edited At",
-        "Comment",
-        "Media Comment",
-    ]
-    submission_comments_data = DataFrame(submission_comments, columns=columns)
-    submission_comments_path = assignments_path / SUBMISSION_COMMENTS_COMPRESSED_FILE
-    submission_comments_data.to_csv(submission_comments_path, index=False)
-
-
-def archive_assignments(
-    course: Course,
-    course_path: Path,
-    unpack_path: Path,
-    unpack: bool,
-    instance: Instance,
-    verbose: bool,
-):
-    echo(") Exporting assignments...")
-    assignments_path = create_directory(course_path / "assignments")
-    assignments = list(course.get_assignments())
-    total = len(assignments)
-    archive_descriptions(assignments, assignments_path, verbose, total)
-    archive_submissions(
-        assignments, instance, assignments_path, unpack_path, unpack, verbose, total
-    )
-    archive_submission_comments(assignments, assignments_path, verbose, total)
-    assignments_files = str(assignments_path)
-    make_archive(assignments_files, TAR_COMPRESSION_TYPE, root_dir=assignments_files)
-    rmtree(assignments_path)
-    return assignments

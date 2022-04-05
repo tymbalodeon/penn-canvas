@@ -3,6 +3,8 @@ from html.parser import HTMLParser
 from io import StringIO
 from typing import Optional
 
+from canvasapi.assignment import Assignment
+from canvasapi.submission import Submission
 from typer import echo
 
 from penn_canvas.style import color
@@ -10,6 +12,7 @@ from penn_canvas.style import color
 COMPRESSION_TYPE = "gz"
 CSV_COMPRESSION_TYPE = f"csv.{COMPRESSION_TYPE}"
 TAR_COMPRESSION_TYPE = f"{COMPRESSION_TYPE}tar"
+TAR_EXTENSION = f"tar.{COMPRESSION_TYPE}"
 
 
 class HTMLStripper(HTMLParser):
@@ -31,6 +34,20 @@ def strip_tags(html: str) -> str:
     stripper = HTMLStripper()
     stripper.feed(html)
     return stripper.get_data()
+
+
+@lru_cache
+def get_assignment_submissions(assignment: Assignment) -> list[Submission]:
+    return list(assignment.get_submissions(include="submission_comments"))
+
+
+@lru_cache
+def get_submission_display(submission):
+    try:
+        submission_display = next(iter(submission.attachments))["display_name"]
+    except Exception:
+        submission_display = submission
+    return color(submission_display, "cyan")
 
 
 def format_name(name: str) -> str:

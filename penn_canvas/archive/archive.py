@@ -27,7 +27,7 @@ from penn_canvas.report import get_course_ids_from_reports
 from penn_canvas.style import color, print_item
 
 from .announcements import archive_announcements
-from .assignments import archive_assignments
+from .assignments.assignments import fetch_assignments, unpack_assignments
 from .content import CONTENT_DIRECTORY_NAME, archive_content
 from .discussions import archive_discussions
 from .grades import archive_grades
@@ -182,7 +182,7 @@ def fetch(
         if should_run_option(syllabus, archive_all):
             archive_syllabus(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(assignments, archive_all):
-            assignment_objects = archive_assignments(
+            assignment_objects = fetch_assignments(
                 course, compress_path, unpack_path, unpack, instance, verbose
             )
         if should_run_option(groups, archive_all):
@@ -201,5 +201,16 @@ def fetch(
 
 
 @archive_app.command()
-def unpack():
+def unpack(
+    canvas_id: int = Option(1478059, "--course", help="Canvas course id"),
+    instance_name: str = get_instance_option(),
+    verbose: bool = VERBOSE,
+):
+    instance = validate_instance_name(instance_name, verbose=True)
+    switch_logger_file(LOGS, "archive", instance.name)
     echo(") Unpacking!")
+    course = get_course(canvas_id, include=["syllabus_body"], instance=instance)
+    course_name = f"{format_name(course.name)} ({course.id})"
+    compress_path = create_directory(COMPRESSED_COURSES / course_name)
+    unpack_path = create_directory(UNPACKED_COURSES / course_name)
+    unpack_assignments(compress_path, unpack_path, verbose)
