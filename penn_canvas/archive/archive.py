@@ -3,11 +3,13 @@ from time import sleep
 from typing import Optional
 
 from canvasapi.assignment import Assignment
+from canvasapi.course import Course
 from canvasapi.rubric import Rubric
 from requests.api import post
 from typer import Option, Typer, echo
 
 from penn_canvas.api import (
+    Instance,
     get_canvas,
     get_course,
     get_instance_option,
@@ -51,7 +53,15 @@ UNPACKED_COURSES = create_directory(COMMAND_PATH / "Courses")
 LOGS = create_directory(COMMAND_PATH / "Logs")
 
 
-def restore_course(course, instance):
+def format_course_name(course: Course) -> str:
+    return f"{format_name(course.name)} ({course.id})"
+
+
+def display_course(index: int, total: int, course_name: str):
+    print_item(index, total, color(course_name, "blue"))
+
+
+def restore_course(course: Course, instance: Instance):
     content_file = next(
         path / CONTENT_DIRECTORY_NAME
         for path in Path(COMPRESSED_COURSES).iterdir()
@@ -165,8 +175,8 @@ def fetch(
     total = len(courses)
     for index, canvas_id in enumerate(courses):
         course = get_course(canvas_id, include=["syllabus_body"], instance=instance)
-        course_name = f"{format_name(course.name)} ({course.id})"
-        print_item(index, total, color(course_name, "blue"))
+        course_name = format_course_name(course)
+        display_course(index, total, course_name)
         compress_path = create_directory(COMPRESSED_COURSES / course_name)
         unpack_path = create_directory(UNPACKED_COURSES / course_name)
         assignment_objects: list[Assignment] = list()
@@ -202,15 +212,23 @@ def fetch(
 
 @archive_app.command()
 def unpack(
-    canvas_id: int = Option(1478059, "--course", help="Canvas course id"),
+    course_ids: Optional[list[int]] = COURSE_IDS,
+    terms: list[str] = Option([CURRENT_YEAR_AND_TERM], "--term", help="Term name"),
     instance_name: str = get_instance_option(),
+    force_report: bool = FORCE_REPORT,
     verbose: bool = VERBOSE,
 ):
     instance = validate_instance_name(instance_name, verbose=True)
     switch_logger_file(LOGS, "archive", instance.name)
-    echo(") Unpacking!")
-    course = get_course(canvas_id, include=["syllabus_body"], instance=instance)
-    course_name = f"{format_name(course.name)} ({course.id})"
-    compress_path = create_directory(COMPRESSED_COURSES / course_name)
-    unpack_path = create_directory(UNPACKED_COURSES / course_name)
-    unpack_assignments(compress_path, unpack_path, verbose)
+    if not course_ids:
+        courses = get_course_ids_from_reports(terms, instance, force_report, verbose)
+    else:
+        courses = get_course_ids_from_input(course_ids)
+    total = len(courses)
+    for index, canvas_id in enumerate(courses):
+        course = get_course(canvas_id, include=["syllabus_body"], instance=instance)
+        course_name = format_course_name(course)
+        display_course(index, total, course_name)
+        compress_path = create_directory(COMPRESSED_COURSES / course_name)
+        unpack_path = create_directory(UNPACKED_COURSES / course_name)
+        unpack_assignments(compress_path, unpack_path, verbose)
