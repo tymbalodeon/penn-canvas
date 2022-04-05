@@ -149,7 +149,7 @@ def make_csv_paths(csv_file: Path, headers: list[str]):
     if not csv_file.is_file():
         parent_directory = next(parent for parent in csv_file.parents)
         create_directory(parent_directory)
-        writerow(csv_file, headers)
+        write_row(csv_file, headers)
 
 
 def get_command_paths(
@@ -507,17 +507,16 @@ def toggle_progress_bar(data, callback, canvas, verbose, args=None):
             progress_bar_mode()
 
 
-def writerow(path: Path, row: list, mode="w"):
+def write_row(path: Path, row: list, mode="w"):
     with open(path, mode) as output:
         writer(output).writerow(row)
 
 
-def write(path: Path, text: str, mode="w"):
+def write_file(path: Path, text: str, mode="w"):
     with open(path, mode) as output:
         output.write(text)
 
 
-@logger.catch
 def switch_logger_file(
     log_path: Path, log_name: str, instance_name: Optional[str] = None
 ):

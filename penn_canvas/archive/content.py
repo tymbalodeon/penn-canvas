@@ -21,7 +21,7 @@ def format_export_type(export_type: str) -> str:
     return export_type.replace("_", " ").title()
 
 
-def unzip_content(course_path: Path, verbose: bool):
+def unpack_content(course_path: Path, verbose: bool):
     if verbose:
         echo(f") Unzipping {color(course_path, 'blue')}")
     unzip_parent = course_path.parent
@@ -30,7 +30,7 @@ def unzip_content(course_path: Path, verbose: bool):
     return unzip_parent
 
 
-def archive_content(
+def fetch_content(
     course: Course,
     course_directory: Path,
     instance: Instance,
@@ -63,7 +63,7 @@ def archive_content(
             for chunk in response.iter_content(chunk_size=128):
                 stream.write(chunk)
         if file_path.is_file():
-            unzipped_path = unzip_content(file_path, verbose)
+            unzipped_path = unpack_content(file_path, verbose)
             path_name = str(unzipped_path)
             make_archive(path_name, TAR_COMPRESSION_TYPE, root_dir=path_name)
             rmtree(path_name)

@@ -56,7 +56,7 @@ def unpack_announcements(
     return announcements_path
 
 
-def archive_announcements(
+def fetch_announcements(
     course: Course,
     compress_path: Path,
     unpack_path: Path,

@@ -7,7 +7,11 @@ from pandas import read_csv
 from pandas.core.frame import DataFrame
 from typer import echo
 
-from penn_canvas.helpers import create_directory, print_task_complete_message, write
+from penn_canvas.helpers import (
+    create_directory,
+    print_task_complete_message,
+    write_file,
+)
 from penn_canvas.style import color, print_item
 
 from .helpers import (
@@ -49,14 +53,14 @@ def unpack_pages(
         title, body = page
         title = format_name(title)
         pages_file = pages_path / f"{title}.txt"
-        write(pages_file, f'"{title}"\n\n{body}')
+        write_file(pages_file, f'"{title}"\n\n{body}')
         if verbose:
             display_page(index, total, title, body)
             print_task_complete_message(pages_path)
     return pages_path
 
 
-def archive_pages(
+def fetch_pages(
     course: Course, compress_path: Path, unpack_path: Path, unpack: bool, verbose: bool
 ):
     echo(") Exporting pages...")

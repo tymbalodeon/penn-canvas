@@ -10,7 +10,7 @@ from .api import (
     get_main_account_id,
     validate_instance_name,
 )
-from .helpers import color, get_command_paths, make_csv_paths, write
+from .helpers import color, get_command_paths, make_csv_paths, write_file
 
 COMMAND_NAME = "Update Terms"
 RESULTS = get_command_paths(COMMAND_NAME)["results"]
@@ -68,4 +68,4 @@ def update_term_main(
                 f" {color(course, 'yellow')} ({color(error, 'red')})"
             )
         print_item(index, total, message)
-        write(results_path, f"\n{','.join(row)}", "a")
+        write_file(results_path, f"\n{','.join(row)}", "a")

@@ -12,7 +12,7 @@ from penn_canvas.style import color
 from .helpers import format_name, strip_tags
 
 
-def process_entry(
+def get_entry(
     entry: DiscussionEntry,
     instance: Instance,
     verbose: bool,
@@ -65,7 +65,7 @@ def archive_discussion(
         echo(f"==== DISCUSSION {index + 1} ====")
         echo("- NO ENTRIES")
     entries = [
-        process_entry(
+        get_entry(
             entry,
             instance,
             verbose,
@@ -100,7 +100,7 @@ def archive_discussion(
         description_file.write(description)
 
 
-def archive_discussions(
+def fetch_discussions(
     course: Course,
     course_path: Path,
     use_timestamp: bool,

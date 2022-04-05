@@ -10,7 +10,7 @@ from requests import get
 from typer import echo, progressbar
 
 from penn_canvas.api import Instance, get_canvas_key
-from penn_canvas.helpers import create_directory, write
+from penn_canvas.helpers import create_directory, write_file
 from penn_canvas.style import color, print_item
 
 from .helpers import format_display_text, format_name, strip_tags
@@ -88,7 +88,7 @@ def archive_item(
         content = f"[{item.type}]"
     else:
         content = "[missing url]"
-    write(module_path / f"{item_title}.txt", content)
+    write_file(module_path / f"{item_title}.txt", content)
     if verbose:
         title_display = color(format_display_text(item_title), "yellow")
         content_display = color(format_display_text(content), "cyan")
@@ -114,7 +114,7 @@ def archive_module(
         archive_item(item, module_path, instance, verbose, item_index, item_total)
 
 
-def archive_modules(
+def fetch_modules(
     course: Course, compress_path: Path, instance: Instance, verbose: bool
 ):
     echo(") Exporting modules...")

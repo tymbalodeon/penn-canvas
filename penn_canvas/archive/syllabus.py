@@ -5,7 +5,7 @@ from canvasapi.course import Course
 from pandas import DataFrame, read_csv
 from typer import echo
 
-from penn_canvas.helpers import print_task_complete_message, write
+from penn_canvas.helpers import print_task_complete_message, write_file
 from penn_canvas.style import color
 
 from .helpers import (
@@ -32,14 +32,14 @@ def unpack_syllabus(
     data_frame = read_csv(compressed_file)
     syllabus = next(iter(data_frame["syllabus"].tolist()), "")
     syllabus_file = unpack_path / "Syllabus.txt"
-    write(syllabus_file, syllabus)
+    write_file(syllabus_file, syllabus)
     if verbose:
         display_syllabus(syllabus)
         print_task_complete_message(syllabus_file)
     return syllabus_file
 
 
-def archive_syllabus(
+def fetch_syllabus(
     course: Course,
     compress_path: Path,
     unpack_path: Path,

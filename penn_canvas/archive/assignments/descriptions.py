@@ -12,7 +12,11 @@ from penn_canvas.archive.helpers import (
     print_unpacked_file,
     strip_tags,
 )
-from penn_canvas.helpers import create_directory, print_task_complete_message, write
+from penn_canvas.helpers import (
+    create_directory,
+    print_task_complete_message,
+    write_file,
+)
 from penn_canvas.style import color, print_item
 
 DESCRIPTIONS_COMPRESSED_FILE = f"descriptions.{CSV_COMPRESSION_TYPE}"
@@ -56,7 +60,7 @@ def unpack_descriptions(compress_path: Path, unpack_path: Path, verbose: bool):
     for index, assignment_name, description in descriptions_data.itertuples():
         description_file = descriptions_path / f"{format_name(assignment_name)}.txt"
         text = f'"{assignment_name}"\n\n{description}'
-        write(description_file, text)
+        write_file(description_file, text)
         if verbose:
             display_description(index, total, assignment_name, description)
     if verbose:

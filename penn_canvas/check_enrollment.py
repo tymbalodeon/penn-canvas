@@ -22,7 +22,7 @@ from .helpers import (
     print_skip_message,
     print_task_complete_message,
     switch_logger_file,
-    writerow,
+    write_row,
 )
 from .style import color, print_item
 
@@ -71,7 +71,7 @@ def get_enrollment(
         message = f"{date_display}: {name_display}"
         print_item(index, total, message)
     row = [index, date_enrolled, name, email]
-    writerow(result_path, row, "a")
+    write_row(result_path, row, "a")
     return Enrollment(name, email, date_enrolled)
 
 

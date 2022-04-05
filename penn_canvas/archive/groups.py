@@ -157,7 +157,7 @@ def unpack_groups(
     return groups_path
 
 
-def archive_groups(
+def fetch_groups(
     course: Course, compress_path: Path, unpack_path: Path, unpack: bool, verbose: bool
 ):
     echo(") Exporting groups...")

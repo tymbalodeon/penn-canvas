@@ -144,7 +144,7 @@ def archive_quiz(
             description_file.write(description)
 
 
-def archive_quizzes(
+def fetch_quizzes(
     course: Course, course_path: Path, rubrics: list[Rubric], verbose: bool
 ):
     echo(") Exporting quizzes...")

@@ -16,23 +16,23 @@ RUBRIC_ID = "Rubric ID"
 RUBRIC_TITLE = "Rubric Title"
 
 
-def process_criterion_rating(rating: dict) -> str:
+def get_criterion_rating(rating: dict) -> str:
     points = rating["points"]
     description = rating["description"]
     long_description = rating["long_description"] or ""
     return f"{points} {description} {long_description}"
 
 
-def process_criterion(criterion: dict, rubric_id: str, title: str) -> list[str]:
+def get_criterion(criterion: dict, rubric_id: str, title: str) -> list[str]:
     description = criterion["description"]
     ratings = criterion["ratings"]
-    ratings = [process_criterion_rating(rating) for rating in ratings]
+    ratings = [get_criterion_rating(rating) for rating in ratings]
     ratings = " / ".join(ratings)
     points = criterion["points"]
     return [rubric_id, title, description, ratings, points]
 
 
-def archive_rubric(
+def get_rubric(
     rubric: Rubric,
     verbose: bool,
     index=0,
@@ -41,9 +41,7 @@ def archive_rubric(
     title = rubric.title.strip()
     if verbose:
         print_item(index, total, color(title))
-    criteria = [
-        process_criterion(criterion, rubric.id, title) for criterion in rubric.data
-    ]
+    criteria = [get_criterion(criterion, rubric.id, title) for criterion in rubric.data]
     return DataFrame(
         criteria, columns=[RUBRIC_ID, "Rubric Title", "Criteria", "Ratings", "Pts"]
     )
@@ -73,7 +71,7 @@ def unpack_rubrics(
     return rubrics_path
 
 
-def archive_rubrics(
+def fetch_rubrics(
     course: Course, compress_path: Path, unpack_path: Path, unpack: bool, verbose: bool
 ):
     echo(") Exporting rubrics...")
@@ -81,12 +79,12 @@ def archive_rubrics(
     total = len(rubric_objects)
     if verbose:
         rubrics = [
-            archive_rubric(rubric, verbose, index, total)
+            get_rubric(rubric, verbose, index, total)
             for index, rubric in enumerate(rubric_objects)
         ]
     else:
         with progressbar(rubric_objects, length=total) as progress:
-            rubrics = [archive_rubric(rubric, verbose) for rubric in progress]
+            rubrics = [get_rubric(rubric, verbose) for rubric in progress]
     rubrics_path = compress_path / RUBRICS_COMPRESSED_FILE
     rubric_data = concat(rubrics)
     rubric_data.to_csv(rubrics_path, index=False)

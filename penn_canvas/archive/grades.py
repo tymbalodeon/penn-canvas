@@ -64,7 +64,7 @@ def get_submission_score(submission: Submission):
     return round(float(submission.score), 2) if submission.score else submission.score
 
 
-def archive_grades(course, course_directory, assignments, instance, verbose):
+def fetch_grades(course, course_directory, assignments, instance, verbose):
     echo(") Exporting grades...")
     enrollments = get_enrollments(course)
     if not assignments:
