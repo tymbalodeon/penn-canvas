@@ -1,7 +1,6 @@
 from functools import lru_cache
 from html.parser import HTMLParser
 from io import StringIO
-from typing import Optional
 
 from canvasapi.assignment import Assignment
 from canvasapi.submission import Submission
@@ -65,10 +64,6 @@ def format_display_text(text: str, limit=50) -> str:
             final_character = text[-1]
         text = f"{text}..."
     return text
-
-
-def should_run_option(option: Optional[bool], archive_all: bool) -> bool:
-    return option if isinstance(option, bool) else archive_all
 
 
 def print_unpacked_file(unpacked_file):

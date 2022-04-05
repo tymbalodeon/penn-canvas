@@ -13,16 +13,16 @@ from .comments import archive_submission_comments
 from .descriptions import fetch_descriptions, unpack_descriptions
 from .submissions import archive_submissions
 
-UNPACK_ASSIGNMENTS_DIRECTORY = "Assignments"
-TAR_FILE_STEM = "assignments"
-TAR_FILE_NAME = f"{TAR_FILE_STEM}.{TAR_EXTENSION}"
+ASSIGNMENTS_TAR_STEM = "assignments"
+UNPACK_ASSIGNMENTS_DIRECTORY = ASSIGNMENTS_TAR_STEM.title()
+ASSIGNMENTS_TAR_NAME = f"{ASSIGNMENTS_TAR_STEM}.{TAR_EXTENSION}"
 
 
 def unpack_assignments(
     compress_path: Path, unpack_path: Path, verbose: bool
 ) -> Optional[Path]:
     echo(") Unpacking assignments...")
-    archive_file = compress_path / TAR_FILE_NAME
+    archive_file = compress_path / ASSIGNMENTS_TAR_NAME
     if not archive_file.is_file():
         return None
     unpack_path = create_directory(unpack_path / UNPACK_ASSIGNMENTS_DIRECTORY)
@@ -40,7 +40,7 @@ def fetch_assignments(
     verbose: bool,
 ):
     echo(") Exporting assignments...")
-    assignments_path = create_directory(course_path / TAR_FILE_STEM)
+    assignments_path = create_directory(course_path / ASSIGNMENTS_TAR_STEM)
     unpack_path = create_directory(unpack_path / UNPACK_ASSIGNMENTS_DIRECTORY)
     assignments = list(course.get_assignments())
     total = len(assignments)

@@ -30,11 +30,11 @@ from penn_canvas.style import color, print_item
 
 from .announcements import fetch_announcements
 from .assignments.assignments import fetch_assignments, unpack_assignments
-from .content import CONTENT_DIRECTORY_NAME, fetch_content
+from .content import CONTENT_DIRECTORY_NAME, fetch_content, unpack_content
 from .discussions import fetch_discussions
 from .grades import fetch_grades
 from .groups import fetch_groups
-from .helpers import format_name, should_run_option
+from .helpers import format_name
 from .modules import fetch_modules
 from .pages import fetch_pages
 from .quizzes import fetch_quizzes
@@ -47,6 +47,28 @@ archive_app = Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False,
 )
+content = Option(None, "--content/--no-content", help="Include/exclude course content")
+announcements = Option(
+    None,
+    "--announcements/--no-announcements",
+    help="Include/exclude course announcements",
+)
+groups = Option(None, "--groups/--no-groups", help="Include/exclude course groups")
+modules = Option(None, "--modules/--no-modeules", help="Include/exclude course modules")
+
+pages = Option(None, "--pages/--no-pages", help="Include/exclude course pages")
+syllabus = Option(
+    None, "--syllabus/--no-syllabus", help="Include/exclude course syllabus"
+)
+assignments = Option(
+    None, "--assignments/--no-assignments", help="Include/exclude course assignments"
+)
+discussions = Option(
+    None, "--discussions/--no-discussions", help="Include/exclude course discussions"
+)
+grades = Option(None, "--grades/--no-grades", help="Include/exclude course grades")
+rubrics = Option(None, "--rubrics/--no-rubrics", help="Include/exclude course rubrics")
+quizzes = Option(None, "--quizzes/--no-quizzes", help="Include/exclude course quizzes")
 COMMAND_PATH = create_directory(BASE_PATH / "Archive")
 COMPRESSED_COURSES = create_directory(COMMAND_PATH / "Compressed Courses")
 UNPACKED_COURSES = create_directory(COMMAND_PATH / "Courses")
@@ -93,6 +115,10 @@ def restore_course(course: Course, instance: Instance):
     echo("MIGRATION COMPLETE")
 
 
+def should_run_option(option: Optional[bool], use_all: bool) -> bool:
+    return option if isinstance(option, bool) else use_all
+
+
 @archive_app.command()
 def fetch(
     course_ids: Optional[list[int]] = COURSE_IDS,
@@ -101,45 +127,17 @@ def fetch(
     use_timestamp: bool = Option(
         False, "--timestamp", help="Include/exclude the timestamp in the output"
     ),
-    content: Optional[bool] = Option(
-        None, "--content/--no-content", help="Include/exclude course content"
-    ),
-    announcements: Optional[bool] = Option(
-        None,
-        "--announcements/--no-announcements",
-        help="Include/exclude course announcements",
-    ),
-    groups: Optional[bool] = Option(
-        None, "--groups/--no-groups", help="Include/exclude course groups"
-    ),
-    modules: Optional[bool] = Option(
-        None, "--modules/--no-modeules", help="Include/exclude course modules"
-    ),
-    pages: Optional[bool] = Option(
-        None, "--pages/--no-pages", help="Include/exclude course pages"
-    ),
-    syllabus: Optional[bool] = Option(
-        None, "--syllabus/--no-syllabus", help="Include/exclude course syllabus"
-    ),
-    assignments: Optional[bool] = Option(
-        None,
-        "--assignments/--no-assignments",
-        help="Include/exclude course assignments",
-    ),
-    discussions: Optional[bool] = Option(
-        None,
-        "--discussions/--no-discussions",
-        help="Include/exclude course discussions",
-    ),
-    grades: Optional[bool] = Option(
-        None, "--grades/--no-grades", help="Include/exclude course grades"
-    ),
-    rubrics: Optional[bool] = Option(
-        None, "--rubrics/--no-rubrics", help="Include/exclude course rubrics"
-    ),
-    quizzes: Optional[bool] = Option(
-        None, "--quizzes/--no-quizzes", help="Include/exclude course quizzes"
-    ),
+    content: Optional[bool] = content,
+    announcements: Optional[bool] = announcements,
+    groups: Optional[bool] = groups,
+    modules: Optional[bool] = modules,
+    pages: Optional[bool] = pages,
+    syllabus: Optional[bool] = syllabus,
+    assignments: Optional[bool] = assignments,
+    discussions: Optional[bool] = discussions,
+    grades: Optional[bool] = grades,
+    rubrics: Optional[bool] = rubrics,
+    quizzes: Optional[bool] = quizzes,
     unpack: bool = Option(False, "--unpack", help="Unpack compressed files"),
     force_report: bool = FORCE_REPORT,
     verbose: bool = VERBOSE,
@@ -149,7 +147,6 @@ def fetch(
 
     Options with both "include" and "exclude" flags will all be included if none
     of the flags are specified.
-
     """
     archive_all = not any(
         [
@@ -215,9 +212,41 @@ def unpack(
     course_ids: Optional[list[int]] = COURSE_IDS,
     terms: list[str] = Option([CURRENT_YEAR_AND_TERM], "--term", help="Term name"),
     instance_name: str = get_instance_option(),
+    content: Optional[bool] = content,
+    announcements: Optional[bool] = announcements,
+    groups: Optional[bool] = groups,
+    modules: Optional[bool] = modules,
+    pages: Optional[bool] = pages,
+    syllabus: Optional[bool] = syllabus,
+    assignments: Optional[bool] = assignments,
+    discussions: Optional[bool] = discussions,
+    grades: Optional[bool] = grades,
+    rubrics: Optional[bool] = rubrics,
+    quizzes: Optional[bool] = quizzes,
     force_report: bool = FORCE_REPORT,
     verbose: bool = VERBOSE,
 ):
+    """
+    Unpack archived Canvas courses
+
+    Options with both "include" and "exclude" flags will all be included if none
+    of the flags are specified.
+    """
+    unpack_all = not any(
+        [
+            content,
+            announcements,
+            modules,
+            pages,
+            syllabus,
+            assignments,
+            groups,
+            discussions,
+            grades,
+            rubrics,
+            quizzes,
+        ]
+    )
     instance = validate_instance_name(instance_name, verbose=True)
     switch_logger_file(LOGS, "archive", instance.name)
     if not course_ids:
@@ -231,4 +260,8 @@ def unpack(
         display_course(index, total, course_name)
         compress_path = create_directory(COMPRESSED_COURSES / course_name)
         unpack_path = create_directory(UNPACKED_COURSES / course_name)
-        unpack_assignments(compress_path, unpack_path, verbose)
+        if should_run_option(content, unpack_all):
+            unpack_content(compress_path, verbose)
+        if should_run_option(assignments, unpack_all):
+            unpack_assignments(compress_path, unpack_path, verbose)
+        echo("COMPELTE")
