@@ -11,7 +11,6 @@ from zipfile import ZipFile
 from canvasapi.account import AccountReport
 from loguru import logger
 from pandas.io.parsers.readers import read_csv
-from requests import get
 from typer import Exit, echo, style
 
 from .api import (
@@ -26,6 +25,7 @@ from .helpers import (
     CURRENT_YEAR_AND_TERM,
     REPORTS,
     create_directory,
+    download_file,
     get_reports_directory,
     make_list,
     switch_logger_file,
@@ -153,10 +153,7 @@ def download_report(
         filename: str = account_report.attachment["filename"]
         url = account_report.attachment["url"]
         report_path = base_path / filename
-        with open(report_path, "wb") as stream:
-            response = get(url, stream=True)
-            for chunk in response.iter_content(chunk_size=128):
-                stream.write(chunk)
+        download_file(report_path, url)
         if account_report.attachment["mime_class"] == "zip":
             export_path = base_path / filename.replace(".zip", "")
             with ZipFile(report_path) as unzipper:

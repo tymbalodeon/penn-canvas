@@ -7,7 +7,11 @@ from pandas import read_csv
 from pandas.core.frame import DataFrame
 from typer import echo
 
-from penn_canvas.helpers import create_directory, print_task_complete_message
+from penn_canvas.helpers import (
+    create_directory,
+    print_task_complete_message,
+    write_file,
+)
 from penn_canvas.style import color, print_item
 
 from .helpers import (
@@ -48,8 +52,7 @@ def unpack_announcements(
     for index, announcement in enumerate(announcements):
         title, message = announcement
         title_path = announcements_path / f"{title}.txt"
-        with open(title_path, "w") as announcement_file:
-            announcement_file.write(message)
+        write_file(title_path, message)
         if verbose:
             display_announcement(index, total, title, message)
             print_task_complete_message(announcements_path)

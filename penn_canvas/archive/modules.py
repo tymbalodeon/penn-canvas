@@ -10,7 +10,7 @@ from requests import get
 from typer import echo, progressbar
 
 from penn_canvas.api import Instance, get_canvas_key
-from penn_canvas.helpers import create_directory, write_file
+from penn_canvas.helpers import create_directory, download_file, write_file
 from penn_canvas.style import color, print_item
 
 from .helpers import format_display_text, format_name, strip_tags
@@ -40,10 +40,7 @@ def download_item_file(
     name = format_name(name)
     filename = f"{name}.{extension.lower()}" if extension else name
     file_path = module_path / filename
-    with open(module_path / filename, "wb") as stream:
-        response = get(url, headers=headers, stream=True)
-        for chunk in response.iter_content(chunk_size=128):
-            stream.write(chunk)
+    download_file(module_path / filename, url, headers)
     if not extension:
         mime_type = from_file(str(file_path), mime=True)
         file_path.rename(f"{file_path}{guess_extension(mime_type)}")

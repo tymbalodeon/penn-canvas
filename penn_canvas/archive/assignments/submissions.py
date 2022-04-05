@@ -9,7 +9,6 @@ from canvasapi.user import User
 from click.utils import echo
 from magic.magic import from_file
 from pandas import DataFrame
-from requests import get
 
 from penn_canvas.api import Instance, get_user
 from penn_canvas.archive.helpers import (
@@ -21,7 +20,7 @@ from penn_canvas.archive.helpers import (
     get_submission_display,
     strip_tags,
 )
-from penn_canvas.helpers import create_directory
+from penn_canvas.helpers import create_directory, download_file
 from penn_canvas.report import flatten
 from penn_canvas.style import color, print_item
 
@@ -88,10 +87,7 @@ def download_submission_files(
         name = f"{format_name(name)} ({user_name})"
         file_name = f"{name} ({user_name}).{extension.lower()}" if extension else name
         submission_file_path = submissions_path / file_name
-        with open(submission_file_path, "wb") as stream:
-            response = get(url, stream=True)
-            for chunk in response.iter_content(chunk_size=128):
-                stream.write(chunk)
+        download_file(submission_file_path, url)
         if not extension:
             mime_type = from_file(str(submission_file_path), mime=True)
             submission_file_path.rename(

@@ -5,12 +5,11 @@ from time import sleep
 from zipfile import ZipFile
 
 from canvasapi.course import Course
-from requests import get
 from typer import echo
 
 from penn_canvas.api import Instance, get_canvas
 from penn_canvas.archive.helpers import TAR_COMPRESSION_TYPE
-from penn_canvas.helpers import create_directory
+from penn_canvas.helpers import create_directory, download_file
 from penn_canvas.style import color
 
 CONTENT_EXPORT_TYPES = ["zip", "common_cartridge"]
@@ -53,15 +52,12 @@ def fetch_content(
         if workflow_state == "failed":
             echo("- color(EXPORT FAILED, 'red')")
         url = course.get_content_export(export).attachment["url"]
-        response = get(url, stream=True)
         file_name = f"{export_type}_content.zip"
         content_path = create_directory(course_directory / CONTENT_DIRECTORY_NAME)
         formatted_export_type = format_export_type(export_type)
         export_path = create_directory(content_path / formatted_export_type)
         file_path = export_path / file_name
-        with open(file_path, "wb") as stream:
-            for chunk in response.iter_content(chunk_size=128):
-                stream.write(chunk)
+        download_file(file_path, url)
         if file_path.is_file():
             unzipped_path = unpack_content(file_path, verbose)
             path_name = str(unzipped_path)

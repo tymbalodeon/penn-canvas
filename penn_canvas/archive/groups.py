@@ -6,10 +6,13 @@ from canvasapi.course import Course
 from canvasapi.group import Group, GroupCategory
 from canvasapi.user import User
 from pandas import DataFrame, Series, concat, read_csv
-from requests import get
 from typer import echo, progressbar
 
-from penn_canvas.helpers import create_directory, print_task_complete_message
+from penn_canvas.helpers import (
+    create_directory,
+    download_file,
+    print_task_complete_message,
+)
 from penn_canvas.style import color, print_item
 
 from .helpers import (
@@ -84,13 +87,7 @@ def archive_files(
         except Exception:
             name = group_file.filename
             extension = "txt"
-        with open(
-            group_files_path / f"{name}.{extension}",
-            "wb",
-        ) as stream:
-            response = get(group_file.url, stream=True)
-            for chunk in response.iter_content(chunk_size=128):
-                stream.write(chunk)
+        download_file(group_files_path / f"{name}.{extension}", group_file.url)
         if verbose:
             print_item(
                 file_index, file_total, color(display_name, "blue"), prefix="\t\t*"
