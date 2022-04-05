@@ -30,7 +30,7 @@ from penn_canvas.style import color, print_item
 
 from .announcements import fetch_announcements
 from .assignments.assignments import fetch_assignments, unpack_assignments
-from .content import CONTENT_DIRECTORY_NAME, fetch_content, unpack_content
+from .content import CONTENT_TAR_STEM, fetch_content, unzip_content
 from .discussions import fetch_discussions
 from .grades import fetch_grades
 from .groups import fetch_groups
@@ -85,7 +85,7 @@ def display_course(index: int, total: int, course_name: str):
 
 def restore_course(course: Course, instance: Instance):
     content_file = next(
-        path / CONTENT_DIRECTORY_NAME
+        path / CONTENT_TAR_STEM
         for path in Path(COMPRESSED_COURSES).iterdir()
         if path.is_dir() and str(course) in path.name
     )
@@ -261,7 +261,7 @@ def unpack(
         compress_path = create_directory(COMPRESSED_COURSES / course_name)
         unpack_path = create_directory(UNPACKED_COURSES / course_name)
         if should_run_option(content, unpack_all):
-            unpack_content(compress_path, verbose)
+            unzip_content(compress_path, verbose)
         if should_run_option(assignments, unpack_all):
             unpack_assignments(compress_path, unpack_path, verbose)
         echo("COMPELTE")
