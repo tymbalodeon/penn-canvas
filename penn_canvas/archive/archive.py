@@ -26,18 +26,18 @@ from penn_canvas.helpers import (
 from penn_canvas.report import get_course_ids_from_reports
 from penn_canvas.style import color, print_item
 
-from .announcements import archive_announcements
+from .announcements import fetch_announcements
 from .assignments.assignments import fetch_assignments, unpack_assignments
-from .content import CONTENT_DIRECTORY_NAME, archive_content
-from .discussions import archive_discussions
-from .grades import archive_grades
-from .groups import archive_groups
+from .content import CONTENT_DIRECTORY_NAME, fetch_content
+from .discussions import fetch_discussions
+from .grades import fetch_grades
+from .groups import fetch_groups
 from .helpers import format_name, should_run_option
-from .modules import archive_modules
-from .pages import archive_pages
-from .quizzes import archive_quizzes
-from .rubrics import archive_rubrics
-from .syllabus import archive_syllabus
+from .modules import fetch_modules
+from .pages import fetch_pages
+from .quizzes import fetch_quizzes
+from .rubrics import fetch_rubrics
+from .syllabus import fetch_syllabus
 
 archive_app = Typer(
     no_args_is_help=True,
@@ -172,31 +172,31 @@ def fetch(
         assignment_objects: list[Assignment] = list()
         rubric_objects: list[Rubric] = list()
         if should_run_option(content, archive_all):
-            archive_content(course, compress_path, instance, verbose)
+            fetch_content(course, compress_path, instance, verbose)
         if should_run_option(announcements, archive_all):
-            archive_announcements(course, compress_path, unpack_path, unpack, verbose)
+            fetch_announcements(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(modules, archive_all):
-            archive_modules(course, compress_path, instance, verbose)
+            fetch_modules(course, compress_path, instance, verbose)
         if should_run_option(pages, archive_all):
-            archive_pages(course, compress_path, unpack_path, unpack, verbose)
+            fetch_pages(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(syllabus, archive_all):
-            archive_syllabus(course, compress_path, unpack_path, unpack, verbose)
+            fetch_syllabus(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(assignments, archive_all):
             assignment_objects = fetch_assignments(
                 course, compress_path, unpack_path, unpack, instance, verbose
             )
         if should_run_option(groups, archive_all):
-            archive_groups(course, compress_path, unpack_path, unpack, verbose)
+            fetch_groups(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(discussions, archive_all):
-            archive_discussions(course, compress_path, use_timestamp, instance, verbose)
+            fetch_discussions(course, compress_path, use_timestamp, instance, verbose)
         if should_run_option(grades, archive_all):
-            archive_grades(course, compress_path, assignment_objects, instance, verbose)
+            fetch_grades(course, compress_path, assignment_objects, instance, verbose)
         if should_run_option(rubrics, archive_all):
-            rubric_objects = archive_rubrics(
+            rubric_objects = fetch_rubrics(
                 course, compress_path, unpack_path, unpack, verbose
             )
         if should_run_option(quizzes, archive_all):
-            archive_quizzes(course, compress_path, rubric_objects, verbose)
+            fetch_quizzes(course, compress_path, rubric_objects, verbose)
         echo("COMPELTE")
 
 
