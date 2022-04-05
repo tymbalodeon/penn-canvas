@@ -1,3 +1,4 @@
+from os import remove
 from pathlib import Path
 
 from canvasapi.assignment import Assignment
@@ -60,6 +61,7 @@ def unpack_descriptions(compress_path: Path, unpack_path: Path, verbose: bool):
             display_description(index, total, assignment_name, description)
     if verbose:
         print_task_complete_message(descriptions_path)
+    remove(compressed_file)
     return descriptions_path
 
 
