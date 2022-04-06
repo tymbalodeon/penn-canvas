@@ -15,12 +15,11 @@ def get_score_from_submissions(submissions: list[tuple[int, int]], user_id: str)
     return next(item[1] for item in submissions if item[0] == user_id)
 
 
-def archive_grade(
+def get_grade(
     enrollment: Enrollment,
     submissions: list[tuple[str, list[tuple[int, int]]]],
     instance: Instance,
 ) -> list:
-
     user_id = enrollment.user_id
     user = enrollment.user
     section_id = get_section(enrollment.course_section_id, instance=instance).name
@@ -114,10 +113,7 @@ def fetch_grades(course, course_directory, assignments, instance, verbose):
     rows = (
         [assignment_posted]
         + [assignment_points]
-        + [
-            archive_grade(enrollment, submissions, instance)
-            for enrollment in enrollments
-        ]
+        + [get_grade(enrollment, submissions, instance) for enrollment in enrollments]
     )
     grade_book = DataFrame(rows, columns=columns)
     grade_book.to_csv(grades_path, index=False)

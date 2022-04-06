@@ -39,7 +39,7 @@ COLUMNS = [
 ]
 
 
-def get_user_row(
+def get_group_user(
     user: User,
     category: GroupCategory,
     group: Group,
@@ -62,13 +62,13 @@ def get_group_users(
     users = list(group.get_users())
     user_total = len(users)
     rows = [
-        get_user_row(user, category, group, verbose, user_index, user_total)
+        get_group_user(user, category, group, verbose, user_index, user_total)
         for user_index, user in enumerate(users)
     ]
     return DataFrame(rows, columns=COLUMNS)
 
 
-def archive_files(
+def download_files(
     group: Group, group_files_path: Path, verbose: bool, index: int, total: int
 ):
     if verbose:
@@ -94,7 +94,7 @@ def archive_files(
             )
 
 
-def archive_category(
+def get_category(
     category: GroupCategory, category_files_path: Path, verbose: bool, index=0, total=0
 ) -> DataFrame:
     if verbose:
@@ -112,11 +112,11 @@ def archive_category(
     )
     for group_index, group in enumerate(groups):
         files_path = create_directory(group_files_path / format_name(group.name))
-        archive_files(group, files_path, verbose, group_index, group_total)
+        download_files(group, files_path, verbose, group_index, group_total)
     return concat(group_data) if group_data else DataFrame(columns=COLUMNS)
 
 
-def get_groups_to_unpack(series: Series) -> list[Series]:
+def get_unpack_groups(series: Series) -> list[Series]:
     group_ids = series[GROUP_ID].unique()
     return [series[series[GROUP_ID] == group_id] for group_id in group_ids]
 
@@ -134,7 +134,7 @@ def unpack_groups(
         categories_data[categories_data[CATEGORY_ID] == category_ids]
         for category_ids in category_ids
     ]
-    groups = [get_groups_to_unpack(category) for category in categories]
+    groups = [get_unpack_groups(category) for category in categories]
     groups_path = create_directory(unpack_path / UNPACK_GROUP_DIRECTORY)
     category_total = len(categories_data)
     for category_index, categories in enumerate(groups):
@@ -163,13 +163,13 @@ def fetch_groups(
     category_files_path = create_directory(compress_path / "group_files")
     if verbose:
         categories = [
-            archive_category(category, category_files_path, verbose, index, total)
+            get_category(category, category_files_path, verbose, index, total)
             for index, category in enumerate(category_objects)
         ]
     else:
         with progressbar(category_objects, length=total) as progress:
             categories = [
-                archive_category(category, category_files_path, verbose)
+                get_category(category, category_files_path, verbose)
                 for category in progress
             ]
     groups_path = compress_path / GROUPS_COMPRESSED_FILE

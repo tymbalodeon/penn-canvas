@@ -66,7 +66,7 @@ def get_item_body(
         )
 
 
-def archive_item(
+def download_module_item(
     item: ModuleItem,
     module_path: Path,
     instance: Instance,
@@ -93,7 +93,7 @@ def archive_item(
         print_item(index, total, message, prefix="\t*")
 
 
-def archive_module(
+def download_module(
     module: Module,
     modules_path: Path,
     instance: Instance,
@@ -108,7 +108,9 @@ def archive_module(
     items = list(module.get_module_items())
     item_total = len(items)
     for item_index, item in enumerate(items):
-        archive_item(item, module_path, instance, verbose, item_index, item_total)
+        download_module_item(
+            item, module_path, instance, verbose, item_index, item_total
+        )
 
 
 def fetch_modules(
@@ -120,8 +122,8 @@ def fetch_modules(
     total = len(modules)
     if verbose:
         for index, module in enumerate(modules):
-            archive_module(module, modules_path, instance, verbose, index, total)
+            download_module(module, modules_path, instance, verbose, index, total)
     else:
         with progressbar(modules, length=total) as progress:
             for module in progress:
-                archive_module(module, modules_path, instance, verbose)
+                download_module(module, modules_path, instance, verbose)

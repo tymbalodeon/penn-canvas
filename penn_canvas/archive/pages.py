@@ -25,17 +25,17 @@ from .helpers import (
 PAGES_COMPRESSED_FILE = f"pages.{CSV_COMPRESSION_TYPE}"
 
 
-def display_page(index: int, total: int, title: str, body: str):
+def print_page(index: int, total: int, title: str, body: str):
     body_text = color(format_display_text(body), "yellow")
     message = f"{color(title)}: {body_text}"
     print_item(index, total, message)
 
 
-def process_page(page: Page, verbose: bool, index=0, total=0):
+def get_page(page: Page, verbose: bool, index=0, total=0):
     title = page.title.strip()
     body = strip_tags(page.show_latest_revision().body)
     if verbose:
-        display_page(index, total, title, body)
+        print_page(index, total, title, body)
     return [title, body]
 
 
@@ -55,7 +55,7 @@ def unpack_pages(
         pages_file = pages_path / f"{title}.txt"
         write_file(pages_file, f'"{title}"\n\n{body}')
         if verbose:
-            display_page(index, total, title, body)
+            print_page(index, total, title, body)
             print_task_complete_message(pages_path)
     return pages_path
 
@@ -66,9 +66,7 @@ def fetch_pages(
     echo(") Exporting pages...")
     pages = list(course.get_pages())
     total = len(pages)
-    pages = [
-        process_page(page, verbose, index, total) for index, page in enumerate(pages)
-    ]
+    pages = [get_page(page, verbose, index, total) for index, page in enumerate(pages)]
     pages_data = DataFrame(pages, columns=["Title", "Body"])
     pages_path = compress_path / PAGES_COMPRESSED_FILE
     pages_data.to_csv(pages_path, index=False)

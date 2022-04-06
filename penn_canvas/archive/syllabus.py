@@ -18,7 +18,7 @@ from .helpers import (
 SYLLABUS_COMPRESSION_FILE = f"syllabus.{CSV_COMPRESSION_TYPE}"
 
 
-def display_syllabus(syllabus):
+def print_syllabus(syllabus):
     echo(f"\t{color(format_display_text(syllabus, limit=60), 'cyan')}")
 
 
@@ -34,7 +34,7 @@ def unpack_syllabus(
     syllabus_file = unpack_path / "Syllabus.txt"
     write_file(syllabus_file, syllabus)
     if verbose:
-        display_syllabus(syllabus)
+        print_syllabus(syllabus)
         print_task_complete_message(syllabus_file)
     return syllabus_file
 
@@ -54,7 +54,7 @@ def fetch_syllabus(
         syllabus_file = compress_path / SYLLABUS_COMPRESSION_FILE
         syllabus_data.to_csv(syllabus_file, index=False)
         if verbose:
-            display_syllabus(syllabus)
+            print_syllabus(syllabus)
         if unpack:
             unpacked_file = unpack_syllabus(compress_path, unpack_path, verbose=False)
             if verbose:

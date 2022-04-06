@@ -37,7 +37,7 @@ def get_rubric(
     verbose: bool,
     index=0,
     total=0,
-):
+) -> DataFrame:
     title = rubric.title.strip()
     if verbose:
         print_item(index, total, color(title))
@@ -73,7 +73,7 @@ def unpack_rubrics(
 
 def fetch_rubrics(
     course: Course, compress_path: Path, unpack_path: Path, unpack: bool, verbose: bool
-):
+) -> list[Rubric]:
     echo(") Exporting rubrics...")
     rubric_objects = list(course.get_rubrics())
     total = len(rubric_objects)

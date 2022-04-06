@@ -79,7 +79,7 @@ def format_course_name(course: Course) -> str:
     return f"{format_name(course.name)} ({course.id})"
 
 
-def display_course(index: int, total: int, course_name: str):
+def print_course(index: int, total: int, course_name: str):
     print_item(index, total, color(course_name, "blue"))
 
 
@@ -173,7 +173,7 @@ def fetch(
     for index, canvas_id in enumerate(courses):
         course = get_course(canvas_id, include=["syllabus_body"], instance=instance)
         course_name = format_course_name(course)
-        display_course(index, total, course_name)
+        print_course(index, total, course_name)
         compress_path = create_directory(COMPRESSED_COURSES / course_name)
         unpack_path = create_directory(UNPACKED_COURSES / course_name)
         assignment_objects: list[Assignment] = list()
@@ -257,7 +257,7 @@ def unpack(
     for index, canvas_id in enumerate(courses):
         course = get_course(canvas_id, include=["syllabus_body"], instance=instance)
         course_name = format_course_name(course)
-        display_course(index, total, course_name)
+        print_course(index, total, course_name)
         compress_path = create_directory(COMPRESSED_COURSES / course_name)
         unpack_path = create_directory(UNPACKED_COURSES / course_name)
         if should_run_option(content, unpack_all):
