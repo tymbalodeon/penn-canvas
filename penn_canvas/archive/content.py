@@ -45,7 +45,7 @@ def download_content(
     instance: Instance,
     verbose: bool,
 ):
-    echo(f') Starting "{export_type}" export...')
+    echo(f') Running "{export_type}" export...')
     export = course.export_content(export_type=export_type, skip_notifications=True)
     regex_search = search(r"\d*$", export.progress_url)
     progress_id = regex_search.group() if regex_search else None
@@ -67,13 +67,13 @@ def download_content(
     download_file(file_path, url)
     if file_path.is_file():
         unzipped_path = unzip_content(file_path, verbose)
-        if unpack:
-            unzipped_path.replace(unpack_path)
-            if verbose:
-                print_unpacked_file(unzipped_path)
         path_name = str(unzipped_path)
         make_archive(path_name, TAR_COMPRESSION_TYPE, root_dir=path_name)
-        if not unpack:
+        if unpack:
+            unzipped_path.replace(unpack_path / export_type.replace("_", " ").title())
+            if verbose:
+                print_unpacked_file(unzipped_path)
+        else:
             rmtree(unzipped_path)
 
 
@@ -122,3 +122,4 @@ def fetch_content(
         )
     content_directory = str(content_path)
     make_archive(content_directory, TAR_COMPRESSION_TYPE, root_dir=content_directory)
+    rmtree(content_path)
