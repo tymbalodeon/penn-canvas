@@ -8,13 +8,7 @@ from canvasapi.rubric import Rubric
 from requests.api import post
 from typer import Option, Typer, echo
 
-from penn_canvas.api import (
-    Instance,
-    get_canvas,
-    get_course,
-    get_instance_option,
-    validate_instance_name,
-)
+from penn_canvas.api import get_course, get_instance_option, validate_instance_name
 from penn_canvas.helpers import (
     BASE_PATH,
     COURSE_IDS,
@@ -83,38 +77,6 @@ def print_course(index: int, total: int, course_name: str):
     print_item(index, total, color(course_name, "blue"))
 
 
-def restore_course(course: Course, instance: Instance):
-    content_file = next(
-        path / CONTENT_TAR_STEM
-        for path in Path(COMPRESSED_COURSES).iterdir()
-        if path.is_dir() and str(course) in path.name
-    )
-    canvas_course = get_canvas(instance).get_course(course)
-    content_migration = canvas_course.create_content_migration(
-        "common_cartridge_importer",
-        pre_attachment={"name": content_file.name, "size": content_file.stat().st_size},
-    )
-    echo(f") Uploading {canvas_course} content file...")
-    with open(content_file, "rb") as content:
-        upload_url = content_migration.pre_attachment["upload_url"]
-        data = dict()
-        for key, value in content_migration.pre_attachment["upload_params"].items():
-            data[key] = value
-        status_code = post(upload_url, data=data, files={"file": content}).status_code
-    if not status_code == 201:
-        echo(color("ERROR: file not uploaded", "red"))
-        return
-    content_migration = canvas_course.get_content_migration(content_migration)
-    echo(") Running migration...")
-    while (
-        content_migration.get_progress().workflow_state == "queued"
-        or content_migration.get_progress().workflow_state == "running"
-    ):
-        echo("\t* Migration running...")
-        sleep(8)
-    echo("MIGRATION COMPLETE")
-
-
 def should_run_option(option: Optional[bool], use_all: bool) -> bool:
     return option if isinstance(option, bool) else use_all
 
@@ -170,8 +132,8 @@ def fetch(
     else:
         courses = get_course_ids_from_input(course_ids)
     total = len(courses)
-    for index, canvas_id in enumerate(courses):
-        course = get_course(canvas_id, include=["syllabus_body"], instance=instance)
+    for index, course_id in enumerate(courses):
+        course = get_course(course_id, include=["syllabus_body"], instance=instance)
         course_name = format_course_name(course)
         print_course(index, total, course_name)
         compress_path = create_directory(COMPRESSED_COURSES / course_name)
@@ -254,10 +216,11 @@ def unpack(
     else:
         courses = get_course_ids_from_input(course_ids)
     total = len(courses)
-    for index, canvas_id in enumerate(courses):
-        course = get_course(canvas_id, include=["syllabus_body"], instance=instance)
+    for index, course_id in enumerate(courses):
+        course = get_course(course_id, instance=instance)
         course_name = format_course_name(course)
-        print_course(index, total, course_name)
+        if verbose:
+            print_course(index, total, course_name)
         compress_path = create_directory(COMPRESSED_COURSES / course_name)
         unpack_path = create_directory(UNPACKED_COURSES / course_name)
         if should_run_option(content, unpack_all):
@@ -265,3 +228,58 @@ def unpack(
         if should_run_option(assignments, unpack_all):
             unpack_assignments(compress_path, unpack_path, verbose)
         echo("COMPELTE")
+
+
+@archive_app.command()
+def restore(
+    course_ids: Optional[list[int]] = COURSE_IDS,
+    terms: list[str] = Option([CURRENT_YEAR_AND_TERM], "--term", help="Term name"),
+    instance_name: str = get_instance_option(),
+    force_report: bool = FORCE_REPORT,
+    verbose: bool = VERBOSE,
+):
+    instance = validate_instance_name(instance_name, verbose=True)
+    switch_logger_file(LOGS, "archive", instance.name)
+    if not course_ids:
+        courses = get_course_ids_from_reports(terms, instance, force_report, verbose)
+    else:
+        courses = get_course_ids_from_input(course_ids)
+    total = len(courses)
+    for index, course_id in enumerate(courses):
+        content_file = next(
+            path / CONTENT_TAR_STEM
+            for path in Path(COMPRESSED_COURSES).iterdir()
+            if path.is_dir() and str(course_id) in path.name
+        )
+        course = get_course(course_id, instance=instance)
+        course_name = format_course_name(course)
+        if verbose:
+            print_course(index, total, course_name)
+        content_migration = course.create_content_migration(
+            "common_cartridge_importer",
+            pre_attachment={
+                "name": content_file.name,
+                "size": content_file.stat().st_size,
+            },
+        )
+        echo(f") Uploading {course} content file...")
+        with open(content_file, "rb") as content:
+            upload_url = content_migration.pre_attachment["upload_url"]
+            data = dict()
+            for key, value in content_migration.pre_attachment["upload_params"].items():
+                data[key] = value
+            status_code = post(
+                upload_url, data=data, files={"file": content}
+            ).status_code
+        if not status_code == 201:
+            echo(color("ERROR: file not uploaded", "red"))
+            return
+        content_migration = course.get_content_migration(content_migration)
+        echo(") Running migration...")
+        while (
+            content_migration.get_progress().workflow_state == "queued"
+            or content_migration.get_progress().workflow_state == "running"
+        ):
+            echo("\t* Migration running...")
+            sleep(8)
+        echo("MIGRATION COMPLETE")
