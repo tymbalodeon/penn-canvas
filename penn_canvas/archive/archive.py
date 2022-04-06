@@ -30,7 +30,7 @@ from penn_canvas.style import color, print_item
 
 from .announcements import fetch_announcements
 from .assignments.assignments import fetch_assignments, unpack_assignments
-from .content import CONTENT_TAR_STEM, fetch_content, unzip_content
+from .content import CONTENT_TAR_STEM, fetch_content, unpack_content
 from .discussions import fetch_discussions
 from .grades import fetch_grades
 from .groups import fetch_groups
@@ -179,7 +179,7 @@ def fetch(
         assignment_objects: list[Assignment] = list()
         rubric_objects: list[Rubric] = list()
         if should_run_option(content, archive_all):
-            fetch_content(course, compress_path, instance, verbose)
+            fetch_content(course, compress_path, unpack_path, unpack, instance, verbose)
         if should_run_option(announcements, archive_all):
             fetch_announcements(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(modules, archive_all):
@@ -261,7 +261,7 @@ def unpack(
         compress_path = create_directory(COMPRESSED_COURSES / course_name)
         unpack_path = create_directory(UNPACKED_COURSES / course_name)
         if should_run_option(content, unpack_all):
-            unzip_content(compress_path, verbose)
+            unpack_content(compress_path, unpack_path, verbose)
         if should_run_option(assignments, unpack_all):
             unpack_assignments(compress_path, unpack_path, verbose)
         echo("COMPELTE")
