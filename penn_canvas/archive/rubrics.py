@@ -85,8 +85,8 @@ def fetch_rubrics(
     else:
         with progressbar(rubric_objects, length=total) as progress:
             rubrics = [get_rubric(rubric, verbose) for rubric in progress]
-    rubrics_path = compress_path / RUBRICS_COMPRESSED_FILE
     rubric_data = concat(rubrics)
+    rubrics_path = compress_path / RUBRICS_COMPRESSED_FILE
     rubric_data.to_csv(rubrics_path, index=False)
     if unpack:
         unpacked_path = unpack_rubrics(compress_path, unpack_path, verbose=False)

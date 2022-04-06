@@ -3,127 +3,132 @@ from pathlib import Path
 from canvasapi.course import Course
 from canvasapi.discussion_topic import DiscussionEntry, DiscussionTopic
 from pandas import DataFrame
+from pandas.core.reshape.concat import concat
 from typer import echo, progressbar
 
 from penn_canvas.api import Instance, get_user
-from penn_canvas.helpers import create_directory, format_timestamp
-from penn_canvas.style import color
+from penn_canvas.helpers import format_timestamp
+from penn_canvas.style import color, print_item
 
-from .helpers import format_name, strip_tags
+from .helpers import CSV_COMPRESSION_TYPE, format_display_text, format_name, format_text
+
+DISCUSSION_ENTRIES_COMPRESSED_FILE = f"discussion_entries.{CSV_COMPRESSION_TYPE}"
+DISCUSSION_DESCRIPTIONS_COMPRESSED_FILE = (
+    f"discussion_descriptions.{CSV_COMPRESSION_TYPE}"
+)
+DISCUSSION_ID = "Discussion ID"
+DISCUSSION_TITLE = "Discussion Title"
 
 
 def get_entry(
     entry: DiscussionEntry,
+    discussion_id: str,
+    discussion_title: str,
     instance: Instance,
     verbose: bool,
-    discussion_index: int,
-    total_discussions: int,
-    entry_index: int,
-    total_entries: int,
-    discussion: DiscussionTopic,
-    csv_style: bool,
-) -> list | tuple:
-    user = " ".join(entry.user["display_name"].split())
+    index: int,
+    total: int,
+) -> list[str]:
     user_id = entry.user["id"]
-    canvas_user = get_user(user_id, instance=instance)
-    email = canvas_user.email if csv_style else ""
-    message = " ".join(strip_tags(entry.message.replace("\n", " ")).strip().split())
-    timestamp = "" if csv_style else format_timestamp(entry.created_at)
+    user = entry.user["display_name"]
+    email = get_user(user_id, instance=instance).email
+    timestamp = format_timestamp(entry.created_at)
+    message = format_text(entry.message)
     if verbose:
         user_display = color(user, "cyan")
-        timestamp_display = color(timestamp, "yellow") if csv_style else ""
-        email_display = color(email, "yellow") if not csv_style else ""
-        discussion_display = color(discussion.title.strip(), "magenta")
-        if entry_index == 0:
-            echo(f"==== DISCUSSION {discussion_index + 1} ====")
-        echo(
-            f"- [{discussion_index + 1}/{total_discussions}]"
-            f" ({entry_index + 1}/{total_entries}) {discussion_display}"
-            f" {user_display}"
-            f" {timestamp_display if csv_style else email_display}"
-            f" {message[:40]}..."
+        timestamp_display = color(timestamp, "yellow")
+        entry_display = (
+            f"{user_display} {timestamp_display} {format_display_text(message)}"
         )
-    return [user, email, message] if csv_style else (user, timestamp, message)
+        print_item(index, total, entry_display, prefix="\t*")
+    return [discussion_id, discussion_title, user_id, user, email, timestamp, message]
 
 
-def archive_discussion(
+def get_discussion_description(
+    discussion: DiscussionTopic, verbose: bool, index: int, total: int
+) -> list[str]:
+    discussion_title = discussion.title
+    description = format_text(discussion.message)
+    if verbose:
+        message = f"{color(discussion_title)}: {format_display_text(description)}"
+        print_item(index, total, message)
+    return [discussion.id, discussion_title, description]
+
+
+def get_discussion_descriptions(
+    discussions: list[DiscussionTopic], verbose: bool
+) -> DataFrame:
+    echo(") Exporting discussion descriptions..")
+    total = len(discussions)
+    descriptions = [
+        get_discussion_description(discussion, verbose, index, total)
+        for index, discussion in enumerate(discussions)
+    ]
+    columns = [DISCUSSION_ID, DISCUSSION_TITLE, "Description"]
+    return DataFrame(descriptions, columns=columns)
+
+
+def get_discussion_entries(
     discussion: DiscussionTopic,
-    course_directory: Path,
-    use_timestamp: bool,
-    instance,
+    instance: Instance,
     verbose: bool,
     index=0,
     total=0,
-    csv_style=False,
-):
-    discussion_name = format_name(discussion.title)
-    DISCUSSION_DIRECTORY = create_directory(course_directory / "Discussions")
-    discussion_path = create_directory(DISCUSSION_DIRECTORY / discussion_name)
-    description_path = discussion_path / f"{discussion_name}_DESCRIPTION.txt"
+) -> DataFrame:
+    if verbose:
+        discussion_title_display = format_name(discussion.title)
+        print_item(index, total, color(discussion_title_display))
     entries = list(discussion.get_topic_entries())
-    if verbose and not entries:
-        echo(f"==== DISCUSSION {index + 1} ====")
-        echo("- NO ENTRIES")
+    entries_total = len(entries)
     entries = [
         get_entry(
             entry,
+            discussion.id,
+            discussion.title,
             instance,
             verbose,
-            index,
-            total,
             entry_index,
-            len(entries),
-            discussion,
-            csv_style,
+            entries_total,
         )
         for entry_index, entry in enumerate(entries)
     ]
-    try:
-        description = " ".join(
-            strip_tags(discussion.message.replace("\n", " ")).strip().split()
-        )
-    except Exception:
-        description = ""
-    columns = ["User", "Email", "Timestamp", "Post"]
-    if not use_timestamp:
-        columns.remove("Timestamp")
-    if csv_style:
-        entries_data_frame = DataFrame(entries, columns=columns)
-        posts_path = discussion_path / f"{discussion_name}_POSTS.csv"
-        entries_data_frame.to_csv(posts_path, index=False)
-    else:
-        posts_path = discussion_path / f"{discussion_name}_POSTS.txt"
-        with open(posts_path, "w") as posts_file:
-            for user, timestamp, message in entries:
-                posts_file.write(f"\n{user}\n{timestamp}\n\n{message}\n")
-    with open(description_path, "w") as description_file:
-        description_file.write(description)
+    columns = [
+        DISCUSSION_ID,
+        DISCUSSION_TITLE,
+        "User ID",
+        "User",
+        "Email",
+        "Timestamp",
+        "Message",
+    ]
+    return DataFrame(entries, columns=columns)
 
 
 def fetch_discussions(
     course: Course,
-    course_path: Path,
-    use_timestamp: bool,
+    compress_path: Path,
     instance: Instance,
     verbose: bool,
 ):
     echo(") Exporting discussions...")
-    discussions = list(course.get_discussion_topics())
-    total = len(discussions)
+    discussion_topics = list(course.get_discussion_topics())
+    total = len(discussion_topics)
     if verbose:
-        for index, discussion in enumerate(discussions):
-            archive_discussion(
-                discussion,
-                course_path,
-                use_timestamp,
-                instance,
-                verbose,
-                index=index,
-                total=total,
-            )
+        descriptions = get_discussion_descriptions(discussion_topics, verbose)
+        echo(") Exporting discussion entries...")
+        discussion_entries = [
+            get_discussion_entries(discussion, instance, verbose, index, total)
+            for index, discussion in enumerate(discussion_topics)
+        ]
     else:
-        with progressbar(discussions, length=total) as progress:
-            for discussion in progress:
-                archive_discussion(
-                    discussion, course_path, use_timestamp, instance, verbose
-                )
+        with progressbar(discussion_topics, length=total) as progress:
+            descriptions = get_discussion_descriptions(discussion_topics, verbose)
+            discussion_entries = [
+                get_discussion_entries(discussion, instance, verbose)
+                for discussion in progress
+            ]
+    descriptions_path = compress_path / DISCUSSION_DESCRIPTIONS_COMPRESSED_FILE
+    descriptions.to_csv(descriptions_path, index=False)
+    discussions_data = concat(discussion_entries)
+    discussions_path = compress_path / DISCUSSION_ENTRIES_COMPRESSED_FILE
+    discussions_data.to_csv(discussions_path, index=False)

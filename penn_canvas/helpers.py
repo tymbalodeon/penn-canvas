@@ -452,14 +452,14 @@ def convert_to_est(timestamp: datetime) -> datetime:
     return utc.localize(timestamp).astimezone(timezone("US/Eastern"))
 
 
-def format_timestamp(timestamp: str, localize=True) -> Optional[str]:
+def format_timestamp(timestamp: str, localize=True) -> str:
     if timestamp:
         date = datetime.fromisoformat(timestamp.replace("Z", ""))
         if localize:
             date = convert_to_est(date)
         return date.strftime("%b %d, %Y (%I:%M:%S %p)")
     else:
-        return None
+        return ""
 
 
 def format_timedelta(timedelta: timedelta) -> str:

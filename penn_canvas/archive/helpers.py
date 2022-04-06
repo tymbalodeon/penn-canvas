@@ -53,6 +53,13 @@ def format_name(name: str) -> str:
     return name.strip().replace("/", "-").replace(":", "-")
 
 
+def format_text(parsed_text: str) -> str:
+    try:
+        return strip_tags(parsed_text).strip()
+    except Exception:
+        return ""
+
+
 @lru_cache
 def format_display_text(text: str, limit=50) -> str:
     truncated = len(text) > limit

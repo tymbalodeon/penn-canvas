@@ -9,8 +9,8 @@ from penn_canvas.archive.helpers import (
     CSV_COMPRESSION_TYPE,
     format_display_text,
     format_name,
+    format_text,
     print_unpacked_file,
-    strip_tags,
 )
 from penn_canvas.helpers import (
     create_directory,
@@ -31,21 +31,12 @@ def display_description(index, total, assignment_name, description):
     print_item(index, total, message)
 
 
-def format_description(assignment: Assignment) -> str:
-    try:
-        description = assignment.description.replace("\n", " ")
-        description = strip_tags(description).strip().split()
-        return " ".join(description)
-    except Exception:
-        return ""
-
-
 def get_description(assignment: Assignment, verbose: bool, index: int, total: int):
-    description = format_description(assignment)
+    description = format_text(assignment.description)
     name = assignment.name
     if verbose:
         display_description(index, total, assignment.name, description)
-    return [assignment.id, name, format_description(assignment)]
+    return [assignment.id, name, format_text(assignment.description)]
 
 
 def unpack_descriptions(compress_path: Path, unpack_path: Path, verbose: bool):
