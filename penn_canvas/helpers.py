@@ -179,8 +179,6 @@ def get_command_paths(
 def print_task_complete_message(result_path: Path, already_complete=False):
     if already_complete:
         echo(color("TASK ALREADY COMPLETE", "yellow"))
-    else:
-        echo("COMPLETE")
     result_path_display = color(result_path, "blue")
     echo(f"Output available at: {result_path_display}")
     if already_complete:

@@ -9,7 +9,7 @@ from canvasapi.submission import Submission
 from loguru import logger
 from typer import echo
 
-from penn_canvas.style import color
+from penn_canvas.style import color, print_item
 
 COMPRESSION_TYPE = "gz"
 CSV_COMPRESSION_TYPE = f"csv.{COMPRESSION_TYPE}"
@@ -74,6 +74,13 @@ def format_display_text(text: str, limit=50) -> str:
             final_character = text[-1]
         text = f"{text}..."
     return text
+
+
+def print_description(index, total, title, description, prefix=""):
+    assignment_display = color(format_display_text(title), "yellow")
+    description_display = color(format_display_text(description), "cyan")
+    message = f"{assignment_display}: {description_display}"
+    print_item(index, total, message, prefix=prefix)
 
 
 def print_unpacked_file(unpacked_path: Optional[Path]):

@@ -30,7 +30,7 @@ def format_comment(comment: dict, verbose: bool, index: int, total: int) -> list
     if verbose:
         author_display = color(author)
         comment_display = comment_text if comment_text else media_comment
-        comment_display = format_display_text(color(comment_display, "yellow"))
+        comment_display = color(format_display_text(comment_display), "yellow")
         message = f"{author_display}: {comment_display}"
         print_item(index, total, message, prefix="\t\t-")
     return [author, created_at, edited_at, comment_text, media_comment]

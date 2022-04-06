@@ -7,9 +7,9 @@ from typer import echo
 
 from penn_canvas.archive.helpers import (
     CSV_COMPRESSION_TYPE,
-    format_display_text,
     format_name,
     format_text,
+    print_description,
     print_unpacked_file,
 )
 from penn_canvas.helpers import (
@@ -17,25 +17,17 @@ from penn_canvas.helpers import (
     print_task_complete_message,
     write_file,
 )
-from penn_canvas.style import color, print_item
 
 DESCRIPTIONS_COMPRESSED_FILE = f"descriptions.{CSV_COMPRESSION_TYPE}"
 ASSIGNMENT_ID = "Assignment ID"
 UNPACK_DESCRIPTIONS_DIRECTORY = "Descriptions"
 
 
-def display_description(index, total, assignment_name, description):
-    assignment_display = color(format_display_text(assignment_name))
-    description_display = color(format_display_text(description), "yellow")
-    message = f"{assignment_display}: {description_display}"
-    print_item(index, total, message)
-
-
 def get_description(assignment: Assignment, verbose: bool, index: int, total: int):
     description = format_text(assignment.description)
     name = assignment.name
     if verbose:
-        display_description(index, total, assignment.name, description)
+        print_description(index, total, assignment.name, description)
     return [assignment.id, name, format_text(assignment.description)]
 
 
@@ -53,7 +45,7 @@ def unpack_descriptions(compress_path: Path, unpack_path: Path, verbose: bool):
         text = f'"{assignment_name}"\n\n{description}'
         write_file(description_file, text)
         if verbose:
-            display_description(index, total, assignment_name, description)
+            print_description(index, total, assignment_name, description)
     if verbose:
         print_task_complete_message(descriptions_path)
     remove(compressed_file)

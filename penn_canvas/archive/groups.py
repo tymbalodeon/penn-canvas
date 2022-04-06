@@ -131,12 +131,12 @@ def unpack_groups(
     categories_data = read_csv(compressed_file)
     category_ids = categories_data[CATEGORY_ID].unique()
     categories = [
-        categories_data[categories_data[CATEGORY_ID] == category_ids]
-        for category_ids in category_ids
+        categories_data[categories_data[CATEGORY_ID] == category_id]
+        for category_id in category_ids
     ]
     groups = [get_unpack_groups(category) for category in categories]
     groups_path = create_directory(unpack_path / UNPACK_GROUP_DIRECTORY)
-    category_total = len(categories_data)
+    category_total = len(categories_data.index)
     for category_index, categories in enumerate(groups):
         group_total = len(categories)
         for group_index, group in enumerate(categories):

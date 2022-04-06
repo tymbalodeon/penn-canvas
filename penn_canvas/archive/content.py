@@ -27,9 +27,7 @@ def format_export_type(export_type: str) -> str:
     return export_type.replace("_", " ").title()
 
 
-def unzip_content(compress_path: Path, verbose: bool):
-    if verbose:
-        echo(f") Unpacking {color(compress_path, 'blue')}")
+def unzip_content(compress_path: Path):
     unzip_parent = compress_path.parent
     with ZipFile(compress_path) as unzipper:
         unzipper.extractall(unzip_parent)
@@ -66,7 +64,7 @@ def download_content(
     file_path = export_path / file_name
     download_file(file_path, url)
     if file_path.is_file():
-        unzipped_path = unzip_content(file_path, verbose)
+        unzipped_path = unzip_content(file_path)
         path_name = str(unzipped_path)
         make_archive(path_name, TAR_COMPRESSION_TYPE, root_dir=path_name)
         if unpack:

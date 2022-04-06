@@ -25,7 +25,7 @@ from penn_canvas.style import color, print_item
 from .announcements import fetch_announcements
 from .assignments.assignments import fetch_assignments, unpack_assignments
 from .content import CONTENT_TAR_STEM, fetch_content, unpack_content
-from .discussions import fetch_discussions
+from .discussions import fetch_discussions, unpack_discussions
 from .grades import fetch_grades
 from .groups import fetch_groups
 from .helpers import format_name
@@ -229,6 +229,8 @@ def unpack(
             unpack_content(compress_path, unpack_path, verbose)
         if should_run_option(assignments, unpack_all):
             unpack_assignments(compress_path, unpack_path, verbose)
+        if should_run_option(discussions, unpack_all):
+            unpack_discussions(compress_path, unpack_path, verbose)
         echo("COMPELTE")
 
 
