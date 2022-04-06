@@ -1,9 +1,12 @@
 from functools import lru_cache
 from html.parser import HTMLParser
 from io import StringIO
+from pathlib import Path
+from typing import Optional
 
 from canvasapi.assignment import Assignment
 from canvasapi.submission import Submission
+from loguru import logger
 from typer import echo
 
 from penn_canvas.style import color
@@ -73,5 +76,10 @@ def format_display_text(text: str, limit=50) -> str:
     return text
 
 
-def print_unpacked_file(unpacked_file):
-    echo(f"Unpacked to: {color(unpacked_file, 'blue')}")
+def print_unpacked_file(unpacked_path: Optional[Path]):
+    if unpacked_path:
+        echo(f"Unpacked to: {color(unpacked_path, 'blue')}")
+    else:
+        message = "ERROR: failed to unpack."
+        logger.error(message)
+        echo(message)

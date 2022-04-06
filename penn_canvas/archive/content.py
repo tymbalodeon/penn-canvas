@@ -103,13 +103,13 @@ def fetch_content(
     verbose: bool,
 ):
     echo(") Exporting content...")
-    content_path = create_directory(compress_path / CONTENT_TAR_STEM)
     if unpack:
         unpack_content_path = create_directory(
             unpack_path / UNPACK_CONTENT_DIRECTORY, clear=True
         )
     else:
         unpack_content_path = unpack_path
+    content_path = create_directory(compress_path / CONTENT_TAR_STEM)
     for export_type in CONTENT_EXPORT_TYPES:
         download_content(
             export_type,

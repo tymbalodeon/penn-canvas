@@ -1,4 +1,6 @@
 from pathlib import Path
+from shutil import make_archive, rmtree, unpack_archive
+from typing import Optional
 
 from canvasapi.course import Course
 from canvasapi.discussion_topic import DiscussionEntry, DiscussionTopic
@@ -7,11 +9,22 @@ from pandas.core.reshape.concat import concat
 from typer import echo, progressbar
 
 from penn_canvas.api import Instance, get_user
-from penn_canvas.helpers import format_timestamp
+from penn_canvas.helpers import create_directory, format_timestamp
 from penn_canvas.style import color, print_item
 
-from .helpers import CSV_COMPRESSION_TYPE, format_display_text, format_name, format_text
+from .helpers import (
+    CSV_COMPRESSION_TYPE,
+    TAR_COMPRESSION_TYPE,
+    TAR_EXTENSION,
+    format_display_text,
+    format_name,
+    format_text,
+    print_unpacked_file,
+)
 
+DISCUSSIONS_TAR_STEM = "discussions"
+DISCUSSIONS_TAR_NAME = f"{DISCUSSIONS_TAR_STEM}.{TAR_EXTENSION}"
+UNPACK_DISCUSSIONS_DIRECTORY = DISCUSSIONS_TAR_STEM.title()
 DISCUSSION_ENTRIES_COMPRESSED_FILE = f"discussion_entries.{CSV_COMPRESSION_TYPE}"
 DISCUSSION_DESCRIPTIONS_COMPRESSED_FILE = (
     f"discussion_descriptions.{CSV_COMPRESSION_TYPE}"
@@ -104,9 +117,28 @@ def get_discussion_entries(
     return DataFrame(entries, columns=columns)
 
 
+def unpack_discussions(
+    compress_path: Path, unpack_path: Path, verbose: bool
+) -> Optional[Path]:
+    archive_file = compress_path / DISCUSSIONS_TAR_NAME
+    if not archive_file.is_file():
+        return None
+    discussions_path = compress_path / DISCUSSIONS_TAR_STEM
+    unpack_archive(archive_file, discussions_path)
+    unpack_discussions_path = create_directory(
+        unpack_path / UNPACK_DISCUSSIONS_DIRECTORY, clear=True
+    )
+    discussions_path.replace(unpack_discussions_path)
+    if verbose:
+        print_unpacked_file(unpack_discussions_path)
+    return unpack_discussions_path
+
+
 def fetch_discussions(
     course: Course,
     compress_path: Path,
+    unpack_path: Path,
+    unpack: bool,
     instance: Instance,
     verbose: bool,
 ):
@@ -127,8 +159,19 @@ def fetch_discussions(
                 get_discussion_entries(discussion, instance, verbose)
                 for discussion in progress
             ]
-    descriptions_path = compress_path / DISCUSSION_DESCRIPTIONS_COMPRESSED_FILE
+    discussions_path = create_directory(compress_path / DISCUSSIONS_TAR_STEM)
+    descriptions_path = discussions_path / DISCUSSION_DESCRIPTIONS_COMPRESSED_FILE
     descriptions.to_csv(descriptions_path, index=False)
-    discussions_data = concat(discussion_entries)
-    discussions_path = compress_path / DISCUSSION_ENTRIES_COMPRESSED_FILE
-    discussions_data.to_csv(discussions_path, index=False)
+    discussion_entries_data = concat(discussion_entries)
+    discussion_entries_path = discussions_path / DISCUSSION_ENTRIES_COMPRESSED_FILE
+    discussion_entries_data.to_csv(discussion_entries_path, index=False)
+    discussions_directory = str(discussions_path)
+    make_archive(
+        discussions_directory, TAR_COMPRESSION_TYPE, root_dir=discussions_directory
+    )
+    if unpack:
+        unpacked_path = unpack_discussions(compress_path, unpack_path, verbose=False)
+        if verbose:
+            print_unpacked_file(unpacked_path)
+    else:
+        rmtree(discussions_path)

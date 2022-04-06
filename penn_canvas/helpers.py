@@ -38,7 +38,7 @@ COURSE_IDS = Option(None, "--course", help="Canvas course id")
 
 
 def create_directory(directory: Path, parents=True, clear=False) -> Path:
-    if clear:
+    if clear and directory.is_dir():
         rmtree(directory)
     if not directory.exists():
         Path.mkdir(directory, parents=parents)

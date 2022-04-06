@@ -157,7 +157,9 @@ def fetch(
         if should_run_option(groups, archive_all):
             fetch_groups(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(discussions, archive_all):
-            fetch_discussions(course, compress_path, instance, verbose)
+            fetch_discussions(
+                course, compress_path, unpack_path, unpack, instance, verbose
+            )
         if should_run_option(grades, archive_all):
             fetch_grades(course, compress_path, assignment_objects, instance, verbose)
         if should_run_option(rubrics, archive_all):
