@@ -1,3 +1,7 @@
+from pathlib import Path
+from typing import Optional
+
+from canvasapi.assignment import Assignment
 from canvasapi.course import Course
 from canvasapi.enrollment import Enrollment
 from canvasapi.submission import Submission
@@ -11,15 +15,50 @@ from penn_canvas.style import print_item
 from .helpers import format_name
 
 
-def get_score_from_submissions(submissions: list[tuple[int, int]], user_id: str):
-    return next(item[1] for item in submissions if item[0] == user_id)
+def get_enrollments(course: Course) -> list[Enrollment]:
+    echo(") Finding students...")
+    return [
+        enrollment
+        for enrollment in course.get_enrollments()
+        if enrollment.type == "StudentEnrollment"
+    ]
 
 
-def get_grade(
+def fill_rows(number_of_rows: int, fill_value="") -> list[str]:
+    return [fill_value] * number_of_rows
+
+
+def is_manual_posting(assignment: Assignment) -> str:
+    return "Manual Posting" if assignment.post_manually else ""
+
+
+def get_posting_types(assignments: list[Assignment]) -> list[str]:
+    posting_types = [is_manual_posting(assignment) for assignment in assignments]
+    return fill_rows(5) + posting_types
+
+
+def get_points_possible(assignments: list[Assignment]) -> list[str]:
+    points_possible = [assignment.points_possible for assignment in assignments]
+    prefix_row = ["    Points Possible"]
+    blank_rows = fill_rows(4)
+    read_only_rows = fill_rows(8, fill_value="(read only)")
+    return prefix_row + blank_rows + points_possible + read_only_rows
+
+
+def get_user_submission(
+    user_id: str, submissions: list[Submission]
+) -> Optional[Submission]:
+    return next(
+        (submission for submission in submissions if submission.user_id == user_id),
+        None,
+    )
+
+
+def get_enrollment_grades(
     enrollment: Enrollment,
-    submissions: list[tuple[str, list[tuple[int, int]]]],
+    submissions: list[list[Submission]],
     instance: Instance,
-) -> list:
+) -> list[str]:
     user_id = enrollment.user_id
     user = enrollment.user
     section_id = get_section(enrollment.course_section_id, instance=instance).name
@@ -31,7 +70,7 @@ def get_grade(
         section_id,
     ]
     submission_scores = [
-        get_score_from_submissions(submission[1], user_id) for submission in submissions
+        get_user_submission(user_id, submission) for submission in submissions
     ]
     total_scores = [
         enrollment.grades["current_score"],
@@ -46,79 +85,58 @@ def get_grade(
     return student_data + submission_scores + total_scores
 
 
-def get_enrollments(course: Course) -> list[Enrollment]:
-    echo(") Finding students...")
-    return [
-        enrollment
-        for enrollment in course.get_enrollments()
-        if enrollment.type == "StudentEnrollment"
+def get_assignment_names(assignments: list[Assignment]) -> list[str]:
+    return [format_name(assignment.name) for assignment in assignments]
+
+
+def get_all_columns(assignment_names: list[str]) -> list[str]:
+    student_columns = [
+        "Student",
+        "ID",
+        "SIS User ID",
+        "SIS Login ID",
+        "Section",
     ]
+    grade_columns = [
+        "Current Score",
+        "Unposted Current Score",
+        "Final Score",
+        "Unposted Final Score",
+        "Current Grade",
+        "Unposted Current Grade",
+        "Final Grade",
+        "Unposted Final Grade",
+    ]
+    return student_columns + assignment_names + grade_columns
 
 
-def get_manual_posting(assignment):
-    return "Manual Posting" if assignment.post_manually else ""
-
-
-def get_submission_score(submission: Submission):
-    return round(float(submission.score), 2) if submission.score else submission.score
-
-
-def fetch_grades(course, course_directory, assignments, instance, verbose):
+def fetch_grades(
+    course: Course,
+    course_directory: Path,
+    assignments: list[Assignment],
+    instance: Instance,
+    verbose: bool,
+):
     echo(") Exporting grades...")
     enrollments = get_enrollments(course)
     if not assignments:
-        assignments = course.get_assignments()
+        assignments = list(course.get_assignments())
     assignments = [assignment for assignment in assignments if assignment.published]
-    assignment_posted = [""] * 5 + [
-        get_manual_posting(assignment) for assignment in assignments
+    posting_types = [get_posting_types(assignments)]
+    points_possible = [get_points_possible(assignments)]
+    submissions = [list(assignment.get_submissions()) for assignment in assignments]
+    enrollment_grades = [
+        get_enrollment_grades(enrollment, submissions, instance)
+        for enrollment in enrollments
     ]
-    assignment_points = (
-        ["    Points Possible"]
-        + [""] * 4
-        + [assignment.points_possible for assignment in assignments]
-        + (["(read only)"] * 8)
-    )
-    submissions = [
-        (
-            format_name(assignment.name),
-            [
-                (submission.user_id, get_submission_score(submission))
-                for submission in assignment.get_submissions()
-            ],
-        )
-        for assignment in assignments
-    ]
-    assignment_names = [submission[0] for submission in submissions]
-    columns = (
-        [
-            "Student",
-            "ID",
-            "SIS User ID",
-            "SIS Login ID",
-            "Section",
-        ]
-        + assignment_names
-        + [
-            "Current Score",
-            "Unposted Current Score",
-            "Final Score",
-            "Unposted Final Score",
-            "Current Grade",
-            "Unposted Current Grade",
-            "Final Grade",
-            "Unposted Final Grade",
-        ]
-    )
+    grade_rows = posting_types + points_possible + enrollment_grades
+    assignment_names = get_assignment_names(assignments)
+    columns = get_all_columns(assignment_names)
+    grade_book = DataFrame(grade_rows, columns=columns)
     grades_path = create_directory(course_directory / "Grades") / "Grades.csv"
-    rows = (
-        [assignment_posted]
-        + [assignment_points]
-        + [get_grade(enrollment, submissions, instance) for enrollment in enrollments]
-    )
-    grade_book = DataFrame(rows, columns=columns)
     grade_book.to_csv(grades_path, index=False)
     if verbose:
-        total = len(rows)
-        for index, row in enumerate(rows):
+        total = len(grade_rows)
+        for index, row in enumerate(grade_rows):
             row = [str(item) for item in row]
             print_item(index, total, ", ".join(row))
