@@ -62,6 +62,7 @@ def get_enrollment_grades(
     user_id = enrollment.user_id
     user = enrollment.user
     section_id = get_section(enrollment.course_section_id, instance=instance).name
+    grades = enrollment.grades
     student_data = [
         user["sortable_name"],
         user_id,
@@ -73,14 +74,14 @@ def get_enrollment_grades(
         get_user_submission(user_id, submission) for submission in submissions
     ]
     total_scores = [
-        enrollment.grades["current_score"],
-        enrollment.grades["unposted_current_score"],
-        enrollment.grades["final_score"],
-        enrollment.grades["unposted_final_score"],
-        enrollment.grades["current_grade"],
-        enrollment.grades["unposted_current_grade"],
-        enrollment.grades["final_grade"],
-        enrollment.grades["unposted_final_grade"],
+        grades["current_score"],
+        grades["unposted_current_score"],
+        grades["final_score"],
+        grades["unposted_final_score"],
+        grades["current_grade"],
+        grades["unposted_current_grade"],
+        grades["final_grade"],
+        grades["unposted_final_grade"],
     ]
     return student_data + submission_scores + total_scores
 
