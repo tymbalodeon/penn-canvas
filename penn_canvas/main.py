@@ -313,17 +313,10 @@ def find_users_by_email(emails_path: str = Argument("", help="Path to input csv"
 
 @app.command()
 def integrity(
-    course: int = Option(..., "--course", help="Canvas course id"),
-    users: str = Option(..., "--users", help="Canvas user id"),
-    quizzes: str = Option(..., "--quizzes", help="Canvas quiz id"),
-    test: bool = Option(
-        False,
-        "--test",
-        help=(
-            "Use the Canvas test instance (https://upenn.test.instructure.com/) instead"
-            " of production (https://canvas.upenn.edu/)."
-        ),
-    ),
+    course_id: int = Option(..., "--course", help="Canvas course id"),
+    user_ids: list[int] = Option(..., "--users", help="Canvas user id"),
+    quiz_ids: list[int] = Option(..., "--quizzes", help="Canvas quiz id"),
+    instance_name: str = get_instance_option(),
     skip_page_views: bool = Option(
         False,
         "--skip-page-views",
@@ -331,7 +324,7 @@ def integrity(
     ),
 ):
     """Get page views for students"""
-    integrity_main(course, users, quizzes, test, skip_page_views)
+    integrity_main(course_id, user_ids, quiz_ids, instance_name, skip_page_views)
 
 
 @app.command()

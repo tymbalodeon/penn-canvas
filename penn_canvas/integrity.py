@@ -1,12 +1,16 @@
 from datetime import timedelta
+from typing import Any
 
+from canvasapi.course import Course
+from canvasapi.quiz import Quiz
+from canvasapi.submission import Submission
+from canvasapi.user import User
 from pandas import DataFrame
-from tqdm import tqdm
 from typer import echo
 
 from penn_canvas.api import Instance
 
-from .api import get_canvas
+from .api import get_course, validate_instance_name
 from .helpers import format_timedelta, format_timestamp, get_command_paths
 from .style import color, print_item
 
@@ -14,35 +18,48 @@ COMMAND_NAME = "Integrity"
 RESULTS = get_command_paths(COMMAND_NAME)["results"]
 
 
-def parse_args(course_id: int, test: bool):
-    instance = Instance.TEST if test else Instance.PRODUCTION
-    canvas = get_canvas(instance)
-    course = canvas.get_course(course_id)
-    start = (
-        start.strftime("%b %d, %Y (%I:%M:%S %p)")
-        if (start := course.start_at_date)
-        else ""
-    )
-    return course, start
+def is_quiz_page_view(page_view, quiz_id):
+    return f"/quizzes/{quiz_id}" in page_view.url and page_view.participated
+
+
+def get_ip_addresses(user: User, quiz_id: str, start: str, end: str) -> str:
+    if start and end:
+        page_views_paginator = user.get_page_views(start_time=start, end_time=end)
+    else:
+        page_views_paginator = user.get_page_views()
+    page_views = {
+        page_view.remote_ip
+        for page_view in page_views_paginator
+        if is_quiz_page_view(page_view, quiz_id)
+    }
+    return ", ".join(page_views)
 
 
 def get_user_data(
-    course, quizzes, submissions, user, start, index, total, skip_page_views
+    course: Course,
+    quizzes: list[Quiz],
+    submissions: list[Submission],
+    user_id: int,
+    start: str,
+    end: str,
+    index: int,
+    total: int,
+    skip_page_views: bool,
 ):
-    user_object = course.get_user(user)
+    user = course.get_user(user_id)
     message = (
-        f"Pulling data for {color(user_object, 'cyan', bold=True)}"
+        f"Pulling data for {color(user, 'cyan', bold=True)}"
         f"{f' starting on {color(start)}' if start else ''}..."
     )
     print_item(index, total, message)
     submissions = [
-        submission for submission in submissions if submission.user_id == user
+        submission for submission in submissions if submission.user_id == user_id
     ]
     user_data = dict()
     for quiz_index, quiz in enumerate(quizzes):
         user_data[quiz.id] = [
             [
-                str(user_object),
+                str(user),
                 str(quiz),
                 format_timestamp(submission.started_at),
                 format_timestamp(submission.finished_at),
@@ -54,17 +71,7 @@ def get_user_data(
         if not skip_page_views:
             message = f"Pulling page views for {color(quiz, 'yellow')}..."
             print_item(quiz_index, len(quizzes), message)
-            ip_addresses = ", ".join(
-                {
-                    view.remote_ip
-                    for view in (
-                        tqdm(user_object.get_page_views(start_time=start))
-                        if start
-                        else tqdm(user_object.get_page_views())
-                    )
-                    if f"/quizzes/{quiz.id}" in view.url and view.participated
-                }
-            )
+            ip_addresses = get_ip_addresses(user, quiz.id, start, end)
             user_data[quiz.id] = [
                 submission + [ip_addresses] for submission in user_data[quiz.id]
             ]
@@ -77,38 +84,53 @@ def get_user_data(
     ]
     if not skip_page_views:
         columns.append("IP Address")
-    result_path = RESULTS / f"{user_object}.csv"
-    rows = list()
+    result_path = RESULTS / f"{user}.csv"
+    rows: list[Any] = list()
     for key in user_data.keys():
         rows = rows + user_data[key]
-    user_data = DataFrame(rows, columns=columns)
-    user_data.to_csv(result_path, index=False)
+    user_data_frame = DataFrame(rows, columns=columns)
+    user_data_frame.to_csv(result_path, index=False)
+
+
+def get_quiz_submissions_for_users(quiz: Quiz, user_ids: list[int]) -> list[Submission]:
+    return [
+        submission
+        for submission in quiz.get_submissions()
+        if submission.user_id in user_ids
+    ]
+
+
+def get_all_user_submissions_for_quizzes(
+    quizzes: list[Quiz], user_ids: list[int]
+) -> list[Submission]:
+    submissions: list[Any] = list()
+    for quiz in quizzes:
+        submissions = submissions + get_quiz_submissions_for_users(quiz, user_ids)
+    return submissions
 
 
 def integrity_main(
     course_id: int,
     user_ids: list[int],
     quiz_ids: list[int],
-    test: bool,
+    instance_name: str | Instance,
     skip_page_views: bool,
+    start="",
+    end="",
 ):
-    course, start = parse_args(course_id, test)
-    echo(f") Checking student activity in {color(course_id, 'blue', bold=True)}...")
+    instance = validate_instance_name(instance_name)
+    course = get_course(course_id, instance=instance)
+    echo(f") Checking student activity in {color(course, 'blue', bold=True)}...")
     quizzes = [course.get_quiz(quiz) for quiz in quiz_ids]
-    submissions = []
-    for quiz in quizzes:
-        submissions = submissions + [
-            submission
-            for submission in quiz.get_submissions()
-            if submission.user_id in user_ids
-        ]
-    for index, user in enumerate(user_ids):
+    submissions = get_all_user_submissions_for_quizzes(quizzes, user_ids)
+    for index, user_id in enumerate(user_ids):
         get_user_data(
-            course_id,
-            quiz_ids,
+            course,
+            quizzes,
             submissions,
-            user,
+            user_id,
             start,
+            end,
             index,
             len(user_ids),
             skip_page_views,
