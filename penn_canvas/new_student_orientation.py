@@ -50,7 +50,6 @@ def find_new_student_orientation_file():
             " again.\n- (If you need detailed instructions, run this command with the"
             " '--help' flag.)"
         )
-
         raise Exit()
     else:
         XLSX_FILES = [input_file for input_file in Path(INPUT).glob("*.xlsx")]
@@ -62,7 +61,6 @@ def find_new_student_orientation_file():
             ),
             None,
         )
-
         if not CURRENT_FILE:
             error = color(
                 "- ERROR: A New Student Orientation file matching the graduation year"
@@ -76,7 +74,6 @@ def find_new_student_orientation_file():
                 f" {color(INPUT, 'green')}\n- (If you need detailed instructions, run"
                 " this command with the '--help' flag.)"
             )
-
             raise Exit()
         else:
             return CURRENT_FILE
@@ -175,11 +172,9 @@ def process_result(test, result_path):
     )
     final_list = final_list.sort_values("group name")
     final_list.to_csv(FINAL_LIST_PATH, index=False)
-
     if test:
         test_final_list = RESULTS / f"{FINAL_LIST_PATH}_test.csv"
         FINAL_LIST_PATH.rename(test_final_list)
-
     return (
         len(ALREADY_PROCESSED.index),
         len(ADDED.index),
@@ -206,43 +201,35 @@ def print_messages(
     echo(f"- Processed {color(total, 'magenta'):,} users.")
     added_count = color(added + enrolled, "green")
     echo(f"- Successfully added {added_count:,} users to groups.")
-
     errors = False
-
     if enrolled > 0:
         if enrolled > 1:
             user = "users"
         else:
             user = "user"
-
         message = color(
             f"Automatically enrolled {enrolled:,} {user} in the course.", "yellow"
         )
         echo(f"- {message}")
-
     if already_processed > 0:
         if already_processed > 1:
             user = "users"
         else:
             user = "user"
-
         message = color(
             f"{already_processed:,} {user} already added to group.", "yellow"
         )
         echo(f"- {message}")
-
     if not_enrolled > 0:
         if not_enrolled > 1:
             user = "users"
         else:
             user = "user"
-
         message = color(
             f"Found {not_enrolled:,} {user} not enrolled in the course.", "red"
         )
         echo(f"- {message}")
         errors = True
-
     if not_in_canvas > 0:
         if not_in_canvas > 1:
             user = "users"
@@ -250,11 +237,9 @@ def print_messages(
         else:
             user = "user"
             account = "a Canvas account"
-
         message = color(f"Found {not_in_canvas:,} {user} without {account}.", "red")
         echo(f"- {message}")
         errors = True
-
     if invalid_pennkey > 0:
         if invalid_pennkey > 1:
             user = "users"
@@ -262,184 +247,171 @@ def print_messages(
         else:
             user = "user"
             pennkey = "pennkey"
-
         message = color(
             f"Found {invalid_pennkey:,} {user} with invalid {pennkey}.", "red"
         )
         echo(f"- {message}")
         errors = True
-
     if error > 0:
         if error > 1:
             user = "users"
         else:
             user = "user"
-
         message = color(f"Encountered an unknown error for {error:,} {user}.", "red")
         echo(f"- {message}")
         errors = True
-
     if errors:
         result_path = color(result_path, "green")
         echo(f"- Details recorded to: {result_path}")
-
     final_list_path = color(FINAL_LIST_PATH, "green")
     echo(f"- Final Group membership assignments recorded to: {final_list_path}")
     echo(("FINISHED", "yellow"))
 
 
-def new_student_orientation_main(test, verbose, force, clear_processed):
-    def create_group_membership(
-        canvas, course_id, group_set_name, group_name, penn_key, enroll_in_course=False
-    ):
-        course = canvas.get_course(course_id)
+def create_group_membership(
+    canvas,
+    course_id,
+    group_set_name,
+    group_name,
+    penn_key,
+    verbose,
+    enroll_in_course=False,
+):
+    course = canvas.get_course(course_id)
+    group_set = next(
+        (
+            group_set
+            for group_set in course.get_group_categories()
+            if group_set.name == group_set_name
+        ),
+        None,
+    )
+    if not group_set:
+        if verbose:
+            echo(f") Creating group set {group_set_name}...")
+        group_set = course.create_group_category(group_set_name)
+    group = next(
+        (group for group in group_set.get_groups() if group.name == group_name),
+        None,
+    )
+    if not group:
+        if verbose:
+            echo(f") Creating group {group_name}...")
+        group = group_set.create_group(name=group_name)
+    canvas_user = canvas.get_user(penn_key, "sis_login_id")
+    group.create_membership(canvas_user)
+    if enroll_in_course:
+        return "enrolled and added", "cyan"
+    else:
+        return "added", "green"
 
-        group_set = next(
-            (
-                group_set
-                for group_set in course.get_group_categories()
-                if group_set.name == group_set_name
-            ),
-            None,
-        )
-        if not group_set:
-            if verbose:
-                echo(f") Creating group set {group_set_name}...")
-            group_set = course.create_group_category(group_set_name)
 
-        group = next(
-            (group for group in group_set.get_groups() if group.name == group_name),
-            None,
-        )
-
-        if not group:
-            if verbose:
-                echo(f") Creating group {group_name}...")
-            group = group_set.create_group(name=group_name)
-
-        canvas_user = canvas.get_user(penn_key, "sis_login_id")
-        group.create_membership(canvas_user)
-
-        if enroll_in_course:
-            return "enrolled and added", "cyan"
-        else:
-            return "added", "green"
-
-    def create_memberships(user, canvas, verbose, args):
-        total, processed_users, result_path, data = args
-        index, course_id, group_set_name, group_name, penn_key = user
-
-        if isna(penn_key):
-            status = "invalid pennkey"
-            status_color = "red"
-        elif force and penn_key in processed_users:
-            status = "already processed"
-            status_color = "yellow"
-        else:
+def create_memberships(user, canvas, verbose, force, processed_path, args):
+    total, processed_users, result_path, data = args
+    index, course_id, group_set_name, group_name, penn_key = user
+    if isna(penn_key):
+        status = "invalid pennkey"
+        status_color = "red"
+    elif force and penn_key in processed_users:
+        status = "already processed"
+        status_color = "yellow"
+    else:
+        try:
+            status, status_color = create_group_membership(
+                canvas, course_id, group_set_name, group_name, penn_key, verbose
+            )
+        except Exception as error:
             try:
-                status, status_color = create_group_membership(
-                    canvas, course_id, group_set_name, group_name, penn_key
-                )
-            except Exception as error:
+                course = canvas.get_course(course_id)
+                canvas_user = canvas.get_user(penn_key, "sis_login_id")
+                status = error
+                status_color = "red"
                 try:
-                    course = canvas.get_course(course_id)
-                    canvas_user = canvas.get_user(penn_key, "sis_login_id")
-                    status = error
-                    status_color = "red"
-
+                    course.get_user(canvas_user)
+                except Exception:
                     try:
-                        course.get_user(canvas_user)
+                        course.enroll_user(canvas_user)
+                        status, status_color = create_group_membership(
+                            canvas,
+                            course_id,
+                            group_set_name,
+                            group_name,
+                            penn_key,
+                            True,
+                        )
                     except Exception:
-                        try:
-                            course.enroll_user(canvas_user)
-                            status, status_color = create_group_membership(
-                                canvas,
-                                course_id,
-                                group_set_name,
-                                group_name,
-                                penn_key,
-                                True,
-                            )
-                        except Exception:
-                            status = "failed to enroll user in course"
-                except Exception as error:
-                    status = error
-                    status_color = "red"
-
-                    try:
-                        if verbose:
-                            penn_key_display = color(penn_key, "cyan")
-                            echo(
-                                ") Checking the Data Warehouse for pennkey:"
-                                f" {penn_key_display}..."
-                            )
-
-                        cursor = get_data_warehouse_cursor()
-                        cursor.execute(
-                            """
+                        status = "failed to enroll user in course"
+            except Exception as error:
+                status = error
+                status_color = "red"
+                try:
+                    if verbose:
+                        penn_key_display = color(penn_key, "cyan")
+                        echo(
+                            ") Checking the Data Warehouse for pennkey:"
+                            f" {penn_key_display}..."
+                        )
+                    cursor = get_data_warehouse_cursor()
+                    cursor.execute(
+                        """
                             SELECT
                                 pennkey
                             FROM dwadmin.person_all_v
                             WHERE pennkey= :penn_key
                             """,
-                            penn_key=penn_key,
-                        )
+                        penn_key=penn_key,
+                    )
+                    status = "invalid pennkey"
+                    for user in cursor:
+                        if len(user) > 0:
+                            status = "user not found in canvas"
+                            break
+                except Exception as error:
+                    status = error
+    data.at[index, "status"] = status
+    data.loc[index].to_frame().T.to_csv(result_path, mode="a", header=False)
+    if verbose:
+        status_display = str(status).upper()
+        status_display = color(status_display, status_color)
+        penn_key_display = color(penn_key, "magenta")
+        echo(
+            f"- ({index + 1}/{total}) {penn_key_display}, {group_set_name},"
+            f" {group_name}: {status_display}"
+        )
+    if (
+        status == "added" or status == "enrolled and added"
+    ) and penn_key not in processed_users:
+        with open(processed_path, "a+", newline="") as processed_file:
+            writer(processed_file).writerow([penn_key])
 
-                        status = "invalid pennkey"
 
-                        for user in cursor:
-                            if len(user) > 0:
-                                status = "user not found in canvas"
-
-                                break
-                    except Exception as error:
-                        status = error
-
-        data.at[index, "status"] = status
-        data.loc[index].to_frame().T.to_csv(result_path, mode="a", header=False)
-
-        if verbose:
-            status_display = str(status).upper()
-            status_display = color(status_display, status_color)
-            penn_key_display = color(penn_key, "magenta")
-            echo(
-                f"- ({index + 1}/{total}) {penn_key_display}, {group_set_name},"
-                f" {group_name}: {status_display}"
-            )
-
-        if (
-            status == "added" or status == "enrolled and added"
-        ) and penn_key not in processed_users:
-            with open(PROCESSED_PATH, "a+", newline="") as processed_file:
-                writer(processed_file).writerow([penn_key])
-
-    RESULT_STRING = (
-        f"{YEAR}_new_student_orientation_result_"
-        f"{TODAY_AS_Y_M_D}{'_test' if test else ''}.csv"
+def new_student_orientation_main(
+    test: bool, verbose: bool, force: bool, clear_processed: bool
+):
+    test_display = "_test" if test else ""
+    result_string = (
+        f"{YEAR}_new_student_orientation_result_{TODAY_AS_Y_M_D}{test_display}.csv"
     )
-    RESULT_PATH = RESULTS / RESULT_STRING
-    PROCESSED_PATH = (
-        PROCESSED
-        / f"new_student_orientation_processed_users_{YEAR}{'_test' if test else ''}.csv"
+    result_path = RESULTS / result_string
+    processed_path = (
+        PROCESSED / f"new_student_orientation_processed_users_{YEAR}{test_display}.csv"
     )
-    DATA = find_new_student_orientation_file()
-    START = get_start_index(force, RESULT_PATH)
-    DATA, TOTAL = cleanup_data(DATA, START)
-    handle_clear_processed(clear_processed, PROCESSED_PATH)
-    PROCESSED_USERS = get_processed(PROCESSED_PATH)
-    make_csv_paths(RESULT_PATH, HEADERS)
-    print_skip_message(START, "user")
-    INSTANCE = Instance.TEST if test else Instance.PRODUCTION
-    CANVAS = get_canvas(INSTANCE)
-
+    data = find_new_student_orientation_file()
+    start = get_start_index(force, result_path)
+    data, total = cleanup_data(data, start)
+    handle_clear_processed(clear_processed, processed_path)
+    processed_users = get_processed(processed_path)
+    make_csv_paths(result_path, HEADERS)
+    print_skip_message(start, "user")
+    instance = Instance.TEST if test else Instance.PRODUCTION
+    canvas = get_canvas(instance)
     echo(") Processing users...")
-
     toggle_progress_bar(
-        DATA,
+        data,
         create_memberships,
-        CANVAS,
+        canvas,
         verbose,
-        args=(TOTAL, PROCESSED_USERS, RESULT_PATH, DATA),
+        args=(total, processed_users, result_path, data),
     )
     (
         already_processed,
@@ -449,7 +421,7 @@ def new_student_orientation_main(test, verbose, force, clear_processed):
         not_in_canvas,
         invalid_pennkey,
         error,
-    ) = process_result(test, RESULT_PATH)
+    ) = process_result(test, result_path)
     print_messages(
         already_processed,
         added,
@@ -458,6 +430,6 @@ def new_student_orientation_main(test, verbose, force, clear_processed):
         not_in_canvas,
         invalid_pennkey,
         error,
-        TOTAL,
-        RESULT_PATH,
+        total,
+        result_path,
     )
