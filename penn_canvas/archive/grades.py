@@ -24,6 +24,10 @@ def get_enrollments(course: Course) -> list[Enrollment]:
     ]
 
 
+def get_published_assignments(assignments: list[Assignment]) -> list[Assignment]:
+    return [assignment for assignment in assignments if assignment.published]
+
+
 def fill_rows(number_of_rows: int, fill_value="") -> list[str]:
     return [fill_value] * number_of_rows
 
@@ -32,17 +36,21 @@ def is_manual_posting(assignment: Assignment) -> str:
     return "Manual Posting" if assignment.post_manually else ""
 
 
-def get_posting_types(assignments: list[Assignment]) -> list[str]:
+def get_posting_types(assignments: list[Assignment]) -> list[list[str]]:
     posting_types = [is_manual_posting(assignment) for assignment in assignments]
-    return fill_rows(5) + posting_types
+    return [fill_rows(5) + posting_types]
 
 
-def get_points_possible(assignments: list[Assignment]) -> list[str]:
+def get_points_possible(assignments: list[Assignment]) -> list[list[str]]:
     points_possible = [assignment.points_possible for assignment in assignments]
     prefix_row = ["    Points Possible"]
     blank_rows = fill_rows(4)
     read_only_rows = fill_rows(8, fill_value="(read only)")
-    return prefix_row + blank_rows + points_possible + read_only_rows
+    return [prefix_row + blank_rows + points_possible + read_only_rows]
+
+
+def get_submissions(assignments: list[Assignment]) -> list[list[Submission]]:
+    return [list(assignment.get_submissions()) for assignment in assignments]
 
 
 def get_user_submission(
@@ -54,7 +62,7 @@ def get_user_submission(
     )
 
 
-def get_enrollment_grades(
+def get_grades(
     enrollment: Enrollment,
     submissions: list[list[Submission]],
     instance: Instance,
@@ -86,11 +94,21 @@ def get_enrollment_grades(
     return student_data + submission_scores + total_scores
 
 
+def get_enrollment_grades(
+    enrollments: list[Enrollment],
+    assignments: list[Assignment],
+    instance: Instance,
+) -> list[list[str]]:
+    submissions = get_submissions(assignments)
+    return [get_grades(enrollment, submissions, instance) for enrollment in enrollments]
+
+
 def get_assignment_names(assignments: list[Assignment]) -> list[str]:
     return [format_name(assignment.name) for assignment in assignments]
 
 
-def get_all_columns(assignment_names: list[str]) -> list[str]:
+def get_all_columns(assignments: list[Assignment]) -> list[str]:
+    assignment_names = get_assignment_names(assignments)
     student_columns = [
         "Student",
         "ID",
@@ -122,17 +140,14 @@ def fetch_grades(
     enrollments = get_enrollments(course)
     if not assignments:
         assignments = list(course.get_assignments())
-    assignments = [assignment for assignment in assignments if assignment.published]
-    posting_types = [get_posting_types(assignments)]
-    points_possible = [get_points_possible(assignments)]
-    submissions = [list(assignment.get_submissions()) for assignment in assignments]
-    enrollment_grades = [
-        get_enrollment_grades(enrollment, submissions, instance)
-        for enrollment in enrollments
-    ]
+    published_assignments = get_published_assignments(assignments)
+    posting_types = get_posting_types(published_assignments)
+    points_possible = get_points_possible(published_assignments)
+    enrollment_grades = get_enrollment_grades(
+        enrollments, published_assignments, instance
+    )
     grade_rows = posting_types + points_possible + enrollment_grades
-    assignment_names = get_assignment_names(assignments)
-    columns = get_all_columns(assignment_names)
+    columns = get_all_columns(published_assignments)
     grade_book = DataFrame(grade_rows, columns=columns)
     grades_path = create_directory(course_directory / "Grades") / "Grades.csv"
     grade_book.to_csv(grades_path, index=False)
