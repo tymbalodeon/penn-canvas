@@ -21,6 +21,8 @@ def get_names_and_emails(path: Path):
         turnitin_assingments,
         published_turnitin_assingments,
     ) in courses.itertuples():
+        if not int(turnitin_assingments):
+            continue
         course = get_course(canvas_course_id)
         print_item(index, total, str(course))
         teachers = list(course.get_enrollments(type="TeacherEnrollment"))
@@ -55,5 +57,5 @@ def get_names_and_emails(path: Path):
         "email",
     ]
     results = DataFrame(rows, columns=columns)
-    results = results.drop_duplicates(subset="email")
-    results.to_csv(Path.home() / "Desktop/results.csv", index=False)
+    results = results.drop_duplicates(subset=["email", "canvas course id"])
+    results.to_csv(Path.home() / path.name, index=False)
