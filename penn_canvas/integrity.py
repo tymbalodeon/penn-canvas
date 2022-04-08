@@ -4,6 +4,8 @@ from pandas import DataFrame
 from tqdm import tqdm
 from typer import echo
 
+from penn_canvas.api import Instance
+
 from .api import get_canvas
 from .helpers import format_timedelta, format_timestamp, get_command_paths
 from .style import color, print_item
@@ -12,17 +14,16 @@ COMMAND_NAME = "Integrity"
 RESULTS = get_command_paths(COMMAND_NAME)["results"]
 
 
-def parse_args(course, users, quizzes, test):
-    canvas = get_canvas(test)
-    course = canvas.get_course(course)
-    users = [int(user) for user in users.split(" ")]
-    quizzes = quizzes.split(" ")
+def parse_args(course_id: int, test: bool):
+    instance = Instance.TEST if test else Instance.PRODUCTION
+    canvas = get_canvas(instance)
+    course = canvas.get_course(course_id)
     start = (
         start.strftime("%b %d, %Y (%I:%M:%S %p)")
         if (start := course.start_at_date)
         else ""
     )
-    return course, users, quizzes, start
+    return course, start
 
 
 def get_user_data(
@@ -84,25 +85,31 @@ def get_user_data(
     user_data.to_csv(result_path, index=False)
 
 
-def integrity_main(course, users, quizzes, test, skip_page_views):
-    course, users, quizzes, start = parse_args(course, users, quizzes, test)
-    echo(f") Checking student activity in {color(course, 'blue', bold=True)}...")
-    quizzes = [course.get_quiz(quiz) for quiz in quizzes]
-    submissions = list()
+def integrity_main(
+    course_id: int,
+    user_ids: list[int],
+    quiz_ids: list[int],
+    test: bool,
+    skip_page_views: bool,
+):
+    course, start = parse_args(course_id, test)
+    echo(f") Checking student activity in {color(course_id, 'blue', bold=True)}...")
+    quizzes = [course.get_quiz(quiz) for quiz in quiz_ids]
+    submissions = []
     for quiz in quizzes:
         submissions = submissions + [
             submission
             for submission in quiz.get_submissions()
-            if submission.user_id in users
+            if submission.user_id in user_ids
         ]
-    for index, user in enumerate(users):
+    for index, user in enumerate(user_ids):
         get_user_data(
-            course,
-            quizzes,
+            course_id,
+            quiz_ids,
             submissions,
             user,
             start,
             index,
-            len(users),
+            len(user_ids),
             skip_page_views,
         )
