@@ -585,7 +585,7 @@ def open_canvas_bulk_action_main(
                 else:
                     display_color = "green" if status != "not found" else "yellow"
             else:
-                display_color = COLOR_MAP.get(str(status), "")
+                display_color = COLOR_MAP.get(str(status), "red")
             name_display = color(full_name, "yellow")
             colon_display = ":" if canvas_user else ""
             status_display = color(status.upper(), display_color)
