@@ -186,7 +186,7 @@ def get_user(
     return user
 
 
-def get_main_account_id(instance: Instance) -> int:
+def get_main_account_id(instance: Instance = Instance.PRODUCTION) -> int:
     return {
         Instance.PRODUCTION: PENN_CANVAS_MAIN_ACCOUNT_ID,
         Instance.TEST: PENN_CANVAS_MAIN_ACCOUNT_ID,
@@ -237,6 +237,18 @@ def request_external_url(
 ) -> Response:
     canvas_url, key = get_canvas_url_and_key(instance)
     return Requester(canvas_url, key).request(method, _url=url)
+
+
+def request_canvas_api_endpoint(
+    endpoint: str, instance=Instance.PRODUCTION, method="GET"
+) -> Response:
+    base_url, key = get_canvas_url_and_key(instance)
+    prefix = "api/v1"
+    if endpoint.startswith(prefix):
+        endpoint = endpoint.replace(prefix, "")
+    elif endpoint.startswith("api/v1", 1):
+        endpoint = endpoint.replace(f"/{prefix}", "")
+    return Requester(base_url, key).request(method, endpoint)
 
 
 def get_external_tool_names(verbose=False):
