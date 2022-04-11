@@ -61,6 +61,13 @@ def get_user_submission(
     )
 
 
+def get_submission_score(submission: Submission) -> str:
+    score = submission.score
+    if score:
+        score = round(submission.score, 2)
+    return score
+
+
 def get_grades(
     enrollment: Enrollment,
     submissions: list[list[Submission]],
@@ -82,8 +89,13 @@ def get_grades(
         user["login_id"],
         section_id,
     ]
-    submission_scores = [
+    user_submissions = [
         get_user_submission(user_id, submission) for submission in submissions
+    ]
+    submission_scores = [
+        get_submission_score(submission)
+        for submission in user_submissions
+        if submission
     ]
     total_scores = [
         grades["current_score"],
