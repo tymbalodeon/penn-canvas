@@ -8,7 +8,7 @@ from time import sleep
 from typing import Any, Iterable, Literal, Optional
 from zipfile import ZipFile
 
-from canvasapi.account import AccountReport
+from canvasapi.account import Account, AccountReport
 from loguru import logger
 from pandas.io.parsers.readers import read_csv
 from typer import Exit, echo, style
@@ -40,6 +40,40 @@ class ReportType(Enum):
     USERS = "users"
     STORAGE = "storage"
     PROVISIONING = "provisioning"
+    PUBLIC_COURSES = "public_courses"
+
+
+def get_report_type_string(report_type: ReportType | str) -> str:
+    if isinstance(report_type, ReportType):
+        return report_type.value
+    else:
+        return report_type
+
+
+def get_available_cli_report_type_names() -> list[str]:
+    report_types: list[ReportType | str] = [report_type for report_type in ReportType]
+    report_types = report_types + ["weekly"]
+    return [
+        f"{get_report_type_string(report_type)} "
+        f"({get_canvas_report_type_name(report_type)})"
+        for report_type in report_types
+    ]
+
+
+def get_available_cli_report_types() -> list[str]:
+    report_types = [report_type.value for report_type in ReportType]
+    return report_types + ["weekly"]
+
+
+def get_available_canvas_report_types(
+    account_id: int | Account = get_main_account_id(),
+    instance_name: str | Instance = Instance.PRODUCTION,
+) -> set[str]:
+    instance = validate_instance_name(instance_name)
+    if not account_id:
+        account_id = get_main_account_id(instance)
+    account = get_account(account_id, instance=instance)
+    return {report.report for report in account.get_reports()}
 
 
 def print_report_type(report_type: ReportType):
@@ -51,17 +85,32 @@ def validate_report_type(report_name, verbose=False):
     if isinstance(report_name, ReportType):
         report_type = report_name
     else:
-        report_types = [report_type.value for report_type in ReportType] + ["weekly"]
-        if report_name not in report_types:
+        cli_report_types = get_available_cli_report_types()
+        canvas_report_types = get_available_canvas_report_types()
+        if report_name not in cli_report_types:
             echo(f'ERROR: Invalid report type "{report_name}"')
-            echo("\nAvailable report types are:")
-            for report_type in report_types:
+            echo("\nReport types implemented in the CLI are:")
+            for report_type in get_available_cli_report_type_names():
+                echo(f'\t"{report_type}"')
+            echo("\nReport types available in Canvas are:")
+            for report_type in canvas_report_types:
                 echo(f'\t"{report_type}"')
             raise Exit()
         report_type = ReportType(report_name)
     if verbose:
         print_report_type(report_type)
     return report_type
+
+
+def get_canvas_report_type_name(report_type: ReportType | str) -> str:
+    return {
+        ReportType.COURSES: "provisioning_csv",
+        ReportType.USERS: "provisioning_csv",
+        ReportType.STORAGE: "course_storage_csv",
+        ReportType.PROVISIONING: "provisioning_csv",
+        ReportType.PUBLIC_COURSES: "public_courses_csv",
+        "weekly": "provisioning_csv + course_storage_csv",
+    }.get(report_type, "provisioning_csv")
 
 
 @dataclass
@@ -78,12 +127,7 @@ class Report:
     def __post_init__(self):
         if self.account is None:
             self.account = get_main_account_id(self.instance)
-        self.account_report_type = {
-            ReportType.COURSES: "provisioning_csv",
-            ReportType.USERS: "provisioning_csv",
-            ReportType.STORAGE: "course_storage_csv",
-            ReportType.PROVISIONING: "provisioning_csv",
-        }.get(self.report_type, "provisioning_csv")
+        self.account_report_type = get_canvas_report_type_name(self.report_type)
 
     @cached_property
     def parameters(self):
@@ -186,7 +230,7 @@ def print_report_paths(report_paths: list[Path]):
 
 
 def get_report_display(report: Report) -> str:
-    term_display = f" {report.term}" if report.term else ""
+    term_display = f" {report.term}" if report.term else " (all terms)"
     return color(f"{report.report_type.name}{term_display}", "blue")
 
 
