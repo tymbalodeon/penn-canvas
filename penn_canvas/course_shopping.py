@@ -1,11 +1,11 @@
 from csv import writer
 from pathlib import Path
 
-from pandas import concat, read_csv
+from pandas import concat, read_csv, read_excel
 from pandas.core.frame import DataFrame
 from typer import Exit, echo
 
-from .api import Instance, get_canvas, get_sub_account_ids
+from .api import Instance, get_canvas, get_course, get_sub_account_ids
 from .helpers import (
     TODAY,
     YEAR,
@@ -36,6 +36,23 @@ SAS_ACCOUNT_ID = 99237
 SEAS_ACCOUNT_ID = 99238
 NURS_ACCOUNT_ID = 99239
 AN_ACCOUNT_ID = 99243
+
+
+def privatize_courses(path: Path):
+    course_ids = read_excel(path)["id"].tolist()
+    total = len(course_ids)
+    for index, course_id in enumerate(course_ids):
+        course = get_course(course_id)
+        course.update(
+            course={
+                "is_public": False,
+                "is_public_to_auth_users": False,
+                "public_syllabus": False,
+                "public_syllabus_to_auth": False,
+            }
+        )
+        message = f"{color(course.name)}"
+        print_item(index, total, message)
 
 
 def get_csv_as_list(csv_file, column):
