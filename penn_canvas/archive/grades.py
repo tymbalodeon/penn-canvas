@@ -5,7 +5,7 @@ from canvasapi.assignment import Assignment
 from canvasapi.course import Course
 from canvasapi.enrollment import Enrollment
 from canvasapi.submission import Submission
-from pandas import DataFrame
+from pandas import DataFrame, read_csv
 from tqdm import tqdm
 from typer import echo
 
@@ -13,7 +13,15 @@ from penn_canvas.api import Instance, get_section
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
 
-from .helpers import format_name
+from .helpers import CSV_COMPRESSION_TYPE, format_name, print_unpacked_file
+
+GRADES_COMPRESSED_FILE = f"grades.{CSV_COMPRESSION_TYPE}"
+
+
+def print_student_grade(index, total, name, grade, score):
+    grade_value = grade or score
+    message = f"{color(name)}: {color(grade_value, 'cyan')}"
+    print_item(index, total, message)
 
 
 def get_enrollments(course: Course) -> list[Enrollment]:
@@ -82,6 +90,7 @@ def get_grades(
     section_id = get_section(enrollment.course_section_id, instance=instance).name
     grades = enrollment.grades
     final_grade = grades["final_grade"]
+    final_score = grades["final_score"]
     student_data = [
         name,
         user_id,
@@ -100,7 +109,7 @@ def get_grades(
     total_scores = [
         grades["current_score"],
         grades["unposted_current_score"],
-        grades["final_score"],
+        final_score,
         grades["unposted_final_score"],
         grades["current_grade"],
         grades["unposted_current_grade"],
@@ -108,8 +117,7 @@ def get_grades(
         grades["unposted_final_grade"],
     ]
     if verbose:
-        message = f"{color(name)}: {color(final_grade, 'cyan')}"
-        print_item(index, total, message)
+        print_student_grade(index, total, name, final_grade, final_score)
     return student_data + submission_scores + total_scores
 
 
@@ -153,10 +161,32 @@ def get_all_columns(assignments: list[Assignment]) -> list[str]:
     return student_columns + assignment_names + grade_columns
 
 
+def unpack_grades(
+    compress_path: Path, unpack_path: Path, verbose: bool
+) -> Optional[Path]:
+    echo(") Unpacking grades...")
+    compressed_file = compress_path / GRADES_COMPRESSED_FILE
+    if not compressed_file.is_file():
+        return None
+    grades = read_csv(compressed_file)
+    grades_path = create_directory(unpack_path / "Grades") / "Grades.csv"
+    grades.to_csv(grades_path, index=False)
+    if verbose:
+        grades = grades[["Student", "Final Grade", "Final Score"]].loc[2:]
+        grades = grades.reset_index(drop=True)
+        grades = grades.fillna("")
+        total = len(grades.index)
+        for index, name, grade, score in grades.itertuples():
+            print_student_grade(index, total, name, grade, score)
+    return grades_path
+
+
 def fetch_grades(
     course: Course,
-    course_directory: Path,
     assignments: list[Assignment],
+    compress_path: Path,
+    unpack_path: Path,
+    unpack: bool,
     instance: Instance,
     verbose: bool,
 ):
@@ -174,5 +204,9 @@ def fetch_grades(
     grade_rows = posting_types + points_possible + enrollment_grades
     columns = get_all_columns(published_assignments)
     grade_book = DataFrame(grade_rows, columns=columns)
-    grades_path = create_directory(course_directory / "Grades") / "Grades.csv"
+    grades_path = compress_path / GRADES_COMPRESSED_FILE
     grade_book.to_csv(grades_path, index=False)
+    if unpack:
+        unpacked_path = unpack_grades(compress_path, unpack_path, verbose=False)
+        if verbose:
+            print_unpacked_file(unpacked_path)

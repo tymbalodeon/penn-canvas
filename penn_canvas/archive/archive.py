@@ -26,7 +26,7 @@ from .announcements import fetch_announcements
 from .assignments.assignments import fetch_assignments, unpack_assignments
 from .content import CONTENT_TAR_STEM, fetch_content, unpack_content
 from .discussions import fetch_discussions, unpack_discussions
-from .grades import fetch_grades
+from .grades import fetch_grades, unpack_grades
 from .groups import fetch_groups
 from .helpers import format_name
 from .modules import fetch_modules
@@ -161,7 +161,15 @@ def fetch(
                 course, compress_path, unpack_path, unpack, instance, verbose
             )
         if should_run_option(grades, archive_all):
-            fetch_grades(course, compress_path, assignment_objects, instance, verbose)
+            fetch_grades(
+                course,
+                assignment_objects,
+                compress_path,
+                unpack_path,
+                unpack,
+                instance,
+                verbose,
+            )
         if should_run_option(rubrics, archive_all):
             rubric_objects = fetch_rubrics(
                 course, compress_path, unpack_path, unpack, verbose
@@ -231,6 +239,8 @@ def unpack(
             unpack_assignments(compress_path, unpack_path, verbose)
         if should_run_option(discussions, unpack_all):
             unpack_discussions(compress_path, unpack_path, verbose)
+        if should_run_option(grades, unpack_all):
+            unpack_grades(compress_path, unpack_path, verbose)
         echo("COMPELTE")
 
 
