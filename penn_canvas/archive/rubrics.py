@@ -73,7 +73,7 @@ def unpack_rubrics(
 
 def fetch_rubrics(
     course: Course, compress_path: Path, unpack_path: Path, unpack: bool, verbose: bool
-) -> list[Rubric]:
+):
     echo(") Exporting rubrics...")
     rubric_objects = list(course.get_rubrics())
     total = len(rubric_objects)
@@ -92,4 +92,3 @@ def fetch_rubrics(
         unpacked_path = unpack_rubrics(compress_path, unpack_path, verbose=False)
         if verbose:
             print_unpacked_file(unpacked_path)
-    return rubric_objects

@@ -2,7 +2,6 @@ from pathlib import Path
 
 from canvasapi.course import Course
 from canvasapi.quiz import Quiz
-from canvasapi.rubric import Rubric
 from canvasapi.submission import Submission
 from pandas import DataFrame
 from typer import echo, progressbar
@@ -76,7 +75,7 @@ def archive_quiz(
 ):
     title = format_name(quiz.title)
     if verbose:
-        print_item(index, total, f"{title}")
+        print_item(index, total, color(title))
     description = strip_tags(quiz.description) if quiz.description else quiz.description
     if verbose:
         echo("\t> Getting questions...")
@@ -141,14 +140,10 @@ def archive_quiz(
             description_file.write(description)
 
 
-def fetch_quizzes(
-    course: Course, course_path: Path, rubrics: list[Rubric], verbose: bool
-):
+def fetch_quizzes(course: Course, course_path: Path, verbose: bool):
     echo(") Exporting quizzes...")
     quizzes = list(course.get_quizzes())
     total = len(quizzes)
-    if not rubrics:
-        rubrics = list(course.get_rubrics())
     if verbose:
         for index, quiz in enumerate(quizzes):
             archive_quiz(course, quiz, course_path, verbose, index, total)

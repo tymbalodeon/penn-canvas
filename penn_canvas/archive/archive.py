@@ -4,7 +4,6 @@ from typing import Optional
 
 from canvasapi.assignment import Assignment
 from canvasapi.course import Course
-from canvasapi.rubric import Rubric
 from requests.api import post
 from typer import Option, Typer, echo
 
@@ -139,7 +138,6 @@ def fetch(
         compress_path = create_directory(COMPRESSED_COURSES / course_name)
         unpack_path = create_directory(UNPACKED_COURSES / course_name)
         assignment_objects: list[Assignment] = list()
-        rubric_objects: list[Rubric] = list()
         if should_run_option(content, archive_all):
             fetch_content(course, compress_path, unpack_path, unpack, instance, verbose)
         if should_run_option(announcements, archive_all):
@@ -171,11 +169,9 @@ def fetch(
                 verbose,
             )
         if should_run_option(rubrics, archive_all):
-            rubric_objects = fetch_rubrics(
-                course, compress_path, unpack_path, unpack, verbose
-            )
+            fetch_rubrics(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(quizzes, archive_all):
-            fetch_quizzes(course, compress_path, rubric_objects, verbose)
+            fetch_quizzes(course, compress_path, verbose)
         echo("COMPELTE")
 
 
