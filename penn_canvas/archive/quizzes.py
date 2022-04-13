@@ -13,7 +13,7 @@ from penn_canvas.style import color, print_item
 from .helpers import strip_tags
 
 
-def get_question_text(question: QuizQuestion) -> str:
+def format_question_text(question: QuizQuestion) -> str:
     return strip_tags(question.question_text)
 
 
@@ -24,15 +24,16 @@ def get_question_answers(question: QuizQuestion) -> str:
 def get_questions_and_answers(quiz: Quiz) -> DataFrame:
     questions = list(quiz.get_questions())
     questions = [
-        [get_question_text(question), get_question_answers(question)]
+        [format_question_text(question), get_question_answers(question)]
         for question in questions
     ]
     return DataFrame(questions, columns=["Question", "Answers"])
 
 
 @lru_cache
-def get_question(quiz: Quiz, question_id: int) -> str:
-    return strip_tags(quiz.get_question(question_id).question_text)
+def get_question_text(question_id: int, quiz: Quiz) -> str:
+    question = quiz.get_question(question_id)
+    return format_question_text(question)
 
 
 def get_quiz_response(
@@ -41,7 +42,7 @@ def get_quiz_response(
     correct = submission["correct"]
     points = str(round(submission["points"], 2))
     question_id = submission["question_id"]
-    question = get_question(quiz, question_id)
+    question = get_question_text(question_id, quiz)
     text = strip_tags(submission["text"])
     return [name, correct, points, points_possible, question, text]
 
