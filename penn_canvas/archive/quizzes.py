@@ -13,10 +13,28 @@ from penn_canvas.style import color, print_item
 from .helpers import format_name, strip_tags
 
 
-def get_quizzes(course: Course) -> tuple[list[Quiz], int]:
-    echo(") Finding quizzes...")
-    quizzes = list(course.get_quizzes())
-    return quizzes, len(quizzes)
+def get_submission_values(
+    submission: dict, name: str, points_possible: int, questions: dict
+) -> list[str]:
+    return [
+        name,
+        submission["correct"],
+        submission["points"],
+        str(points_possible),
+        questions[submission["question_id"]]["question"],
+        strip_tags(submission["text"]),
+    ]
+
+
+def get_submission_data(
+    history: dict, name: str, points_possible: int, questions: dict
+):
+    if "submission_data" not in history:
+        return []
+    return [
+        get_submission_values(submission, name, points_possible, questions)
+        for submission in history["submission_data"]
+    ]
 
 
 def process_submission(
@@ -30,42 +48,21 @@ def process_submission(
 ):
     name, histories = submission_history
     if verbose:
-        print_item(
-            index,
-            total,
-            f"Getting submission data for {color(name)}...",
-            prefix="\t\t*",
-        )
+        message = f"Getting submission data for {color(name)}..."
+        print_item(index, total, message, prefix="\t\t*")
     for history in histories:
-        submission_data = (
-            [
-                [
-                    name,
-                    submission_data["correct"],
-                    submission_data["points"],
-                    points_possible,
-                    questions[submission_data["question_id"]]["question"],
-                    strip_tags(submission_data["text"]),
-                ]
-                for submission_data in history["submission_data"]
-            ]
-            if "submission_data" in history
-            else []
-        )
-        history_data_frame = DataFrame(
-            submission_data,
-            columns=[
-                "Student",
-                "Correct",
-                "Points",
-                "Points Possible",
-                "Question",
-                "Text",
-            ],
-        )
-        submission_data_path = (
-            submissions_path / f"{name}_submissions_{history['id']}.csv"
-        )
+        submission_data = get_submission_data(history, name, points_possible, questions)
+        columns = [
+            "Student",
+            "Correct",
+            "Points",
+            "Points Possible",
+            "Question",
+            "Text",
+        ]
+        history_data_frame = DataFrame(submission_data, columns=columns)
+        file_name = f"{name}_submissions_{history['id']}.csv"
+        submission_data_path = submissions_path / file_name
         history_data_frame.to_csv(submission_data_path, index=False)
 
 
@@ -148,14 +145,14 @@ def fetch_quizzes(
     course: Course, course_path: Path, rubrics: list[Rubric], verbose: bool
 ):
     echo(") Exporting quizzes...")
-    quiz_objects, quiz_total = get_quizzes(course)
+    quizzes = list(course.get_quizzes())
+    total = len(quizzes)
     if not rubrics:
         rubrics = list(course.get_rubrics())
     if verbose:
-        total = len(quiz_objects)
-        for index, quiz in enumerate(quiz_objects):
+        for index, quiz in enumerate(quizzes):
             archive_quiz(course, quiz, course_path, verbose, index, total)
     else:
-        with progressbar(quiz_objects, length=quiz_total) as progress:
+        with progressbar(quizzes, length=total) as progress:
             for quiz in progress:
                 archive_quiz(course, quiz, course_path, verbose)
