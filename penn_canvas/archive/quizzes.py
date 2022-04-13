@@ -32,6 +32,31 @@ def get_questions_and_answers(quiz: Quiz) -> DataFrame:
     return DataFrame(questions, columns=["Question", "Answers"])
 
 
+def get_quiz_questions(quiz: Quiz, quiz_path: Path):
+    questions = get_questions_and_answers(quiz)
+    questions_path = quiz_path / f"{quiz.title}_QUESTIONS.csv"
+    questions.to_csv(questions_path, index=False)
+
+
+def get_quiz_description(quiz: Quiz, quiz_path: Path):
+    description = strip_tags(quiz.description) if quiz.description else quiz.description
+    description_path = quiz_path / f"{quiz.title}_DESCRIPTION.txt"
+    if description:
+        with open(description_path, "w") as description_file:
+            description_file.write(description)
+
+
+def get_quiz_assignment(quiz: Quiz, course: Course) -> Optional[Assignment]:
+    if not quiz.assingment_id:
+        return None
+    return course.get_assignment(quiz.assignment_id)
+
+
+def get_assignment_submissions(assignment: Assignment) -> list[Submission]:
+    include_parameters = ["submission_history", "user"]
+    return list(assignment.get_submissions(include=include_parameters))
+
+
 @lru_cache
 def get_question_text(question_id: int, quiz: Quiz) -> str:
     question = quiz.get_question(question_id)
@@ -104,29 +129,8 @@ def get_submission_scores(submissions: list[Submission], quiz: Quiz, quiz_path: 
     user_scores.to_csv(scores_path, index=False)
 
 
-def get_quiz_questions(quiz: Quiz, quiz_path: Path):
-    questions = get_questions_and_answers(quiz)
-    questions_path = quiz_path / f"{quiz.title}_QUESTIONS.csv"
-    questions.to_csv(questions_path, index=False)
-
-
-def get_quiz_assignment(quiz: Quiz, course: Course) -> Optional[Assignment]:
-    if not quiz.assingment_id:
-        return None
-    return course.get_assignment(quiz.assignment_id)
-
-
-def get_assignment_submissions(assignment: Assignment) -> list[Submission]:
-    include_parameters = ["submission_history", "user"]
-    return list(assignment.get_submissions(include=include_parameters))
-
-
-def get_quiz_description(quiz: Quiz, quiz_path: Path):
-    description = strip_tags(quiz.description) if quiz.description else quiz.description
-    description_path = quiz_path / f"{quiz.title}_DESCRIPTION.txt"
-    if description:
-        with open(description_path, "w") as description_file:
-            description_file.write(description)
+def unpack_quizzes(compress_path: Path, unpack_path: Path, verbose: bool):
+    echo(f"{compress_path}, {unpack_path}, {verbose}")
 
 
 def get_quiz(

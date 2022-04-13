@@ -183,10 +183,10 @@ def unpack_grades(
 
 def fetch_grades(
     course: Course,
-    assignments: list[Assignment],
     compress_path: Path,
     unpack_path: Path,
     unpack: bool,
+    assignments: list[Assignment],
     instance: Instance,
     verbose: bool,
 ):
