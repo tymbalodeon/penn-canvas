@@ -29,7 +29,7 @@ from .discussions import fetch_discussions, unpack_discussions
 from .grades import fetch_grades, unpack_grades
 from .groups import fetch_groups
 from .helpers import format_name
-from .modules import fetch_modules
+from .modules import fetch_modules, unpack_modules
 from .pages import fetch_pages
 from .quizzes import fetch_quizzes
 from .rubrics import fetch_rubrics
@@ -145,7 +145,7 @@ def fetch(
         if should_run_option(announcements, archive_all):
             fetch_announcements(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(modules, archive_all):
-            fetch_modules(course, compress_path, instance, verbose)
+            fetch_modules(course, compress_path, unpack_path, unpack, instance, verbose)
         if should_run_option(pages, archive_all):
             fetch_pages(course, compress_path, unpack_path, unpack, verbose)
         if should_run_option(syllabus, archive_all):
@@ -241,6 +241,8 @@ def unpack(
             unpack_discussions(compress_path, unpack_path, verbose)
         if should_run_option(grades, unpack_all):
             unpack_grades(compress_path, unpack_path, verbose)
+        if should_run_option(modules, unpack_all):
+            unpack_modules(compress_path, unpack_path, verbose)
         echo("COMPELTE")
 
 

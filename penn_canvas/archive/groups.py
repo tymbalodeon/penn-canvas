@@ -175,8 +175,8 @@ def fetch_groups(
     groups_path = compress_path / GROUPS_COMPRESSED_FILE
     groups_data = concat(categories) if categories else DataFrame(columns=COLUMNS)
     groups_data.to_csv(groups_path, index=False)
-    group_files = str(category_files_path)
-    make_archive(group_files, TAR_COMPRESSION_TYPE, root_dir=group_files)
+    groups_directory = str(category_files_path)
+    make_archive(groups_directory, TAR_COMPRESSION_TYPE, root_dir=groups_directory)
     if unpack:
         unpack_groups_path = create_directory(
             unpack_path / UNPACK_GROUP_DIRECTORY, clear=True
