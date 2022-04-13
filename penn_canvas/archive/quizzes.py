@@ -1,7 +1,8 @@
+from functools import lru_cache
 from pathlib import Path
 
 from canvasapi.course import Course
-from canvasapi.quiz import Quiz
+from canvasapi.quiz import Quiz, QuizQuestion
 from canvasapi.submission import Submission
 from pandas import DataFrame
 from typer import echo, progressbar
@@ -9,133 +10,128 @@ from typer import echo, progressbar
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
 
-from .helpers import format_name, strip_tags
+from .helpers import strip_tags
 
 
-def get_submission_values(
-    submission: dict, name: str, points_possible: int, questions: dict
-) -> list[str]:
-    return [
-        name,
-        submission["correct"],
-        submission["points"],
-        str(points_possible),
-        questions[submission["question_id"]]["question"],
-        strip_tags(submission["text"]),
+def get_question_text(question: QuizQuestion) -> str:
+    return strip_tags(question.question_text)
+
+
+def get_question_answers(question: QuizQuestion) -> str:
+    return " / ".join([answer["text"] for answer in question.answers])
+
+
+def get_questions_and_answers(quiz: Quiz) -> DataFrame:
+    questions = list(quiz.get_questions())
+    questions = [
+        [get_question_text(question), get_question_answers(question)]
+        for question in questions
     ]
+    return DataFrame(questions, columns=["Question", "Answers"])
 
 
-def get_submission_data(
-    history: dict, name: str, points_possible: int, questions: dict
-):
+@lru_cache
+def get_question(quiz: Quiz, question_id: int) -> str:
+    return strip_tags(quiz.get_question(question_id).question_text)
+
+
+def get_quiz_response(
+    submission: dict, quiz: Quiz, name: str, points_possible: str
+) -> list[str]:
+    correct = submission["correct"]
+    points = str(round(submission["points"], 2))
+    question_id = submission["question_id"]
+    question = get_question(quiz, question_id)
+    text = strip_tags(submission["text"])
+    return [name, correct, points, points_possible, question, text]
+
+
+def get_user_responses(history: dict, quiz: Quiz, name: str, points_possible: str):
     if "submission_data" not in history:
         return []
     return [
-        get_submission_values(submission, name, points_possible, questions)
+        get_quiz_response(submission, quiz, name, points_possible)
         for submission in history["submission_data"]
     ]
 
 
-def process_submission(
-    questions: dict,
-    points_possible: int,
-    submission_history: tuple[str, list],
-    submissions_path: Path,
-    index: int,
-    total: int,
+def get_quiz_responses(
+    submissions: list[Submission],
+    quiz: Quiz,
+    points_possible: str,
+    quiz_path: Path,
     verbose: bool,
 ):
-    name, histories = submission_history
-    if verbose:
-        message = f"Getting submission data for {color(name)}..."
-        print_item(index, total, message, prefix="\t\t*")
-    for history in histories:
-        submission_data = get_submission_data(history, name, points_possible, questions)
-        columns = [
-            "Student",
-            "Correct",
-            "Points",
-            "Points Possible",
-            "Question",
-            "Text",
-        ]
-        history_data_frame = DataFrame(submission_data, columns=columns)
-        file_name = f"{name}_submissions_{history['id']}.csv"
-        submission_data_path = submissions_path / file_name
-        history_data_frame.to_csv(submission_data_path, index=False)
+    total = len(submissions)
+    for index, submission in enumerate(submissions):
+        histories = submission.submission_history
+        user_name = submission.user["name"]
+        if verbose:
+            message = f"Getting submission data for {color(user_name, 'cyan')}..."
+            print_item(index, total, message, prefix="\t*")
+        for history in histories:
+            submission_data = get_user_responses(
+                history, quiz, user_name, points_possible
+            )
+            columns = [
+                "Student",
+                "Correct",
+                "Points",
+                "Points Possible",
+                "Question",
+                "Text",
+            ]
+            history_data_frame = DataFrame(submission_data, columns=columns)
+            file_name = f"{user_name}_submissions_{history['id']}.csv"
+            submissions_path = create_directory(quiz_path / "Submissions")
+            submission_data_path = submissions_path / file_name
+            history_data_frame.to_csv(submission_data_path, index=False)
 
 
-def archive_quiz(
+def get_submission_score(submission: Submission, points_possible: str):
+    name = submission.user["name"]
+    score = str(round(submission.score, 2)) if submission.score else ""
+    return [name, score, points_possible]
+
+
+def get_submission_scores(
+    submissions: list[Submission], points_possible: str
+) -> list[list[str]]:
+    return [
+        get_submission_score(submission, points_possible) for submission in submissions
+    ]
+
+
+def get_quiz(
     course: Course,
     quiz: Quiz,
-    course_directory: Path,
+    compress_path: Path,
     verbose: bool,
     index=0,
     total=0,
 ):
-    title = format_name(quiz.title)
     if verbose:
-        print_item(index, total, color(title))
+        print_item(index, total, color(quiz.title))
+    quiz_path = create_directory(compress_path / "Quizzes")
+    questions = get_questions_and_answers(quiz)
+    questions_path = quiz_path / f"{quiz.title}_QUESTIONS.csv"
+    questions.to_csv(questions_path, index=False)
+    assignment = (
+        course.get_assignment(quiz.assignment_id) if quiz.assignment_id else None
+    )
+    if assignment:
+        points_possible = str(quiz.points_possible)
+        include_parameters = ["submission_history", "user"]
+        submissions = list(assignment.get_submissions(include=include_parameters))
+        get_quiz_responses(submissions, quiz, points_possible, quiz_path, verbose)
+        submission_scores = get_submission_scores(submissions, points_possible)
+        columns = ["Student", "Score", "Points Possible"]
+        user_scores = DataFrame(submission_scores, columns=columns)
+        scores_path = quiz_path / f"{quiz.title}_SCORES.csv"
+        user_scores.to_csv(scores_path, index=False)
     description = strip_tags(quiz.description) if quiz.description else quiz.description
-    if verbose:
-        echo("\t> Getting questions...")
-    questions = {
-        question.id: {
-            "question": strip_tags(question.question_text),
-            "answers": ", ".join([answer["text"] for answer in question.answers]),
-        }
-        for question in quiz.get_questions()
-    }
-    assignment = course.get_assignment(quiz.assignment_id)
-    if verbose:
-        echo("\t> Getting submissions...")
-    submissions: list[Submission] = list(
-        assignment.get_submissions(include=["submission_history", "user"])
-    )
-    quiz_directory = create_directory(course_directory / "Quizzes")
-    quiz_path = create_directory(quiz_directory / title)
-    description_path = quiz_path / f"{title}_DESCRIPTION.txt"
-    questions_path = quiz_path / f"{title}_QUESTIONS.csv"
-    scores_path = quiz_path / f"{title}_SCORES.csv"
-    submissions_path = create_directory(quiz_path / "Submissions")
-    submission_histories: list[tuple[str, list]] = [
-        (submission.user["name"], submission.submission_history)
-        for submission in submissions
-    ]
-    points_possible = quiz.points_possible
-    submissions_total = len(submission_histories)
-    for index, submission_history in enumerate(submission_histories):
-        process_submission(
-            questions,
-            points_possible,
-            submission_history,
-            submissions_path,
-            index,
-            submissions_total,
-            verbose,
-        )
-    if verbose:
-        echo("\t> Listing user scores...")
-    submission_scores = [
-        [
-            submission.user["name"],
-            round(submission.score, 2) if submission.score else submission.score,
-            points_possible,
-        ]
-        for submission in submissions
-    ]
-    user_scores = DataFrame(
-        submission_scores, columns=["Student", "Score", "Points Possible"]
-    )
-    questions_text = [
-        [question["question"], question["answers"]] for question in questions.values()
-    ]
-    questions_data_frame = DataFrame(questions_text, columns=["Question", "Answers"])
-    user_scores.to_csv(scores_path, index=False)
-    questions_data_frame.to_csv(questions_path, index=False)
+    description_path = quiz_path / f"{quiz.title}_DESCRIPTION.txt"
     if description:
-        if verbose:
-            echo("\t> Getting description...")
         with open(description_path, "w") as description_file:
             description_file.write(description)
 
@@ -146,8 +142,8 @@ def fetch_quizzes(course: Course, course_path: Path, verbose: bool):
     total = len(quizzes)
     if verbose:
         for index, quiz in enumerate(quizzes):
-            archive_quiz(course, quiz, course_path, verbose, index, total)
+            get_quiz(course, quiz, course_path, verbose, index, total)
     else:
         with progressbar(quizzes, length=total) as progress:
             for quiz in progress:
-                archive_quiz(course, quiz, course_path, verbose)
+                get_quiz(course, quiz, course_path, verbose)
