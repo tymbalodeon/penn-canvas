@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from canvasapi.assignment import Assignment
+from canvasapi.quiz import QuizQuestion
 from canvasapi.submission import Submission
 from loguru import logger
 from typer import echo
@@ -74,6 +75,11 @@ def format_display_text(text: str, limit=50) -> str:
             final_character = text[-1]
         text = f"{text}..."
     return text
+
+
+@lru_cache
+def format_question_text(question: QuizQuestion) -> str:
+    return strip_tags(question.question_text)
 
 
 def print_description(index, total, title, description, prefix=""):
