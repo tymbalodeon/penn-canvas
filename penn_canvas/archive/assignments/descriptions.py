@@ -1,5 +1,6 @@
 from os import remove
 from pathlib import Path
+from typing import Optional
 
 from canvasapi.assignment import Assignment
 from pandas import DataFrame, read_csv
@@ -20,15 +21,28 @@ from penn_canvas.helpers import (
 
 DESCRIPTIONS_COMPRESSED_FILE = f"descriptions.{CSV_COMPRESSION_TYPE}"
 ASSIGNMENT_ID = "Assignment ID"
+QUIZ_ASSIGNMENT = "Quiz Assignment"
+QUIZ_ID = "Quiz ID"
+ASSIGNMENT_NAME = "Assignment Name"
 UNPACK_DESCRIPTIONS_DIRECTORY = "Descriptions"
+
+
+def get_quiz_id(assignment: Assignment) -> Optional[str]:
+    try:
+        return str(assignment.quiz_id)
+    except Exception:
+        return None
 
 
 def get_description(assignment: Assignment, verbose: bool, index: int, total: int):
     description = format_text(assignment.description)
     name = assignment.name
+    is_quiz_assignment = assignment.is_quiz_assignment
+    quiz_id = get_quiz_id(assignment)
+    description = format_text(assignment.description)
     if verbose:
         print_description(index, total, assignment.name, description)
-    return [assignment.id, name, format_text(assignment.description)]
+    return [assignment.id, is_quiz_assignment, quiz_id, name, description]
 
 
 def unpack_descriptions(compress_path: Path, unpack_path: Path, verbose: bool):
@@ -65,7 +79,13 @@ def fetch_descriptions(
         get_description(assignment, verbose, index, total)
         for index, assignment in enumerate(assignments)
     ]
-    columns = [ASSIGNMENT_ID, "Assignment Name", "Descriptions"]
+    columns = [
+        ASSIGNMENT_ID,
+        QUIZ_ASSIGNMENT,
+        QUIZ_ID,
+        ASSIGNMENT_NAME,
+        "Description",
+    ]
     description_data = DataFrame(descriptions, columns=columns)
     description_path = compress_path / DESCRIPTIONS_COMPRESSED_FILE
     description_data.to_csv(description_path, index=False)

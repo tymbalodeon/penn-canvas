@@ -1,18 +1,36 @@
 from functools import lru_cache
 from pathlib import Path
+from shutil import make_archive, rmtree
+from tarfile import open as open_tarfile
 from typing import Optional
 
 from canvasapi.assignment import Assignment
 from canvasapi.course import Course
 from canvasapi.quiz import Quiz, QuizQuestion
 from canvasapi.submission import Submission
-from pandas import DataFrame
+from pandas import DataFrame, read_csv
+from pandas.core.reshape.concat import concat
 from typer import echo, progressbar
 
+from penn_canvas.api import Instance, get_user
+from penn_canvas.archive.assignments.assignments import ASSIGNMENTS_TAR_NAME
+from penn_canvas.archive.assignments.descriptions import (
+    ASSIGNMENT_ID,
+    ASSIGNMENT_NAME,
+    DESCRIPTIONS_COMPRESSED_FILE,
+    QUIZ_ASSIGNMENT,
+)
+from penn_canvas.archive.helpers import TAR_COMPRESSION_TYPE, TAR_EXTENSION
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
 
-from .helpers import strip_tags
+from .helpers import format_text, print_description, strip_tags
+
+QUIZ_ID = "Quiz ID"
+QUIZ_TITLE = "Quiz Title"
+QUIZZES_TAR_STEM = "quizzes"
+UNPACK_QUIZZES_DIRECTORY = QUIZZES_TAR_STEM.title()
+QUIZZES_TAR_NAME = f"{QUIZZES_TAR_STEM}.{TAR_EXTENSION}"
 
 
 def format_question_text(question: QuizQuestion) -> str:
@@ -38,16 +56,8 @@ def get_quiz_questions(quiz: Quiz, quiz_path: Path):
     questions.to_csv(questions_path, index=False)
 
 
-def get_quiz_description(quiz: Quiz, quiz_path: Path):
-    description = strip_tags(quiz.description) if quiz.description else quiz.description
-    description_path = quiz_path / f"{quiz.title}_DESCRIPTION.txt"
-    if description:
-        with open(description_path, "w") as description_file:
-            description_file.write(description)
-
-
 def get_quiz_assignment(quiz: Quiz, course: Course) -> Optional[Assignment]:
-    if not quiz.assingment_id:
+    if not quiz.assignment_id:
         return None
     return course.get_assignment(quiz.assignment_id)
 
@@ -112,16 +122,21 @@ def get_quiz_responses(
             history_data_frame.to_csv(submission_data_path, index=False)
 
 
-def get_submission_score(submission: Submission, points_possible: str):
-    name = submission.user["name"]
+def get_submission_score(
+    submission: Submission, points_possible: str, instance: Instance
+):
+    name = get_user(submission.user_id, instance=instance).name
     score = str(round(submission.score, 2)) if submission.score else ""
     return [name, score, points_possible]
 
 
-def get_submission_scores(submissions: list[Submission], quiz: Quiz, quiz_path: Path):
+def get_submission_scores(
+    submissions: list[Submission], quiz: Quiz, quiz_path: Path, instance: Instance
+):
     points_possible = quiz.points_possible
     submission_scores = [
-        get_submission_score(submission, points_possible) for submission in submissions
+        get_submission_score(submission, points_possible, instance)
+        for submission in submissions
     ]
     columns = ["Student", "Score", "Points Possible"]
     user_scores = DataFrame(submission_scores, columns=columns)
@@ -137,6 +152,7 @@ def get_quiz(
     course: Course,
     quiz: Quiz,
     compress_path: Path,
+    instance: Instance,
     verbose: bool,
     index=0,
     total=0,
@@ -145,22 +161,75 @@ def get_quiz(
         print_item(index, total, color(quiz.title))
     quiz_path = create_directory(compress_path / "Quizzes")
     get_quiz_questions(quiz, quiz_path)
-    get_quiz_description(quiz, quiz_path)
+    submissions = list(quiz.get_submissions())
+    get_submission_scores(submissions, quiz, quiz_path, instance)
     assignment = get_quiz_assignment(quiz, course)
     if assignment:
         submissions = get_assignment_submissions(assignment)
         get_quiz_responses(submissions, quiz, quiz_path, verbose)
-        get_submission_scores(submissions, quiz, quiz_path)
 
 
-def fetch_quizzes(course: Course, course_path: Path, verbose: bool):
-    echo(") Exporting quizzes...")
+def get_description(quiz: Quiz, verbose: bool, index: int, total: int):
+    description = format_text(quiz.description)
+    title = quiz.title
+    if verbose:
+        print_description(index, total, title, description)
+    return [quiz.id, title, description]
+
+
+def get_descriptions(compress_path: Path, quizzes: list[Quiz], verbose: bool):
+    assignments_tar_path = compress_path / ASSIGNMENTS_TAR_NAME
+    descriptions_path = compress_path / DESCRIPTIONS_COMPRESSED_FILE
+    fetched_descriptions = list()
+    descriptions = DataFrame()
+    if assignments_tar_path.exists():
+        assignments_tar_file = open_tarfile(assignments_tar_path)
+        assignments_tar_file.extract(f"./{DESCRIPTIONS_COMPRESSED_FILE}", compress_path)
+        descriptions = read_csv(descriptions_path, dtype={QUIZ_ID: str})
+        descriptions = descriptions[descriptions[QUIZ_ASSIGNMENT] == True]  # noqa
+        descriptions = descriptions.reset_index(drop=True)
+        descriptions = descriptions.drop(
+            [ASSIGNMENT_ID, QUIZ_ASSIGNMENT], axis="columns"
+        )
+        descriptions = descriptions.rename(columns={ASSIGNMENT_NAME: QUIZ_TITLE})
+        fetched_descriptions = descriptions[QUIZ_ID].tolist()
+    fetched_descriptions_count = len(fetched_descriptions)
+    if verbose and fetched_descriptions_count:
+        count = color(fetched_descriptions_count, "cyan")
+        echo(f"Skipping {count} descriptions previously fetched from assignments...")
+    quizzes = [quiz for quiz in quizzes if str(quiz.id) not in fetched_descriptions]
+    total = len(quizzes)
+    quiz_descriptions = [
+        get_description(quiz, verbose, index, total)
+        for index, quiz in enumerate(quizzes)
+    ]
+    columns = [QUIZ_ID, QUIZ_TITLE, "Description"]
+    quiz_descriptions_data_frame = DataFrame(quiz_descriptions, columns=columns)
+    descriptions = concat([descriptions, quiz_descriptions_data_frame])
+    descriptions.to_csv(descriptions_path, index=False)
+
+
+def fetch_quizzes(
+    course: Course,
+    compress_path: Path,
+    unpack_path: Path,
+    unpack: bool,
+    instance: Instance,
+    verbose: bool,
+):
+    echo(") Fetching quizzes...")
+    quizzes_path = create_directory(compress_path / QUIZZES_TAR_STEM)
+    unpack_path = create_directory(unpack_path / UNPACK_QUIZZES_DIRECTORY)
     quizzes = list(course.get_quizzes())
     total = len(quizzes)
+    get_descriptions(compress_path, quizzes, verbose)
     if verbose:
         for index, quiz in enumerate(quizzes):
-            get_quiz(course, quiz, course_path, verbose, index, total)
+            get_quiz(course, quiz, compress_path, instance, verbose, index, total)
     else:
         with progressbar(quizzes, length=total) as progress:
             for quiz in progress:
-                get_quiz(course, quiz, course_path, verbose)
+                get_quiz(course, quiz, compress_path, instance, verbose)
+    quizzes_directory = str(quizzes_path)
+    make_archive(quizzes_directory, TAR_COMPRESSION_TYPE, root_dir=quizzes_directory)
+    rmtree(quizzes_path)

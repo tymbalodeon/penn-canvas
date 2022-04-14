@@ -83,7 +83,7 @@ def get_submission_comments(
     ]
 
 
-def archive_submission_comments(
+def fetch_submission_comments(
     assignments: list[Assignment], assignments_path: Path, verbose: bool, total: int
 ):
     echo(") Exporting assignment submission comments...")

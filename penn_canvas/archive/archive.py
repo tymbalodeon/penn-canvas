@@ -157,7 +157,7 @@ def fetch(
         if should_run_option(rubrics, archive_all):
             fetch_rubrics(*args, verbose)
         if should_run_option(quizzes, archive_all):
-            fetch_quizzes(course, compress_path, verbose)
+            fetch_quizzes(*args, instance, verbose)
         echo("COMPELTE")
 
 

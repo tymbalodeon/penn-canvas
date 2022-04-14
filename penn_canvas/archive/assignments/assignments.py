@@ -9,9 +9,9 @@ from penn_canvas.api import Instance
 from penn_canvas.archive.helpers import TAR_COMPRESSION_TYPE, TAR_EXTENSION
 from penn_canvas.helpers import create_directory
 
-from .comments import archive_submission_comments
+from .comments import fetch_submission_comments
 from .descriptions import fetch_descriptions, unpack_descriptions
-from .submissions import archive_submissions
+from .submissions import fetch_submissions
 
 ASSIGNMENTS_TAR_STEM = "assignments"
 UNPACK_ASSIGNMENTS_DIRECTORY = ASSIGNMENTS_TAR_STEM.title()
@@ -39,7 +39,7 @@ def fetch_assignments(
     instance: Instance,
     verbose: bool,
 ):
-    echo(") Exporting assignments...")
+    echo(") Fetching assignments...")
     assignments_path = create_directory(course_path / ASSIGNMENTS_TAR_STEM)
     unpack_path = create_directory(unpack_path / UNPACK_ASSIGNMENTS_DIRECTORY)
     assignments = list(course.get_assignments())
@@ -47,11 +47,13 @@ def fetch_assignments(
     fetch_descriptions(
         assignments, assignments_path, unpack_path, unpack, verbose, total
     )
-    archive_submissions(
-        assignments, instance, assignments_path, unpack_path, unpack, verbose, total
+    fetch_submissions(
+        assignments, assignments_path, unpack_path, unpack, instance, verbose, total
     )
-    archive_submission_comments(assignments, assignments_path, verbose, total)
-    assignments_files = str(assignments_path)
-    make_archive(assignments_files, TAR_COMPRESSION_TYPE, root_dir=assignments_files)
+    fetch_submission_comments(assignments, assignments_path, verbose, total)
+    assignments_directory = str(assignments_path)
+    make_archive(
+        assignments_directory, TAR_COMPRESSION_TYPE, root_dir=assignments_directory
+    )
     rmtree(assignments_path)
     return assignments

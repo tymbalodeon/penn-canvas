@@ -157,12 +157,12 @@ def get_assignment_grades(
     ]
 
 
-def archive_submissions(
+def fetch_submissions(
     assignments: list[Assignment],
-    instance: Instance,
     assignments_path: Path,
     unpack_path: Path,
     unpack: bool,
+    instance: Instance,
     verbose: bool,
     total: int,
 ):
