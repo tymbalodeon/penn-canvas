@@ -75,7 +75,7 @@ def download_export_files(
     unpack: bool,
     verbose: bool,
 ):
-    print(vars(course.get_content_export(export.export_id)))
+    echo(f") Downloading {export.export_type} export files...")
     url = course.get_content_export(export.export_id).attachment["url"]
     file_name = f"{export.export_type}_content.zip"
     formatted_export_type = format_export_type(export.export_type)
