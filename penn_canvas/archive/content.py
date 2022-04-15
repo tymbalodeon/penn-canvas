@@ -84,7 +84,7 @@ def download_export_files(
         download_file(file_path, url)
         if file_path.is_file():
             unzipped_path = unzip_content(file_path)
-            path_name = str(unzipped_path).lower().replace(" ", "_")
+            path_name = str(unzipped_path)
             make_archive(path_name, TAR_COMPRESSION_TYPE, root_dir=path_name)
             if unpack:
                 unpack_path = unpack_path / export.export_type.replace("_", " ").title()
