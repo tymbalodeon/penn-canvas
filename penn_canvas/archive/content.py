@@ -6,7 +6,6 @@ from time import sleep
 from typing import Optional
 from zipfile import ZipFile
 
-from canvasapi.content_export import ContentExport
 from canvasapi.course import Course
 from loguru import logger
 from typer import echo
@@ -31,7 +30,7 @@ class Export:
     course: Course
     export_type: str
     instance: Instance = Instance.PRODUCTION
-    export_id: Optional[ContentExport] = None
+    export_id: Optional[int] = None
     progress_id: Optional[str] = None
     workflow_state: Optional[str] = None
 
@@ -69,31 +68,35 @@ def is_running(exports: list[Export]) -> bool:
 
 def download_export_files(
     course: Course,
-    export: Export,
+    exports: list[Export],
     compress_path: Path,
     unpack_path: Path,
     unpack: bool,
     verbose: bool,
 ):
-    echo(f") Downloading {export.export_type} export files...")
-    url = course.get_content_export(export.export_id).attachment["url"]
-    file_name = f"{export.export_type}_content.zip"
-    formatted_export_type = format_export_type(export.export_type)
-    export_path = create_directory(compress_path / formatted_export_type)
-    file_path = export_path / file_name
-    download_file(file_path, url)
-    if file_path.is_file():
-        unzipped_path = unzip_content(file_path)
-        path_name = str(unzipped_path)
-        make_archive(path_name, TAR_COMPRESSION_TYPE, root_dir=path_name)
-        if unpack:
-            unzipped_path.replace(
-                unpack_path / export.export_type.replace("_", " ").title()
-            )
-            if verbose:
-                print_unpacked_file(unzipped_path)
-        else:
-            rmtree(unzipped_path)
+    for export in exports:
+        echo(f") Downloading {export.export_type} export files...")
+        url = course.get_content_export(export.export_id).attachment["url"]
+        file_name = f"{export.export_type}_content.zip"
+        formatted_export_type = format_export_type(export.export_type)
+        export_path = create_directory(compress_path / formatted_export_type)
+        file_path = export_path / file_name
+        download_file(file_path, url)
+        if file_path.is_file():
+            unzipped_path = unzip_content(file_path)
+            path_name = str(unzipped_path).lower().replace(" ", "_")
+            make_archive(path_name, TAR_COMPRESSION_TYPE, root_dir=path_name)
+            if unpack:
+                unpack_path = unpack_path / export.export_type.replace("_", " ").title()
+                unzipped_path.replace(unpack_path)
+                if verbose:
+                    print_unpacked_file(unzipped_path)
+            else:
+                try:
+                    rmtree(unzipped_path)
+                except Exception as error:
+                    logger.error(f'Failed to remove {unzipped_path}: "{error}"')
+                    rmtree(unzipped_path, ignore_errors=True)
 
 
 def run_content_exports(
@@ -132,10 +135,7 @@ def run_content_exports(
             )
             logger.error(message)
             echo(message)
-    for export in exports:
-        download_export_files(
-            course, export, compress_path, unpack_path, unpack, verbose
-        )
+    download_export_files(course, exports, compress_path, unpack_path, unpack, verbose)
 
 
 def unpack_content(
