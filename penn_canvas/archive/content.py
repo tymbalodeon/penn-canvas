@@ -122,9 +122,9 @@ def run_content_exports(
         running = is_running(exports)
         attempts += 1
     failed_exports = [
-        export for export in exports if export.workflow_state != "complete"
+        export for export in exports if export.workflow_state != "completed"
     ]
-    exports = [export for export in exports if export.workflow_state == "complete"]
+    exports = [export for export in exports if export.workflow_state == "completed"]
     if failed_exports:
         for export in failed_exports:
             message = color(
