@@ -24,6 +24,7 @@ ASSIGNMENT_ID = "Assignment ID"
 QUIZ_ASSIGNMENT = "Quiz Assignment"
 QUIZ_ID = "Quiz ID"
 ASSIGNMENT_NAME = "Assignment Name"
+DESCRIPTION = "Description"
 UNPACK_DESCRIPTIONS_DIRECTORY = "Descriptions"
 
 
@@ -79,13 +80,7 @@ def fetch_descriptions(
         get_description(assignment, verbose, index, total)
         for index, assignment in enumerate(assignments)
     ]
-    columns = [
-        ASSIGNMENT_ID,
-        QUIZ_ASSIGNMENT,
-        QUIZ_ID,
-        ASSIGNMENT_NAME,
-        "Description",
-    ]
+    columns = [ASSIGNMENT_ID, QUIZ_ASSIGNMENT, QUIZ_ID, ASSIGNMENT_NAME, DESCRIPTION]
     description_data = DataFrame(descriptions, columns=columns)
     description_path = compress_path / DESCRIPTIONS_COMPRESSED_FILE
     description_data.to_csv(description_path, index=False)

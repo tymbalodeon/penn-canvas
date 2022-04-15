@@ -8,8 +8,8 @@ from penn_canvas.api import Instance
 from penn_canvas.archive.helpers import TAR_COMPRESSION_TYPE, TAR_EXTENSION
 from penn_canvas.helpers import create_directory
 
-from .descriptions import get_descriptions
 from .questions import get_all_quiz_questions
+from .quiz_descriptions import get_descriptions
 from .responses import get_all_quiz_responses
 from .scores import get_all_submission_scores
 

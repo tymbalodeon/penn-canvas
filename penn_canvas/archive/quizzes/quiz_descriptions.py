@@ -6,18 +6,31 @@ from pandas import DataFrame, read_csv
 from pandas.core.reshape.concat import concat
 from typer import echo
 
-from penn_canvas.archive.assignments.assignments import ASSIGNMENTS_TAR_NAME
-from penn_canvas.archive.assignments.descriptions import (
+from penn_canvas.archive.assignments.assignment_descriptions import (
     ASSIGNMENT_ID,
     ASSIGNMENT_NAME,
+    DESCRIPTION,
     DESCRIPTIONS_COMPRESSED_FILE,
     QUIZ_ASSIGNMENT,
 )
+from penn_canvas.archive.assignments.assignments import ASSIGNMENTS_TAR_NAME
 from penn_canvas.archive.helpers import format_text, print_description
 from penn_canvas.style import color
 
 QUIZ_ID = "Quiz ID"
 QUIZ_TITLE = "Quiz Title"
+
+
+def get_assignment_descriptions(
+    assignments_tar_path: Path, compress_path: Path, descriptions_path: Path
+) -> DataFrame:
+    assignments_tar_file = open_tarfile(assignments_tar_path)
+    assignments_tar_file.extract(f"./{DESCRIPTIONS_COMPRESSED_FILE}", compress_path)
+    descriptions = read_csv(descriptions_path, dtype={QUIZ_ID: str})
+    descriptions = descriptions[descriptions[QUIZ_ASSIGNMENT] == True]  # noqa
+    descriptions = descriptions.reset_index(drop=True)
+    descriptions = descriptions.drop([ASSIGNMENT_ID, QUIZ_ASSIGNMENT], axis="columns")
+    return descriptions.rename(columns={ASSIGNMENT_NAME: QUIZ_TITLE})
 
 
 def get_description(quiz: Quiz, verbose: bool, index: int, total: int):
@@ -34,15 +47,9 @@ def get_descriptions(compress_path: Path, quizzes: list[Quiz], verbose: bool):
     fetched_descriptions = list()
     descriptions = DataFrame()
     if assignments_tar_path.exists():
-        assignments_tar_file = open_tarfile(assignments_tar_path)
-        assignments_tar_file.extract(f"./{DESCRIPTIONS_COMPRESSED_FILE}", compress_path)
-        descriptions = read_csv(descriptions_path, dtype={QUIZ_ID: str})
-        descriptions = descriptions[descriptions[QUIZ_ASSIGNMENT] == True]  # noqa
-        descriptions = descriptions.reset_index(drop=True)
-        descriptions = descriptions.drop(
-            [ASSIGNMENT_ID, QUIZ_ASSIGNMENT], axis="columns"
+        descriptions = get_assignment_descriptions(
+            assignments_tar_path, compress_path, descriptions_path
         )
-        descriptions = descriptions.rename(columns={ASSIGNMENT_NAME: QUIZ_TITLE})
         fetched_descriptions = descriptions[QUIZ_ID].tolist()
     fetched_descriptions_count = len(fetched_descriptions)
     if verbose and fetched_descriptions_count:
@@ -54,7 +61,7 @@ def get_descriptions(compress_path: Path, quizzes: list[Quiz], verbose: bool):
         get_description(quiz, verbose, index, total)
         for index, quiz in enumerate(quizzes)
     ]
-    columns = [QUIZ_ID, QUIZ_TITLE, "Description"]
+    columns = [QUIZ_ID, QUIZ_TITLE, DESCRIPTION]
     quiz_descriptions_data_frame = DataFrame(quiz_descriptions, columns=columns)
     descriptions = concat([descriptions, quiz_descriptions_data_frame])
     descriptions.to_csv(descriptions_path, index=False)

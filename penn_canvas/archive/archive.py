@@ -30,7 +30,7 @@ from .groups import fetch_groups, unpack_groups
 from .helpers import format_name
 from .modules import fetch_modules, unpack_modules
 from .pages import fetch_pages, unpack_pages
-from .quizzes import fetch_quizzes, unpack_quizzes
+from .quizzes.quizzes import fetch_quizzes, unpack_quizzes
 from .rubrics import fetch_rubrics, unpack_rubrics
 from .syllabus import fetch_syllabus, unpack_syllabus
 

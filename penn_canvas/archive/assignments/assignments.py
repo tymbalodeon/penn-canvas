@@ -9,8 +9,8 @@ from penn_canvas.api import Instance
 from penn_canvas.archive.helpers import TAR_COMPRESSION_TYPE, TAR_EXTENSION
 from penn_canvas.helpers import create_directory
 
+from .assignment_descriptions import fetch_descriptions, unpack_descriptions
 from .comments import fetch_submission_comments
-from .descriptions import fetch_descriptions, unpack_descriptions
 from .submissions import fetch_submissions
 
 ASSIGNMENTS_TAR_STEM = "assignments"
