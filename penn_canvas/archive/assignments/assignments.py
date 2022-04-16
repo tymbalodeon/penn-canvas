@@ -1,5 +1,5 @@
 from pathlib import Path
-from shutil import make_archive, rmtree, unpack_archive
+from shutil import make_archive, rmtree
 from typing import Optional
 
 from canvasapi.course import Course
@@ -11,7 +11,7 @@ from penn_canvas.helpers import create_directory
 
 from .assignment_descriptions import fetch_descriptions, unpack_descriptions
 from .comments import fetch_submission_comments
-from .submissions import fetch_submissions
+from .submissions import fetch_submissions, unpack_submissions
 
 ASSIGNMENTS_TAR_STEM = "assignments"
 UNPACK_ASSIGNMENTS_DIRECTORY = ASSIGNMENTS_TAR_STEM.title()
@@ -22,30 +22,37 @@ def unpack_assignments(
     compress_path: Path, unpack_path: Path, verbose: bool
 ) -> Optional[Path]:
     echo(") Unpacking assignments...")
-    archive_file = compress_path / ASSIGNMENTS_TAR_NAME
-    if not archive_file.is_file():
+    archive_tar_path = compress_path / ASSIGNMENTS_TAR_NAME
+    if not archive_tar_path.is_file():
         return None
     unpack_path = create_directory(unpack_path / UNPACK_ASSIGNMENTS_DIRECTORY)
-    unpack_archive(archive_file, compress_path)
-    unpack_descriptions(compress_path, unpack_path, verbose)
+    unpack_descriptions(compress_path, archive_tar_path, unpack_path, verbose)
+    unpack_submissions(compress_path, archive_tar_path, unpack_path, verbose)
     return unpack_path
 
 
 def fetch_assignments(
     course: Course,
-    course_path: Path,
+    compress_path: Path,
     unpack_path: Path,
     unpack: bool,
     instance: Instance,
     verbose: bool,
 ):
     echo(") Fetching assignments...")
-    assignments_path = create_directory(course_path / ASSIGNMENTS_TAR_STEM)
+    assignments_path = create_directory(compress_path / ASSIGNMENTS_TAR_STEM)
+    archive_tar_path = compress_path / ASSIGNMENTS_TAR_NAME
     unpack_path = create_directory(unpack_path / UNPACK_ASSIGNMENTS_DIRECTORY)
     assignments = list(course.get_assignments())
     total = len(assignments)
     fetch_descriptions(
-        assignments, assignments_path, unpack_path, unpack, verbose, total
+        assignments,
+        assignments_path,
+        archive_tar_path,
+        unpack_path,
+        unpack,
+        verbose,
+        total,
     )
     fetch_submissions(
         assignments, assignments_path, unpack_path, unpack, instance, verbose, total

@@ -1,6 +1,8 @@
 from mimetypes import guess_extension
+from os import remove
 from pathlib import Path
 from shutil import make_archive, rmtree
+from tarfile import open as open_tarfile
 from typing import Optional
 
 from canvasapi.assignment import Assignment
@@ -9,6 +11,7 @@ from canvasapi.user import User
 from click.utils import echo
 from magic.magic import from_file
 from pandas import DataFrame
+from pandas.io.parsers.readers import read_csv
 
 from penn_canvas.api import Instance, get_user
 from penn_canvas.archive.helpers import (
@@ -20,12 +23,18 @@ from penn_canvas.archive.helpers import (
     get_submission_display,
     strip_tags,
 )
-from penn_canvas.helpers import create_directory, download_file
+from penn_canvas.helpers import (
+    create_directory,
+    download_file,
+    print_task_complete_message,
+)
 from penn_canvas.report import flatten
 from penn_canvas.style import color, print_item
 
 GRADES_COMPRESSED_FILE = f"grades.{CSV_COMPRESSION_TYPE}"
 UNPACK_SUBMISSIONS_DIRECTORY = "Submission Files"
+USER_ID = "User ID"
+GRADER_ID = "Grader ID"
 
 
 def get_grader(submission: Submission, instance: Instance) -> Optional[User]:
@@ -146,7 +155,8 @@ def get_assignment_grades(
     submissions = get_assignment_submissions(assignment)
     submissions_total = len(submissions)
     return [
-        get_submission_grades(
+        [assignment.name]
+        + get_submission_grades(
             submission,
             instance,
             verbose,
@@ -155,6 +165,39 @@ def get_assignment_grades(
         )
         for submission_index, submission in enumerate(submissions)
     ]
+
+
+def unpack_submissions(
+    compress_path: Path, archive_tar_path: Path, unpack_path: Path, verbose: bool
+):
+    assignments_tar_file = open_tarfile(archive_tar_path)
+    assignments_tar_file.extract(f"./{GRADES_COMPRESSED_FILE}", compress_path)
+    unpacked_submissions_path = compress_path / GRADES_COMPRESSED_FILE
+    submissions_data = read_csv(unpacked_submissions_path)
+    columns = [USER_ID, GRADER_ID]
+    submissions_data = submissions_data.drop(columns, axis=1)
+    submissions_data.fillna("", inplace=True)
+    submissions_path = create_directory(unpack_path / UNPACK_SUBMISSIONS_DIRECTORY)
+    total = len(submissions_data.index)
+    for (
+        index,
+        assignment_name,
+        user_name,
+        submission_type,
+        grade,
+        score,
+        grader_name,
+        body,
+    ) in submissions_data.itertuples():
+        message = (
+            f"{assignment_name} ({user_name}) - '{submission_type}': {grade}, {score}."
+            f" Graded by {grader_name}. Body:\n{body}"
+        )
+        print_item(index, total, message)
+    if verbose:
+        print_task_complete_message(submissions_path)
+    remove(unpacked_submissions_path)
+    return submissions_path
 
 
 def fetch_submissions(
@@ -173,12 +216,13 @@ def fetch_submissions(
     ]
     grades = list(flatten(grades))
     columns = [
-        "User ID",
+        "Assignment Name",
+        USER_ID,
         "User Name",
         "Submission type",
         "Grade",
         "Score",
-        "Grader ID",
+        GRADER_ID,
         "Grader Name",
         "Body",
     ]

@@ -1,5 +1,6 @@
 from os import remove
 from pathlib import Path
+from tarfile import open as open_tarfile
 from typing import Optional
 
 from canvasapi.assignment import Assignment
@@ -46,12 +47,15 @@ def get_description(assignment: Assignment, verbose: bool, index: int, total: in
     return [assignment.id, is_quiz_assignment, quiz_id, name, description]
 
 
-def unpack_descriptions(compress_path: Path, unpack_path: Path, verbose: bool):
-    compressed_file = compress_path / DESCRIPTIONS_COMPRESSED_FILE
-    if not compressed_file.is_file():
-        return None
-    descriptions_data = read_csv(compressed_file)
-    descriptions_data.drop(ASSIGNMENT_ID, axis=1, inplace=True)
+def unpack_descriptions(
+    compress_path: Path, archive_tar_path: Path, unpack_path: Path, verbose: bool
+):
+    assignments_tar_file = open_tarfile(archive_tar_path)
+    assignments_tar_file.extract(f"./{DESCRIPTIONS_COMPRESSED_FILE}", compress_path)
+    unpacked_descriptions_path = compress_path / DESCRIPTIONS_COMPRESSED_FILE
+    descriptions_data = read_csv(unpacked_descriptions_path)
+    columns = [ASSIGNMENT_ID, QUIZ_ASSIGNMENT, QUIZ_ID]
+    descriptions_data = descriptions_data.drop(columns, axis=1)
     descriptions_data.fillna("", inplace=True)
     descriptions_path = create_directory(unpack_path / UNPACK_DESCRIPTIONS_DIRECTORY)
     total = len(descriptions_data.index)
@@ -63,13 +67,14 @@ def unpack_descriptions(compress_path: Path, unpack_path: Path, verbose: bool):
             print_description(index, total, assignment_name, description)
     if verbose:
         print_task_complete_message(descriptions_path)
-    remove(compressed_file)
+    remove(unpacked_descriptions_path)
     return descriptions_path
 
 
 def fetch_descriptions(
     assignments: list[Assignment],
     compress_path: Path,
+    archive_tar_path: Path,
     unpack_path: Path,
     unpack: bool,
     verbose: bool,
@@ -85,6 +90,8 @@ def fetch_descriptions(
     description_path = compress_path / DESCRIPTIONS_COMPRESSED_FILE
     description_data.to_csv(description_path, index=False)
     if unpack:
-        unpacked_path = unpack_descriptions(compress_path, unpack_path, verbose=False)
+        unpacked_path = unpack_descriptions(
+            compress_path, archive_tar_path, unpack_path, verbose=False
+        )
         if verbose:
             print_unpacked_file(unpacked_path)
