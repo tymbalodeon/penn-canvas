@@ -41,14 +41,14 @@ def get_description(quiz: Quiz, verbose: bool, index: int, total: int):
     return [quiz.id, title, description]
 
 
-def get_descriptions(compress_path: Path, quizzes: list[Quiz], verbose: bool):
-    assignments_tar_path = compress_path / ASSIGNMENTS_TAR_NAME
-    descriptions_path = compress_path / DESCRIPTIONS_COMPRESSED_FILE
+def get_descriptions(quiz_path: Path, quizzes: list[Quiz], verbose: bool):
+    assignments_tar_path = quiz_path / ASSIGNMENTS_TAR_NAME
+    descriptions_path = quiz_path / DESCRIPTIONS_COMPRESSED_FILE
     fetched_descriptions = list()
     descriptions = DataFrame()
     if assignments_tar_path.exists():
         descriptions = get_assignment_descriptions(
-            assignments_tar_path, compress_path, descriptions_path
+            assignments_tar_path, quiz_path, descriptions_path
         )
         fetched_descriptions = descriptions[QUIZ_ID].tolist()
     fetched_descriptions_count = len(fetched_descriptions)

@@ -72,18 +72,17 @@ def get_quiz_responses(
 
 
 def get_all_quiz_responses(
-    course: Course,
-    compress_path: Path,
-    instance: Instance,
-    verbose: bool,
+    course: Course, quiz_path: Path, instance: Instance, verbose: bool
 ):
     assignments = list(
         assignment
         for assignment in course.get_assignments()
         if assignment.is_quiz_assignment
     )
-    quiz_path = create_directory(compress_path / "Quizzes")
-    for assignment in assignments:
+    total = len(assignments)
+    for index, assignment in enumerate(assignments):
         quiz = course.get_quiz(assignment.quiz_id, instance=instance)
+        if verbose:
+            print_item(index, total, color(quiz.title))
         submissions = get_assignment_submissions(assignment)
         get_quiz_responses(submissions, quiz, quiz_path, verbose)
