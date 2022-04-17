@@ -45,12 +45,10 @@ def unpack_announcements(
     compressed_file = compress_path / ANNOUNCEMENTS_COMPRESSED_FILE
     if not compressed_file.is_file():
         return None
-    data_frame = read_csv(compressed_file)
-    announcements = data_frame.values.tolist()
+    announcements = read_csv(compressed_file)
     announcements_path = create_directory(unpack_path / "Announcements")
-    total = len(announcements)
-    for index, announcement in enumerate(announcements):
-        title, message = announcement
+    total = len(announcements.index)
+    for index, title, message in announcements.itertuples():
         title_path = announcements_path / f"{title}.txt"
         write_file(title_path, message)
         if verbose:

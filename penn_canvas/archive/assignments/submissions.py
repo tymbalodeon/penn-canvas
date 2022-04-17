@@ -14,6 +14,10 @@ from pandas import DataFrame
 from pandas.io.parsers.readers import read_csv
 
 from penn_canvas.api import Instance, get_user
+from penn_canvas.archive.assignments.assignment_descriptions import (
+    ASSIGNMENT_ID,
+    ASSIGNMENT_NAME,
+)
 from penn_canvas.archive.helpers import (
     CSV_COMPRESSION_TYPE,
     TAR_COMPRESSION_TYPE,
@@ -155,7 +159,7 @@ def get_assignment_grades(
     submissions = get_assignment_submissions(assignment)
     submissions_total = len(submissions)
     return [
-        [assignment.name]
+        [assignment.id, assignment.name]
         + get_submission_grades(
             submission,
             instance,
@@ -177,23 +181,19 @@ def unpack_submissions(
     columns = [USER_ID, GRADER_ID]
     submissions_data = submissions_data.drop(columns, axis=1)
     submissions_data.fillna("", inplace=True)
+    assignment_ids = submissions_data[ASSIGNMENT_ID].unique()
+    assignments = [
+        submissions_data[submissions_data[ASSIGNMENT_ID] == assignment_id]
+        for assignment_id in assignment_ids
+    ]
     submissions_path = create_directory(unpack_path / UNPACK_SUBMISSIONS_DIRECTORY)
-    total = len(submissions_data.index)
-    for (
-        index,
-        assignment_name,
-        user_name,
-        submission_type,
-        grade,
-        score,
-        grader_name,
-        body,
-    ) in submissions_data.itertuples():
-        message = (
-            f"{assignment_name} ({user_name}) - '{submission_type}': {grade}, {score}."
-            f" Graded by {grader_name}. Body:\n{body}"
-        )
-        print_item(index, total, message)
+    total = len(assignments)
+    for index, assignment in enumerate(assignments):
+        title = next(iter(assignment[ASSIGNMENT_NAME].tolist()), "")
+        title = format_name(title)
+        submission_file = submissions_path / f"{title}.csv"
+        assignment.to_csv(submission_file, index=False)
+        print_item(index, total, color(title))
     if verbose:
         print_task_complete_message(submissions_path)
     remove(unpacked_submissions_path)
@@ -216,7 +216,8 @@ def fetch_submissions(
     ]
     grades = list(flatten(grades))
     columns = [
-        "Assignment Name",
+        ASSIGNMENT_ID,
+        ASSIGNMENT_NAME,
         USER_ID,
         "User Name",
         "Submission type",
