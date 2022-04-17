@@ -71,7 +71,7 @@ def get_quiz_responses(
             history_data_frame.to_csv(submission_data_path, index=False)
 
 
-def get_all_quiz_responses(
+def fetch_quiz_responses(
     course: Course, quiz_path: Path, instance: Instance, verbose: bool
 ):
     assignments = list(

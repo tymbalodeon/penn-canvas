@@ -5,6 +5,8 @@ from canvasapi.submission import Submission
 from pandas import DataFrame
 
 from penn_canvas.api import Instance, get_user
+from penn_canvas.archive.helpers import format_name
+from penn_canvas.helpers import create_directory
 
 
 def get_submission_score(
@@ -16,7 +18,7 @@ def get_submission_score(
 
 
 def get_submission_scores(
-    submissions: list[Submission], quiz: Quiz, quiz_path: Path, instance: Instance
+    submissions: list[Submission], quiz: Quiz, quizzes_path: Path, instance: Instance
 ):
     points_possible = quiz.points_possible
     submission_scores = [
@@ -25,11 +27,12 @@ def get_submission_scores(
     ]
     columns = ["Student", "Score", "Points Possible"]
     user_scores = DataFrame(submission_scores, columns=columns)
-    scores_path = quiz_path / f"{quiz.title}_SCORES.csv"
+    quiz_path = create_directory(quizzes_path / format_name(quiz.title))
+    scores_path = quiz_path / "Scores.csv"
     user_scores.to_csv(scores_path, index=False)
 
 
-def get_all_submission_scores(quizzes: list[Quiz], quiz_path: Path, instance: Instance):
+def fetch_submission_scores(quizzes: list[Quiz], quiz_path: Path, instance: Instance):
     for quiz in quizzes:
         submissions = list(quiz.get_submissions())
         get_submission_scores(submissions, quiz, quiz_path, instance)

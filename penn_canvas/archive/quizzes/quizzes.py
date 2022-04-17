@@ -9,10 +9,10 @@ from penn_canvas.api import Instance
 from penn_canvas.archive.helpers import TAR_COMPRESSION_TYPE, TAR_EXTENSION
 from penn_canvas.helpers import create_directory
 
-from .questions import get_all_quiz_questions
+from .questions import fetch_quiz_questions
 from .quiz_descriptions import fetch_descriptions, unpack_descriptions
-from .responses import get_all_quiz_responses
-from .scores import get_all_submission_scores
+from .responses import fetch_quiz_responses
+from .scores import fetch_submission_scores
 
 QUIZZES_TAR_STEM = "quizzes"
 UNPACK_QUIZZES_DIRECTORY = QUIZZES_TAR_STEM.title()
@@ -45,9 +45,9 @@ def fetch_quizzes(
     quizzes = list(course.get_quizzes())
     quiz_path = create_directory(compress_path / "Quizzes")
     fetch_descriptions(quiz_path, quizzes, verbose)
-    get_all_quiz_questions(quizzes, quiz_path)
-    get_all_submission_scores(quizzes, quiz_path, instance)
-    get_all_quiz_responses(course, quiz_path, instance, verbose)
+    fetch_quiz_questions(quizzes, quiz_path)
+    fetch_submission_scores(quizzes, quiz_path, instance)
+    fetch_quiz_responses(course, quiz_path, instance, verbose)
     quizzes_directory = str(quizzes_path)
     make_archive(quizzes_directory, TAR_COMPRESSION_TYPE, root_dir=quizzes_directory)
     rmtree(quizzes_path)
