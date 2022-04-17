@@ -1,7 +1,7 @@
 from mimetypes import guess_extension
 from os import remove
 from pathlib import Path
-from shutil import make_archive, rmtree
+from shutil import make_archive, rmtree, unpack_archive
 from tarfile import open as open_tarfile
 from typing import Optional
 
@@ -105,7 +105,7 @@ def download_submission_files(
             extension = ""
         name = f"{format_name(name)} ({user_name})"
         file_name = f"{name} ({user_name}).{extension.lower()}" if extension else name
-        submission_file_path = assignment_path / file_name
+        submission_file_path = create_directory(assignment_path) / file_name
         download_file(submission_file_path, url)
         if not extension:
             mime_type = from_file(str(submission_file_path), mime=True)
@@ -182,7 +182,10 @@ def unpack_submissions(
 ):
     assignments_tar_file = open_tarfile(archive_tar_path)
     assignments_tar_file.extract(f"./{GRADES_COMPRESSED_FILE}", compress_path)
+    assignments_tar_file.extract("./submission_files.tar.gz", compress_path)
     unpacked_submissions_path = compress_path / GRADES_COMPRESSED_FILE
+    unpacked_files_path = compress_path / "submission_files.tar.gz"
+    unpack_archive(unpacked_files_path, unpack_path)
     submissions_data = read_csv(unpacked_submissions_path)
     columns = [USER_ID, GRADER_ID]
     submissions_data = submissions_data.drop(columns, axis=1)
@@ -224,6 +227,7 @@ def unpack_submissions(
     if verbose:
         print_task_complete_message(unpack_path)
     remove(unpacked_submissions_path)
+    remove(compress_path / "submission_files.tar.gz")
     return unpack_path
 
 
@@ -276,7 +280,7 @@ def fetch_submissions(
                     prefix="\t*",
                 )
             user_name = get_user(submission.user_id, instance=instance).name
-            assignment_path = create_directory(submissions_path / assignment_name)
+            assignment_path = submissions_path / assignment_name / "Submissions"
             download_submission_files(submission, user_name, assignment_path)
     submission_files = str(submissions_path)
     make_archive(submission_files, TAR_COMPRESSION_TYPE, root_dir=submission_files)

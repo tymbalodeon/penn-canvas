@@ -9,6 +9,7 @@ from typer import echo
 
 from penn_canvas.archive.helpers import (
     CSV_COMPRESSION_TYPE,
+    format_name,
     format_text,
     print_description,
     print_unpacked_file,
@@ -57,6 +58,7 @@ def unpack_descriptions(
     descriptions_data.fillna("", inplace=True)
     total = len(descriptions_data.index)
     for index, assignment_name, description in descriptions_data.itertuples():
+        assignment_name = format_name(assignment_name)
         descriptions_path = create_directory(unpack_path / assignment_name)
         description_file = descriptions_path / "Description.txt"
         text = f'"{assignment_name}"\n\n{description}'
