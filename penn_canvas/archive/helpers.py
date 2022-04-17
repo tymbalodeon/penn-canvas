@@ -41,7 +41,7 @@ def strip_tags(html: str) -> str:
 
 @lru_cache
 def get_assignment_submissions(assignment: Assignment) -> list[Submission]:
-    return list(assignment.get_submissions(include="submission_comments"))
+    return list(assignment.get_submissions(include=["submission_comments", "user"]))
 
 
 @lru_cache

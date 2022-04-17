@@ -31,14 +31,20 @@ from penn_canvas.helpers import (
     create_directory,
     download_file,
     print_task_complete_message,
+    write_file,
 )
 from penn_canvas.report import flatten
 from penn_canvas.style import color, print_item
 
 GRADES_COMPRESSED_FILE = f"grades.{CSV_COMPRESSION_TYPE}"
-UNPACK_SUBMISSIONS_DIRECTORY = "Submission Files"
 USER_ID = "User ID"
 GRADER_ID = "Grader ID"
+BODY = "Body"
+SUBMISSION_TYPE = "Submission type"
+GRADE = "Grade"
+SCORE = "Score"
+GRADER_NAME = "Grader Name"
+UNPACK_SUBMISSIONS_DIRECTORY = "Submissions"
 
 
 def get_grader(submission: Submission, instance: Instance) -> Optional[User]:
@@ -86,7 +92,7 @@ def get_attachments(submission: Submission) -> Optional[list[tuple]]:
 
 
 def download_submission_files(
-    submission: Submission, user_name: str, submissions_path: Path
+    submission: Submission, user_name: str, assignment_path: Path
 ):
     attachments = get_attachments(submission)
     if not attachments:
@@ -99,7 +105,7 @@ def download_submission_files(
             extension = ""
         name = f"{format_name(name)} ({user_name})"
         file_name = f"{name} ({user_name}).{extension.lower()}" if extension else name
-        submission_file_path = submissions_path / file_name
+        submission_file_path = assignment_path / file_name
         download_file(submission_file_path, url)
         if not extension:
             mime_type = from_file(str(submission_file_path), mime=True)
@@ -186,18 +192,39 @@ def unpack_submissions(
         submissions_data[submissions_data[ASSIGNMENT_ID] == assignment_id]
         for assignment_id in assignment_ids
     ]
-    submissions_path = create_directory(unpack_path / UNPACK_SUBMISSIONS_DIRECTORY)
     total = len(assignments)
     for index, assignment in enumerate(assignments):
-        title = next(iter(assignment[ASSIGNMENT_NAME].tolist()), "")
-        title = format_name(title)
-        submission_file = submissions_path / f"{title}.csv"
+        assignment_name = next(iter(assignment[ASSIGNMENT_NAME].tolist()), "")
+        assignment_name = format_name(assignment_name)
+        assignment_path = create_directory(unpack_path / assignment_name)
+        submission_file = assignment_path / "Grades.csv"
+        online_text_entries = assignment[
+            assignment[SUBMISSION_TYPE] == "online text entry"
+        ]
+        online_text_entries = online_text_entries.drop(
+            columns=[
+                ASSIGNMENT_ID,
+                ASSIGNMENT_NAME,
+                SUBMISSION_TYPE,
+                GRADE,
+                SCORE,
+                GRADER_NAME,
+            ]
+        )
+        if not online_text_entries.empty:
+            submission_files_path = create_directory(
+                assignment_path / UNPACK_SUBMISSIONS_DIRECTORY
+            )
+            for user_name, body in online_text_entries.itertuples(index=False):
+                entry_file = submission_files_path / f"{user_name}.txt"
+                write_file(entry_file, f'"{assignment_name}"\n{user_name}\n\n{body}')
+        assignment = assignment.drop(columns=[ASSIGNMENT_ID, SUBMISSION_TYPE, BODY])
         assignment.to_csv(submission_file, index=False)
-        print_item(index, total, color(title))
+        print_item(index, total, color(assignment_name))
     if verbose:
-        print_task_complete_message(submissions_path)
+        print_task_complete_message(unpack_path)
     remove(unpacked_submissions_path)
-    return submissions_path
+    return unpack_path
 
 
 def fetch_submissions(
@@ -220,12 +247,12 @@ def fetch_submissions(
         ASSIGNMENT_NAME,
         USER_ID,
         "User Name",
-        "Submission type",
-        "Grade",
-        "Score",
+        SUBMISSION_TYPE,
+        GRADE,
+        SCORE,
         GRADER_ID,
-        "Grader Name",
-        "Body",
+        GRADER_NAME,
+        BODY,
     ]
     grades_data = DataFrame(grades, columns=columns)
     grades_path = assignments_path / GRADES_COMPRESSED_FILE
@@ -233,8 +260,9 @@ def fetch_submissions(
     echo(") Exporting submission files...")
     submissions_path = create_directory(assignments_path / "submission_files")
     for index, assignment in enumerate(assignments):
+        assignment_name = format_name(assignment.name)
         if verbose:
-            assignment_display = color(format_display_text(assignment.name))
+            assignment_display = color(format_display_text(assignment_name))
             print_item(index, total, color(assignment_display))
         submissions = get_assignment_submissions(assignment)
         submissions_total = len(submissions)
@@ -248,7 +276,8 @@ def fetch_submissions(
                     prefix="\t*",
                 )
             user_name = get_user(submission.user_id, instance=instance).name
-            download_submission_files(submission, user_name, submissions_path)
+            assignment_path = create_directory(submissions_path / assignment_name)
+            download_submission_files(submission, user_name, assignment_path)
     submission_files = str(submissions_path)
     make_archive(submission_files, TAR_COMPRESSION_TYPE, root_dir=submission_files)
     if unpack:

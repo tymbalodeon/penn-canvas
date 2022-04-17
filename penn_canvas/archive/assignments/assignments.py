@@ -10,7 +10,7 @@ from penn_canvas.archive.helpers import TAR_COMPRESSION_TYPE, TAR_EXTENSION
 from penn_canvas.helpers import create_directory
 
 from .assignment_descriptions import fetch_descriptions, unpack_descriptions
-from .comments import fetch_submission_comments
+from .comments import fetch_submission_comments, unpack_submission_comments
 from .submissions import fetch_submissions, unpack_submissions
 
 ASSIGNMENTS_TAR_STEM = "assignments"
@@ -28,6 +28,7 @@ def unpack_assignments(
     unpack_path = create_directory(unpack_path / UNPACK_ASSIGNMENTS_DIRECTORY)
     unpack_descriptions(compress_path, archive_tar_path, unpack_path, verbose)
     unpack_submissions(compress_path, archive_tar_path, unpack_path, verbose)
+    unpack_submission_comments(compress_path, archive_tar_path, unpack_path, verbose)
     return unpack_path
 
 

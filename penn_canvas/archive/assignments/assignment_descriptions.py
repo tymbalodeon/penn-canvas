@@ -9,7 +9,6 @@ from typer import echo
 
 from penn_canvas.archive.helpers import (
     CSV_COMPRESSION_TYPE,
-    format_name,
     format_text,
     print_description,
     print_unpacked_file,
@@ -26,7 +25,6 @@ QUIZ_ASSIGNMENT = "Quiz Assignment"
 QUIZ_ID = "Quiz ID"
 ASSIGNMENT_NAME = "Assignment Name"
 DESCRIPTION = "Description"
-UNPACK_DESCRIPTIONS_DIRECTORY = "Descriptions"
 
 
 def get_quiz_id(assignment: Assignment) -> Optional[str]:
@@ -57,18 +55,18 @@ def unpack_descriptions(
     columns = [ASSIGNMENT_ID, QUIZ_ASSIGNMENT, QUIZ_ID]
     descriptions_data = descriptions_data.drop(columns, axis=1)
     descriptions_data.fillna("", inplace=True)
-    descriptions_path = create_directory(unpack_path / UNPACK_DESCRIPTIONS_DIRECTORY)
     total = len(descriptions_data.index)
     for index, assignment_name, description in descriptions_data.itertuples():
-        description_file = descriptions_path / f"{format_name(assignment_name)}.txt"
+        descriptions_path = create_directory(unpack_path / assignment_name)
+        description_file = descriptions_path / "Description.txt"
         text = f'"{assignment_name}"\n\n{description}'
         write_file(description_file, text)
         if verbose:
             print_description(index, total, assignment_name, description)
     if verbose:
-        print_task_complete_message(descriptions_path)
+        print_task_complete_message(unpack_path)
     remove(unpacked_descriptions_path)
-    return descriptions_path
+    return unpack_path
 
 
 def fetch_descriptions(
