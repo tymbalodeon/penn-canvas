@@ -1,5 +1,7 @@
+from os import remove
 from pathlib import Path
 from tarfile import open as open_tarfile
+from typing import Optional
 
 from canvasapi.quiz import Quiz, QuizQuestion
 from pandas import DataFrame, read_csv
@@ -34,7 +36,7 @@ def get_questions_and_answers(quiz: Quiz) -> DataFrame:
 
 def unpack_quiz_questions(
     compress_path: Path, archive_tar_path: Path, unpack_path: Path, verbose: bool
-):
+) -> Optional[Path]:
     echo("Unpacking quiz questions...")
     quizzes_tar_file = open_tarfile(archive_tar_path)
     quizzes_tar_file.extract("./questions.csv.gz", compress_path)
@@ -54,6 +56,8 @@ def unpack_quiz_questions(
             print_item(index, total, color(quiz_title))
         questions_path = create_directory(unpack_path / quiz_title) / "Questions.csv"
         quiz.to_csv(questions_path, index=False)
+    remove(compress_path / "questions.csv.gz")
+    return unpack_path
 
 
 def fetch_quiz_questions(quizzes: list[Quiz], quiz_path: Path):

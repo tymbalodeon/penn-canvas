@@ -1,5 +1,7 @@
+from os import remove
 from pathlib import Path
 from tarfile import open as open_tarfile
+from typing import Optional
 
 from canvasapi.quiz import Quiz
 from canvasapi.submission import Submission
@@ -37,7 +39,7 @@ def get_submission_scores(
 
 def unpack_quiz_scores(
     compress_path: Path, archive_tar_path: Path, unpack_path: Path, verbose: bool
-):
+) -> Optional[Path]:
     echo("Unpacking quiz scores...")
     quizzes_tar_file = open_tarfile(archive_tar_path)
     quizzes_tar_file.extract("./scores.csv.gz", compress_path)
@@ -55,6 +57,8 @@ def unpack_quiz_scores(
             print_item(index, total, color(quiz_title))
         scores_path = create_directory(unpack_path / quiz_title) / "Scores.csv"
         quiz.to_csv(scores_path, index=False)
+    remove(compress_path / "scores.csv.gz")
+    return unpack_path
 
 
 def fetch_submission_scores(quizzes: list[Quiz], quiz_path: Path, instance: Instance):

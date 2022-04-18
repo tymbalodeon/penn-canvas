@@ -1,6 +1,8 @@
 from functools import lru_cache
+from os import remove
 from pathlib import Path
 from tarfile import open as open_tarfile
+from typing import Optional
 
 from canvasapi.assignment import Assignment
 from canvasapi.course import Course
@@ -108,7 +110,7 @@ def get_quiz_responses(
 
 def unpack_quiz_responses(
     compress_path: Path, archive_tar_path: Path, unpack_path: Path, verbose: bool
-):
+) -> Optional[Path]:
     echo("Unpacking quiz responses...")
     quizzes_tar_file = open_tarfile(archive_tar_path)
     quizzes_tar_file.extract("./responses.csv.gz", compress_path)
@@ -135,6 +137,8 @@ def unpack_quiz_responses(
                 )
             user_submissions_path = submissions_path / f"{user_name}.csv"
             submissions.to_csv(user_submissions_path, index=False)
+    remove(compress_path / "responses.csv.gz")
+    return unpack_path
 
 
 def fetch_quiz_responses(
