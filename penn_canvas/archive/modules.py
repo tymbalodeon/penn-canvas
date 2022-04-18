@@ -65,7 +65,7 @@ def get_item_body(url: str, item_type: str, instance: Instance) -> str:
             content = loads(response.content.decode("latin1"))
         except Exception as error:
             logger.error(error)
-            content = {}
+            content = {"id": ""}
     return get_item_text(content, item_type)
 
 
