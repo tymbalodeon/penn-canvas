@@ -9,7 +9,11 @@ from pandas.core.reshape.concat import concat
 from typer import echo
 
 from penn_canvas.archive.assignments.assignment_descriptions import QUIZ_ID
-from penn_canvas.archive.helpers import format_name, format_question_text
+from penn_canvas.archive.helpers import (
+    format_name,
+    format_question_text,
+    print_unpacked_file,
+)
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
 
@@ -60,7 +64,20 @@ def unpack_quiz_questions(
     return unpack_path
 
 
-def fetch_quiz_questions(quizzes: list[Quiz], quiz_path: Path):
+def fetch_quiz_questions(
+    quizzes: list[Quiz],
+    quiz_path: Path,
+    archive_tar_path: Path,
+    unpack_path: Path,
+    unpack: bool,
+    verbose: bool,
+):
     questions = [get_questions_and_answers(quiz) for quiz in quizzes]
     questions_data = concat(questions)
     questions_data.to_csv(quiz_path / "questions.csv.gz", index=False)
+    if unpack:
+        unpacked_path = unpack_quiz_questions(
+            quiz_path, archive_tar_path, unpack_path, verbose=False
+        )
+        if verbose:
+            print_unpacked_file(unpacked_path)

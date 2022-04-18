@@ -47,10 +47,19 @@ def fetch_quizzes(
     unpack_path = create_directory(unpack_path / UNPACK_QUIZZES_DIRECTORY)
     quizzes = list(course.get_quizzes())
     quiz_path = create_directory(compress_path / "Quizzes")
-    fetch_descriptions(quiz_path, quizzes, verbose)
-    fetch_quiz_questions(quizzes, quiz_path)
-    fetch_submission_scores(quizzes, quiz_path, instance)
-    fetch_quiz_responses(course, quiz_path, instance, verbose)
+    archive_tar_path = compress_path / QUIZZES_TAR_NAME
+    fetch_descriptions(
+        quiz_path, quizzes, QUIZZES_TAR_STEM, unpack_path, unpack, verbose
+    )
+    fetch_quiz_questions(
+        quizzes, quiz_path, archive_tar_path, unpack_path, unpack, verbose
+    )
+    fetch_submission_scores(
+        quizzes, quiz_path, archive_tar_path, unpack_path, instance, unpack, verbose
+    )
+    fetch_quiz_responses(
+        course, quiz_path, archive_tar_path, unpack_path, instance, unpack, verbose
+    )
     quizzes_directory = str(quizzes_path)
     make_archive(quizzes_directory, TAR_COMPRESSION_TYPE, root_dir=quizzes_directory)
     rmtree(quizzes_path)
