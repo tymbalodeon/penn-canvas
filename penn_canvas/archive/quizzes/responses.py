@@ -1,3 +1,4 @@
+from functools import lru_cache
 from pathlib import Path
 from tarfile import open as open_tarfile
 
@@ -28,14 +29,41 @@ def get_question_text(question_id: int, quiz: Quiz) -> str:
     return format_question_text(question)
 
 
-def get_quiz_response(submission: dict, quiz: Quiz, name: str) -> list[str]:
+@lru_cache
+def get_answer_text(answer_id: int, question_id: int, quiz: Quiz) -> str:
+    question = quiz.get_question(question_id)
+    answers = question.answers
+    answer = next((answer for answer in answers if answer["id"] == answer_id), None)
+    return answer["text"] if answer else ""
+
+
+def get_answer_id(submission: dict):
+    if "answer_id" in submission:
+        return submission["answer_id"]
+    else:
+        return ""
+
+
+def get_quiz_response(submission: dict, quiz: Quiz, user_name: str) -> list[str]:
     correct = submission["correct"]
     points = str(round(submission["points"], 2))
     points_possible = quiz.points_possible
     question_id = submission["question_id"]
     question = get_question_text(question_id, quiz)
+    answer_id = get_answer_id(submission)
+    answer = get_answer_text(answer_id, question_id, quiz) if answer_id else ""
     text = strip_tags(submission["text"])
-    return [quiz.id, quiz.title, name, correct, points, points_possible, question, text]
+    return [
+        quiz.id,
+        quiz.title,
+        user_name,
+        correct,
+        points,
+        points_possible,
+        question,
+        answer,
+        text,
+    ]
 
 
 def get_user_responses(history: dict, quiz: Quiz, name: str):
@@ -50,7 +78,6 @@ def get_user_responses(history: dict, quiz: Quiz, name: str):
 def get_quiz_responses(
     submissions: list[Submission],
     quiz: Quiz,
-    quiz_path: Path,
     verbose: bool,
 ) -> Series:
     total = len(submissions)
@@ -71,6 +98,7 @@ def get_quiz_responses(
                 "Points",
                 "Points Possible",
                 "Question",
+                "Answer",
                 "Text",
             ]
             responses.append(DataFrame(submission_data, columns=columns))
@@ -124,6 +152,6 @@ def fetch_quiz_responses(
         if verbose:
             print_item(index, total, color(quiz.title))
         submissions = get_assignment_submissions(assignment)
-        responses.append(get_quiz_responses(submissions, quiz, quiz_path, verbose))
+        responses.append(get_quiz_responses(submissions, quiz, verbose))
     response_data = concat(responses)
     response_data.to_csv(quiz_path / "responses.csv.gz", index=False)
