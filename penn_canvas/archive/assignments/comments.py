@@ -122,7 +122,7 @@ def unpack_submission_comments(
         assignment_path = create_directory(unpack_path / assignment_name)
         comments_path = create_directory(assignment_path / UNPACK_COMMENTS_DIRECTORY)
         assignment = assignment.drop(columns=ASSIGNMENT_ID)
-        user_names = comments[USER_NAME].unique()
+        user_names = assignment[USER_NAME].unique()
         user_comments = [
             assignment[assignment[USER_NAME] == user_name] for user_name in user_names
         ]
