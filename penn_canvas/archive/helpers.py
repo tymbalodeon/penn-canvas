@@ -99,6 +99,6 @@ def print_unpacked_file(unpacked_path: Optional[Path]):
         echo(message)
 
 
-def extract_from_tar_file(file_name: str, tar_file: Path, destination: Path):
+def extract_file(file_name: str, tar_file: Path, destination: Path):
     with open_tarfile(tar_file) as archive:
         archive.extract(file_name, destination)
