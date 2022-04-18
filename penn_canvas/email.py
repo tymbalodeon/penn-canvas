@@ -489,7 +489,7 @@ def email_main(
     )
     make_csv_paths(result_path, make_index_headers(HEADERS))
     sub_account_lists = [get_sub_account_ids(account_id) for account_id in ACCOUNT_IDS]
-    sub_accounts = list(flatten(sub_account_lists))
+    sub_accounts = flatten(sub_account_lists)
     echo(") Processing users...")
     if verbose:
         for user in report.itertuples():

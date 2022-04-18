@@ -253,7 +253,7 @@ def flatten(irregular_nested_list: list[list | Any]) -> list:
 
 
 def flatten_paths(paths: list[Path | list[Path]]) -> list[Path]:
-    return list(flatten(paths))
+    return flatten(paths)
 
 
 def create_reports(

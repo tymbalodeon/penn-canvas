@@ -243,7 +243,7 @@ def fetch_submissions(
         get_assignment_grades(assignment, instance, verbose, index, total)
         for index, assignment in enumerate(assignments)
     ]
-    grades = list(flatten(grades))
+    grades = flatten(grades)
     columns = [
         ASSIGNMENT_ID,
         ASSIGNMENT_NAME,
