@@ -234,8 +234,6 @@ def unpack_submissions(
 def fetch_submissions(
     assignments: list[Assignment],
     assignments_path: Path,
-    unpack_path: Path,
-    unpack: bool,
     instance: Instance,
     verbose: bool,
     total: int,
@@ -284,10 +282,4 @@ def fetch_submissions(
             download_submission_files(submission, user_name, assignment_path)
     submission_files = str(submissions_path)
     make_archive(submission_files, TAR_COMPRESSION_TYPE, root_dir=submission_files)
-    if unpack:
-        unpack_submissions_path = create_directory(
-            unpack_path / UNPACK_SUBMISSIONS_DIRECTORY, clear=True
-        )
-        submissions_path.replace(unpack_submissions_path)
-    else:
-        rmtree(submissions_path)
+    rmtree(submissions_path)

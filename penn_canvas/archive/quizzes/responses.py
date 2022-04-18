@@ -16,12 +16,7 @@ from typer import echo
 
 from penn_canvas.api import Instance
 from penn_canvas.archive.assignments.assignment_descriptions import QUIZ_ID
-from penn_canvas.archive.helpers import (
-    format_name,
-    format_question_text,
-    print_unpacked_file,
-    strip_tags,
-)
+from penn_canvas.archive.helpers import format_name, format_question_text, strip_tags
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
 
@@ -149,10 +144,7 @@ def unpack_quiz_responses(
 def fetch_quiz_responses(
     course: Course,
     quiz_path: Path,
-    archive_tar_path: Path,
-    unpack_path: Path,
     instance: Instance,
-    unpack: bool,
     verbose: bool,
 ):
     assignments = list(
@@ -170,9 +162,3 @@ def fetch_quiz_responses(
         responses.append(get_quiz_responses(submissions, quiz, verbose))
     response_data = concat(responses)
     response_data.to_csv(quiz_path / "responses.csv.gz", index=False)
-    if unpack:
-        unpacked_path = unpack_quiz_responses(
-            quiz_path, archive_tar_path, unpack_path, verbose=False
-        )
-        if verbose:
-            print_unpacked_file(unpacked_path)

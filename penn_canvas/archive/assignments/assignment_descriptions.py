@@ -12,7 +12,6 @@ from penn_canvas.archive.helpers import (
     format_name,
     format_text,
     print_description,
-    print_unpacked_file,
 )
 from penn_canvas.helpers import (
     create_directory,
@@ -74,9 +73,6 @@ def unpack_descriptions(
 def fetch_descriptions(
     assignments: list[Assignment],
     compress_path: Path,
-    archive_tar_path: Path,
-    unpack_path: Path,
-    unpack: bool,
     verbose: bool,
     total: int,
 ):
@@ -89,9 +85,3 @@ def fetch_descriptions(
     description_data = DataFrame(descriptions, columns=columns)
     description_path = compress_path / DESCRIPTIONS_COMPRESSED_FILE
     description_data.to_csv(description_path, index=False)
-    if unpack:
-        unpacked_path = unpack_descriptions(
-            compress_path, archive_tar_path, unpack_path, verbose=False
-        )
-        if verbose:
-            print_unpacked_file(unpacked_path)

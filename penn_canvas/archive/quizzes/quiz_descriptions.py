@@ -15,12 +15,7 @@ from penn_canvas.archive.assignments.assignment_descriptions import (
     QUIZ_ASSIGNMENT,
 )
 from penn_canvas.archive.assignments.assignments import ASSIGNMENTS_TAR_NAME
-from penn_canvas.archive.helpers import (
-    format_name,
-    format_text,
-    print_description,
-    print_unpacked_file,
-)
+from penn_canvas.archive.helpers import format_name, format_text, print_description
 from penn_canvas.helpers import create_directory, write_file
 from penn_canvas.style import color, print_item
 
@@ -51,7 +46,8 @@ def get_description(quiz: Quiz, verbose: bool, index: int, total: int):
 def unpack_descriptions(
     compress_path: Path, quizzes_tar_name: str, unpack_path: Path, verbose: bool
 ):
-    echo(") Unpacking quiz descriptions...")
+    if verbose:
+        echo(") Unpacking quiz descriptions...")
     archive_tar_path = compress_path / quizzes_tar_name
     if not archive_tar_path.is_file():
         return None
@@ -74,9 +70,6 @@ def unpack_descriptions(
 def fetch_descriptions(
     quiz_path: Path,
     quizzes: list[Quiz],
-    archive_tar_path: str,
-    unpack_path: Path,
-    unpack: bool,
     verbose: bool,
 ):
     assignments_tar_path = quiz_path / ASSIGNMENTS_TAR_NAME
@@ -102,9 +95,3 @@ def fetch_descriptions(
     quiz_descriptions_data_frame = DataFrame(quiz_descriptions, columns=columns)
     descriptions = concat([descriptions, quiz_descriptions_data_frame])
     descriptions.to_csv(descriptions_path, index=False)
-    if unpack:
-        unpacked_path = unpack_descriptions(
-            quiz_path, archive_tar_path, unpack_path, verbose=False
-        )
-        if verbose:
-            print_unpacked_file(unpacked_path)

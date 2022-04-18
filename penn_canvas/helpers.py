@@ -12,7 +12,6 @@ from pandas import read_csv
 from pandas.core.frame import DataFrame
 from pytz import timezone, utc
 from requests import get
-from tqdm import tqdm
 from typer import Exit, Option, confirm, echo, progressbar
 
 from .style import color, pluralize
@@ -520,7 +519,7 @@ def write_file(path: Path, text: str, mode="w"):
 def download_file(path: Path, url: str, headers=None):
     response = get(url, headers=headers, stream=True)
     with open(path, "wb") as stream:
-        for chunk in tqdm(response.iter_content(chunk_size=128)):
+        for chunk in response.iter_content(chunk_size=128):
             stream.write(chunk)
 
 

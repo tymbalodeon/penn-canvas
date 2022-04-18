@@ -6,7 +6,11 @@ from canvasapi.course import Course
 from typer import echo
 
 from penn_canvas.api import Instance
-from penn_canvas.archive.helpers import TAR_COMPRESSION_TYPE, TAR_EXTENSION
+from penn_canvas.archive.helpers import (
+    TAR_COMPRESSION_TYPE,
+    TAR_EXTENSION,
+    print_unpacked_file,
+)
 from penn_canvas.helpers import create_directory
 
 from .questions import fetch_quiz_questions, unpack_quiz_questions
@@ -44,22 +48,16 @@ def fetch_quizzes(
 ):
     echo(") Fetching quizzes...")
     quizzes_path = create_directory(compress_path / QUIZZES_TAR_STEM)
-    unpack_path = create_directory(unpack_path / UNPACK_QUIZZES_DIRECTORY)
     quizzes = list(course.get_quizzes())
     quiz_path = create_directory(compress_path / "Quizzes")
-    archive_tar_path = compress_path / QUIZZES_TAR_NAME
-    fetch_descriptions(
-        quiz_path, quizzes, QUIZZES_TAR_STEM, unpack_path, unpack, verbose
-    )
-    fetch_quiz_questions(
-        quizzes, quiz_path, archive_tar_path, unpack_path, unpack, verbose
-    )
-    fetch_submission_scores(
-        quizzes, quiz_path, archive_tar_path, unpack_path, instance, unpack, verbose
-    )
-    fetch_quiz_responses(
-        course, quiz_path, archive_tar_path, unpack_path, instance, unpack, verbose
-    )
+    fetch_descriptions(quiz_path, quizzes, verbose)
+    fetch_quiz_questions(quizzes, quiz_path)
+    fetch_submission_scores(quizzes, quiz_path, instance)
+    fetch_quiz_responses(course, quiz_path, instance, verbose)
     quizzes_directory = str(quizzes_path)
     make_archive(quizzes_directory, TAR_COMPRESSION_TYPE, root_dir=quizzes_directory)
+    if unpack:
+        unpacked_path = unpack_quizzes(compress_path, unpack_path, verbose=False)
+        if verbose:
+            print_unpacked_file(unpacked_path)
     rmtree(quizzes_path)
