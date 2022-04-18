@@ -1,6 +1,5 @@
 from os import remove
 from pathlib import Path
-from tarfile import open as open_tarfile
 from typing import Optional
 
 from canvasapi.assignment import Assignment
@@ -9,6 +8,7 @@ from typer import echo
 
 from penn_canvas.archive.helpers import (
     CSV_COMPRESSION_TYPE,
+    extract_file,
     format_name,
     format_text,
     print_description,
@@ -27,36 +27,41 @@ ASSIGNMENT_NAME = "Assignment Name"
 DESCRIPTION = "Description"
 
 
-def get_quiz_id(assignment: Assignment) -> Optional[str]:
+def get_quiz_id(assignment: Assignment) -> str:
     try:
         return str(assignment.quiz_id)
     except Exception:
-        return None
+        return ""
 
 
-def get_description(assignment: Assignment, verbose: bool, index: int, total: int):
-    description = format_text(assignment.description)
-    name = assignment.name
-    is_quiz_assignment = assignment.is_quiz_assignment
+def get_description(
+    assignment: Assignment, verbose: bool, index: int, total: int
+) -> list[str]:
+    assignment_id = str(assignment.id)
+    is_quiz_assignment = str(assignment.is_quiz_assignment)
     quiz_id = get_quiz_id(assignment)
+    name = assignment.name
     description = format_text(assignment.description)
     if verbose:
         print_description(index, total, assignment.name, description)
-    return [assignment.id, is_quiz_assignment, quiz_id, name, description]
+    return [assignment_id, is_quiz_assignment, quiz_id, name, description]
 
 
 def unpack_descriptions(
     compress_path: Path, archive_tar_path: Path, unpack_path: Path, verbose: bool
-):
-    assignments_tar_file = open_tarfile(archive_tar_path)
-    assignments_tar_file.extract(f"./{DESCRIPTIONS_COMPRESSED_FILE}", compress_path)
-    unpacked_descriptions_path = compress_path / DESCRIPTIONS_COMPRESSED_FILE
-    descriptions_data = read_csv(unpacked_descriptions_path)
+) -> Optional[Path]:
+    if verbose:
+        echo(") Unpacking assignment descriptions...")
+    if not archive_tar_path.is_file():
+        return None
+    extract_file(f"./{DESCRIPTIONS_COMPRESSED_FILE}", archive_tar_path, compress_path)
+    extracted_path = compress_path / DESCRIPTIONS_COMPRESSED_FILE
+    descriptions = read_csv(extracted_path)
     columns = [ASSIGNMENT_ID, QUIZ_ASSIGNMENT, QUIZ_ID]
-    descriptions_data = descriptions_data.drop(columns, axis=1)
-    descriptions_data.fillna("", inplace=True)
-    total = len(descriptions_data.index)
-    for index, assignment_name, description in descriptions_data.itertuples():
+    descriptions = descriptions.drop(columns, axis="columns")
+    descriptions.fillna("", inplace=True)
+    total = len(descriptions.index)
+    for index, assignment_name, description in descriptions.itertuples():
         assignment_name = format_name(assignment_name)
         descriptions_path = create_directory(unpack_path / assignment_name)
         description_file = descriptions_path / "Description.txt"
@@ -66,22 +71,19 @@ def unpack_descriptions(
             print_description(index, total, assignment_name, description)
     if verbose:
         print_task_complete_message(unpack_path)
-    remove(unpacked_descriptions_path)
+    remove(extracted_path)
     return unpack_path
 
 
 def fetch_descriptions(
-    assignments: list[Assignment],
-    compress_path: Path,
-    verbose: bool,
-    total: int,
+    assignments: list[Assignment], compress_path: Path, verbose: bool, total: int
 ):
     echo(") Exporting assignment descriptions...")
-    descriptions = [
+    description_rows = [
         get_description(assignment, verbose, index, total)
         for index, assignment in enumerate(assignments)
     ]
     columns = [ASSIGNMENT_ID, QUIZ_ASSIGNMENT, QUIZ_ID, ASSIGNMENT_NAME, DESCRIPTION]
-    description_data = DataFrame(descriptions, columns=columns)
-    description_path = compress_path / DESCRIPTIONS_COMPRESSED_FILE
-    description_data.to_csv(description_path, index=False)
+    descriptions = DataFrame(description_rows, columns=columns)
+    descriptions_path = compress_path / DESCRIPTIONS_COMPRESSED_FILE
+    descriptions.to_csv(descriptions_path, index=False)

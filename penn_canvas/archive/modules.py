@@ -5,6 +5,7 @@ from typing import Optional
 
 from canvasapi.course import Course
 from canvasapi.module import Module, ModuleItem
+from loguru import logger
 from requests import get
 from typer import echo, progressbar
 
@@ -56,7 +57,15 @@ def get_item_body(url: str, item_type: str, instance: Instance) -> str:
     key = get_canvas_key(instance)
     headers = {"Authorization": f"Bearer {key}"}
     response = get(url, headers=headers)
-    content = loads(response.content.decode("utf-8"))
+    try:
+        content = loads(response.content.decode("utf-8"))
+    except Exception as error:
+        logger.error(error)
+        try:
+            content = loads(response.content.decode("latin1"))
+        except Exception as error:
+            logger.error(error)
+            content = {}
     return get_item_text(content, item_type)
 
 

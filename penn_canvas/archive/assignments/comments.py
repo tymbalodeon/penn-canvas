@@ -1,6 +1,6 @@
 from os import remove
 from pathlib import Path
-from tarfile import open as open_tarfile
+from typing import Optional
 
 from canvasapi.assignment import Assignment
 from canvasapi.submission import Submission
@@ -13,6 +13,7 @@ from penn_canvas.archive.assignments.assignment_descriptions import (
 )
 from penn_canvas.archive.helpers import (
     CSV_COMPRESSION_TYPE,
+    extract_file,
     format_display_text,
     format_name,
     get_assignment_submissions,
@@ -81,15 +82,14 @@ def get_submission_comments(
     assignment: Assignment, verbose: bool, index: int, total: int
 ) -> list[list[str]]:
     if verbose:
-        message = color(assignment)
-        print_item(index, total, message)
+        print_item(index, total, color(assignment))
     submissions = get_assignment_submissions(assignment)
     submission_total = len(submissions)
     submissions = [
         get_comments(submission, verbose, submission_index, submission_total)
         for submission_index, submission in enumerate(submissions)
     ]
-    submissions = list(flatten(submissions))
+    submissions = flatten(submissions)
     submission_rows = [submission for submission in submissions if submission]
     return [
         prepend_assignment_data(submission, assignment)
@@ -99,17 +99,20 @@ def get_submission_comments(
 
 def unpack_submission_comments(
     compress_path: Path, archive_tar_path: Path, unpack_path: Path, verbose: bool
-):
-    assignments_tar_file = open_tarfile(archive_tar_path)
-    assignments_tar_file.extract(
-        f"./{SUBMISSION_COMMENTS_COMPRESSED_FILE}", compress_path
+) -> Optional[Path]:
+    if verbose:
+        echo(") Unpacking assignment submission comments...")
+    if not archive_tar_path.is_file():
+        return None
+    extract_file(
+        f"./{SUBMISSION_COMMENTS_COMPRESSED_FILE}", archive_tar_path, compress_path
     )
-    unpacked_comments_path = compress_path / SUBMISSION_COMMENTS_COMPRESSED_FILE
-    comments_data = read_csv(unpacked_comments_path)
-    comments_data.fillna("", inplace=True)
-    assignment_ids = comments_data[ASSIGNMENT_ID].unique()
+    extracted_path = compress_path / SUBMISSION_COMMENTS_COMPRESSED_FILE
+    comments = read_csv(extracted_path)
+    comments.fillna("", inplace=True)
+    assignment_ids = comments[ASSIGNMENT_ID].unique()
     assignments = [
-        comments_data[comments_data[ASSIGNMENT_ID] == assignment_id]
+        comments[comments[ASSIGNMENT_ID] == assignment_id]
         for assignment_id in assignment_ids
     ]
     total = len(assignments)
@@ -119,34 +122,40 @@ def unpack_submission_comments(
         assignment_path = create_directory(unpack_path / assignment_name)
         comments_path = create_directory(assignment_path / UNPACK_COMMENTS_DIRECTORY)
         assignment = assignment.drop(columns=ASSIGNMENT_ID)
-        user_names = comments_data[USER_NAME].unique()
+        user_names = comments[USER_NAME].unique()
         user_comments = [
             assignment[assignment[USER_NAME] == user_name] for user_name in user_names
         ]
         for comments in user_comments:
             user_name = next(iter(comments[USER_NAME].tolist()), "")
             comments = comments.drop(columns=USER_NAME)
-            header = f'"{assignment_name}"\n{user_name}\n'
-            comments_text = [header]
+            comments_text = [f'"{assignment_name}"\n{user_name}\n']
+            total_comments = len(comments.index)
             for (
+                comments_index,
                 assignment_name,
                 author,
                 created_at,
                 edited_at,
                 comment,
                 media_comment,
-            ) in comments.itertuples(index=False):
+            ) in comments.itertuples():
                 comment = (
                     f"{author}\nCreated at: {created_at}\nEdited at:"
                     f" {edited_at}\n\n{comment}\n\n{media_comment}"
                 )
                 comments_text.append(comment)
+                if verbose:
+                    print_item(
+                        comments_index, total_comments, format_display_text(comment)
+                    )
             comments_file = comments_path / f"{user_name}.txt"
             write_file(comments_file, "\n".join(comments_text))
-        print_item(index, total, color(assignment_name))
+        if verbose:
+            print_item(index, total, color(assignment_name))
     if verbose:
         print_task_complete_message(unpack_path)
-    remove(unpacked_comments_path)
+    remove(extracted_path)
     return unpack_path
 
 
@@ -154,14 +163,11 @@ def fetch_submission_comments(
     assignments: list[Assignment], assignments_path: Path, verbose: bool, total: int
 ):
     echo(") Exporting assignment submission comments...")
-    submission_comments = [
+    comments_rows = [
         get_submission_comments(assignment, verbose, index, total)
         for index, assignment in enumerate(assignments)
     ]
-    submission_comments = [
-        submission for submission in submission_comments if submission
-    ]
-    submission_comments = list(flatten(submission_comments))
+    comments_rows = flatten([submission for submission in comments_rows if submission])
     columns = [
         ASSIGNMENT_ID,
         ASSIGNMENT_NAME,
@@ -172,6 +178,6 @@ def fetch_submission_comments(
         "Comment",
         "Media Comment",
     ]
-    submission_comments_data = DataFrame(submission_comments, columns=columns)
-    submission_comments_path = assignments_path / SUBMISSION_COMMENTS_COMPRESSED_FILE
-    submission_comments_data.to_csv(submission_comments_path, index=False)
+    comments = DataFrame(comments_rows, columns=columns)
+    comments_path = assignments_path / SUBMISSION_COMMENTS_COMPRESSED_FILE
+    comments.to_csv(comments_path, index=False)

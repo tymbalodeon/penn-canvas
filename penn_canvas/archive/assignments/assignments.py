@@ -2,6 +2,7 @@ from pathlib import Path
 from shutil import make_archive, rmtree
 from typing import Optional
 
+from canvasapi.assignment import Assignment
 from canvasapi.course import Course
 from typer import echo
 
@@ -17,19 +18,17 @@ from .assignment_descriptions import fetch_descriptions, unpack_descriptions
 from .comments import fetch_submission_comments, unpack_submission_comments
 from .submissions import fetch_submissions, unpack_submissions
 
-ASSIGNMENTS_TAR_STEM = "assignments"
-UNPACK_ASSIGNMENTS_DIRECTORY = ASSIGNMENTS_TAR_STEM.title()
-ASSIGNMENTS_TAR_NAME = f"{ASSIGNMENTS_TAR_STEM}.{TAR_EXTENSION}"
+ASSIGNMENTS = "assignments"
 
 
 def unpack_assignments(
     compress_path: Path, unpack_path: Path, verbose: bool
 ) -> Optional[Path]:
     echo(") Unpacking assignments...")
-    archive_tar_path = compress_path / ASSIGNMENTS_TAR_NAME
+    archive_tar_path = compress_path / f"{ASSIGNMENTS}.{TAR_EXTENSION}"
     if not archive_tar_path.is_file():
         return None
-    unpack_path = create_directory(unpack_path / UNPACK_ASSIGNMENTS_DIRECTORY)
+    unpack_path = create_directory(unpack_path / ASSIGNMENTS.title())
     unpack_descriptions(compress_path, archive_tar_path, unpack_path, verbose)
     unpack_submissions(compress_path, archive_tar_path, unpack_path, verbose)
     unpack_submission_comments(compress_path, archive_tar_path, unpack_path, verbose)
@@ -43,18 +42,16 @@ def fetch_assignments(
     unpack: bool,
     instance: Instance,
     verbose: bool,
-):
+) -> list[Assignment]:
     echo(") Fetching assignments...")
-    assignments_path = create_directory(compress_path / ASSIGNMENTS_TAR_STEM)
     assignments = list(course.get_assignments())
     total = len(assignments)
+    assignments_path = create_directory(compress_path / ASSIGNMENTS)
     fetch_descriptions(assignments, assignments_path, verbose, total)
     fetch_submissions(assignments, assignments_path, instance, verbose, total)
     fetch_submission_comments(assignments, assignments_path, verbose, total)
-    assignments_directory = str(assignments_path)
-    make_archive(
-        assignments_directory, TAR_COMPRESSION_TYPE, root_dir=assignments_directory
-    )
+    make_archive_path = str(assignments_path)
+    make_archive(make_archive_path, TAR_COMPRESSION_TYPE, root_dir=make_archive_path)
     if unpack:
         unpacked_path = unpack_assignments(compress_path, unpack_path, verbose=False)
         if verbose:

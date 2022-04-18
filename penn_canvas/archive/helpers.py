@@ -2,6 +2,7 @@ from functools import lru_cache
 from html.parser import HTMLParser
 from io import StringIO
 from pathlib import Path
+from tarfile import open as open_tarfile
 from typing import Optional
 
 from canvasapi.assignment import Assignment
@@ -96,3 +97,8 @@ def print_unpacked_file(unpacked_path: Optional[Path]):
         message = "ERROR: failed to unpack."
         logger.error(message)
         echo(message)
+
+
+def extract_from_tar_file(file_name: str, tar_file: Path, destination: Path):
+    with open_tarfile(tar_file) as archive:
+        archive.extract(file_name, destination)

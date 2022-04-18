@@ -239,13 +239,17 @@ def get_report_displays(reports: list[Report]) -> str:
     return ", ".join(report_displays)
 
 
-def flatten(irregular_nested_list: list[list | Any]) -> Iterable:
-    for sub_list in irregular_nested_list:
-        if isinstance(sub_list, list):
-            for item in sub_list:
+def get_flatten_generator(irregular_nested_list: list[list | Any]) -> Iterable:
+    for list_item in irregular_nested_list:
+        if isinstance(list_item, list):
+            for item in list_item:
                 yield item
         else:
-            yield sub_list
+            yield list_item
+
+
+def flatten(irregular_nested_list: list[list | Any]) -> list:
+    return list(get_flatten_generator(irregular_nested_list))
 
 
 def flatten_paths(paths: list[Path | list[Path]]) -> list[Path]:
