@@ -19,13 +19,14 @@ from .comments import fetch_submission_comments, unpack_submission_comments
 from .submissions import fetch_submissions, unpack_submissions
 
 ASSIGNMENTS = "assignments"
+ASSIGNMENTS_TAR_NAME = f"{ASSIGNMENTS}.{TAR_EXTENSION}"
 
 
 def unpack_assignments(
     compress_path: Path, unpack_path: Path, verbose: bool
 ) -> Optional[Path]:
     echo(") Unpacking assignments...")
-    archive_tar_path = compress_path / f"{ASSIGNMENTS}.{TAR_EXTENSION}"
+    archive_tar_path = compress_path / ASSIGNMENTS_TAR_NAME
     if not archive_tar_path.is_file():
         return None
     unpack_path = create_directory(unpack_path / ASSIGNMENTS.title())
