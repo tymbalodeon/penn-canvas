@@ -11,7 +11,7 @@ from penn_canvas.helpers import create_directory
 
 from .questions import fetch_quiz_questions
 from .quiz_descriptions import fetch_descriptions, unpack_descriptions
-from .responses import fetch_quiz_responses
+from .responses import fetch_quiz_responses, unpack_quiz_responses
 from .scores import fetch_submission_scores
 
 QUIZZES_TAR_STEM = "quizzes"
@@ -28,6 +28,7 @@ def unpack_quizzes(
         return None
     unpack_path = create_directory(unpack_path / UNPACK_QUIZZES_DIRECTORY)
     unpack_descriptions(compress_path, QUIZZES_TAR_NAME, unpack_path, verbose)
+    unpack_quiz_responses(compress_path, archive_tar_path, unpack_path, verbose)
     return unpack_path
 
 

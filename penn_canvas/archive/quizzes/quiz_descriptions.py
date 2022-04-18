@@ -46,6 +46,7 @@ def get_description(quiz: Quiz, verbose: bool, index: int, total: int):
 def unpack_descriptions(
     compress_path: Path, quizzes_tar_name: str, unpack_path: Path, verbose: bool
 ):
+    echo("Unpacking quiz descriptions...")
     archive_tar_path = compress_path / quizzes_tar_name
     if not archive_tar_path.is_file():
         return None

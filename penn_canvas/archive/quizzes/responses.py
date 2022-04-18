@@ -1,13 +1,19 @@
 from pathlib import Path
+from tarfile import open as open_tarfile
 
 from canvasapi.assignment import Assignment
 from canvasapi.course import Course
 from canvasapi.quiz import Quiz
 from canvasapi.submission import Submission
 from pandas import DataFrame
+from pandas.core.reshape.concat import concat
+from pandas.core.series import Series
+from pandas.io.parsers.readers import read_csv
+from typer import echo
 
 from penn_canvas.api import Instance
-from penn_canvas.archive.helpers import format_question_text, strip_tags
+from penn_canvas.archive.assignments.assignment_descriptions import QUIZ_ID
+from penn_canvas.archive.helpers import format_name, format_question_text, strip_tags
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
 
@@ -29,7 +35,7 @@ def get_quiz_response(submission: dict, quiz: Quiz, name: str) -> list[str]:
     question_id = submission["question_id"]
     question = get_question_text(question_id, quiz)
     text = strip_tags(submission["text"])
-    return [name, correct, points, points_possible, question, text]
+    return [quiz.id, quiz.title, name, correct, points, points_possible, question, text]
 
 
 def get_user_responses(history: dict, quiz: Quiz, name: str):
@@ -46,8 +52,9 @@ def get_quiz_responses(
     quiz: Quiz,
     quiz_path: Path,
     verbose: bool,
-):
+) -> Series:
     total = len(submissions)
+    responses = list()
     for index, submission in enumerate(submissions):
         histories = submission.submission_history
         user_name = submission.user["name"]
@@ -57,6 +64,8 @@ def get_quiz_responses(
         for history in histories:
             submission_data = get_user_responses(history, quiz, user_name)
             columns = [
+                "Quiz ID",
+                "Quiz Title",
                 "Student",
                 "Correct",
                 "Points",
@@ -64,11 +73,40 @@ def get_quiz_responses(
                 "Question",
                 "Text",
             ]
-            history_data_frame = DataFrame(submission_data, columns=columns)
-            file_name = f"{user_name}_submissions_{history['id']}.csv"
-            submissions_path = create_directory(quiz_path / "Submissions")
-            submission_data_path = submissions_path / file_name
-            history_data_frame.to_csv(submission_data_path, index=False)
+            responses.append(DataFrame(submission_data, columns=columns))
+    responses = concat(responses)
+    return responses
+
+
+def unpack_quiz_responses(
+    compress_path: Path, archive_tar_path: Path, unpack_path: Path, verbose: bool
+):
+    echo("Unpacking quiz responses...")
+    quizzes_tar_file = open_tarfile(archive_tar_path)
+    quizzes_tar_file.extract("./responses.csv.gz", compress_path)
+    unpacked_responses_path = compress_path / "responses.csv.gz"
+    responses = read_csv(unpacked_responses_path)
+    responses.fillna("", inplace=True)
+    quiz_ids = responses[QUIZ_ID].unique()
+    quizzes = [responses[responses[QUIZ_ID] == quiz_id] for quiz_id in quiz_ids]
+    total = len(quizzes)
+    for index, quiz in enumerate(quizzes):
+        quiz_title = next(iter(quiz["Quiz Title"].tolist()), "")
+        quiz_title = format_name(quiz_title)
+        if verbose:
+            print_item(index, total, color(quiz_title))
+        submissions_path = create_directory(unpack_path / quiz_title / "Submissions")
+        user_names = quiz["Student"].unique()
+        users = [quiz[quiz["Student"] == user_name] for user_name in user_names]
+        total_users = len(users)
+        for users_index, submissions in enumerate(users):
+            user_name = next(iter(submissions["Student"].tolist()), "")
+            if verbose:
+                print_item(
+                    users_index, total_users, color(user_name, "cyan"), prefix="\t*"
+                )
+            user_submissions_path = submissions_path / f"{user_name}.csv"
+            submissions.to_csv(user_submissions_path, index=False)
 
 
 def fetch_quiz_responses(
@@ -79,10 +117,13 @@ def fetch_quiz_responses(
         for assignment in course.get_assignments()
         if assignment.is_quiz_assignment
     )
+    responses = list()
     total = len(assignments)
     for index, assignment in enumerate(assignments):
         quiz = course.get_quiz(assignment.quiz_id, instance=instance)
         if verbose:
             print_item(index, total, color(quiz.title))
         submissions = get_assignment_submissions(assignment)
-        get_quiz_responses(submissions, quiz, quiz_path, verbose)
+        responses.append(get_quiz_responses(submissions, quiz, quiz_path, verbose))
+    response_data = concat(responses)
+    response_data.to_csv(quiz_path / "responses.csv.gz", index=False)
