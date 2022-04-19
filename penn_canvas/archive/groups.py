@@ -174,6 +174,11 @@ def fetch_groups(
     course: Course, compress_path: Path, unpack_path: Path, unpack: bool, verbose: bool
 ):
     echo(") Exporting groups...")
+    archive_tar_path = compress_path / ALL_GROUPS_TAR_NAME
+    if archive_tar_path.is_file():
+        echo("Groups already fetched.")
+        unpack_groups(compress_path, unpack_path, verbose)
+        return
     category_objects = list(course.get_group_categories())
     total = len(category_objects)
     all_groups_path = create_directory(compress_path / "groups")

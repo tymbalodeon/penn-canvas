@@ -186,26 +186,30 @@ def fetch_grades(
     compress_path: Path,
     unpack_path: Path,
     unpack: bool,
-    assignments: list[Assignment],
+    assignments: Optional[list[Assignment]],
     instance: Instance,
     verbose: bool,
 ):
     echo(") Exporting grades...")
-    enrollments = get_enrollments(course)
-    if not assignments:
-        echo(") Getting assignments...")
-        assignments = list(course.get_assignments())
-    published_assignments = get_published_assignments(assignments)
-    posting_types = get_posting_types(published_assignments)
-    points_possible = get_points_possible(published_assignments)
-    enrollment_grades = get_enrollment_grades(
-        enrollments, published_assignments, instance, verbose
-    )
-    grade_rows = posting_types + points_possible + enrollment_grades
-    columns = get_all_columns(published_assignments)
-    grade_book = DataFrame(grade_rows, columns=columns)
-    grades_path = compress_path / GRADES_COMPRESSED_FILE
-    grade_book.to_csv(grades_path, index=False)
+    compressed_file = compress_path / GRADES_COMPRESSED_FILE
+    if compressed_file.is_file():
+        echo("Grades already fetched.")
+    else:
+        enrollments = get_enrollments(course)
+        if not assignments:
+            echo(") Getting assignments...")
+            assignments = list(course.get_assignments())
+        published_assignments = get_published_assignments(assignments)
+        posting_types = get_posting_types(published_assignments)
+        points_possible = get_points_possible(published_assignments)
+        enrollment_grades = get_enrollment_grades(
+            enrollments, published_assignments, instance, verbose
+        )
+        grade_rows = posting_types + points_possible + enrollment_grades
+        columns = get_all_columns(published_assignments)
+        grade_book = DataFrame(grade_rows, columns=columns)
+        grades_path = compress_path / GRADES_COMPRESSED_FILE
+        grade_book.to_csv(grades_path, index=False)
     if unpack:
         unpacked_path = unpack_grades(compress_path, unpack_path, verbose=False)
         if verbose:

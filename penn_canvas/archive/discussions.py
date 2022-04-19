@@ -223,35 +223,38 @@ def fetch_discussions(
     verbose: bool,
 ):
     echo(") Exporting discussions...")
-    discussion_topics = list(course.get_discussion_topics())
-    total = len(discussion_topics)
-    if verbose:
-        descriptions = get_discussion_descriptions(discussion_topics, verbose)
-        echo(") Exporting discussion entries...")
-        discussion_entries = [
-            get_discussion_entries(discussion, instance, verbose, index, total)
-            for index, discussion in enumerate(discussion_topics)
-        ]
+    archive_file = compress_path / DISCUSSIONS_TAR_NAME
+    if archive_file.is_file():
+        echo("Discussions already fetched.")
     else:
-        with progressbar(discussion_topics, length=total) as progress:
+        discussion_topics = list(course.get_discussion_topics())
+        total = len(discussion_topics)
+        if verbose:
             descriptions = get_discussion_descriptions(discussion_topics, verbose)
+            echo(") Exporting discussion entries...")
             discussion_entries = [
-                get_discussion_entries(discussion, instance, verbose)
-                for discussion in progress
+                get_discussion_entries(discussion, instance, verbose, index, total)
+                for index, discussion in enumerate(discussion_topics)
             ]
-    discussions_path = create_directory(compress_path / DISCUSSIONS_TAR_STEM)
-    descriptions_path = discussions_path / DESCRIPTIONS_COMPRESSED_FILE
-    descriptions.to_csv(descriptions_path, index=False)
-    discussion_entries_data = concat(discussion_entries)
-    discussion_entries_path = discussions_path / ENTRIES_COMPRESSED_FILE
-    discussion_entries_data.to_csv(discussion_entries_path, index=False)
-    discussions_directory = str(discussions_path)
-    make_archive(
-        discussions_directory, TAR_COMPRESSION_TYPE, root_dir=discussions_directory
-    )
+        else:
+            with progressbar(discussion_topics, length=total) as progress:
+                descriptions = get_discussion_descriptions(discussion_topics, verbose)
+                discussion_entries = [
+                    get_discussion_entries(discussion, instance, verbose)
+                    for discussion in progress
+                ]
+        discussions_path = create_directory(compress_path / DISCUSSIONS_TAR_STEM)
+        descriptions_path = discussions_path / DESCRIPTIONS_COMPRESSED_FILE
+        descriptions.to_csv(descriptions_path, index=False)
+        discussion_entries_data = concat(discussion_entries)
+        discussion_entries_path = discussions_path / ENTRIES_COMPRESSED_FILE
+        discussion_entries_data.to_csv(discussion_entries_path, index=False)
+        discussions_directory = str(discussions_path)
+        make_archive(
+            discussions_directory, TAR_COMPRESSION_TYPE, root_dir=discussions_directory
+        )
+        rmtree(discussions_path)
     if unpack:
         unpacked_path = unpack_discussions(compress_path, unpack_path, verbose=False)
         if verbose:
             print_unpacked_file(unpacked_path)
-    else:
-        rmtree(discussions_path)

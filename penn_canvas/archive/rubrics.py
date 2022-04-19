@@ -75,19 +75,23 @@ def fetch_rubrics(
     course: Course, compress_path: Path, unpack_path: Path, unpack: bool, verbose: bool
 ):
     echo(") Exporting rubrics...")
-    rubric_objects = list(course.get_rubrics())
-    total = len(rubric_objects)
-    if verbose:
-        rubrics = [
-            get_rubric(rubric, verbose, index, total)
-            for index, rubric in enumerate(rubric_objects)
-        ]
+    compressed_file = compress_path / RUBRICS_COMPRESSED_FILE
+    if compressed_file.is_file():
+        echo("Rubrics already fetched.")
     else:
-        with progressbar(rubric_objects, length=total) as progress:
-            rubrics = [get_rubric(rubric, verbose) for rubric in progress]
-    rubric_data = concat(rubrics)
-    rubrics_path = compress_path / RUBRICS_COMPRESSED_FILE
-    rubric_data.to_csv(rubrics_path, index=False)
+        rubric_objects = list(course.get_rubrics())
+        total = len(rubric_objects)
+        if verbose:
+            rubrics = [
+                get_rubric(rubric, verbose, index, total)
+                for index, rubric in enumerate(rubric_objects)
+            ]
+        else:
+            with progressbar(rubric_objects, length=total) as progress:
+                rubrics = [get_rubric(rubric, verbose) for rubric in progress]
+        rubric_data = concat(rubrics)
+        rubrics_path = compress_path / RUBRICS_COMPRESSED_FILE
+        rubric_data.to_csv(rubrics_path, index=False)
     if unpack:
         unpacked_path = unpack_rubrics(compress_path, unpack_path, verbose=False)
         if verbose:
