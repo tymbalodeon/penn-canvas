@@ -133,7 +133,7 @@ def fetch(
         course_name = format_course_name(course)
         print_course(index, total, course_name)
         compress_path = create_directory(COMPRESSED_COURSES / course_name)
-        unpack_path = create_directory(UNPACKED_COURSES / course_name)
+        unpack_path = UNPACKED_COURSES / course_name
         assignment_objects: list[Assignment] = list()
         args = (course, compress_path, unpack_path, unpack)
         if should_run_option(content, archive_all):

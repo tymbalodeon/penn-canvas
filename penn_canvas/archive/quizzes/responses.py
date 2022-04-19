@@ -16,7 +16,12 @@ from typer import echo
 
 from penn_canvas.api import Instance
 from penn_canvas.archive.assignments.assignment_descriptions import QUIZ_ID
-from penn_canvas.archive.helpers import format_name, format_question_text, strip_tags
+from penn_canvas.archive.helpers import (
+    COMPRESSION_TYPE,
+    format_name,
+    format_question_text,
+    strip_tags,
+)
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
 
@@ -113,8 +118,8 @@ def unpack_quiz_responses(
 ) -> Optional[Path]:
     echo("Unpacking quiz responses...")
     quizzes_tar_file = open_tarfile(archive_tar_path)
-    quizzes_tar_file.extract("./responses.csv.gz", compress_path)
-    unpacked_responses_path = compress_path / "responses.csv.gz"
+    quizzes_tar_file.extract(f"./responses.csv.{COMPRESSION_TYPE}", compress_path)
+    unpacked_responses_path = compress_path / f"responses.csv.{COMPRESSION_TYPE}"
     responses = read_csv(unpacked_responses_path)
     responses.fillna("", inplace=True)
     quiz_ids = responses[QUIZ_ID].unique()
@@ -137,7 +142,7 @@ def unpack_quiz_responses(
                 )
             user_submissions_path = submissions_path / f"{user_name}.csv"
             submissions.to_csv(user_submissions_path, index=False)
-    remove(compress_path / "responses.csv.gz")
+    remove(compress_path / f"responses.csv.{COMPRESSION_TYPE}")
     return unpack_path
 
 
@@ -161,4 +166,4 @@ def fetch_quiz_responses(
         submissions = get_assignment_submissions(assignment)
         responses.append(get_quiz_responses(submissions, quiz, verbose))
     response_data = concat(responses)
-    response_data.to_csv(quiz_path / "responses.csv.gz", index=False)
+    response_data.to_csv(quiz_path / "responses.csv.{COMPRESSION_TYPE}", index=False)

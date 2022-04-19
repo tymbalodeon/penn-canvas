@@ -21,6 +21,7 @@ from penn_canvas.archive.assignments.assignment_descriptions import (
 from penn_canvas.archive.helpers import (
     CSV_COMPRESSION_TYPE,
     TAR_COMPRESSION_TYPE,
+    TAR_EXTENSION,
     format_display_text,
     format_name,
     get_assignment_submissions,
@@ -182,9 +183,9 @@ def unpack_submissions(
 ):
     assignments_tar_file = open_tarfile(archive_tar_path)
     assignments_tar_file.extract(f"./{GRADES_COMPRESSED_FILE}", compress_path)
-    assignments_tar_file.extract("./submission_files.tar.gz", compress_path)
+    assignments_tar_file.extract(f"./submission_files.{TAR_EXTENSION}", compress_path)
     unpacked_submissions_path = compress_path / GRADES_COMPRESSED_FILE
-    unpacked_files_path = compress_path / "submission_files.tar.gz"
+    unpacked_files_path = compress_path / f"submission_files.{TAR_EXTENSION}"
     unpack_archive(unpacked_files_path, unpack_path)
     submissions_data = read_csv(unpacked_submissions_path)
     columns = [USER_ID, GRADER_ID]
@@ -227,7 +228,7 @@ def unpack_submissions(
     if verbose:
         print_task_complete_message(unpack_path)
     remove(unpacked_submissions_path)
-    remove(compress_path / "submission_files.tar.gz")
+    remove(compress_path / "submission_files.{TAR_EXTENSION}")
     return unpack_path
 
 

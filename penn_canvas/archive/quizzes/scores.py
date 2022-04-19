@@ -11,7 +11,7 @@ from typer import echo
 
 from penn_canvas.api import Instance, get_user
 from penn_canvas.archive.assignments.assignment_descriptions import QUIZ_ID
-from penn_canvas.archive.helpers import format_name
+from penn_canvas.archive.helpers import COMPRESSION_TYPE, format_name
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
 
@@ -43,8 +43,8 @@ def unpack_quiz_scores(
     if verbose:
         echo("Unpacking quiz scores...")
     quizzes_tar_file = open_tarfile(archive_tar_path)
-    quizzes_tar_file.extract("./scores.csv.gz", compress_path)
-    unpacked_scores_path = compress_path / "scores.csv.gz"
+    quizzes_tar_file.extract(f"./scores.csv.{COMPRESSION_TYPE}", compress_path)
+    unpacked_scores_path = compress_path / f"scores.csv.{COMPRESSION_TYPE}"
     scores_data = read_csv(unpacked_scores_path)
     scores_data.fillna("", inplace=True)
     quiz_ids = scores_data[QUIZ_ID].unique()
@@ -58,7 +58,7 @@ def unpack_quiz_scores(
             print_item(index, total, color(quiz_title))
         scores_path = create_directory(unpack_path / quiz_title) / "Scores.csv"
         quiz.to_csv(scores_path, index=False)
-    remove(compress_path / "scores.csv.gz")
+    remove(compress_path / f"scores.csv.{COMPRESSION_TYPE}")
     return unpack_path
 
 
@@ -68,4 +68,4 @@ def fetch_submission_scores(quizzes: list[Quiz], quiz_path: Path, instance: Inst
         submissions = list(quiz.get_submissions())
         scores.append(get_submission_scores(submissions, quiz, instance))
     scores_data = concat(scores)
-    scores_data.to_csv(quiz_path / "scores.csv.gz", index=False)
+    scores_data.to_csv(quiz_path / f"scores.csv.{COMPRESSION_TYPE}", index=False)

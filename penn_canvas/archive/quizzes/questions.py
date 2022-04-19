@@ -9,7 +9,11 @@ from pandas.core.reshape.concat import concat
 from typer import echo
 
 from penn_canvas.archive.assignments.assignment_descriptions import QUIZ_ID
-from penn_canvas.archive.helpers import format_name, format_question_text
+from penn_canvas.archive.helpers import (
+    COMPRESSION_TYPE,
+    format_name,
+    format_question_text,
+)
 from penn_canvas.helpers import create_directory
 from penn_canvas.style import color, print_item
 
@@ -40,8 +44,8 @@ def unpack_quiz_questions(
     if verbose:
         echo("Unpacking quiz questions...")
     quizzes_tar_file = open_tarfile(archive_tar_path)
-    quizzes_tar_file.extract("./questions.csv.gz", compress_path)
-    unpacked_questions_path = compress_path / "questions.csv.gz"
+    quizzes_tar_file.extract(f"./questions.csv.{COMPRESSION_TYPE}", compress_path)
+    unpacked_questions_path = compress_path / f"questions.csv.{COMPRESSION_TYPE}"
     questions_data = read_csv(unpacked_questions_path)
     questions_data.fillna("", inplace=True)
     quiz_ids = questions_data[QUIZ_ID].unique()
@@ -57,11 +61,11 @@ def unpack_quiz_questions(
             print_item(index, total, color(quiz_title))
         questions_path = create_directory(unpack_path / quiz_title) / "Questions.csv"
         quiz.to_csv(questions_path, index=False)
-    remove(compress_path / "questions.csv.gz")
+    remove(compress_path / f"questions.csv.{COMPRESSION_TYPE}")
     return unpack_path
 
 
 def fetch_quiz_questions(quizzes: list[Quiz], quiz_path: Path):
     questions = [get_questions_and_answers(quiz) for quiz in quizzes]
     questions_data = concat(questions)
-    questions_data.to_csv(quiz_path / "questions.csv.gz", index=False)
+    questions_data.to_csv(quiz_path / f"questions.csv.{COMPRESSION_TYPE}", index=False)
