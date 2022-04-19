@@ -64,12 +64,17 @@ def fetch_pages(
     course: Course, compress_path: Path, unpack_path: Path, unpack: bool, verbose: bool
 ):
     echo(") Exporting pages...")
-    pages = list(course.get_pages())
-    total = len(pages)
-    pages = [get_page(page, verbose, index, total) for index, page in enumerate(pages)]
-    pages_data = DataFrame(pages, columns=["Title", "Body"])
     pages_path = compress_path / PAGES_COMPRESSED_FILE
-    pages_data.to_csv(pages_path, index=False)
+    if pages_path.is_file():
+        echo("Pages already fetched.")
+    else:
+        pages = list(course.get_pages())
+        total = len(pages)
+        pages = [
+            get_page(page, verbose, index, total) for index, page in enumerate(pages)
+        ]
+        pages_data = DataFrame(pages, columns=["Title", "Body"])
+        pages_data.to_csv(pages_path, index=False)
     if unpack:
         unpacked_path = unpack_pages(compress_path, unpack_path, verbose=False)
         if verbose:

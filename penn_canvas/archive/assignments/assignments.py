@@ -43,16 +43,24 @@ def fetch_assignments(
     unpack: bool,
     instance: Instance,
     verbose: bool,
-) -> list[Assignment]:
+) -> Optional[list[Assignment]]:
     echo(") Fetching assignments...")
-    assignments = list(course.get_assignments())
-    total = len(assignments)
     assignments_path = create_directory(compress_path / ASSIGNMENTS)
-    fetch_descriptions(assignments, assignments_path, verbose, total)
-    fetch_submissions(assignments, assignments_path, instance, verbose, total)
-    fetch_submission_comments(assignments, assignments_path, verbose, total)
-    make_archive_path = str(assignments_path)
-    make_archive(make_archive_path, TAR_COMPRESSION_TYPE, root_dir=make_archive_path)
+    assignments_tar = assignments_path / ASSIGNMENTS_TAR_NAME
+    if assignments_tar.is_file():
+        echo("Assignments already fetched.")
+        assignments = None
+    else:
+        assignments = list(course.get_assignments())
+        total = len(assignments)
+        assignments_path = create_directory(compress_path / ASSIGNMENTS)
+        fetch_descriptions(assignments, assignments_path, verbose, total)
+        fetch_submissions(assignments, assignments_path, instance, verbose, total)
+        fetch_submission_comments(assignments, assignments_path, verbose, total)
+        make_archive_path = str(assignments_path)
+        make_archive(
+            make_archive_path, TAR_COMPRESSION_TYPE, root_dir=make_archive_path
+        )
     if unpack:
         unpacked_path = unpack_assignments(compress_path, unpack_path, verbose=False)
         if verbose:

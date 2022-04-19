@@ -283,4 +283,4 @@ def fetch_submissions(
             download_submission_files(submission, user_name, assignment_path)
     submission_files = str(submissions_path)
     make_archive(submission_files, TAR_COMPRESSION_TYPE, root_dir=submission_files)
-    rmtree(submissions_path)
+    rmtree(submissions_path, ignore_errors=True)

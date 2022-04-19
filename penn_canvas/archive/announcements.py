@@ -65,21 +65,24 @@ def fetch_announcements(
     verbose: bool,
 ):
     echo(") Exporting announcements...")
-    announcements: list[DiscussionTopic] = list(
-        course.get_discussion_topics(only_announcements=True)
-    )
-    announcement_data = [
-        get_announcement(announcement) for announcement in announcements
-    ]
-    data_frame = DataFrame(announcement_data, columns=["Title", "Message"])
     announcements_path = compress_path / ANNOUNCEMENTS_COMPRESSED_FILE
-    data_frame.to_csv(announcements_path, index=False)
-    total = len(announcement_data)
-    if verbose:
-        for index, announcement in enumerate(announcement_data):
-            title, message = announcement
-            if verbose:
-                print_announcement(index, total, title, message)
+    if announcements_path.is_file():
+        echo("Announcements already fetched.")
+    else:
+        announcements: list[DiscussionTopic] = list(
+            course.get_discussion_topics(only_announcements=True)
+        )
+        announcement_data = [
+            get_announcement(announcement) for announcement in announcements
+        ]
+        data_frame = DataFrame(announcement_data, columns=["Title", "Message"])
+        data_frame.to_csv(announcements_path, index=False)
+        total = len(announcement_data)
+        if verbose:
+            for index, announcement in enumerate(announcement_data):
+                title, message = announcement
+                if verbose:
+                    print_announcement(index, total, title, message)
     if unpack:
         unpacked_path = unpack_announcements(compress_path, unpack_path, verbose=False)
         if verbose:

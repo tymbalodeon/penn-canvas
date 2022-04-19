@@ -132,6 +132,11 @@ def fetch_modules(
     verbose: bool,
 ):
     echo(") Exporting modules...")
+    archive_file = compress_path / MODULES_TAR_NAME
+    if archive_file.is_file():
+        echo("Modules already fetched.")
+        unpack_modules(compress_path, unpack_path, verbose)
+        return
     modules_path = create_directory(compress_path / "modules")
     modules = list(course.get_modules())
     total = len(modules)

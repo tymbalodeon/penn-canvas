@@ -139,9 +139,7 @@ def run_content_exports(
     download_export_files(course, exports, compress_path, unpack_path, unpack, verbose)
 
 
-def unpack_content(
-    compress_path: Path, unpack_path: Path, verbose: bool
-) -> Optional[Path]:
+def unpack_content(compress_path: Path, unpack_path: Path, verbose: bool):
     archive_file = compress_path / CONTENT_TAR_NAME
     if not archive_file.is_file():
         return None
@@ -152,7 +150,6 @@ def unpack_content(
         remove(tar_file)
     if verbose:
         print_unpacked_file(content_path)
-    return content_path
 
 
 def fetch_content(
@@ -170,6 +167,12 @@ def fetch_content(
         )
     else:
         unpack_content_path = unpack_path
+    archive_file = compress_path / CONTENT_TAR_NAME
+    if archive_file.is_file():
+        echo("Content already fetched.")
+        if unpack:
+            unpack_content(compress_path, unpack_content_path, verbose)
+        return
     content_path = create_directory(compress_path / CONTENT_TAR_STEM)
     run_content_exports(
         course, content_path, unpack_content_path, unpack, instance, verbose

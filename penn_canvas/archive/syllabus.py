@@ -47,15 +47,21 @@ def fetch_syllabus(
     verbose: bool,
 ):
     echo(") Exporting syllabus...")
-    syllabus = course.syllabus_body
-    if syllabus:
-        syllabus = strip_tags(syllabus)
-        syllabus_data = DataFrame([syllabus], columns=["syllabus"])
-        syllabus_file = compress_path / SYLLABUS_COMPRESSION_FILE
-        syllabus_data.to_csv(syllabus_file, index=False)
-        if verbose:
-            print_syllabus(syllabus)
-        if unpack:
-            unpacked_file = unpack_syllabus(compress_path, unpack_path, verbose=False)
+    syllabus_file = compress_path / SYLLABUS_COMPRESSION_FILE
+    if syllabus_file.is_file():
+        echo("Syllabus already fetched.")
+        syllabus = None
+    else:
+        syllabus = course.syllabus_body
+        if not syllabus:
+            echo("No syllabus.")
+        if syllabus:
+            syllabus = strip_tags(syllabus)
+            syllabus_data = DataFrame([syllabus], columns=["syllabus"])
+            syllabus_data.to_csv(syllabus_file, index=False)
             if verbose:
-                print_unpacked_file(unpacked_file)
+                print_syllabus(syllabus)
+    if unpack and syllabus:
+        unpacked_file = unpack_syllabus(compress_path, unpack_path, verbose=False)
+        if verbose:
+            print_unpacked_file(unpacked_file)
