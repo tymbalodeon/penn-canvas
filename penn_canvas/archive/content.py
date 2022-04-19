@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from os import remove
 from pathlib import Path
 from re import search
 from shutil import make_archive, rmtree, unpack_archive
@@ -144,15 +145,14 @@ def unpack_content(
     archive_file = compress_path / CONTENT_TAR_NAME
     if not archive_file.is_file():
         return None
-    content_path = compress_path / CONTENT_TAR_STEM
+    content_path = unpack_path / UNPACK_CONTENT_DIRECTORY
     unpack_archive(archive_file, content_path)
-    unpack_content_path = create_directory(
-        unpack_path / UNPACK_CONTENT_DIRECTORY, clear=True
-    )
-    content_path.replace(unpack_content_path)
+    for tar_file in content_path.glob(f"*.{TAR_EXTENSION}"):
+        unpack_archive(tar_file, content_path / tar_file.stem.replace(".tar", ""))
+        remove(tar_file)
     if verbose:
-        print_unpacked_file(unpack_content_path)
-    return unpack_content_path
+        print_unpacked_file(content_path)
+    return content_path
 
 
 def fetch_content(

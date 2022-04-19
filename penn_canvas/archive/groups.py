@@ -1,5 +1,6 @@
+from os import remove
 from pathlib import Path
-from shutil import make_archive, rmtree
+from shutil import make_archive, rmtree, unpack_archive
 from typing import Optional
 
 from canvasapi.course import Course
@@ -18,17 +19,22 @@ from penn_canvas.style import color, print_item
 from .helpers import (
     CSV_COMPRESSION_TYPE,
     TAR_COMPRESSION_TYPE,
+    TAR_EXTENSION,
+    extract_file,
     format_display_text,
     format_name,
     print_unpacked_file,
 )
 
+GROUPS = "groups"
 GROUPS_COMPRESSED_FILE = f"groups.{CSV_COMPRESSION_TYPE}"
 CATEGORY_ID = "Category ID"
 CATEGORY_NAME = "Category Name"
 GROUP_ID = "Group ID"
 GROUP_NAME = "Group Name"
-UNPACK_GROUP_DIRECTORY = "Groups"
+UNPACK_GROUP_DIRECTORY = GROUPS.title()
+GROUPS_TAR_NAME = f"group_files.{TAR_EXTENSION}"
+ALL_GROUPS_TAR_NAME = f"{GROUPS}.{TAR_EXTENSION}"
 COLUMNS = [
     CATEGORY_ID,
     CATEGORY_NAME,
@@ -125,32 +131,42 @@ def unpack_groups(
     compress_path: Path, unpack_path: Path, verbose: bool
 ) -> Optional[Path]:
     echo(") Unpacking groups...")
-    compressed_file = compress_path / GROUPS_COMPRESSED_FILE
-    if not compressed_file.is_file():
+    archive_tar_path = compress_path / ALL_GROUPS_TAR_NAME
+    if not archive_tar_path.is_file():
         return None
-    categories_data = read_csv(compressed_file)
+    extract_file(f"./{GROUPS_COMPRESSED_FILE}", archive_tar_path, compress_path)
+    extract_file(f"./{GROUPS_TAR_NAME}", archive_tar_path, compress_path)
+    extracted_csv = compress_path / GROUPS_COMPRESSED_FILE
+    extracted_tar = compress_path / GROUPS_TAR_NAME
+    unpack_archive(extracted_tar, create_directory(unpack_path / "Groups"))
+    categories_data = read_csv(extracted_csv)
     category_ids = categories_data[CATEGORY_ID].unique()
-    categories = [
+    category_series = [
         categories_data[categories_data[CATEGORY_ID] == category_id]
         for category_id in category_ids
     ]
-    groups = [get_unpack_groups(category) for category in categories]
+    groups = [get_unpack_groups(category) for category in category_series]
     groups_path = create_directory(unpack_path / UNPACK_GROUP_DIRECTORY)
-    category_total = len(categories_data.index)
+    category_total = len(category_series)
     for category_index, categories in enumerate(groups):
+        category = next(iter(categories))
+        category_name = next(iter(category[CATEGORY_NAME].tolist()), "")
+        if verbose:
+            print_item(category_index, category_total, color(category_name))
         group_total = len(categories)
         for group_index, group in enumerate(categories):
-            category_name = next(iter(group[CATEGORY_NAME].tolist()), "")
             category_path = create_directory(groups_path / format_name(category_name))
-            if verbose:
-                print_item(category_index, category_total, color(category_name))
             group_name = next(iter(group[GROUP_NAME].tolist()), "")
             group_path = category_path / f"{format_name(group_name)}.csv"
             group.to_csv(group_path, index=False)
             if verbose:
-                print_item(group_index, group_total, color(group_name))
+                print_item(
+                    group_index, group_total, color(group_name, "cyan"), prefix="\t*"
+                )
     if verbose:
         print_task_complete_message(groups_path)
+    for extracted_file in [extracted_csv, extracted_tar]:
+        remove(extracted_file)
     return groups_path
 
 
@@ -160,7 +176,8 @@ def fetch_groups(
     echo(") Exporting groups...")
     category_objects = list(course.get_group_categories())
     total = len(category_objects)
-    category_files_path = create_directory(compress_path / "group_files")
+    all_groups_path = create_directory(compress_path / "groups")
+    category_files_path = create_directory(all_groups_path / "group_files")
     if verbose:
         categories = [
             get_category(category, category_files_path, verbose, index, total)
@@ -172,11 +189,15 @@ def fetch_groups(
                 get_category(category, category_files_path, verbose)
                 for category in progress
             ]
-    groups_path = compress_path / GROUPS_COMPRESSED_FILE
+    groups_path = all_groups_path / GROUPS_COMPRESSED_FILE
     groups_data = concat(categories) if categories else DataFrame(columns=COLUMNS)
     groups_data.to_csv(groups_path, index=False)
-    groups_directory = str(category_files_path)
-    make_archive(groups_directory, TAR_COMPRESSION_TYPE, root_dir=groups_directory)
+    group_files_archive_path = str(category_files_path)
+    make_archive(
+        group_files_archive_path,
+        TAR_COMPRESSION_TYPE,
+        root_dir=group_files_archive_path,
+    )
     if unpack:
         unpack_groups_path = create_directory(
             unpack_path / UNPACK_GROUP_DIRECTORY, clear=True
@@ -187,3 +208,6 @@ def fetch_groups(
             print_unpacked_file(unpacked_path)
     else:
         rmtree(category_files_path)
+    make_archive_path = str(all_groups_path)
+    make_archive(make_archive_path, TAR_COMPRESSION_TYPE, root_dir=make_archive_path)
+    rmtree(all_groups_path)
