@@ -228,7 +228,7 @@ def unpack_submissions(
     if verbose:
         print_task_complete_message(unpack_path)
     remove(unpacked_submissions_path)
-    remove(compress_path / "submission_files.{TAR_EXTENSION}")
+    remove(compress_path / f"submission_files.{TAR_EXTENSION}")
     return unpack_path
 
 
