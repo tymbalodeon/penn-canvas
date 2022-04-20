@@ -263,5 +263,5 @@ def fetch_discussions(
         unpacked_path = unpack_discussions(
             compress_path, unpack_path, force, verbose=False
         )
-        if verbose:
+        if verbose and unpacked_path:
             print_unpacked_file(unpacked_path)

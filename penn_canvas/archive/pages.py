@@ -88,5 +88,5 @@ def fetch_pages(
         pages_data.to_csv(pages_path, index=False)
     if unpack:
         unpacked_path = unpack_pages(compress_path, unpack_path, force, verbose=False)
-        if verbose:
+        if verbose and unpacked_path:
             print_unpacked_file(unpacked_path)

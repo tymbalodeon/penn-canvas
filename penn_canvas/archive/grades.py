@@ -218,5 +218,5 @@ def fetch_grades(
         grade_book.to_csv(grades_path, index=False)
     if unpack:
         unpacked_path = unpack_grades(compress_path, unpack_path, force, verbose=False)
-        if verbose:
+        if verbose and unpacked_path:
             print_unpacked_file(unpacked_path)

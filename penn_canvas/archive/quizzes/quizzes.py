@@ -71,6 +71,6 @@ def fetch_quizzes(
         )
     if unpack:
         unpacked_path = unpack_quizzes(compress_path, unpack_path, force, verbose=False)
-        if verbose:
+        if verbose and unpacked_path:
             print_unpacked_file(unpacked_path)
     rmtree(quizzes_path)

@@ -72,6 +72,6 @@ def fetch_assignments(
         unpacked_path = unpack_assignments(
             compress_path, unpack_path, force, verbose=False
         )
-        if verbose:
+        if verbose and unpacked_path:
             print_unpacked_file(unpacked_path)
     return assignments

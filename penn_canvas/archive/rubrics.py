@@ -105,5 +105,5 @@ def fetch_rubrics(
         rubric_data.to_csv(rubrics_path, index=False)
     if unpack:
         unpacked_path = unpack_rubrics(compress_path, unpack_path, force, verbose=False)
-        if verbose:
+        if verbose and unpacked_path:
             print_unpacked_file(unpacked_path)

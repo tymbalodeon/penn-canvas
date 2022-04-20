@@ -170,9 +170,7 @@ def fetch_content(
 ):
     echo(") Fetching content...")
     if unpack:
-        unpack_content_path = create_directory(
-            unpack_path / UNPACK_CONTENT_DIRECTORY, clear=True
-        )
+        unpack_content_path = unpack_path / UNPACK_CONTENT_DIRECTORY
     else:
         unpack_content_path = unpack_path
     archive_file = compress_path / CONTENT_TAR_NAME
