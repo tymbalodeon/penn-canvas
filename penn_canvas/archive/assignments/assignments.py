@@ -45,9 +45,8 @@ def fetch_assignments(
     verbose: bool,
 ) -> Optional[list[Assignment]]:
     echo(") Fetching assignments...")
-    assignments_path = create_directory(compress_path / ASSIGNMENTS)
-    assignments_tar = assignments_path / ASSIGNMENTS_TAR_NAME
-    if assignments_tar.is_file():
+    assignments_tar = compress_path / ASSIGNMENTS_TAR_NAME
+    if assignments_tar.exists():
         echo("Assignments already fetched.")
         assignments = None
     else:
@@ -61,9 +60,9 @@ def fetch_assignments(
         make_archive(
             make_archive_path, TAR_COMPRESSION_TYPE, root_dir=make_archive_path
         )
+        rmtree(assignments_path, ignore_errors=True)
     if unpack:
         unpacked_path = unpack_assignments(compress_path, unpack_path, verbose=False)
         if verbose:
             print_unpacked_file(unpacked_path)
-    rmtree(assignments_path)
     return assignments

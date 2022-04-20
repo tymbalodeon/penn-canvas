@@ -166,4 +166,4 @@ def fetch_quiz_responses(
         submissions = get_assignment_submissions(assignment)
         responses.append(get_quiz_responses(submissions, quiz, verbose))
     response_data = concat(responses)
-    response_data.to_csv(quiz_path / "responses.csv.{COMPRESSION_TYPE}", index=False)
+    response_data.to_csv(quiz_path / f"responses.csv.{COMPRESSION_TYPE}", index=False)
