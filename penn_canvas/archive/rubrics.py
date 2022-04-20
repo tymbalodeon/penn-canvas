@@ -48,9 +48,14 @@ def get_rubric(
 
 
 def unpack_rubrics(
-    compress_path: Path, unpack_path: Path, verbose: bool
+    compress_path: Path, unpack_path: Path, force: bool, verbose: bool
 ) -> Optional[Path]:
-    echo(") Unpacking announcements...")
+    echo(") Unpacking rubrics...")
+    rubrics_path = unpack_path / "Rubrics"
+    already_complete = not force and rubrics_path.exists()
+    if already_complete:
+        echo("Rubrics already unpacked.")
+        return None
     compressed_file = compress_path / RUBRICS_COMPRESSED_FILE
     if not compressed_file.is_file():
         return None
@@ -59,7 +64,7 @@ def unpack_rubrics(
     rubrics = [
         rubrics_data[rubrics_data[RUBRIC_ID] == rubric_id] for rubric_id in rubric_ids
     ]
-    rubrics_path = create_directory(unpack_path / "Rubrics")
+    rubrics_path = create_directory(rubrics_path)
     total = len(rubrics)
     for index, rubric in enumerate(rubrics):
         title = next(iter(rubric[RUBRIC_TITLE].tolist()), "")
@@ -72,11 +77,17 @@ def unpack_rubrics(
 
 
 def fetch_rubrics(
-    course: Course, compress_path: Path, unpack_path: Path, unpack: bool, verbose: bool
+    course: Course,
+    compress_path: Path,
+    unpack_path: Path,
+    unpack: bool,
+    force: bool,
+    verbose: bool,
 ):
-    echo(") Exporting rubrics...")
+    echo(") Fetching rubrics...")
     compressed_file = compress_path / RUBRICS_COMPRESSED_FILE
-    if compressed_file.is_file():
+    already_complete = not force and compressed_file.is_file()
+    if already_complete:
         echo("Rubrics already fetched.")
     else:
         rubric_objects = list(course.get_rubrics())
@@ -93,6 +104,6 @@ def fetch_rubrics(
         rubrics_path = compress_path / RUBRICS_COMPRESSED_FILE
         rubric_data.to_csv(rubrics_path, index=False)
     if unpack:
-        unpacked_path = unpack_rubrics(compress_path, unpack_path, verbose=False)
+        unpacked_path = unpack_rubrics(compress_path, unpack_path, force, verbose=False)
         if verbose:
             print_unpacked_file(unpacked_path)

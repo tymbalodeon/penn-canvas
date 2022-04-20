@@ -24,13 +24,18 @@ QUIZZES_TAR_NAME = f"{QUIZZES_TAR_STEM}.{TAR_EXTENSION}"
 
 
 def unpack_quizzes(
-    compress_path: Path, unpack_path: Path, verbose: bool
+    compress_path: Path, unpack_path: Path, force: bool, verbose: bool
 ) -> Optional[Path]:
     echo(") Unpacking quizzes...")
+    unpack_path = unpack_path / UNPACK_QUIZZES_DIRECTORY
+    already_comlete = not force and unpack_path.exists()
+    if already_comlete:
+        echo("Quizzes already unpacked.")
+        return None
     archive_tar_path = compress_path / QUIZZES_TAR_NAME
     if not archive_tar_path.is_file():
         return None
-    unpack_path = create_directory(unpack_path / UNPACK_QUIZZES_DIRECTORY)
+    unpack_path = create_directory(unpack_path)
     unpack_descriptions(compress_path, QUIZZES_TAR_NAME, unpack_path, verbose)
     unpack_quiz_questions(compress_path, archive_tar_path, unpack_path, verbose)
     unpack_quiz_scores(compress_path, archive_tar_path, unpack_path, verbose)
@@ -43,13 +48,15 @@ def fetch_quizzes(
     compress_path: Path,
     unpack_path: Path,
     unpack: bool,
+    force: bool,
     instance: Instance,
     verbose: bool,
 ):
     echo(") Fetching quizzes...")
     quizzes_path = create_directory(compress_path / QUIZZES_TAR_STEM)
     archive_tar_path = compress_path / QUIZZES_TAR_NAME
-    if archive_tar_path.is_file():
+    already_complete = not force and archive_tar_path.is_file()
+    if already_complete:
         echo("Quizzes already fetched.")
     else:
         quizzes = list(course.get_quizzes())
@@ -63,7 +70,7 @@ def fetch_quizzes(
             quizzes_directory, TAR_COMPRESSION_TYPE, root_dir=quizzes_directory
         )
     if unpack:
-        unpacked_path = unpack_quizzes(compress_path, unpack_path, verbose=False)
+        unpacked_path = unpack_quizzes(compress_path, unpack_path, force, verbose=False)
         if verbose:
             print_unpacked_file(unpacked_path)
     rmtree(quizzes_path)

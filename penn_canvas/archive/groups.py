@@ -112,7 +112,7 @@ def get_category(
         get_group_users(group, category, verbose, group_index, group_total)
         for group_index, group in enumerate(groups)
     ]
-    echo(") Exporting group files...")
+    echo(") Fetching group files...")
     group_files_path = create_directory(
         category_files_path / format_name(category.name)
     )
@@ -128,9 +128,14 @@ def get_unpack_groups(series: Series) -> list[Series]:
 
 
 def unpack_groups(
-    compress_path: Path, unpack_path: Path, verbose: bool
+    compress_path: Path, unpack_path: Path, force: bool, verbose: bool
 ) -> Optional[Path]:
     echo(") Unpacking groups...")
+    groups_path = unpack_path / UNPACK_GROUP_DIRECTORY
+    already_complete = not force and groups_path.exists()
+    if already_complete:
+        echo("Groups already unpacked.")
+        return None
     archive_tar_path = compress_path / ALL_GROUPS_TAR_NAME
     if not archive_tar_path.is_file():
         return None
@@ -146,7 +151,7 @@ def unpack_groups(
         for category_id in category_ids
     ]
     groups = [get_unpack_groups(category) for category in category_series]
-    groups_path = create_directory(unpack_path / UNPACK_GROUP_DIRECTORY)
+    groups_path = create_directory(groups_path)
     category_total = len(category_series)
     for category_index, categories in enumerate(groups):
         category = next(iter(categories))
@@ -171,13 +176,20 @@ def unpack_groups(
 
 
 def fetch_groups(
-    course: Course, compress_path: Path, unpack_path: Path, unpack: bool, verbose: bool
+    course: Course,
+    compress_path: Path,
+    unpack_path: Path,
+    unpack: bool,
+    force: bool,
+    verbose: bool,
 ):
-    echo(") Exporting groups...")
+    echo(") Fetching groups...")
     archive_tar_path = compress_path / ALL_GROUPS_TAR_NAME
-    if archive_tar_path.is_file():
+    already_complete = not force and archive_tar_path.is_file()
+    if already_complete:
         echo("Groups already fetched.")
-        unpack_groups(compress_path, unpack_path, verbose)
+        if unpack:
+            unpack_groups(compress_path, unpack_path, force, verbose=False)
         return
     category_objects = list(course.get_group_categories())
     total = len(category_objects)
@@ -208,7 +220,7 @@ def fetch_groups(
             unpack_path / UNPACK_GROUP_DIRECTORY, clear=True
         )
         category_files_path.replace(unpack_groups_path)
-        unpacked_path = unpack_groups(compress_path, unpack_path, verbose=False)
+        unpacked_path = unpack_groups(compress_path, unpack_path, force, verbose=False)
         if verbose:
             print_unpacked_file(unpacked_path)
     else:

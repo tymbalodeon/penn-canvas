@@ -78,7 +78,7 @@ def unpack_descriptions(
 def fetch_descriptions(
     assignments: list[Assignment], compress_path: Path, verbose: bool, total: int
 ):
-    echo(") Exporting assignment descriptions...")
+    echo(") Fetching assignment descriptions...")
     description_rows = [
         get_description(assignment, verbose, index, total)
         for index, assignment in enumerate(assignments)

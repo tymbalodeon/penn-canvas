@@ -40,14 +40,19 @@ def get_page(page: Page, verbose: bool, index=0, total=0):
 
 
 def unpack_pages(
-    compress_path: Path, unpack_path: Path, verbose: bool
+    compress_path: Path, unpack_path: Path, force: bool, verbose: bool
 ) -> Optional[Path]:
     echo(") Unpacking pages...")
+    pages_path = unpack_path / "Pages"
+    already_complete = not force and pages_path.exists()
+    if already_complete:
+        echo("Pages already unpacked.")
+        return None
+    pages_path = create_directory(pages_path)
     compressed_file = compress_path / PAGES_COMPRESSED_FILE
     if not compressed_file.is_file():
         return None
     pages_data = read_csv(compressed_file)
-    pages_path = create_directory(unpack_path / "Pages")
     total = len(pages_data)
     for index, page in enumerate(pages_data.itertuples(index=False)):
         title, body = page
@@ -61,11 +66,17 @@ def unpack_pages(
 
 
 def fetch_pages(
-    course: Course, compress_path: Path, unpack_path: Path, unpack: bool, verbose: bool
+    course: Course,
+    compress_path: Path,
+    unpack_path: Path,
+    unpack: bool,
+    force: bool,
+    verbose: bool,
 ):
-    echo(") Exporting pages...")
+    echo(") Fetching pages...")
     pages_path = compress_path / PAGES_COMPRESSED_FILE
-    if pages_path.is_file():
+    already_complete = not force and pages_path.is_file()
+    if already_complete:
         echo("Pages already fetched.")
     else:
         pages = list(course.get_pages())
@@ -76,6 +87,6 @@ def fetch_pages(
         pages_data = DataFrame(pages, columns=["Title", "Body"])
         pages_data.to_csv(pages_path, index=False)
     if unpack:
-        unpacked_path = unpack_pages(compress_path, unpack_path, verbose=False)
+        unpacked_path = unpack_pages(compress_path, unpack_path, force, verbose=False)
         if verbose:
             print_unpacked_file(unpacked_path)

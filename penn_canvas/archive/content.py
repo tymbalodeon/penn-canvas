@@ -85,6 +85,7 @@ def download_export_files(
         download_file(file_path, url)
         if file_path.is_file():
             unzipped_path = unzip_content(file_path)
+            remove(file_path)
             path_name = str(unzipped_path)
             make_archive(path_name, TAR_COMPRESSION_TYPE, root_dir=path_name)
             if unpack:
@@ -139,11 +140,17 @@ def run_content_exports(
     download_export_files(course, exports, compress_path, unpack_path, unpack, verbose)
 
 
-def unpack_content(compress_path: Path, unpack_path: Path, verbose: bool):
+def unpack_content(compress_path: Path, unpack_path: Path, force: bool, verbose: bool):
+    echo(") Unpacking content...")
     archive_file = compress_path / CONTENT_TAR_NAME
     if not archive_file.is_file():
         return None
     content_path = unpack_path / UNPACK_CONTENT_DIRECTORY
+    already_complete = not force and content_path.exists()
+    if already_complete:
+        echo("Content already unpacked.")
+        return
+    content_path = create_directory(unpack_path / UNPACK_CONTENT_DIRECTORY, clear=True)
     unpack_archive(archive_file, content_path)
     for tar_file in content_path.glob(f"*.{TAR_EXTENSION}"):
         unpack_archive(tar_file, content_path / tar_file.stem.replace(".tar", ""))
@@ -157,10 +164,11 @@ def fetch_content(
     compress_path: Path,
     unpack_path: Path,
     unpack: bool,
+    force: bool,
     instance: Instance,
     verbose: bool,
 ):
-    echo(") Exporting content...")
+    echo(") Fetching content...")
     if unpack:
         unpack_content_path = create_directory(
             unpack_path / UNPACK_CONTENT_DIRECTORY, clear=True
@@ -168,10 +176,11 @@ def fetch_content(
     else:
         unpack_content_path = unpack_path
     archive_file = compress_path / CONTENT_TAR_NAME
-    if archive_file.is_file():
+    already_complete = not force and archive_file.is_file()
+    if already_complete:
         echo("Content already fetched.")
         if unpack:
-            unpack_content(compress_path, unpack_content_path, verbose)
+            unpack_content(compress_path, unpack_content_path, force, verbose)
         return
     content_path = create_directory(compress_path / CONTENT_TAR_STEM)
     run_content_exports(

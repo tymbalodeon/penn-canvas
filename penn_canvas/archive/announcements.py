@@ -39,14 +39,19 @@ def get_announcement(announcement: DiscussionTopic) -> list[str]:
 
 
 def unpack_announcements(
-    compress_path: Path, unpack_path: Path, verbose: bool
+    compress_path: Path, unpack_path: Path, force: bool, verbose: bool
 ) -> Optional[Path]:
     echo(") Unpacking announcements...")
+    announcements_path = unpack_path / "Announcements"
+    already_complete = not force and announcements_path.exists()
+    if already_complete:
+        echo("Announcements already unpacked.")
+        return None
+    announcements_path = create_directory(announcements_path)
     compressed_file = compress_path / ANNOUNCEMENTS_COMPRESSED_FILE
     if not compressed_file.is_file():
         return None
     announcements = read_csv(compressed_file)
-    announcements_path = create_directory(unpack_path / "Announcements")
     total = len(announcements.index)
     for index, title, message in announcements.itertuples():
         title_path = announcements_path / f"{title}.txt"
@@ -62,11 +67,13 @@ def fetch_announcements(
     compress_path: Path,
     unpack_path: Path,
     unpack: bool,
+    force: bool,
     verbose: bool,
 ):
-    echo(") Exporting announcements...")
+    echo(") Fetching announcements...")
     announcements_path = compress_path / ANNOUNCEMENTS_COMPRESSED_FILE
-    if announcements_path.is_file():
+    already_complete = not force and announcements_path.is_file()
+    if already_complete:
         echo("Announcements already fetched.")
     else:
         announcements: list[DiscussionTopic] = list(
@@ -84,6 +91,8 @@ def fetch_announcements(
                 if verbose:
                     print_announcement(index, total, title, message)
     if unpack:
-        unpacked_path = unpack_announcements(compress_path, unpack_path, verbose=False)
+        unpacked_path = unpack_announcements(
+            compress_path, unpack_path, force, verbose=False
+        )
         if verbose:
             print_unpacked_file(unpacked_path)

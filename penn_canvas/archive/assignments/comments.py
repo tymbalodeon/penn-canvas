@@ -162,7 +162,7 @@ def unpack_submission_comments(
 def fetch_submission_comments(
     assignments: list[Assignment], assignments_path: Path, verbose: bool, total: int
 ):
-    echo(") Exporting assignment submission comments...")
+    echo(") Fetching assignment submission comments...")
     comments_rows = [
         get_submission_comments(assignment, verbose, index, total)
         for index, assignment in enumerate(assignments)

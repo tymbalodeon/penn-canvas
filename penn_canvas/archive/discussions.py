@@ -79,7 +79,7 @@ def get_discussion_description(
 def get_discussion_descriptions(
     discussions: list[DiscussionTopic], verbose: bool
 ) -> DataFrame:
-    echo(") Exporting discussion descriptions..")
+    echo(") Fetching discussion descriptions..")
     total = len(discussions)
     descriptions = [
         get_discussion_description(discussion, verbose, index, total)
@@ -193,17 +193,20 @@ def unpack_entries(compress_path: Path, unpack_path: Path, verbose: bool):
 
 
 def unpack_discussions(
-    compress_path: Path, unpack_path: Path, verbose: bool
+    compress_path: Path, unpack_path: Path, force: bool, verbose: bool
 ) -> Optional[Path]:
     echo(") Unpacking discussions...")
+    unpack_discussions_path = unpack_path / UNPACK_DISCUSSIONS_DIRECTORY
     archive_file = compress_path / DISCUSSIONS_TAR_NAME
+    already_complete = not force and archive_file.exists()
+    if already_complete:
+        echo("Discussions already unpacked.")
+        return None
     if not archive_file.is_file():
         return None
     discussions_path = compress_path / DISCUSSIONS_TAR_STEM
     unpack_archive(archive_file, discussions_path)
-    unpack_discussions_path = create_directory(
-        unpack_path / UNPACK_DISCUSSIONS_DIRECTORY, clear=True
-    )
+    unpack_discussions_path = create_directory(unpack_discussions_path, clear=True)
     unpack_descriptions_path = unpack_discussions_path / UNPACK_DESCRIPTIONS_DIRECTORY
     unpack_entries_path = unpack_discussions_path / UNPACK_ENTRIES_DIRECTORY
     unpack_descriptions(discussions_path, unpack_descriptions_path, verbose)
@@ -219,19 +222,21 @@ def fetch_discussions(
     compress_path: Path,
     unpack_path: Path,
     unpack: bool,
+    force: bool,
     instance: Instance,
     verbose: bool,
 ):
-    echo(") Exporting discussions...")
+    echo(") Fetching discussions...")
     archive_file = compress_path / DISCUSSIONS_TAR_NAME
-    if archive_file.is_file():
+    already_complete = not force and archive_file.is_file()
+    if already_complete:
         echo("Discussions already fetched.")
     else:
         discussion_topics = list(course.get_discussion_topics())
         total = len(discussion_topics)
         if verbose:
             descriptions = get_discussion_descriptions(discussion_topics, verbose)
-            echo(") Exporting discussion entries...")
+            echo(") Fetching discussion entries...")
             discussion_entries = [
                 get_discussion_entries(discussion, instance, verbose, index, total)
                 for index, discussion in enumerate(discussion_topics)
@@ -255,6 +260,8 @@ def fetch_discussions(
         )
         rmtree(discussions_path)
     if unpack:
-        unpacked_path = unpack_discussions(compress_path, unpack_path, verbose=False)
+        unpacked_path = unpack_discussions(
+            compress_path, unpack_path, force, verbose=False
+        )
         if verbose:
             print_unpacked_file(unpacked_path)

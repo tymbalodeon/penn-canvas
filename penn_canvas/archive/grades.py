@@ -162,14 +162,18 @@ def get_all_columns(assignments: list[Assignment]) -> list[str]:
 
 
 def unpack_grades(
-    compress_path: Path, unpack_path: Path, verbose: bool
+    compress_path: Path, unpack_path: Path, force: bool, verbose: bool
 ) -> Optional[Path]:
     echo(") Unpacking grades...")
+    grades_path = create_directory(unpack_path / "Grades") / "Grades.csv"
+    already_complete = not force and grades_path.is_file()
+    if already_complete:
+        echo("Grades already unpacked.")
+        return None
     compressed_file = compress_path / GRADES_COMPRESSED_FILE
     if not compressed_file.is_file():
         return None
     grades = read_csv(compressed_file)
-    grades_path = create_directory(unpack_path / "Grades") / "Grades.csv"
     grades.to_csv(grades_path, index=False)
     if verbose:
         grades = grades[["Student", "Final Grade", "Final Score"]].loc[2:]
@@ -186,13 +190,15 @@ def fetch_grades(
     compress_path: Path,
     unpack_path: Path,
     unpack: bool,
+    force: bool,
     assignments: Optional[list[Assignment]],
     instance: Instance,
     verbose: bool,
 ):
-    echo(") Exporting grades...")
+    echo(") Fetching grades...")
     compressed_file = compress_path / GRADES_COMPRESSED_FILE
-    if compressed_file.is_file():
+    already_complete = not force and compressed_file.is_file()
+    if already_complete:
         echo("Grades already fetched.")
     else:
         enrollments = get_enrollments(course)
@@ -211,6 +217,6 @@ def fetch_grades(
         grades_path = compress_path / GRADES_COMPRESSED_FILE
         grade_book.to_csv(grades_path, index=False)
     if unpack:
-        unpacked_path = unpack_grades(compress_path, unpack_path, verbose=False)
+        unpacked_path = unpack_grades(compress_path, unpack_path, force, verbose=False)
         if verbose:
             print_unpacked_file(unpacked_path)

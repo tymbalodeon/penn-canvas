@@ -12,6 +12,7 @@ from penn_canvas.helpers import (
     BASE_PATH,
     COURSE_IDS,
     CURRENT_YEAR_AND_TERM,
+    FORCE,
     FORCE_REPORT,
     VERBOSE,
     create_directory,
@@ -97,6 +98,7 @@ def fetch(
     rubrics: Optional[bool] = rubrics,
     quizzes: Optional[bool] = quizzes,
     unpack: bool = Option(False, "--unpack", help="Unpack compressed files"),
+    force: bool = FORCE,
     force_report: bool = FORCE_REPORT,
     verbose: bool = VERBOSE,
 ):
@@ -135,7 +137,7 @@ def fetch(
         compress_path = create_directory(COMPRESSED_COURSES / course_name)
         unpack_path = UNPACKED_COURSES / course_name
         assignment_objects: Optional[list[Assignment]] = list()
-        args = (course, compress_path, unpack_path, unpack)
+        args = (course, compress_path, unpack_path, unpack, force)
         if should_run_option(content, archive_all):
             fetch_content(*args, instance, verbose)
         if should_run_option(announcements, archive_all):
@@ -177,6 +179,7 @@ def unpack(
     grades: Optional[bool] = grades,
     rubrics: Optional[bool] = rubrics,
     quizzes: Optional[bool] = quizzes,
+    force: bool = FORCE,
     force_report: bool = FORCE_REPORT,
     verbose: bool = VERBOSE,
 ):
@@ -215,7 +218,7 @@ def unpack(
             print_course(index, total, course_name)
         compress_path = create_directory(COMPRESSED_COURSES / course_name)
         unpack_path = create_directory(UNPACKED_COURSES / course_name)
-        args = (compress_path, unpack_path, verbose)
+        args = (compress_path, unpack_path, force, verbose)
         if should_run_option(content, unpack_all):
             unpack_content(*args)
         if should_run_option(announcements, unpack_all):
@@ -237,7 +240,7 @@ def unpack(
         if should_run_option(rubrics, unpack_all):
             unpack_rubrics(*args)
         if should_run_option(quizzes, unpack_all):
-            unpack_quizzes(compress_path, unpack_path, verbose)
+            unpack_quizzes(*args)
         echo("COMPELTE")
 
 

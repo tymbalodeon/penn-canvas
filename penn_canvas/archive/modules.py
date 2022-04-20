@@ -108,15 +108,18 @@ def get_module(
 
 
 def unpack_modules(
-    compress_path: Path, unpack_path: Path, verbose: bool
+    compress_path: Path, unpack_path: Path, force: bool, verbose: bool
 ) -> Optional[Path]:
     echo(") Unpacking modules...")
+    unpack_modules_path = unpack_path / UNPACK_MODULES_DIRECTORY
+    already_complete = not force and unpack_modules_path.exists()
+    if already_complete:
+        echo("Modules already unpacked.")
+        return None
     archive_file = compress_path / MODULES_TAR_NAME
     if not archive_file.is_file():
         return None
-    unpack_modules_path = create_directory(
-        unpack_path / UNPACK_MODULES_DIRECTORY, clear=True
-    )
+    unpack_modules_path = create_directory(unpack_modules_path, clear=True)
     unpack_archive(archive_file, unpack_modules_path)
     if verbose:
         print_unpacked_file(unpack_modules_path)
@@ -128,14 +131,17 @@ def fetch_modules(
     compress_path: Path,
     unpack_path: Path,
     unpack: bool,
+    force: bool,
     instance: Instance,
     verbose: bool,
 ):
-    echo(") Exporting modules...")
+    echo(") Fetching modules...")
     archive_file = compress_path / MODULES_TAR_NAME
-    if archive_file.is_file():
+    already_complete = not force and archive_file.is_file()
+    if already_complete:
         echo("Modules already fetched.")
-        unpack_modules(compress_path, unpack_path, verbose)
+        if unpack:
+            unpack_modules(compress_path, unpack_path, force, verbose=False)
         return
     modules_path = create_directory(compress_path / "modules")
     modules = list(course.get_modules())
@@ -154,7 +160,7 @@ def fetch_modules(
             unpack_path / UNPACK_MODULES_DIRECTORY, clear=True
         )
         modules_path.replace(unpack_groups_path)
-        unpacked_path = unpack_modules(compress_path, unpack_path, verbose=False)
+        unpacked_path = unpack_modules(compress_path, unpack_path, force, verbose=False)
         if verbose:
             print_unpacked_file(unpacked_path)
     else:

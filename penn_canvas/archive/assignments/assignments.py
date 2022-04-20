@@ -23,13 +23,18 @@ ASSIGNMENTS_TAR_NAME = f"{ASSIGNMENTS}.{TAR_EXTENSION}"
 
 
 def unpack_assignments(
-    compress_path: Path, unpack_path: Path, verbose: bool
+    compress_path: Path, unpack_path: Path, force: bool, verbose: bool
 ) -> Optional[Path]:
     echo(") Unpacking assignments...")
+    unpack_path = unpack_path / ASSIGNMENTS.title()
+    already_complete = not force and unpack_path.exists()
+    if already_complete:
+        echo("Assignments already unpacked.")
+        return None
     archive_tar_path = compress_path / ASSIGNMENTS_TAR_NAME
     if not archive_tar_path.is_file():
         return None
-    unpack_path = create_directory(unpack_path / ASSIGNMENTS.title())
+    unpack_path = create_directory(unpack_path)
     unpack_descriptions(compress_path, archive_tar_path, unpack_path, verbose)
     unpack_submissions(compress_path, archive_tar_path, unpack_path, verbose)
     unpack_submission_comments(compress_path, archive_tar_path, unpack_path, verbose)
@@ -41,12 +46,14 @@ def fetch_assignments(
     compress_path: Path,
     unpack_path: Path,
     unpack: bool,
+    force: bool,
     instance: Instance,
     verbose: bool,
 ) -> Optional[list[Assignment]]:
     echo(") Fetching assignments...")
     assignments_tar = compress_path / ASSIGNMENTS_TAR_NAME
-    if assignments_tar.exists():
+    already_complete = not force and assignments_tar.exists()
+    if already_complete:
         echo("Assignments already fetched.")
         assignments = None
     else:
@@ -62,7 +69,9 @@ def fetch_assignments(
         )
         rmtree(assignments_path, ignore_errors=True)
     if unpack:
-        unpacked_path = unpack_assignments(compress_path, unpack_path, verbose=False)
+        unpacked_path = unpack_assignments(
+            compress_path, unpack_path, force, verbose=False
+        )
         if verbose:
             print_unpacked_file(unpacked_path)
     return assignments

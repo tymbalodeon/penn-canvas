@@ -239,7 +239,7 @@ def fetch_submissions(
     verbose: bool,
     total: int,
 ):
-    echo(") Exporting assignment grades...")
+    echo(") Fetching assignment grades...")
     grades = [
         get_assignment_grades(assignment, instance, verbose, index, total)
         for index, assignment in enumerate(assignments)
@@ -260,7 +260,7 @@ def fetch_submissions(
     grades_data = DataFrame(grades, columns=columns)
     grades_path = assignments_path / GRADES_COMPRESSED_FILE
     grades_data.to_csv(grades_path, index=False)
-    echo(") Exporting submission files...")
+    echo(") Fetching submission files...")
     submissions_path = create_directory(assignments_path / "submission_files")
     for index, assignment in enumerate(assignments):
         assignment_name = format_name(assignment.name)

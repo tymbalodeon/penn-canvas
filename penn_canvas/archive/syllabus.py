@@ -23,15 +23,19 @@ def print_syllabus(syllabus):
 
 
 def unpack_syllabus(
-    compress_path: Path, unpack_path: Path, verbose: bool
+    compress_path: Path, unpack_path: Path, force: bool, verbose: bool
 ) -> Optional[Path]:
     echo(") Unpacking syllabus...")
+    syllabus_file = unpack_path / "Syllabus.txt"
+    already_complete = not force and syllabus_file.is_file()
+    if already_complete:
+        echo("Syllabus already unpacked.")
+        return None
     compressed_file = compress_path / SYLLABUS_COMPRESSION_FILE
     if not compressed_file.is_file():
         return None
     data_frame = read_csv(compressed_file)
     syllabus = next(iter(data_frame["syllabus"].tolist()), "")
-    syllabus_file = unpack_path / "Syllabus.txt"
     write_file(syllabus_file, syllabus)
     if verbose:
         print_syllabus(syllabus)
@@ -44,11 +48,13 @@ def fetch_syllabus(
     compress_path: Path,
     unpack_path: Path,
     unpack: bool,
+    force: bool,
     verbose: bool,
 ):
-    echo(") Exporting syllabus...")
+    echo(") Fetching syllabus...")
     syllabus_file = compress_path / SYLLABUS_COMPRESSION_FILE
-    if syllabus_file.is_file():
+    already_complete = not force and syllabus_file.is_file()
+    if already_complete:
         echo("Syllabus already fetched.")
         syllabus = None
     else:
@@ -62,6 +68,8 @@ def fetch_syllabus(
             if verbose:
                 print_syllabus(syllabus)
     if unpack and syllabus:
-        unpacked_file = unpack_syllabus(compress_path, unpack_path, verbose=False)
+        unpacked_file = unpack_syllabus(
+            compress_path, unpack_path, force, verbose=False
+        )
         if verbose:
             print_unpacked_file(unpacked_file)
