@@ -1,3 +1,6 @@
+from canvasapi.account import Account
+from canvasapi.assignment import Assignment
+from canvasapi.course import Course
 from typer import echo
 
 from .api import PENN_CANVAS_MAIN_ACCOUNT_ID, get_canvas
@@ -18,7 +21,7 @@ year_and_terms = ["2021C", "2022A"]
 account_id = 99237
 
 
-def is_turnitin_assignment(assignment):
+def is_turnitin_assignment(assignment: Assignment) -> bool:
     try:
         if "url" in assignment.external_tool_tag_attributes:
             return "turnitin" in assignment.external_tool_tag_attributes["url"]
@@ -28,14 +31,14 @@ def is_turnitin_assignment(assignment):
         return False
 
 
-def is_voicethread_assignment(assignment):
+def is_voicethread_assignment(assignment: Assignment) -> bool:
     try:
         return "voicethread" in assignment.external_tool_tag_attributes["url"]
     except Exception:
         return False
 
 
-def get_courses(term, main_account, account):
+def get_courses(term: str, main_account: Account, account: Account) -> list[Course]:
     enrollment_term_ids = (
         enrollment_term.id
         for enrollment_term in main_account.get_enrollment_terms()
@@ -45,19 +48,17 @@ def get_courses(term, main_account, account):
     return list(account.get_courses(enrollment_term_id=enrollment_term_id))
 
 
-def usage_count_main(tool):
+def usage_count_main(tool: str):
     canvas = get_canvas()
     main_account = canvas.get_account(PENN_CANVAS_MAIN_ACCOUNT_ID)
     account = canvas.get_account(account_id)
     for term in year_and_terms:
         results_path = RESULTS / f"{term}_{tool}_usage.csv"
         if tool == "turnitin":
-            headers = HEADERS + [
-                "turnitin assignments",
-                "published turnitin assignemnts",
-            ]
+            extra_headers = ["turnitin assignments", "published turnitin assignemnts"]
         else:
-            headers = HEADERS + ["voicethread assignments"]
+            extra_headers = ["voicethread assignments"]
+        headers = HEADERS + extra_headers
         if not results_path.exists():
             with open(results_path, "w") as results_file:
                 results_file.write(",".join(headers))
@@ -65,7 +66,7 @@ def usage_count_main(tool):
         courses_count = len(courses)
         for index, course in enumerate(courses):
             assignments = [assignment for assignment in course.get_assignments()]
-            published_count = ""
+            published_count = 0
             if tool == "turnitin":
                 assignments = [
                     assignment

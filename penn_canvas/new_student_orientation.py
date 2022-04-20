@@ -389,12 +389,11 @@ def new_student_orientation_main(
     test: bool, verbose: bool, force: bool, clear_processed: bool
 ):
     test_display = "_test" if test else ""
-    result_string = (
-        f"{YEAR}_new_student_orientation_result_{TODAY_AS_Y_M_D}{test_display}.csv"
-    )
+    base_display = "new_student_orientation"
+    result_string = f"{YEAR}_{base_display}_result_{TODAY_AS_Y_M_D}{test_display}.csv"
     result_path = RESULTS / result_string
     processed_path = (
-        PROCESSED / f"new_student_orientation_processed_users_{YEAR}{test_display}.csv"
+        PROCESSED / f"{base_display}_processed_users_{YEAR}{test_display}.csv"
     )
     data = find_new_student_orientation_file()
     start = get_start_index(force, result_path)
