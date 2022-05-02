@@ -15,8 +15,8 @@ RESULTS = create_directory(COMMAND_PATH / "Results")
 LOGS = create_directory(COMMAND_PATH / "Logs")
 
 
-def get_role_data(account_id, permission, verbose):
-    account = get_account(account_id)
+def get_role_data(account_id, permission, instance, verbose):
+    account = get_account(account_id, instance=instance)
     roles = list(account.get_roles())
     roles = [
         [
@@ -39,9 +39,12 @@ def roles_main(permission: str, instance_name: str, verbose: bool):
     instance = validate_instance_name(instance_name)
     switch_logger_file(LOGS, "roles", instance.name)
     try:
-        account_ids = [int(account) for account in get_sub_account_ids()]
+        account_ids = [
+            int(account) for account in get_sub_account_ids(instance=instance)
+        ]
         roles = [
-            get_role_data(account_id, permission, verbose) for account_id in account_ids
+            get_role_data(account_id, permission, instance, verbose)
+            for account_id in account_ids
         ]
         roles = [item for sublist in roles for item in sublist]
         data_frame = DataFrame(
