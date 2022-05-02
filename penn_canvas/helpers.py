@@ -118,7 +118,7 @@ def get_previous_term() -> Term:
     }.get(get_current_term(), Term.SPRING)
 
 
-CURRENT_TERM = get_current_term()
+CURRENT_TERM = get_current_term().value
 CURRENT_TERM_DISPLAY = get_term_display(get_current_term())
 NEXT_TERM = get_next_term()
 PREVIOUS_TERM = get_previous_term()
